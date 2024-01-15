@@ -1,0 +1,13 @@
+# Copyright (C) 2023 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[run]
+omit=
+    main.py
+    constants.py
+    logging.py
+
+[report]
+show_missing = True
+skip_covered = True
