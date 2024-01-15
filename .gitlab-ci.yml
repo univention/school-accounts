@@ -3,14 +3,109 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 include:
+  - project: univention/dist/docker-services
+    file:
+      - kaniko.yml
+      - pre-commit.yml
   - project: 'univention/documentation/sphinx-docker'
     file: 'pipeline/sphinx.yml'
 
 variables:
+  POETRY_VERSION: "1.7.1"
   DOCS_DIR: "docs/user-management-manual"
   DOC_TARGET_VERSION: "1.0"
   DOC_TARGET_NAME: "user-management-module-manual"
   DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_OPEN_MERGE_REQUESTS
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "webide"
+
+stages:
+  - test
+  - build_docker
+  - lint
+  - publish
+  - build
+  - merge
+  - production
+
+run_pre_commit:
+  stage: lint
+  needs: []
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - cd /tmp && curl https://nodejs.org/download/release/v18.19.0/node-v18.19.0-linux-x64.tar.gz --output node.tar.gz
+    - cd /usr/local && tar -xzf /tmp/node.tar.gz --strip-components 1
+    - npm install -g yarn
+    - cd $CI_PROJECT_DIR
+    - yarn --cwd user-management-ui install
+  extends: .pre-commit
+
+bff-test:
+  stage: test
+  image: docker-registry.knut.univention.de/python:3.11-slim
+  variables:
+    BFF_TEST_ARGS: ""
+  script:
+    - cd user-management-bff
+    - pip install poetry=="$POETRY_VERSION"
+    - poetry config --local virtualenvs.create false
+    - poetry install
+    - pytest -vv "$BFF_TEST_ARGS" .
+  rules:
+    - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
+      when: never
+    - if: "$CI_COMMIT_MESSAGE =~ /force-build/ || $pipeline =~ /force-build/"
+    - changes:
+        - user-management-bff/**/*
+
+bff-coverage:
+  extends: bff-test
+  variables:
+    BFF_TEST_ARGS: ""
+    BFF_COVERAGE_LIMIT: "100"
+  script:
+    - cd user-management-bff
+    - pip install poetry=="$POETRY_VERSION"
+    - poetry config --local virtualenvs.create false
+    - poetry install
+    - pytest -vv "$BFF_TEST_ARGS" --cov="user_management_bff" --cov-report=term --cov-report=xml:coverage.xml .
+    - coverage report --fail-under="$BFF_COVERAGE_LIMIT"
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: user_management_bff/coverage.xml
+
+build_docker_image_user_management_bff:
+  stage: build_docker
+  needs:
+    - bff-test
+    - bff-coverage
+  rules:
+    - changes:
+        - user-management-bff/**/*
+  extends: .kaniko
+  variables:
+    KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/user-management-bff"
+    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management-bff
+    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
+
+build_docker_image_user_management_ui:
+  stage: build_docker
+  rules:
+    - changes:
+        - user-management-ui/**/*
+  extends: .kaniko
+  variables:
+    DOCKERFILE_PATH: "$CI_PROJECT_DIR/user-management-ui/docker/Dockerfile"
+    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management-ui
+    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
 
 docs-linkcheck:
   extends: .sphinx-linkcheck-template
