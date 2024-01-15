@@ -1,6 +1,12 @@
+<!--
+Copyright (C) 2024 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 # UCS@school User Management
 
-### Documentation
+## Documentation
 
 To run the liveserver for developing the documentation run the following command in the repository's root:
 
