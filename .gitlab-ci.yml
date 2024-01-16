@@ -1,0 +1,76 @@
+# Copyright (C) 2023 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+include:
+  - project: 'univention/documentation/sphinx-docker'
+    file: 'pipeline/sphinx.yml'
+
+variables:
+  DOCS_DIR: "docs/user-management-manual"
+  DOC_TARGET_VERSION: "1.0"
+  DOC_TARGET_NAME: "user-management-module-manual"
+  DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
+
+docs-linkcheck:
+  extends: .sphinx-linkcheck-template
+  rules:
+    - changes:
+      - $DOCS_DIR/**/*
+
+docs-spelling:
+  extends: .sphinx-spelling-template
+  rules:
+    - changes:
+      - $DOCS_DIR/**/*
+
+docs-html:
+  extends: .sphinx-html-template
+  rules:
+    - changes:
+      - $DOCS_DIR/**/*
+
+# user-management#16:
+# This job is currently disabled until we have more content in the docs;
+# otherwise latex complains and won't build.
+#docs-pdf:
+#  extends: .sphinx-pdf-template
+#  rules:
+#    - changes:
+#      - $DOCS_DIR/**/*
+
+docs-warnings:
+  extends: .sphinx-warnings-template
+  rules:
+    - changes:
+      - $DOCS_DIR/**/*
+
+docs-merge-to-one-artifact:
+  extends: .sphinx-merge-template
+  needs:
+    - job: docs-html
+    # user-management#16: uncomment the following line
+    #- job: docs-pdf
+    - job: docs-spelling
+      artifacts: false
+    - job: docs-linkcheck
+      artifacts: false
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      changes:
+      - $DOCS_DIR/**/*
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+      - $DOCS_DIR/**/*
+      when: manual
+
+# The template has inherit:variables:false to prevent the passing of pipeline
+# variables to downstream, and therefore $DOCS_DIR is not available here.
+docs-create-production-merge-request:
+  extends: .sphinx-docs-merge-request-template
+  needs:
+    - job: docs-merge-to-one-artifact
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+      - docs/**/*
