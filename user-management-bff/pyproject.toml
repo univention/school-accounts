@@ -31,3 +31,27 @@ priority = "supplemental"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 105
+target-version = ['py311']
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]
+indent-width = 4
+target-version = "py311"
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.coverage.run]
+omit = [
+    "main.py",
+    "constants.py",
+    "logging.py"
+    ]
