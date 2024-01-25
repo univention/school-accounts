@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-.vagrant
 __pycache__/
 _build/
 .coverage
 .cache/
-vagrant_custom_provisioning.sh
