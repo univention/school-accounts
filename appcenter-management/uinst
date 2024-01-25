@@ -1,0 +1,24 @@
+#!/bin/sh
+# Copyright (C) 2024 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+## joinscript api: bindpwdfile
+
+#
+#  Join script that runs on the docker host.
+#
+
+VERSION=1
+
+APP_ID="ucsschool-user-management"
+
+. /usr/share/univention-join/joinscripthelper.lib || exit 1
+
+joinscript_init
+
+# nothing to do, this unjoin script exists solely to execute:
+
+joinscript_remove_script_from_status_file "$APP_ID"
+
+exit 0

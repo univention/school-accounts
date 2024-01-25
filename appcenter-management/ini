@@ -1,0 +1,44 @@
+# Copyright (C) 2024 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[Application]
+ID = ucsschool-user-management
+Code = 4G
+Version = 0.1
+Name = UCS@school User Management
+Vendor = Univention
+DockerScriptRestoreDataAfterSetup =
+DockerScriptStoreData =
+DockerScriptUpdateAvailable =
+DockerScriptRestoreDataBeforeSetup =
+DockerScriptUpdatePackages =
+DockerScriptUpdateAppVersion =
+DockerScriptUpdateRelease =
+DockerScriptSetup =
+DockerMainService = user-management-bff
+Description = UCS@school User Management
+LongDescription = This app is part of the UCS product component UCS@school, used for managing UCS@school users. It implements Role and Access Management, using the Guardian.
+AppCategories = Education
+SupportUrl = https://www.univention.com/products/support/enterprise-support/
+Contact = sales@univention.de
+Maintainer = Univention
+WebsiteMaintainer = https://www.univention.com/
+NotificationEmail = appcenter-reporting@univention.de
+License = free
+WebInterface = /ucsschool/user-management/
+WebInterfaceName = UCS@school User Management
+WebInterfacePortHttp = 8000
+WebInterfacePortHttps = 8000
+WebInterfaceProxyScheme = http
+DockerScriptConfigure = /tmp/ucsschool-user-management-configure
+RequiredAppsInDomain = guardian-authorization-api
+NotifyVendor = True
+UCSOverviewCategory = False
+SupportType = univention
+
+[de]
+Description = UCS@school Benutzerverwaltung
+LongDescription = Diese App ist Teil der UCS-Produktkomponente UCS@school, die für die Verwaltung von UCS@school-Benutzern verwendet wird. Sie implementiert das Rollen- und Zugriffsmanagement unter Verwendung des Guardian.
+SupportUrl = https://www.univention.de/produkte/support/enterprise-support/
+WebsiteMaintainer = https://www.univention.de/

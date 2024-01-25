@@ -11,6 +11,7 @@ include:
     file: 'pipeline/sphinx.yml'
 
 variables:
+  APPCENTER_CONTROL_IMAGE: "docker-registry.knut.univention.de/knut/univention-appcenter-control"
   POETRY_VERSION: "1.7.1"
   DOCS_DIR: "docs/user-management-manual"
   DOC_TARGET_VERSION: "1.0"
@@ -169,3 +170,21 @@ docs-create-production-merge-request:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       changes:
       - docs/**/*
+
+user_management_app_to_test_appcenter:
+  stage: publish
+  variables:
+    APP_ID: "ucsschool-user-management"
+    APP_DIR: "appcenter-management"
+    APP_NAME: "5.0/$APP_ID"
+  image: $APPCENTER_CONTROL_IMAGE
+  needs: []
+  script:
+    - cd "$APP_DIR"
+    - APP_VERSION="$(sed -n 's/^Version\s*=\s*//p' ini)"
+    - echo "updating $APP_NAME=$APP_VERSION"
+    - univention-appcenter-control upload "$APP_NAME=$APP_VERSION" compose configure_host inst ini README_UPDATE_DE README_UPDATE_EN settings uinst
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - $APP_DIR/**/*
