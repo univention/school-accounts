@@ -16,6 +16,8 @@ loguru = "^0.7.2"
 port-loader = "1.2.0"
 gunicorn = "^21.2.0"
 uvicorn = "^0.26.0"
+orjson = "^3.9.12"
+lazy-object-proxy = "^1.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -40,7 +42,7 @@ target-version = ['py311']
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 88
+line-length = 105
 select = ["E", "F", "I"]
 indent-width = 4
 target-version = "py311"

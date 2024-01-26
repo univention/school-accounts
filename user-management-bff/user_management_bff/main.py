@@ -10,7 +10,7 @@ from fastapi.responses import ORJSONResponse
 
 from user_management_bff.logging import configure_logger
 
-from .constants import CORS_ALLOWED_ORIGINS
+from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS
 
 
 @asynccontextmanager
@@ -23,8 +23,8 @@ app = FastAPI(
     lifespan=lifespan,
     title="Guardian Management API",
     version=metadata.version("user-management-bff"),
-    openapi_url="/openapi.json",
-    docs_url="/docs",
+    openapi_url=f"{API_PREFIX}/openapi.json",
+    docs_url=f"{API_PREFIX}/docs",
     default_response_class=ORJSONResponse,
 )
 # FastAPI doesn't allow adding middleware after the app has been started,

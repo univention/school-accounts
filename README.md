@@ -82,7 +82,7 @@ dev/dev_run.sh task dev-server
 
 The UI can be accessed at [http://localhost/](http://localhost/)
 
-The API can be accessed at [http://localhost:8000/docs](http://localhost:8000/docs)
+The API can be accessed at [http://localhost:8000/univention/ucsschool/user-management-bff/docs](http://localhost:8000/univention/ucsschool/user-management-bff/docs)
 
 Both UI and API react to code changes without the need to restart the environment.
 

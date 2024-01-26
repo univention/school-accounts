@@ -83,7 +83,7 @@ services:
     env_file: *env-files
     labels:
       traefik.http.routers.bff.entrypoints: api
-      traefik.http.routers.bff.rule: PathPrefix(`/`)
+      traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
   ui:
