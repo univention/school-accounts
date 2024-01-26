@@ -33,6 +33,16 @@ fi
 GITLAB_IP=$(getent -i ahostsv4 git.knut.univention.de | head -n 1 | cut -d ' ' -f 1)
 DOCKER_USER="$(id -u):$(id -g)"
 
+if [ "$PROFILE" = "pre-commit" ]; then
+  DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
+  -f dev/docker-compose.yaml \
+  --profile "$PROFILE" \
+  up \
+  --exit-code-from pre-commit \
+  --build
+  exit $?
+fi
+
 DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
 -f dev/docker-compose.yaml \
 --profile "$PROFILE" \
