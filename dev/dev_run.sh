@@ -92,6 +92,10 @@ COMMAND="$1"
 GITLAB_IP="$(getent -i ahostsv4 git.knut.univention.de | head -n 1 | cut -d ' ' -f 1)"
 DOCKER_USER="$(id -u):$(id -g)"
 
+if [ ! -f "dev/.env" ]; then
+    cp dev/.env.example dev/.env
+fi
+
 if [ "$COMMAND" = "task" ]; then
   run_task $@
 fi
