@@ -29,9 +29,9 @@ repos:
   rev: v1.8.0
   hooks:
     - id: mypy
-      args: []
+      args: ["--config-file=user-management-bff/pyproject.toml"]
       exclude: "docs/"
-      additional_dependencies: [fastapi, loguru]
+      additional_dependencies: [fastapi, loguru, pytest]
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:

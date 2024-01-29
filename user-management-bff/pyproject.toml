@@ -23,6 +23,7 @@ lazy-object-proxy = "^1.10.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
 pytest-cov = "^4.1.0"
+httpx = "^0.26.0"
 
 
 [[tool.poetry.source]]

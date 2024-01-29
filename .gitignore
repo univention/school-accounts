@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-__pycache__/
+**/__pycache__/
+*.pyc
 _build/
 .coverage
 .cache/

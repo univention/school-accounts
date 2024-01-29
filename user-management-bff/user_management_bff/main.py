@@ -8,14 +8,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
-from user_management_bff.logging import configure_logger
-
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS
+from .logging import configure_logger
+from .routes import router
 
 
 @asynccontextmanager
-async def lifespan(_fastapi_app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     await configure_logger()
+    fastapi_app.include_router(router)
     yield
 
 
