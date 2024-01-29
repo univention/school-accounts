@@ -3,28 +3,55 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 services:
+  install_deps:
+    image: ucsschool-user-management-dev:latest
+    build: &docker-build
+      dockerfile: dev/Dockerfile
+      context: ../
+    container_name: ucsschool-user-management-install_deps
+    command: ["dev/scripts/install_deps.sh"]
+    profiles:
+      - clean-profile
+      - dev-server
+    user: $DOCKER_USER
+    extra_hosts:
+      - git.knut.univention.de:${GITLAB_IP}
+    volumes: &default-volumes
+      - ../:/src
+  run_command:
+    image: ucsschool-user-management-dev:latest
+    build: *docker-build
+    container_name: ucsschool-user-management-run_command
+    command: [ "echo", "'You should provide a command.'" ]
+    profiles:
+      - clean-profile
+    depends_on:
+      install_deps:
+        condition: service_completed_successfully
+    user: $DOCKER_USER
+    extra_hosts:
+      - git.knut.univention.de:${GITLAB_IP}
+    volumes: *default-volumes
   proxy:
     image: traefik:v2.11
-    profiles:
-      - dev-server
-      - clean-profile
-      - sphinx
     container_name: ucsschool-user-management-proxy
     command:
       - --providers.docker
       - --entryPoints.web.address=:80
       - --entryPoints.api.address=:8000
+    profiles:
+      - clean-profile
+      - dev-server
+      - sphinx
     ports:
       - "80:80"
       - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   bff:
-    image: ucsschool-user-management-dev:bff-runtime
-    build:
-      dockerfile: dev/Dockerfile
-      target: bff-runtime
-      context: ../
+    image: ucsschool-user-management-dev:latest
+    build: *docker-build
+    container_name: ucsschool-user-management-bff
     command:
       - "poetry"
       - "-C"
@@ -39,141 +66,54 @@ services:
       - "--port"
       - "8000"
       - "user_management_bff.main:app"
-    user: $DOCKER_USER
-    container_name: ucsschool-user-management-bff
+    profiles:
+      - clean-profile
+      - dev-server
     depends_on:
+      install_deps:
+        condition: service_completed_successfully
       proxy:
         condition: service_started
-    profiles:
-      - dev-server
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
+    user: $DOCKER_USER
+    volumes: *default-volumes
     labels:
       traefik.http.routers.bff.entrypoints: api
       traefik.http.routers.bff.rule: PathPrefix(`/`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
   ui:
-    image: ucsschool-user-management-dev:ui-runtime
-    build:
-      dockerfile: dev/Dockerfile
-      target: ui-runtime
-      context: ../
-    command: ["yarn", "--cwd", "user-management-ui", "dev"]
-    user: $DOCKER_USER
+    image: ucsschool-user-management-dev:latest
+    build: *docker-build
     container_name: ucsschool-user-management-ui
+    command: ["yarn", "--cwd", "user-management-ui", "dev"]
+    profiles:
+      - clean-profile
+      - dev-server
     depends_on:
+      install_deps:
+        condition: service_completed_successfully
       proxy:
         condition: service_started
-      bff:
-        condition: service_started
-    profiles:
-      - dev-server
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
+    user: $DOCKER_USER
+    volumes: *default-volumes
     labels:
       traefik.http.routers.ui.entrypoints: web
       traefik.http.routers.ui.rule: PathPrefix(`/`)
       traefik.http.routers.ui.service: ui
       traefik.http.services.ui.loadbalancer.server.port: 5173
-  pre-commit:
-    image: ucsschool-user-management-dev:complete
-    build:
-      dockerfile: dev/Dockerfile
-      target: complete
-      context: ../
-    command: ["pre-commit", "run"]
-    user: $DOCKER_USER
-    container_name: ucsschool-user-management-pre-commit
-    profiles:
-      - pre-commit
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
-  reuse:
-    image: ucsschool-user-management-dev:complete
-    build:
-      dockerfile: dev/Dockerfile
-      target: complete
-      context: ../
-    command:
-      - "reuse"
-      - "annotate"
-      - "--copyright=Univention GmbH"
-      - "--copyright-style=string-c"
-      - "--template=univention"
-      - "--year"
-      - "2024"
-      - "--recursive"
-      - "--merge-copyrights"
-      - "--skip-unrecognised"
-      - "--skip-existing"
-      - "."
-    user: $DOCKER_USER
-    container_name: ucsschool-user-management-reuse
-    profiles:
-      - reuse
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
-  pytest:
-    image: ucsschool-user-management-dev:complete
-    build:
-      dockerfile: dev/Dockerfile
-      target: complete
-      context: ../
-    working_dir: "/src/user-management-bff"
-    command: ["poetry", "run", "pytest", "-vv", "--cov=user_management_bff", "."]
-    user: $DOCKER_USER
-    container_name: ucsschool-user-management-pytest
-    profiles:
-      - pytest
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
-  clean:
-    image: ucsschool-user-management-dev:base
-    build:
-      dockerfile: dev/Dockerfile
-      target: base
-      context: ../
-    command: ["rm", "-f", "-r", ".cache", "user-management-ui/node_modules", "docs/user-management-manual/_build"]
-    user: $DOCKER_USER
-    container_name: ucsschool-user-management-clean
-    profiles:
-      - clean
-      - clean-profile
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
-    volumes:
-      - ../:/src
   sphinx:
     image: docker-registry.knut.univention.de/sphinx:latest
-    container_name: ucsschool-user-management-sphinx
-    depends_on:
-      proxy:
-        condition: service_started
     pull_policy: always
-    user: $DOCKER_USER
-    environment:
-      SPHINXOPTS: "--host 0.0.0.0 --port 8080"
+    container_name: ucsschool-user-management-sphinx
     command: ["make", "-C", "docs/user-management-manual/", "livehtml"]
+    working_dir: /project
     profiles:
       - sphinx
       - clean-profile
-    working_dir: /project
+    depends_on:
+      proxy:
+        condition: service_started
+    user: $DOCKER_USER
     volumes:
       - ../:/project
     labels:
@@ -183,3 +123,5 @@ services:
       traefik.http.routers.sphinx.middlewares: strip-manual
       traefik.http.routers.sphinx.service: sphinx
       traefik.http.services.sphinx.loadbalancer.server.port: 8080
+    environment:
+      SPHINXOPTS: "--host 0.0.0.0 --port 8080"
