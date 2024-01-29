@@ -8,21 +8,25 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
+from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS
 from .logging import configure_logger
+from .ports import UsersPersistencePort, UsersRepresentationPort
 from .routes import router
 
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     await configure_logger()
+    configure_registry(ADAPTER_REGISTRY)
+    await initialize_adapters(ADAPTER_REGISTRY, [UsersPersistencePort, UsersRepresentationPort])
     fastapi_app.include_router(router)
     yield
 
 
 app = FastAPI(
     lifespan=lifespan,
-    title="Guardian Management API",
+    title="UCS@school User Management BFF",
     version=metadata.version("user-management-bff"),
     openapi_url=f"{API_PREFIX}/openapi.json",
     docs_url=f"{API_PREFIX}/docs",

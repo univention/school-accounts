@@ -1,11 +1,12 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import pytest
 
 
 def test_get_users_config(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config-users")
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     assert response.json() == {
         "columns": [
             {
@@ -50,5 +51,70 @@ def test_get_users_config(test_client, api_prefix):
                 "sorting": "asc",
                 "order": 5,
             },
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "school,expected_users",
+    [
+        ("NON_EXISTENT", []),
+        (
+            "test_school1",
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname",
+                        "last_name": "lastname",
+                        "roles": ["teacher:school:test_school1"],
+                        "schools": ["test_school1"],
+                        "username": "firstname.lastname",
+                    },
+                    "id": "test_user1",
+                }
+            ],
+        ),
+        (
+            "test_school2",
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname2",
+                        "last_name": "lastname2",
+                        "roles": ["teacher:school:test_school2"],
+                        "schools": ["test_school2"],
+                        "username": "firstname2.lastname2",
+                    },
+                    "id": "test_user2",
+                },
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname3",
+                        "last_name": "lastname3",
+                        "roles": ["teacher:school:test_school2", "student:school:test_school3"],
+                        "schools": ["test_school2", "test_school3"],
+                        "username": "firstname3.lastname3",
+                    },
+                    "id": "test_user3",
+                },
+            ],
+        ),
+    ],
+)
+def test_get_users(school, expected_users, test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/users", params={"school": school})
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "users": [
+            {
+                "id": user["id"],
+                "attributes": {
+                    name: {"value": value, "visible": True} for name, value in user["attributes"].items()
+                },
+            }
+            for user in expected_users
         ]
     }

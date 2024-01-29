@@ -1,0 +1,96 @@
+[
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "Max",
+      "last_name": "Mustermann",
+      "roles": [
+        "teacher:school:school1"
+      ],
+      "schools": [
+        "school1"
+      ],
+      "username": "max.muster"
+    },
+    "id": "user1"
+  },
+  {
+    "attributes": {
+      "disabled": true,
+      "first_name": "Maria",
+      "last_name": "Musterfrau",
+      "roles": [
+        "staff:school:school2"
+      ],
+      "schools": [
+        "school2"
+      ],
+      "username": "maria.muster"
+    },
+    "id": "user2"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "Kim",
+      "last_name": "Klein",
+      "roles": [
+        "teacher:school:school1",
+        "student:school:school2"
+      ],
+      "schools": [
+        "school2",
+        "school1"
+      ],
+      "username": "kim.klein"
+    },
+    "id": "user3"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname",
+      "last_name": "lastname",
+      "roles": [
+        "teacher:school:test_school1"
+      ],
+      "schools": [
+        "test_school1"
+      ],
+      "username": "firstname.lastname"
+    },
+    "id": "test_user1"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname2",
+      "last_name": "lastname2",
+      "roles": [
+        "teacher:school:test_school2"
+      ],
+      "schools": [
+        "test_school2"
+      ],
+      "username": "firstname2.lastname2"
+    },
+    "id": "test_user2"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname3",
+      "last_name": "lastname3",
+      "roles": [
+        "teacher:school:test_school2",
+        "student:school:test_school3"
+      ],
+      "schools": [
+        "test_school2",
+        "test_school3"
+      ],
+      "username": "firstname3.lastname3"
+    },
+    "id": "test_user3"
+  }
+]

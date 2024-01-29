@@ -7,25 +7,34 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-from user_management_bff.main import app
 
+@pytest.fixture(scope="session")
+def test_client():
+    from user_management_bff.main import app
 
-@pytest.fixture
-def test_client(patch_env):
     with TestClient(app) as client:
         yield client
 
 
-@pytest.fixture()
+@pytest.fixture
 def api_prefix():
     return os.getenv("USER_MANAGEMENT__API_PREFIX", "")
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session", autouse=True)
 def patch_env():
     _environ = os.environ.copy()
     os.environ["USER_MANAGEMENT__API_PREFIX"] = "/univention/ucsschool/user-management"
     os.environ["USER_MANAGEMENT__CORS__ALLOWED_ORIGINS"] = "*"
+    os.environ[
+        "USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE"
+    ] = "user_management_bff.adapters.users:FileUsersPersistenceAdapter"
+    os.environ[
+        "USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION"
+    ] = "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
+    os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/users.json"
+    )
     yield
     os.environ.clear()
     os.environ.update(_environ)
