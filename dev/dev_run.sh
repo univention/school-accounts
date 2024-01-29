@@ -32,7 +32,7 @@ run_task() {
   echo "Running task $TASK"
   if [ "$TASK" = "clean" ]; then
     rm -rf .cache user-management-ui/node_modules docs/user-management-manual/_build
-    $SUDO DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
+    DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "clean-profile" \
     down \
@@ -41,7 +41,7 @@ run_task() {
     exit $?
   fi
   if [ "$TASK" = "dev-server" ] || [ "$TASK" = "sphinx" ]; then
-    $SUDO DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
+    DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "$TASK" \
     up \
@@ -78,7 +78,7 @@ run_command () {
     print_help
     exit 1
   fi
-  $SUDO DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
+  DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
   -f dev/docker-compose.yaml \
   run \
   --build \
@@ -91,8 +91,6 @@ run_command () {
 COMMAND="$1"
 GITLAB_IP="$(getent -i ahostsv4 git.knut.univention.de | head -n 1 | cut -d ' ' -f 1)"
 DOCKER_USER="$(id -u):$(id -g)"
-SUDO=""
-groups | grep -Fq "docker" || SUDO="sudo"
 
 if [ "$COMMAND" = "task" ]; then
   run_task $@
