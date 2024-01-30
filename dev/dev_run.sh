@@ -52,6 +52,7 @@ run_task() {
     run_command reuse annotate \
     --copyright="Univention GmbH" \
     --copyright-style=string-c \
+    --license="AGPL-3.0-only" \
     --template=univention \
     --year 2024 \
     --recursive \
