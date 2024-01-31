@@ -70,7 +70,10 @@ class TestFileUsersPersistenceAdapter:
                             "disabled": False,
                             "first_name": "firstname3",
                             "last_name": "lastname3",
-                            "roles": ["teacher:school:test_school2", "student:school:test_school3"],
+                            "roles": [
+                                "teacher:school:test_school2",
+                                "student:school:test_school3",
+                            ],
                             "schools": ["test_school2", "test_school3"],
                             "username": "firstname3.lastname3",
                         },
@@ -85,7 +88,8 @@ class TestFileUsersPersistenceAdapter:
         await adapter.configure(
             FileUsersPersistenceAdapterSettings(
                 source=os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "../../../dev/data/users.json"
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "../../../dev/data/users.json",
                 )
             )
         )

@@ -94,7 +94,10 @@ def test_get_users_config(test_client, api_prefix):
                         "disabled": False,
                         "first_name": "firstname3",
                         "last_name": "lastname3",
-                        "roles": ["teacher:school:test_school2", "student:school:test_school3"],
+                        "roles": [
+                            "teacher:school:test_school2",
+                            "student:school:test_school3",
+                        ],
                         "schools": ["test_school2", "test_school3"],
                         "username": "firstname3.lastname3",
                     },
