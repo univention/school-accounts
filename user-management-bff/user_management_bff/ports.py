@@ -10,7 +10,7 @@ from .models import User
 
 class UsersPersistencePort(ABC):
     @abstractmethod
-    def get_users(self, school: str) -> list[User]:  # pragma: no cover
+    async def get_users(self, school: str) -> list[User]:  # pragma: no cover
         ...
 
 

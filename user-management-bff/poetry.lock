@@ -32,6 +32,17 @@ test = ["anyio[trio]", "coverage[toml] (>=7)", "exceptiongroup (>=1.2.0)", "hypo
 trio = ["trio (>=0.23)"]
 
 [[package]]
+name = "async-property"
+version = "0.2.2"
+description = "Python decorator for async properties."
+optional = false
+python-versions = "*"
+files = [
+    {file = "async_property-0.2.2-py2.py3-none-any.whl", hash = "sha256:8924d792b5843994537f8ed411165700b27b2bd966cefc4daeefc1253442a9d7"},
+    {file = "async_property-0.2.2.tar.gz", hash = "sha256:17d9bd6ca67e27915a75d92549df64b5c7174e9dc806b30a3934dc4ff0506380"},
+]
+
+[[package]]
 name = "certifi"
 version = "2023.11.17"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -247,6 +258,27 @@ files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
 ]
+
+[[package]]
+name = "kelvin-rest-api-client"
+version = "2.2.3"
+description = "Python library to interact with the UCS@school Kelvin REST API."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "kelvin-rest-api-client-2.2.3.tar.gz", hash = "sha256:f79404e675b3c56220cbac9ba0690b1b217a49bca9d4c6afdadc414cfcfd635c"},
+    {file = "kelvin_rest_api_client-2.2.3-py2.py3-none-any.whl", hash = "sha256:7b7f87de7bf066b7646db81f1b797df616d93edc870f027ab8305c4c4fdc23e9"},
+]
+
+[package.dependencies]
+async-property = ">=0.2.1,<0.3.0"
+httpx = ">=0.23.1"
+lazy-object-proxy = ">=1.6.0"
+pyjwt = ">=2.0.0,<3.0.0"
+wheel = ">=0.36.2"
+
+[package.extras]
+development = ["Faker (>=8.1.1,<=15.0.0)", "Sphinx (>=3.0.0,<4.0.0)", "argh (>=0.26.0,<1.0.0)", "async-property (>=0.2.1,<0.3.0)", "coverage (>=5.5)", "docker (>=5.0.0)", "factory-boy (>=3.0.0,<=4.0.0)", "httpx (>=0.23.1)", "lazy-object-proxy (>=1.6.0)", "ldap3 (>=2.9)", "pre-commit (>=2.12.1)", "pyjwt (>=2.0.0,<3.0.0)", "pytest (>=6.2.3)", "pytest-asyncio (>=0.15.1,<=0.18.0)", "pytest-mock (>=3.7.0)", "ruamel.yaml (>=0.17.4)", "tox (>=3.23.0)", "twine (>=3.4.1)", "watchdog (>=2.0.3)", "wheel (>=0.36.2)"]
 
 [[package]]
 name = "lazy-object-proxy"
@@ -568,6 +600,23 @@ pydantic = ">=2.3.0"
 python-dotenv = ">=0.21.0"
 
 [[package]]
+name = "pyjwt"
+version = "2.8.0"
+description = "JSON Web Token implementation in Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "PyJWT-2.8.0-py3-none-any.whl", hash = "sha256:59127c392cc44c2da5bb3192169a91f429924e17aff6534d70fdc02ab3e04320"},
+    {file = "PyJWT-2.8.0.tar.gz", hash = "sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de"},
+]
+
+[package.extras]
+crypto = ["cryptography (>=3.4.0)"]
+dev = ["coverage[toml] (==5.0.4)", "cryptography (>=3.4.0)", "pre-commit", "pytest (>=6.0.0,<7.0.0)", "sphinx (>=4.5.0,<5.0.0)", "sphinx-rtd-theme", "zope.interface"]
+docs = ["sphinx (>=4.5.0,<5.0.0)", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
+
+[[package]]
 name = "pytest"
 version = "7.4.4"
 description = "pytest: simple powerful testing with Python"
@@ -622,6 +671,23 @@ pytest = ">=4.6"
 
 [package.extras]
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtualenv"]
+
+[[package]]
+name = "pytest-mock"
+version = "3.12.0"
+description = "Thin-wrapper around the mock package for easier use with pytest"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pytest-mock-3.12.0.tar.gz", hash = "sha256:31a40f038c22cad32287bb43932054451ff5583ff094bca6f675df2f8bc1a6e9"},
+    {file = "pytest_mock-3.12.0-py3-none-any.whl", hash = "sha256:0972719a7263072da3a21c7f4773069bcc7486027d7e8e1f81d98a47e701bc4f"},
+]
+
+[package.dependencies]
+pytest = ">=5.0"
+
+[package.extras]
+dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
 name = "python-dotenv"
@@ -695,6 +761,20 @@ h11 = ">=0.8"
 standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "uvloop (>=0.14.0,!=0.15.0,!=0.15.1)", "watchfiles (>=0.13)", "websockets (>=10.4)"]
 
 [[package]]
+name = "wheel"
+version = "0.42.0"
+description = "A built-package format for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "wheel-0.42.0-py3-none-any.whl", hash = "sha256:177f9c9b0d45c47873b619f5b650346d632cdc35fb5e4d25058e09c9e581433d"},
+    {file = "wheel-0.42.0.tar.gz", hash = "sha256:c45be39f7882c9d34243236f2d63cbd58039e360f85d0913425fbd7ceea617a8"},
+]
+
+[package.extras]
+test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
+
+[[package]]
 name = "win32-setctime"
 version = "1.1.0"
 description = "A small Python utility to set file creation time on Windows"
@@ -711,4 +791,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e5164df0f2ec53076c8bb85729f31b4e9750f15e3904bd089c2263ba298d9aae"
+content-hash = "5d1988700bfc1c8bcc9bee4917d2d28cf53ffb581a29bad68b3a24073618ac52"

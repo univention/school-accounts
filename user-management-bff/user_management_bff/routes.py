@@ -59,13 +59,13 @@ def get_users_config() -> ListUsersConfig:
 
 
 @router.get("/users")
-def get_users(
+async def get_users(
     school: str,
     users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
     representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
         port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
     ),
 ) -> ListUsersResponse:
-    return business_logic.get_users(
+    return await business_logic.get_users(
         users_get_adapter, representation_adapter, UsersGetRequest(school=school)
     )

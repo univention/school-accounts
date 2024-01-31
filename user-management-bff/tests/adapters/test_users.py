@@ -7,11 +7,145 @@ import os
 
 import pytest
 
+import user_management_bff.adapters.users
 from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapter,
     FileUsersPersistenceAdapterSettings,
+    KelvinUsersPersistenceAdapter,
+    KelvinUsersPersistenceAdapterSettings,
 )
 from user_management_bff.models import User, UserAttributes
+
+
+class TestKelvinUsersPersistenceAdapter:
+    @pytest.fixture
+    def adapter(self):
+        return KelvinUsersPersistenceAdapter()
+
+    @pytest.fixture
+    def dummy_settings(self):
+        return KelvinUsersPersistenceAdapterSettings(
+            url="https://test.com", username="test", password="password"
+        )
+
+    @pytest.fixture
+    def make_kelvin_user_from_data(self, mocker):
+        def _make_kelvin_user_from_data(user_data: dict):
+            kelvin_user = mocker.MagicMock()
+            kelvin_user.name = user_data["id"]
+            kelvin_user.lastname = user_data["attributes"]["last_name"]
+            kelvin_user.firstname = user_data["attributes"]["first_name"]
+            kelvin_user.schools = user_data["attributes"]["schools"]
+            kelvin_user.ucsschool_roles = user_data["attributes"]["roles"]
+            kelvin_user.disabled = user_data["attributes"]["disabled"]
+            return kelvin_user
+
+        return _make_kelvin_user_from_data
+
+    def test_get_settings_cls(self):
+        assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinUsersPersistenceAdapterSettings
+
+    @pytest.mark.asyncio
+    async def test_configure(self, adapter, dummy_settings):
+        await adapter.configure(dummy_settings)
+        assert adapter._settings == dummy_settings
+
+    @pytest.mark.parametrize(
+        "input_data",
+        [
+            {
+                "attributes": {
+                    "disabled": False,
+                    "first_name": "firstname",
+                    "last_name": "lastname",
+                    "roles": ["teacher:school:test_school1"],
+                    "schools": ["test_school1"],
+                    "username": "test_user1",
+                },
+                "id": "test_user1",
+            }
+        ],
+    )
+    def test_user_from_kelvin_user(self, input_data, adapter, make_kelvin_user_from_data):
+        kelvin_user = make_kelvin_user_from_data(input_data)
+        result = adapter._user_from_kelvin_user(kelvin_user)
+        assert result == User(id=input_data["id"], attributes=UserAttributes(**input_data["attributes"]))
+
+    def test_kelvin_session_no_settings(self, adapter):
+        with pytest.raises(
+            RuntimeError,
+            match="Something went wrong with the configuration of the "
+            "KelvinUsersPersistenceAdapter. No settings present.",
+        ):
+            _session = adapter.kelvin_session
+
+    def test_kelvin_session(self, adapter, dummy_settings):
+        adapter._settings = dummy_settings
+        assert adapter.kelvin_session.host == dummy_settings.url
+        assert adapter.kelvin_session.username == dummy_settings.username
+        assert adapter.kelvin_session.password == dummy_settings.password
+
+    @pytest.mark.parametrize(
+        "input_data",
+        [
+            [],
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname",
+                        "last_name": "lastname",
+                        "roles": ["teacher:school:test_school1"],
+                        "schools": ["test_school1"],
+                        "username": "test_user1",
+                    },
+                    "id": "test_user1",
+                }
+            ],
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname",
+                        "last_name": "lastname",
+                        "roles": ["teacher:school:test_school1"],
+                        "schools": ["test_school1"],
+                        "username": "test_user1",
+                    },
+                    "id": "test_user1",
+                },
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname2",
+                        "last_name": "lastname2",
+                        "roles": ["teacher:school:test_school2"],
+                        "schools": ["test_school2"],
+                        "username": "test_user2",
+                    },
+                    "id": "test_user2",
+                },
+            ],
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_get_users(
+        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_user_from_data, input_data
+    ):
+        class MockUserResource:
+            async def search(self, *_args, **_kwargs):
+                for user_data in input_data:
+                    yield make_kelvin_user_from_data(user_data)
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        print(user_management_bff.adapters.users.UserResource)
+        result = await adapter.get_users("school1")
+        assert result == [
+            User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
+            for user_data in input_data
+        ]
 
 
 class TestFileUsersPersistenceAdapter:
@@ -93,7 +227,7 @@ class TestFileUsersPersistenceAdapter:
                 )
             )
         )
-        result = adapter.get_users(school)
+        result = await adapter.get_users(school)
         assert result == [
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
             for user in expected_users
