@@ -2,13 +2,42 @@
 ..
 .. SPDX-License-Identifier: AGPL-3.0-only
 
-.. _introduction:
-
 ############
 Introduction
 ############
 
-Placeholder section heading
-===========================
+Welcome to the UCS\@school User Management manual.
+It explains how to use the module to manage users and how to modify roles
+and permissions through the Guardian.
 
-Placeholder text
+Historically, UCS\@school user roles were limited to a few roles, such as
+teachers and students, and the permissions were hard-coded into the
+applications. This made it impossible to change the permissions for
+these roles, or to add new roles.
+
+The Guardian is a new system for managing roles and permissions. And it's
+what the UCS\@school User Management module uses.
+
+Now you can create new roles, and assign permissions to them. For example,
+you can create a role “legal tutor” and assign the permissions to view
+only the data of their own children. You can find more details on the process
+in the Guardian manual.
+
+.. _audience-for-this-manual:
+
+The UCS\@school User Management manual addresses the following audiences:
+
+* Administrators
+
+.. _guardian-administrators-audience:
+
+Administrators
+==============
+
+A UCS\@school User Management administrator in the context of this manual
+is a superuser who administers the UCS\@school User Management module, including
+the Guardian roles and permissions if desired.
+
+This manual doesn't assume any specific technical knowledge
+for administrators of the UCS\@school User Management.
+When possible, all instructions use a web browser.

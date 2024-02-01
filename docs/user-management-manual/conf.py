@@ -189,6 +189,10 @@ intersphinx_mapping = {
         "https://docs.software-univention.de/ucsschool-import/latest/de",
         None,
     ),
+    "uv-ucs-manual": (
+        "https://docs.software-univention.de/manual/latest/en/",
+        None,
+    ),
 }
 
 
