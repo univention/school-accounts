@@ -5,4 +5,8 @@
 import os
 
 CORS_ALLOWED_ORIGINS = os.environ.get("USER_MANAGEMENT__CORS__ALLOWED_ORIGINS")
-API_PREFIX = os.environ.get("USER_MANAGEMENT__API_PREFIX", "")
+API_PREFIX = os.environ.get("USER_MANAGEMENT__API_PREFIX", "/univention/ucsschool/user-management/bff")
+FRONTEND_PREFIX = os.environ.get(
+    "USER_MANAGEMENT__FRONTEND_PREFIX", "/univention/ucsschool/user-management/ui"
+)
+FRONTEND_DIR = os.environ.get("USER_MANAGEMENT__FRONTEND_DIR", "/app/frontend")

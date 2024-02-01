@@ -24,7 +24,7 @@ def api_prefix():
 @pytest.fixture(scope="session", autouse=True)
 def patch_env():
     _environ = os.environ.copy()
-    os.environ["USER_MANAGEMENT__API_PREFIX"] = "/univention/ucsschool/user-management"
+    os.environ["USER_MANAGEMENT__API_PREFIX"] = "/univention/ucsschool/user-management/bff"
     os.environ["USER_MANAGEMENT__CORS__ALLOWED_ORIGINS"] = "*"
     os.environ["USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE"] = (
         "user_management_bff.adapters.users:FileUsersPersistenceAdapter"

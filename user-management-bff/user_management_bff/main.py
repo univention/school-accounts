@@ -1,15 +1,17 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import os
 from contextlib import asynccontextmanager
 from importlib import metadata
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
-from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS
+from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
 from .logging import configure_logger
 from .ports import UsersPersistencePort, UsersRepresentationPort
 from .routes import router
@@ -43,3 +45,7 @@ if CORS_ALLOWED_ORIGINS:
         allow_methods=["*"],
         allow_headers=["Authorization"],
     )
+
+# statically serve the frontend
+if os.path.exists(FRONTEND_DIR):
+    app.mount(FRONTEND_PREFIX, StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

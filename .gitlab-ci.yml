@@ -83,7 +83,7 @@ bff-coverage:
         coverage_format: cobertura
         path: user_management_bff/coverage.xml
 
-build_docker_image_user_management_bff:
+build_docker_image_user_management:
   stage: build_docker
   needs:
     - bff-test
@@ -91,22 +91,12 @@ build_docker_image_user_management_bff:
   rules:
     - changes:
         - user-management-bff/**/*
-  extends: .kaniko
-  variables:
-    KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/user-management-bff"
-    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management-bff
-    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
-
-build_docker_image_user_management_ui:
-  stage: build_docker
-  rules:
-    - changes:
         - user-management-ui/**/*
   extends: .kaniko
   variables:
-    DOCKERFILE_PATH: "$CI_PROJECT_DIR/user-management-ui/docker/Dockerfile"
-    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management-ui
-    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
+    KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/"
+    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management
+    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
 
 docs-linkcheck:
   extends: .sphinx-linkcheck-template
