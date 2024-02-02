@@ -4,8 +4,8 @@
 
 version: '3.1'
 services:
-  user-management-bff:
-    image: gitregistry.knut.univention.de/univention/ucsschool-components/user-management/ucsschool-user-management-bff:latest
+  user-management:
+    image: gitregistry.knut.univention.de/univention/ucsschool-components/user-management/ucsschool-user-management:latest
     security_opt:
       - seccomp:/etc/docker/seccomp-systemd.json
     restart: unless-stopped
@@ -14,12 +14,9 @@ services:
     environment:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-  user-management-ui:
-    image: gitregistry.knut.univention.de/univention/ucsschool-components/user-management/ucsschool-user-management-ui:latest
-    security_opt:
-      - seccomp:/etc/docker/seccomp-systemd.json
-    restart: unless-stopped
-    volumes:
-      - /etc/ssl/certs:/etc/ssl/certs:ro
-    environment:
-      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      USER_MANAGEMENT__API_PREFIX: "/univention/ucsschool/user-management/bff"
+      USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
+      USER_MANAGEMENT__CORS__ALLOWED_ORIGINS: "*"
+      USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE: "user_management_bff.adapters.users:FileUsersPersistenceAdapter"
+      USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION: "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
+      FILE_USERS_PERSISTENCE_ADAPTER__SOURCE: "/var/lib/univention-appcenter/apps/ucsschool-user-management/data/users.json"

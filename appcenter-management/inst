@@ -27,7 +27,7 @@ univention-directory-manager portals/entry create "$@" --ignore_exists \
     --append displayName='"de_DE" "UCS@school Benutzerverwaltung"' \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
     --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
-    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management"' \
+    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management/ui"' \
     --append allowedGroups="cn=Domain Users,cn=groups,$ldap_base" \
     --set linkTarget=newwindow || die
 
@@ -45,6 +45,10 @@ univention-directory-manager portals/category modify "$@" \
 univention-directory-manager portals/portal modify "$@" \
     --dn "cn=domain,cn=portal,cn=portals,cn=univention,$ldap_base" \
     --append categories="cn=ucsschool-ram,cn=category,cn=portals,cn=univention,${ldap_base:?}" || die
+
+# This line is temporary and should be removed as soon as the proper adapter for user persistence is created.
+# See https://git.knut.univention.de/univention/ucsschool-components/user-management/-/merge_requests/14#note_302593
+cat "[]" > /var/lib/univention-appcenter/apps/ucsschool-user-management/data/users.json
 
 joinscript_save_current_version
 
