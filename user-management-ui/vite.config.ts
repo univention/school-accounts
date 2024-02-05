@@ -13,7 +13,7 @@ import pluginRewriteAll from 'vite-plugin-rewrite-all';
 export default defineConfig(async({mode}) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
   const config: UserConfig = {
     plugins: [vue(), pluginRewriteAll()],
-    base: '/',
+    base: '/univention/ucsschool/user-management/',
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

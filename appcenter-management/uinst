@@ -17,7 +17,14 @@ APP_ID="ucsschool-user-management"
 
 joinscript_init
 
-# nothing to do, this unjoin script exists solely to execute:
+eval "$(ucr shell ldap/base)"
+
+univention-directory-manager portals/category modify "$@" --ignore_not_exists \
+    --dn "cn=domain-admin,cn=category,cn=portals,cn=univention,${ldap_base:?}" \
+    --remove entries="cn=$APP_ID,cn=entry,cn=portals,cn=univention,$ldap_base" || die
+
+univention-directory-manager portals/entry remove "$@" --ignore_not_exists \
+    --dn "cn=$APP_ID,cn=entry,cn=portals,cn=univention,$ldap_base" || die
 
 joinscript_remove_script_from_status_file "$APP_ID"
 

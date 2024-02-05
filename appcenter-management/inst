@@ -9,7 +9,7 @@
 #  Join script that runs on the docker host.
 #
 
-VERSION=0
+VERSION=1
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 
@@ -17,6 +17,34 @@ APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
 
 joinscript_init
+
+eval "$(ucr shell hostname domainname ldap/base)"
+
+univention-directory-manager portals/entry create "$@" --ignore_exists \
+    --position "cn=entry,cn=portals,cn=univention,${ldap_base:?}" \
+    --set name=$APP_ID \
+    --append displayName='"en_US" "UCS@school User Management"' \
+    --append displayName='"de_DE" "UCS@school Benutzerverwaltung"' \
+    --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
+    --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
+    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management"' \
+    --append allowedGroups="cn=Domain Users,cn=groups,$ldap_base" \
+    --set linkTarget=newwindow || die
+
+# New UCS@school RAM category
+univention-directory-manager portals/category create "$@" --ignore_exists \
+    --position "cn=category,cn=portals,cn=univention,$ldap_base" \
+    --set name=ucsschool-ram \
+    --append displayName='"en_US" "UCS@School Tech Preview"' \
+    --append displayName='"de_DE" "UCS@School Technische Vorschau"' || die
+
+univention-directory-manager portals/category modify "$@" \
+    --dn "cn=ucsschool-ram,cn=category,cn=portals,cn=univention,${ldap_base:?}" \
+    --append entries="cn=$APP_ID,cn=entry,cn=portals,cn=univention,${ldap_base:?}" || die
+
+univention-directory-manager portals/portal modify "$@" \
+    --dn "cn=domain,cn=portal,cn=portals,cn=univention,$ldap_base" \
+    --append categories="cn=ucsschool-ram,cn=category,cn=portals,cn=univention,${ldap_base:?}" || die
 
 joinscript_save_current_version
 
