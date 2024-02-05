@@ -1,3 +1,11 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+
+[ucsschool-user-management/kelvin/url]
+Type = String
+Description = The hostname of the Kelvin REST API for data queries. If not set, the url is generated from hostname and domainname.
+Description[de] = Der Hostname der Kelvin REST API, welche zum Abrufen von Daten genutzt wird. Wenn nicht gesetzt, wird die URL aus Hostname und Domainname generiert.
+Group = Kelvin
+Scope = outside
+Show = Install,Settings

@@ -4,3 +4,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 action=$1
+
+if [ "$action" = "settings" ]; then
+  univention-app reinitialize ucsschool-user-management
+fi
+

@@ -51,5 +51,7 @@ RUN pip install --no-cache-dir . && pip list
 # Install frontend
 COPY --from=frontend_builder /user-management-ui/dist /app/frontend
 
+COPY appcenter-management/entrypoint.d/ /entrypoint.d
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--log-level", "info", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "user_management_bff.main:app"]

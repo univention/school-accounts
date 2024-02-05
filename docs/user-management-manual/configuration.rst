@@ -8,7 +8,17 @@
 Configuration
 *************
 
-Placeholder section heading
-===========================
+This section is a reference for all app settings of the UCS\@school User Management.
+Administrators can configure the settings using
+either the :command:`univention-app` command
+or the app settings dialog in the
+:external+uv-ucs-manual:ref:`App Center UMC module <software-appcenter>`.
 
-Placeholder text
+The App Center automatically restarts the application after changing any setting.
+
+Kelvin
+======
+
+.. envvar:: ucsschool-user-management/kelvin/url
+
+   Defines the URL of the Kelvin REST API for data queries.

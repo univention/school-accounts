@@ -18,7 +18,7 @@ APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 
 joinscript_init
 
-eval "$(ucr shell hostname domainname ldap/base)"
+eval "$(ucr shell hostname domainname ldap/base appcenter/apps/ucsschool-user-management/hostdn)"
 
 univention-directory-manager portals/entry create "$@" --ignore_exists \
     --position "cn=entry,cn=portals,cn=univention,${ldap_base:?}" \
@@ -46,9 +46,12 @@ univention-directory-manager portals/portal modify "$@" \
     --dn "cn=domain,cn=portal,cn=portals,cn=univention,$ldap_base" \
     --append categories="cn=ucsschool-ram,cn=category,cn=portals,cn=univention,${ldap_base:?}" || die
 
-# This line is temporary and should be removed as soon as the proper adapter for user persistence is created.
-# See https://git.knut.univention.de/univention/ucsschool-components/user-management/-/merge_requests/14#note_302593
-echo "[]" > /var/lib/univention-appcenter/apps/ucsschool-user-management/data/users.json
+KELVIN_REST_GROUP_DN="cn=ucsschool-kelvin-rest-api-admins,cn=groups,$ldap_base"
+
+echo "Adding UCS@school User Management machine account '$appcenter_apps_ucsschool_user_management_hostdn' to group 'ucsschool-kelvin-rest-api-admins'."
+univention-directory-manager groups/group modify "$@" \
+  --dn "$KELVIN_REST_GROUP_DN" \
+  --append users="$appcenter_apps_ucsschool_user_management_hostdn" || die
 
 joinscript_save_current_version
 
