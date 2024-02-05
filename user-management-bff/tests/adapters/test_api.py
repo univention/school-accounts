@@ -3,13 +3,18 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import pytest
 
-from user_management_bff.adapters.api import FastAPIUsersRepresentationAdapter
+from user_management_bff.adapters.api import (
+    FastAPISchoolsRepresentationAdapter,
+    FastAPIUsersRepresentationAdapter,
+)
 from user_management_bff.api_models import (
+    ListSchool,
+    ListSchoolsResponse,
     ListUser,
     ListUserFixedAttributes,
     ListUsersResponse,
 )
-from user_management_bff.models import User, UserAttributes
+from user_management_bff.models import School, User, UserAttributes
 
 
 class TestFastAPIUsersRepresentationAdapter:
@@ -83,4 +88,34 @@ class TestFastAPIUsersRepresentationAdapter:
             ]
         )
         result = adapter.create_users_representation(users)
+        assert result == expected
+
+
+class TestFastAPISchoolsRepresentationAdapter:
+    @pytest.fixture()
+    def adapter(self):
+        return FastAPISchoolsRepresentationAdapter()
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            [],
+            [
+                {"id": "school1", "display_name": "School 1"},
+                {"id": "school2", "display_name": "School 2"},
+            ],
+        ],
+    )
+    def test_create_schools_representation(self, values: list[dict], adapter):
+        schools = [
+            School(id=school_values["id"], display_name=school_values["display_name"])
+            for school_values in values
+        ]
+        expected = ListSchoolsResponse(
+            schools=[
+                ListSchool(value=school_values["id"], label=school_values["display_name"])
+                for school_values in values
+            ]
+        )
+        result = adapter.create_schools_representation(schools)
         assert result == expected

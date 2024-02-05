@@ -8,11 +8,11 @@ import os
 import pytest
 
 import user_management_bff.adapters.users
+from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
 from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapter,
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
-    KelvinUsersPersistenceAdapterSettings,
 )
 from user_management_bff.models import User, UserAttributes
 
@@ -24,7 +24,7 @@ class TestKelvinUsersPersistenceAdapter:
 
     @pytest.fixture
     def dummy_settings(self):
-        return KelvinUsersPersistenceAdapterSettings(
+        return KelvinPersistenceAdapterSettings(
             url="https://test.com", username="test", password="password"
         )
 
@@ -43,12 +43,7 @@ class TestKelvinUsersPersistenceAdapter:
         return _make_kelvin_user_from_data
 
     def test_get_settings_cls(self):
-        assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinUsersPersistenceAdapterSettings
-
-    @pytest.mark.asyncio
-    async def test_configure(self, adapter, dummy_settings):
-        await adapter.configure(dummy_settings)
-        assert adapter._settings == dummy_settings
+        assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
 
     @pytest.mark.parametrize(
         "input_data",
@@ -70,20 +65,6 @@ class TestKelvinUsersPersistenceAdapter:
         kelvin_user = make_kelvin_user_from_data(input_data)
         result = adapter._user_from_kelvin_user(kelvin_user)
         assert result == User(id=input_data["id"], attributes=UserAttributes(**input_data["attributes"]))
-
-    def test_kelvin_session_no_settings(self, adapter):
-        with pytest.raises(
-            RuntimeError,
-            match="Something went wrong with the configuration of the "
-            "KelvinUsersPersistenceAdapter. No settings present.",
-        ):
-            _session = adapter.kelvin_session
-
-    def test_kelvin_session(self, adapter, dummy_settings):
-        adapter._settings = dummy_settings
-        assert adapter.kelvin_session.host == dummy_settings.url
-        assert adapter.kelvin_session.username == dummy_settings.username
-        assert adapter.kelvin_session.password == dummy_settings.password
 
     @pytest.mark.parametrize(
         "input_data",

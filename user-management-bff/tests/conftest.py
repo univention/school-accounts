@@ -35,6 +35,15 @@ def patch_env():
     os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/users.json"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE"] = (
+        "user_management_bff.adapters.schools:FileSchoolsPersistenceAdapter"
+    )
+    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
+    )
+    os.environ["FILE_SCHOOLS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/schools.json"
+    )
     yield
     os.environ.clear()
     os.environ.update(_environ)

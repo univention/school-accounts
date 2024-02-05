@@ -61,3 +61,12 @@ class ListUser(BaseModel):
 
 class ListUsersResponse(BaseModel):
     users: list[ListUser]
+
+
+class ListSchool(BaseModel):
+    label: str
+    value: str
+
+
+class ListSchoolsResponse(BaseModel):
+    schools: list[ListSchool]

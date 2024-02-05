@@ -8,16 +8,22 @@ from fastapi import APIRouter, Depends
 
 from . import business_logic
 from .adapter_registry import port_dep
-from .adapters.api import FastAPIUsersRepresentationAdapter
+from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepresentationAdapter
 from .api_models import (
     ColumnConfig,
     FormatterChoice,
+    ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
 )
 from .constants import API_PREFIX
 from .models import UsersGetRequest
-from .ports import UsersPersistencePort, UsersRepresentationPort
+from .ports import (
+    SchoolsPersistencePort,
+    SchoolsRepresentationPort,
+    UsersPersistencePort,
+    UsersRepresentationPort,
+)
 
 router = APIRouter(prefix=API_PREFIX)
 
@@ -69,3 +75,13 @@ async def get_users(
     return await business_logic.get_users(
         users_get_adapter, representation_adapter, UsersGetRequest(school=school)
     )
+
+
+@router.get("/schools")
+async def get_schools(
+    schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
+    representation_adapter: FastAPISchoolsRepresentationAdapter = Depends(
+        port_dep(SchoolsRepresentationPort, adapter_cls=FastAPISchoolsRepresentationAdapter)
+    ),
+) -> ListSchoolsResponse:
+    return await business_logic.get_schools(schools_get_adapter, representation_adapter)

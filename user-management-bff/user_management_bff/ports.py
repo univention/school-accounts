@@ -5,12 +5,18 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from .models import User
+from .models import School, User
 
 
 class UsersPersistencePort(ABC):
     @abstractmethod
     async def get_users(self, school: str) -> list[User]:  # pragma: no cover
+        ...
+
+
+class SchoolsPersistencePort(ABC):
+    @abstractmethod
+    async def get_schools(self) -> list[School]:  # pragma: no cover
         ...
 
 
@@ -22,4 +28,15 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation]):
     def create_users_representation(
         self, users: list[User]
     ) -> UsersGetRepresentation:  # pragma: no cover
+        ...
+
+
+SchoolsGetRepresentation = TypeVar("SchoolsGetRepresentation")
+
+
+class SchoolsRepresentationPort(ABC, Generic[SchoolsGetRepresentation]):
+    @abstractmethod
+    def create_schools_representation(
+        self, schools: list[School]
+    ) -> SchoolsGetRepresentation:  # pragma: no cover
         ...

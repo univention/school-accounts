@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+
 import pytest
 
 
@@ -119,5 +120,25 @@ def test_get_users(school, expected_users, test_client, api_prefix):
                 },
             }
             for user in expected_users
+        ]
+    }
+
+
+def test_get_schools(test_client, api_prefix):
+    input_data = [
+        {"display_name": "School 1", "id": "school1"},
+        {"display_name": "School 2", "id": "school2"},
+        {"display_name": "School 3", "id": "school3"},
+    ]
+
+    response = test_client.get(f"{api_prefix}/schools")
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "schools": [
+            {
+                "value": school["id"],
+                "label": school["display_name"],
+            }
+            for school in input_data
         ]
     }

@@ -29,5 +29,10 @@ class User(BaseModel):
     attributes: UserAttributes
 
 
+class School(BaseModel):
+    id: str
+    display_name: str
+
+
 class UsersGetRequest(BaseModel):
     school: str

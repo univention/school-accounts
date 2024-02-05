@@ -19,9 +19,11 @@ services:
       USER_MANAGEMENT__CORS__ALLOWED_ORIGINS: "*"
       USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION: "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE: "user_management_bff.adapters.users:KelvinUsersPersistenceAdapter"
-      KELVIN_USERS_PERSISTENCE_ADAPTER__USERNAME_FILE: /etc/machine.user
-      KELVIN_USERS_PERSISTENCE_ADAPTER__PASSWORD_FILE: /etc/machine.secret
-      KELVIN_USERS_PERSISTENCE_ADAPTER__URL: @!@
+      USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION: "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
+      USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
+      KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /etc/machine.user
+      KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /etc/machine.secret
+      KELVIN_PERSISTENCE_ADAPTER__URL: @!@
 ucr = configRegistry
 kelvin_url = ucr.get(
     'ucsschool-user-management/kelvin/url',

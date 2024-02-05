@@ -12,7 +12,12 @@ from port_loader import (
 from pydantic import ImportString
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .ports import UsersPersistencePort, UsersRepresentationPort
+from .ports import (
+    SchoolsPersistencePort,
+    SchoolsRepresentationPort,
+    UsersPersistencePort,
+    UsersRepresentationPort,
+)
 
 ADAPTER_REGISTRY = lazy_object_proxy.Proxy(AsyncAdapterRegistry)
 
@@ -20,6 +25,8 @@ ADAPTER_REGISTRY = lazy_object_proxy.Proxy(AsyncAdapterRegistry)
 class AdapterSelection(BaseSettings):
     users_persistence: ImportString
     users_representation: ImportString
+    schools_persistence: ImportString
+    schools_representation: ImportString
 
     model_config = SettingsConfigDict(env_prefix="USER_MANAGEMENT__ADAPTER__")
 
@@ -30,6 +37,8 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
     for port_cls, adapter_cls in [
         (UsersPersistencePort, adapter_selection.users_persistence),
         (UsersRepresentationPort, adapter_selection.users_representation),
+        (SchoolsPersistencePort, adapter_selection.schools_persistence),
+        (SchoolsRepresentationPort, adapter_selection.schools_representation),
     ]:
         adapter_registry.register_port(port_cls)
         adapter_registry.register_adapter(port_cls, adapter_cls=adapter_cls)
