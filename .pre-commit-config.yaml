@@ -16,10 +16,12 @@ repos:
     - id: trailing-whitespace
     - id: pretty-format-json
       args: [--autofix]
-- repo: https://github.com/psf/black
-  rev: 23.12.1
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 24.1.1
   hooks:
     - id: black
+      args: ["--config", "user-management-bff/pyproject.toml"]
+      language_version: python3.11
 - repo: https://github.com/PyCQA/bandit
   rev: 1.7.6
   hooks:

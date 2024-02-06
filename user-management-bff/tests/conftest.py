@@ -26,12 +26,12 @@ def patch_env():
     _environ = os.environ.copy()
     os.environ["USER_MANAGEMENT__API_PREFIX"] = "/univention/ucsschool/user-management"
     os.environ["USER_MANAGEMENT__CORS__ALLOWED_ORIGINS"] = "*"
-    os.environ[
-        "USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE"
-    ] = "user_management_bff.adapters.users:FileUsersPersistenceAdapter"
-    os.environ[
-        "USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION"
-    ] = "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
+    os.environ["USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE"] = (
+        "user_management_bff.adapters.users:FileUsersPersistenceAdapter"
+    )
+    os.environ["USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
+    )
     os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/users.json"
     )
