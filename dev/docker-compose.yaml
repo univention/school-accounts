@@ -14,8 +14,9 @@ services:
       - clean-profile
       - dev-server
     user: $DOCKER_USER
-    extra_hosts:
+    extra_hosts: &extra_hosts
       - git.knut.univention.de:${GITLAB_IP}
+      - host.docker.internal:host-gateway
     volumes: &default-volumes
       - ../:/src
     env_file: &env-files
@@ -31,8 +32,7 @@ services:
       install_deps:
         condition: service_completed_successfully
     user: $DOCKER_USER
-    extra_hosts:
-      - git.knut.univention.de:${GITLAB_IP}
+    extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
   proxy:
@@ -46,6 +46,7 @@ services:
       - clean-profile
       - dev-server
       - sphinx
+    extra_hosts: *extra_hosts
     ports:
       - "80:80"
       - "8000:8000"
@@ -79,6 +80,7 @@ services:
       proxy:
         condition: service_started
     user: $DOCKER_USER
+    extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
     labels:
@@ -100,6 +102,7 @@ services:
       proxy:
         condition: service_started
     user: $DOCKER_USER
+    extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
     labels:
@@ -120,6 +123,7 @@ services:
       proxy:
         condition: service_started
     user: $DOCKER_USER
+    extra_hosts: *extra_hosts
     volumes:
       - ../:/project
     labels:
