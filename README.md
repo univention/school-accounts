@@ -80,7 +80,7 @@ To start the development server you have to execute the [dev_run.sh script](dev/
 dev/dev_run.sh task dev-server
 ```
 
-The UI can be accessed at [http://localhost/univention/ucsschool/user-management/](http://localhost/univention/ucsschool/user-management/)
+The UI can be accessed at [http://localhost/univention/ucsschool/user-management/ui/](http://localhost/univention/ucsschool/user-management/ui/)
 
 The API can be accessed at [http://localhost:8000/univention/ucsschool/user-management/bff/docs](http://localhost:8000/univention/ucsschool/user-management-bff/docs)
 
