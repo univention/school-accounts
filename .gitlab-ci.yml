@@ -63,6 +63,7 @@ bff-test:
     - if: "$CI_COMMIT_MESSAGE =~ /force-build/ || $pipeline =~ /force-build/"
     - changes:
         - user-management-bff/**/*
+        - user-management-ui/**/*
 
 bff-coverage:
   extends: bff-test
