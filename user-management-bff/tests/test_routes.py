@@ -13,44 +13,51 @@ def test_get_users_config(test_client, api_prefix):
             {
                 "label": "Last name",
                 "attribute": "last_name",
-                "formatter": "string",
+                "formatter": None,
                 "sorting": "asc",
                 "order": 0,
             },
             {
                 "label": "First name",
                 "attribute": "first_name",
-                "formatter": "string",
+                "formatter": None,
                 "sorting": "asc",
                 "order": 1,
             },
             {
                 "label": "Username",
                 "attribute": "username",
-                "formatter": "string",
-                "sorting": "asc",
+                "formatter": None,
+                "sorting": None,
                 "order": 2,
-            },
-            {
-                "label": "Schools",
-                "attribute": "schools",
-                "formatter": "list",
-                "sorting": "asc",
-                "order": 3,
-            },
-            {
-                "label": "Activation state",
-                "attribute": "disabled",
-                "formatter": "string",
-                "sorting": "asc",
-                "order": 4,
             },
             {
                 "label": "Roles",
                 "attribute": "ucsschool_roles",
-                "formatter": "list",
-                "sorting": "asc",
+                "formatter": {"type": "list"},
+                "sorting": None,
+                "order": 3,
+            },
+            {
+                "label": "Classes",
+                "attribute": "classes",
+                "formatter": {"type": "list"},
+                "sorting": None,
+                "order": 4,
+            },
+            {
+                "label": "Schools",
+                "attribute": "schools",
+                "formatter": {"type": "list"},
+                "sorting": None,
                 "order": 5,
+            },
+            {
+                "label": "Activated",
+                "attribute": "activated",
+                "formatter": {"type": "boolean"},
+                "sorting": None,
+                "order": 6,
             },
         ]
     }
@@ -70,6 +77,7 @@ def test_get_users_config(test_client, api_prefix):
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
                         "schools": ["test_school1"],
+                        "school_classes": {"test_school1": ["1a", "2b"]},
                         "username": "firstname.lastname",
                     },
                     "id": "test_user1",
@@ -86,6 +94,7 @@ def test_get_users_config(test_client, api_prefix):
                         "last_name": "lastname2",
                         "roles": ["teacher:school:test_school2"],
                         "schools": ["test_school2"],
+                        "school_classes": {"test_school2": ["1a", "2b"]},
                         "username": "firstname2.lastname2",
                     },
                     "id": "test_user2",
@@ -100,6 +109,7 @@ def test_get_users_config(test_client, api_prefix):
                             "student:school:test_school3",
                         ],
                         "schools": ["test_school2", "test_school3"],
+                        "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
                         "username": "firstname3.lastname3",
                     },
                     "id": "test_user3",
@@ -108,7 +118,9 @@ def test_get_users_config(test_client, api_prefix):
         ),
     ],
 )
-def test_get_users(school, expected_users, test_client, api_prefix):
+def test_get_users(
+    school, expected_users, test_client, api_prefix, transform_user_dict_to_api_users_dict
+):
     response = test_client.get(f"{api_prefix}/users", params={"school": school})
     assert response.status_code == 200, response.json()
     assert response.json() == {
@@ -116,7 +128,8 @@ def test_get_users(school, expected_users, test_client, api_prefix):
             {
                 "id": user["id"],
                 "attributes": {
-                    name: {"value": value, "visible": True} for name, value in user["attributes"].items()
+                    name: {"value": value, "access": "read"}
+                    for name, value in transform_user_dict_to_api_users_dict(user)["attributes"].items()
                 },
             }
             for user in expected_users
@@ -131,7 +144,7 @@ def test_get_schools(test_client, api_prefix):
         {"display_name": "School 3", "id": "school3"},
     ]
 
-    response = test_client.get(f"{api_prefix}/schools")
+    response = test_client.get(f"{api_prefix}/schools-search")
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "schools": [

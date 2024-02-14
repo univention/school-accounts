@@ -36,6 +36,7 @@ class TestKelvinUsersPersistenceAdapter:
             kelvin_user.lastname = user_data["attributes"]["last_name"]
             kelvin_user.firstname = user_data["attributes"]["first_name"]
             kelvin_user.schools = user_data["attributes"]["schools"]
+            kelvin_user.school_classes = user_data["attributes"]["school_classes"]
             kelvin_user.ucsschool_roles = user_data["attributes"]["roles"]
             kelvin_user.disabled = user_data["attributes"]["disabled"]
             return kelvin_user
@@ -55,6 +56,7 @@ class TestKelvinUsersPersistenceAdapter:
                     "last_name": "lastname",
                     "roles": ["teacher:school:test_school1"],
                     "schools": ["test_school1"],
+                    "school_classes": {"test_school1": ["1a", "2b"]},
                     "username": "test_user1",
                 },
                 "id": "test_user1",
@@ -78,6 +80,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
                         "schools": ["test_school1"],
+                        "school_classes": {"test_school1": ["1a", "2b"]},
                         "username": "test_user1",
                     },
                     "id": "test_user1",
@@ -91,6 +94,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
                         "schools": ["test_school1"],
+                        "school_classes": {"test_school1": ["1a", "2b"]},
                         "username": "test_user1",
                     },
                     "id": "test_user1",
@@ -102,6 +106,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "last_name": "lastname2",
                         "roles": ["teacher:school:test_school2"],
                         "schools": ["test_school2"],
+                        "school_classes": {"test_school2": ["1a", "2b"]},
                         "username": "test_user2",
                     },
                     "id": "test_user2",
@@ -160,6 +165,7 @@ class TestFileUsersPersistenceAdapter:
                             "last_name": "lastname",
                             "roles": ["teacher:school:test_school1"],
                             "schools": ["test_school1"],
+                            "school_classes": {"test_school1": ["1a", "2b"]},
                             "username": "firstname.lastname",
                         },
                         "id": "test_user1",
@@ -176,6 +182,7 @@ class TestFileUsersPersistenceAdapter:
                             "last_name": "lastname2",
                             "roles": ["teacher:school:test_school2"],
                             "schools": ["test_school2"],
+                            "school_classes": {"test_school2": ["1a", "2b"]},
                             "username": "firstname2.lastname2",
                         },
                         "id": "test_user2",
@@ -190,6 +197,7 @@ class TestFileUsersPersistenceAdapter:
                                 "student:school:test_school3",
                             ],
                             "schools": ["test_school2", "test_school3"],
+                            "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
                             "username": "firstname3.lastname3",
                         },
                         "id": "test_user3",

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from ..api_models import (
+    AttributeAccess,
     ListSchool,
     ListSchoolsResponse,
     ListUser,
@@ -20,9 +21,23 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                 id=user.id,
                 attributes=ListUserFixedAttributes(
                     **{
-                        name: {"value": value, "visible": True}
-                        for name, value in user.attributes.model_dump().items()
-                    }
+                        **{
+                            name: {"value": value, "access": AttributeAccess.READ}
+                            for name, value in user.attributes.model_dump().items()
+                        },
+                        "activated": {
+                            "value": not user.attributes.disabled,
+                            "access": AttributeAccess.READ,
+                        },
+                        "classes": {
+                            "value": [
+                                f"{school}:{school_class}"
+                                for school, school_classes in user.attributes.school_classes.items()
+                                for school_class in school_classes
+                            ],
+                            "access": AttributeAccess.READ,
+                        },
+                    },
                 ),
             )
             for user in users

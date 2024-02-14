@@ -21,6 +21,7 @@ class UserAttributes(BaseModel):
     username: str
     disabled: bool
     schools: list[str]
+    school_classes: dict[str, list[str]]
     roles: list[str]
 
 

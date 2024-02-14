@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import os
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -47,3 +48,20 @@ def patch_env():
     yield
     os.environ.clear()
     os.environ.update(_environ)
+
+
+@pytest.fixture
+def transform_user_dict_to_api_users_dict():
+    def _transform_user_dict_to_api_users_dict(user_dict: dict[str, Any]) -> dict[str, Any]:
+        transformed = {**user_dict}
+        transformed["attributes"]["activated"] = not user_dict["attributes"]["disabled"]
+        transformed["attributes"]["classes"] = [
+            f"{school}:{school_class}"
+            for school, school_classes in user_dict["attributes"]["school_classes"].items()
+            for school_class in school_classes
+        ]
+        del transformed["attributes"]["school_classes"]
+        del transformed["attributes"]["disabled"]
+        return transformed
+
+    return _transform_user_dict_to_api_users_dict

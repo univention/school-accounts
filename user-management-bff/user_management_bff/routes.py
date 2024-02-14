@@ -31,28 +31,36 @@ COLUMN_CONFIGS: list[dict[str, Any]] = [
     {
         "label": "Last name",
         "attribute": "last_name",
+        "sorting": "asc",
     },
     {
         "label": "First name",
         "attribute": "first_name",
+        "sorting": "asc",
     },
     {
         "label": "Username",
         "attribute": "username",
     },
     {
-        "label": "Schools",
-        "attribute": "schools",
-        "formatter": FormatterChoice.LIST,
-    },
-    {
-        "label": "Activation state",
-        "attribute": "disabled",
-    },
-    {
         "label": "Roles",
         "attribute": "ucsschool_roles",
-        "formatter": FormatterChoice.LIST,
+        "formatter": {"type": FormatterChoice.LIST},
+    },
+    {
+        "label": "Classes",
+        "attribute": "classes",
+        "formatter": {"type": FormatterChoice.LIST},
+    },
+    {
+        "label": "Schools",
+        "attribute": "schools",
+        "formatter": {"type": FormatterChoice.LIST},
+    },
+    {
+        "label": "Activated",
+        "attribute": "activated",
+        "formatter": {"type": FormatterChoice.BOOLEAN},
     },
 ]
 
@@ -77,7 +85,7 @@ async def get_users(
     )
 
 
-@router.get("/schools")
+@router.get("/schools-search")
 async def get_schools(
     schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
     representation_adapter: FastAPISchoolsRepresentationAdapter = Depends(

@@ -14,16 +14,26 @@ class SortingChoice(StrEnum):
 
 
 class FormatterChoice(StrEnum):
-    STRING = auto()
     LIST = auto()
+    BOOLEAN = auto()
+
+
+class AttributeAccess(StrEnum):
+    READ = auto()
+    WRITE = auto()
+    NONE = auto()
+
+
+class Formatter(BaseModel):
+    type: FormatterChoice
 
 
 class ColumnConfig(BaseModel):
     label: str
     attribute: str
     order: int
-    sorting: SortingChoice = SortingChoice.ASC
-    formatter: FormatterChoice = FormatterChoice.STRING
+    sorting: Optional[SortingChoice] = None
+    formatter: Optional[Formatter] = None
 
 
 class ListUsersConfig(BaseModel):
@@ -35,7 +45,7 @@ AttributeType = TypeVar("AttributeType")
 
 class ListUserAttribute(BaseModel, Generic[AttributeType]):
     value: Optional[AttributeType] = None
-    visible: bool = False
+    access: AttributeAccess = AttributeAccess.NONE
 
 
 class ListUserFixedAttributes(BaseModel):
@@ -49,8 +59,9 @@ class ListUserFixedAttributes(BaseModel):
     last_name: ListUserAttribute[str]
     first_name: ListUserAttribute[str]
     username: ListUserAttribute[str]
-    disabled: ListUserAttribute[bool]
+    activated: ListUserAttribute[bool]
     schools: ListUserAttribute[list[str]]
+    classes: ListUserAttribute[list[str]]
     roles: ListUserAttribute[list[str]]
 
 

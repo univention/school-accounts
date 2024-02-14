@@ -7,6 +7,12 @@
       "roles": [
         "teacher:school:school1"
       ],
+      "school_classes": {
+        "school1": [
+          "1a",
+          "2b"
+        ]
+      },
       "schools": [
         "school1"
       ],
@@ -22,6 +28,12 @@
       "roles": [
         "staff:school:school2"
       ],
+      "school_classes": {
+        "school2": [
+          "1a",
+          "2b"
+        ]
+      },
       "schools": [
         "school2"
       ],
@@ -38,6 +50,15 @@
         "teacher:school:school1",
         "student:school:school2"
       ],
+      "school_classes": {
+        "school1": [
+          "1a",
+          "2b"
+        ],
+        "school2": [
+          "3c"
+        ]
+      },
       "schools": [
         "school2",
         "school1"
@@ -54,6 +75,12 @@
       "roles": [
         "teacher:school:test_school1"
       ],
+      "school_classes": {
+        "test_school1": [
+          "1a",
+          "2b"
+        ]
+      },
       "schools": [
         "test_school1"
       ],
@@ -69,6 +96,12 @@
       "roles": [
         "teacher:school:test_school2"
       ],
+      "school_classes": {
+        "test_school2": [
+          "1a",
+          "2b"
+        ]
+      },
       "schools": [
         "test_school2"
       ],
@@ -85,6 +118,15 @@
         "teacher:school:test_school2",
         "student:school:test_school3"
       ],
+      "school_classes": {
+        "test_school1": [
+          "1a",
+          "2b"
+        ],
+        "test_school2": [
+          "3c"
+        ]
+      },
       "schools": [
         "test_school2",
         "test_school3"

@@ -8,6 +8,7 @@ from user_management_bff.adapters.api import (
     FastAPIUsersRepresentationAdapter,
 )
 from user_management_bff.api_models import (
+    AttributeAccess,
     ListSchool,
     ListSchoolsResponse,
     ListUser,
@@ -35,6 +36,7 @@ class TestFastAPIUsersRepresentationAdapter:
                         "last_name": "Klein",
                         "roles": ["teacher:school:school1", "student:school:school2"],
                         "schools": ["school2", "school1"],
+                        "school_classes": {"school1": ["1a", "2b"], "school2": ["3c"]},
                         "username": "kim.klein",
                     },
                 }
@@ -48,6 +50,7 @@ class TestFastAPIUsersRepresentationAdapter:
                         "last_name": "Klein",
                         "roles": ["teacher:school:school1", "student:school:school2"],
                         "schools": ["school2", "school1"],
+                        "school_classes": {"school1": ["1a", "2b"]},
                         "username": "kim.klein",
                     },
                 },
@@ -59,13 +62,16 @@ class TestFastAPIUsersRepresentationAdapter:
                         "last_name": "Doe",
                         "roles": ["staff:school:school3"],
                         "schools": ["school3"],
+                        "school_classes": {"school2": ["1a", "2b"]},
                         "username": "jon.doe",
                     },
                 },
             ],
         ],
     )
-    def test_create_users_representation(self, values: list[dict], adapter):
+    def test_create_users_representation(
+        self, values: list[dict], adapter, transform_user_dict_to_api_users_dict
+    ):
         users = [
             User(
                 id=user_values["id"],
@@ -79,8 +85,10 @@ class TestFastAPIUsersRepresentationAdapter:
                     id=user_values["id"],
                     attributes=ListUserFixedAttributes(
                         **{
-                            name: {"value": value, "visible": True}
-                            for name, value in user_values["attributes"].items()
+                            name: {"value": value, "access": AttributeAccess.READ}
+                            for name, value in transform_user_dict_to_api_users_dict(user_values)[
+                                "attributes"
+                            ].items()
                         }
                     ),
                 )

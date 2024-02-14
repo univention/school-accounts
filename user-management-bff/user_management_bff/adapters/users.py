@@ -25,6 +25,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 username=kelvin_user.name,
                 disabled=kelvin_user.disabled,
                 schools=kelvin_user.schools,
+                school_classes=kelvin_user.school_classes,
                 roles=kelvin_user.ucsschool_roles,
             ),
         )
