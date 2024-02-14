@@ -48,7 +48,7 @@ univention-directory-manager portals/portal modify "$@" \
 
 # This line is temporary and should be removed as soon as the proper adapter for user persistence is created.
 # See https://git.knut.univention.de/univention/ucsschool-components/user-management/-/merge_requests/14#note_302593
-cat "[]" > /var/lib/univention-appcenter/apps/ucsschool-user-management/data/users.json
+echo "[]" > /var/lib/univention-appcenter/apps/ucsschool-user-management/data/users.json
 
 joinscript_save_current_version
 
