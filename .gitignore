@@ -8,3 +8,6 @@ _build/
 .coverage
 .cache/
 dev/.env
+
+# App Center files
+appcenter-management/preinst

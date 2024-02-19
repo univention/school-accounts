@@ -126,3 +126,18 @@ Copyright (C) 2024 Univention GmbH
 
 SPDX-License-Identifier: AGPL-3.0-only
 ```
+
+## App Center App
+
+### Generating or updating files from templates
+
+#### inst
+
+The `inst` file is generated from a template, `templates/inst.tmpl`, by embedding
+some scripts in it. To do so, either because the template has changed or because
+the scripts have changed, you can run the following command:
+
+```shell
+cd appcenter-management
+./scripts/generate-preinst
+```

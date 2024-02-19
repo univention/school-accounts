@@ -1,0 +1,18 @@
+#!/bin/bash
+# Copyright (C) 2024 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+###############################################################################
+#                                                                             #
+#  Dynamically generates the preinst file from templates.                     #
+#                                                                             #
+###############################################################################
+
+preinst_TEMPLATE="templates/preinst.tmpl"
+CONFIGURE_GUARDIAN_SCRIPT="scripts/configure_guardian.py"
+
+cp $preinst_TEMPLATE preinst
+
+sed -i -e "/%CONFIGURE-GUARDIAN%/r $CONFIGURE_GUARDIAN_SCRIPT" -e "/%CONFIGURE-GUARDIAN%/d" preinst
+

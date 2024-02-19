@@ -12,6 +12,7 @@
 VERSION=1
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
+SCRIPTS_DIR="$APP_DIR/scripts"
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
@@ -52,6 +53,47 @@ echo "Adding UCS@school User Management machine account '$appcenter_apps_ucsscho
 univention-directory-manager groups/group modify "$@" \
   --dn "$KELVIN_REST_GROUP_DN" \
   --append users="$appcenter_apps_ucsschool_user_management_hostdn" || die
+
+extract_binddn_and_bindpwd_from_args() {
+	## parse binddn and bindpwd from command line arguments into shell variables
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			"--binddn")
+				binddn="${2:?missing binddn}"
+				shift 2 || exit 2
+				;;
+			"--bindpwdfile")
+				bindpwdfile="${2:?missing bindpwdfile}"
+				shift 2 || exit 2
+				;;
+			*)
+				shift
+				;;
+		esac
+	done
+}
+
+extract_binddn_and_bindpwd_from_args "$@"
+admin_user=$(echo $binddn | awk -F',' '{print $1}' | cut -d'=' -f2)
+admin_password=$(cat $bindpwdfile)
+
+# TODO: move to Guardian joinscript, see https://git.knut.univention.de/univention/components/authorization-engine/guardian/-/issues/219
+# add guardian super-admin role to Administrator
+univention-directory-manager users/user modify "$@" \
+    --dn "$binddn" --append "guardianRole=guardian:builtin:super-admin"
+
+base_url=$(ucr get keycloak/server/sso/fqdn)
+
+if [ -z $base_url ]
+    then
+    base_url="https://ucs-sso-ng.${domainname:?}"
+elif ! [[ $base_url == http* ]]
+    then
+    base_url='https://$base_url'
+fi
+
+configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
+$configure_guardian_script_path "https://${hostname:?}.${domainname:?}/guardian/management" $admin_user $admin_password "https://ucs-sso-ng.${domainname:?}/realms/ucs/protocol/openid-connect/token" guardian-scripts || die
 
 joinscript_save_current_version
 

@@ -50,6 +50,7 @@ TIMEOUT = 10
 
 @lru_cache(maxsize=1)
 def get_token():
+    print("Getting token")
     data = {
         "client_id": KEYCLOAK_CLIENT_ID,
         "username": GUARDIAN_MANAGEMENT_USER,
@@ -60,6 +61,7 @@ def get_token():
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(KEYCLOAK_URL, data=data, headers=headers, timeout=TIMEOUT)
     token = response.json()["access_token"]
+    print("Token received")
     return token
 
 
@@ -150,7 +152,7 @@ def create_role_capability_mapping(name, display_name, app_name, namespace_name,
 
 
 def main():
-    app_name = "user-management"
+    app_name = "ucsschool-user-management"
     namespace_name = "user-management"
     roles = [
         ("student", "Student"),
@@ -169,24 +171,33 @@ def main():
         ("read-role", "Read Role"),
     ]
 
+    print("Creating Guardian objects for UCS@school User Management")
+
+    print("Creating App")
     create_app(app_name, "UCS@school User Management")
 
+    print("Creating Namespace")
     create_namespace(app_name, namespace_name)
 
+    print("Creating Roles")
     for role_name, display_name in roles:
         create_role(app_name, namespace_name, role_name, display_name)
 
+    print("Creating Permissions")
     for permission_name, display_name in permissions:
         create_permission(app_name, namespace_name, permission_name, display_name)
 
+    print("Creating Role-Capability-Mapping")
     create_role_capability_mapping(
-        "user-management-super-admin",
+        "super-admin",
         f"super-admin has all permissions in {namespace_name}",
         app_name,
         namespace_name,
         {"app_name": "guardian", "namespace_name": "builtin", "name": role_name},
         [permission[0] for permission in permissions],
     )
+
+    print("All Guardian objects created")
 
 
 if __name__ == "__main__":
