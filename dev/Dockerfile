@@ -12,7 +12,7 @@ RUN apt-get update && \
     apt-get install -y sudo git python3-pip nodejs npm && \
     npm install --global yarn && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
-    pip install poetry==1.7.1 pre-commit==3.6.0 reuse==2.1.0
+    pip install poetry==1.7.1 pre-commit==3.6.0 reuse==2.1.0 python-keycloak
 ENV PROJECT_DIR "/src"
 ENV PYTHONPYCACHEPREFIX $PROJECT_DIR/.cache/cpython
 ENV POETRY_CACHE_DIR $PROJECT_DIR/.cache/pypoetry

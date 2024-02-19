@@ -75,7 +75,7 @@ bff-coverage:
     - pip install poetry=="$POETRY_VERSION"
     - poetry config --local virtualenvs.create false
     - poetry install
-    - pytest -vv "$BFF_TEST_ARGS" --cov="user_management_bff" --cov-report=term --cov-report=xml:coverage.xml .
+    - pytest -vv "$BFF_TEST_ARGS" --cov="user_management_bff" --cov="keycloak_provisioning" --cov-report=term --cov-report=xml:coverage.xml .
     - coverage report --fail-under="$BFF_COVERAGE_LIMIT"
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:

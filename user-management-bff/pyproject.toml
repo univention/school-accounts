@@ -8,6 +8,10 @@ version = "0.1.0"
 description = ""
 authors = ["UCS School Maintainers <ucsschool-maintainers@univention.de>"]
 readme = "README.md"
+packages = [
+    { include = "user_management_bff" },
+    { include = "keycloak_provisioning" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -20,6 +24,9 @@ orjson = "^3.9.12"
 lazy-object-proxy = "^1.10.0"
 pydantic-settings = "^2.1.0"
 kelvin-rest-api-client = "^2.2.3"
+typer = "^0.9.0"
+rich = "^13.7.0"
+python-keycloak = "^3.9.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -34,6 +41,9 @@ pytest-mock = "^3.12.0"
 name = "port-loader"
 url = "https://git.knut.univention.de/api/v4/projects/908/packages/pypi/simple"
 priority = "supplemental"
+
+[tool.poetry.scripts]
+keycloak-provisioning = "keycloak_provisioning.cli.main:run_script"
 
 [build-system]
 requires = ["poetry-core"]

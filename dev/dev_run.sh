@@ -67,6 +67,7 @@ run_task() {
     pytest \
     -vv \
     --cov=user_management_bff \
+    --cov=keycloak_provisioning \
     .
     exit $?
   fi
