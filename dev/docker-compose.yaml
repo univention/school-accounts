@@ -51,6 +51,51 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: *env-files
+  keycloak_provisioning:
+    image: ucsschool-user-management-dev:latest
+    build: *docker-build
+    container_name: ucsschool-user-management-keycloak_provisioning
+    command: ["dev/scripts/provision_keycloak.sh"]
+    profiles:
+      - clean-profile
+      - dev-server
+    depends_on:
+      install_deps:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    user: $DOCKER_USER
+    extra_hosts: *extra_hosts
+    volumes: *default-volumes
+    env_file: *env-files
+  keycloak:
+    container_name: ucsschool-user-management-keycloak
+    image: ucsschool-user-management-keycloak:latest
+    build:
+      context: ./
+      dockerfile: Keycloak.Dockerfile
+    hostname: keycloak
+    command: start --optimized
+    profiles:
+      - clean-profile
+      - dev-server
+    healthcheck:
+      test: "/opt/keycloak/bin/kcadm.sh get realms/master --server http://localhost:8080/keycloak --realm master --user admin --password admin"
+      interval: 30s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+      start_interval: 2s
+    depends_on:
+      proxy:
+        condition: service_started
+    labels:
+      traefik.http.routers.keycloak.entrypoints: web
+      traefik.http.routers.keycloak.rule: PathPrefix(`/keycloak`)
+      traefik.http.routers.keycloak.service: keycloak
+      traefik.http.services.keycloak.loadbalancer.server.port: 8080
+      traefik.http.middlewares.customheaders.headers.customrequestheaders.X-Forwarded-Proto: http
+      traefik.http.routers.keycloak.middlewares: customheaders
   bff:
     image: ucsschool-user-management-dev:latest
     build: *docker-build

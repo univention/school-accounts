@@ -94,6 +94,8 @@ The API can be accessed at http://user-management-proxy/univention/ucsschool/use
 
 Both UI and API react to code changes without the need to restart the environment.
 
+Keycloak can be accessed at http://user-management-proxy/keycloak/admin/
+
 #### Start live server for the manual
 
 ```shell
