@@ -11,3 +11,4 @@ dev/.env
 
 # App Center files
 appcenter-management/preinst
+appcenter-management/univention-appcenter-control
