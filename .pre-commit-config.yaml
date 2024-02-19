@@ -26,7 +26,7 @@ repos:
   rev: 1.7.6
   hooks:
     - id: bandit
-      exclude: user-management-bff/tests
+      exclude: "user-management-bff/tests|appcenter-management/scripts/test_*"
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.8.0
   hooks:
