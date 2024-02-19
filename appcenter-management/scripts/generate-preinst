@@ -9,10 +9,12 @@
 #                                                                             #
 ###############################################################################
 
-preinst_TEMPLATE="templates/preinst.tmpl"
+PREINST_TEMPLATE="templates/preinst.tmpl"
 CONFIGURE_GUARDIAN_SCRIPT="scripts/configure_guardian.py"
+FILES_DIR="files"
 
-cp $preinst_TEMPLATE preinst
+cp $PREINST_TEMPLATE preinst
 
 sed -i -e "/%CONFIGURE-GUARDIAN%/r $CONFIGURE_GUARDIAN_SCRIPT" -e "/%CONFIGURE-GUARDIAN%/d" preinst
-
+sed -i -e "/%UI_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_ui.json" -e "/%UI_CLIENT%/d" preinst
+sed -i -e "/%BFF_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_bff.json" -e "/%BFF_CLIENT%/d" preinst

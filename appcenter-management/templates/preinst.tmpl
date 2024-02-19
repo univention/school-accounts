@@ -2,16 +2,37 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+# This file is used to autogenerate the preinst script during the authz_app_to_test_appcenter job.
+# This is necessary for installing some files on the host system.
 
 set -e
 
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 SCRIPTS_DIR="$APP_DIR/scripts"
+CONF_DIR="$APP_DIR/conf"
 
 mkdir -p $SCRIPTS_DIR
+mkdir -p $CONF_DIR
+
 configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
 cat <<%EOF >"$configure_guardian_script_path"
 %CONFIGURE-GUARDIAN%
 %EOF
 chmod +x $configure_guardian_script_path
+
+# ucsschool-user-management-ui keycloak client config
+ucsschool_user_management_ui_client_path="$CONF_DIR/ucsschool-user-management_client_ui.json"
+echo "Installing Keycloak client config for the UI"
+	cat <<%EOF >"$ucsschool_user_management_ui_client_path"
+%UI_CLIENT%
+%EOF
+chmod 644 "$ucsschool_user_management_ui_client_path"
+
+# ucsschool-user-management-bff keycloak client config
+ucsschool_user_management_bff_client_path="$CONF_DIR/ucsschool-user-management_client_bff.json"
+echo "Installing Keycloak client config for the BFF"
+	cat <<%EOF >"$ucsschool_user_management_bff_client_path"
+%BFF_CLIENT%
+%EOF
+chmod 644 "$ucsschool_user_management_bff_client_path"

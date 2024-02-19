@@ -13,6 +13,7 @@ VERSION=1
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 SCRIPTS_DIR="$APP_DIR/scripts"
+CONF_DIR="$APP_DIR/conf"
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
@@ -94,6 +95,32 @@ fi
 
 configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
 $configure_guardian_script_path "https://${hostname:?}.${domainname:?}/guardian/management" $admin_user $admin_password "https://ucs-sso-ng.${domainname:?}/realms/ucs/protocol/openid-connect/token" guardian-scripts || die
+
+admin_username=$(echo $binddn | grep -Po '(?<=^uid=)[^,]*')
+
+univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+    --username "$admin_username" \
+    --password "$admin_password" \
+    --url "https://ucs-sso-ng.${domainname:?}" \
+    --realm ucs \
+    --user-realm master \
+    clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
+    --ignore-exists \
+    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui" \
+    --override-web-origins "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui/*" \
+    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui/*" || die
+
+univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+    --username "$admin_username" \
+    --password "$admin_password" \
+    --url "https://ucs-sso-ng.${domainname:?}" \
+    --realm ucs \
+    --user-realm master \
+    clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
+    --ignore-exists \
+    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" \
+    --override-web-origins "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" \
+    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" || die
 
 joinscript_save_current_version
 
