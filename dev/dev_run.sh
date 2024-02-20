@@ -17,6 +17,7 @@ The following tasks are available:
 
 clean: Cleans up cached files and removes docker containers and local images.
 dev-server: Starts the dev server including the frontend and the API.
+prod-server: Starts the production docker image
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
 pytest: Runs the pytests for the BFF.
@@ -40,7 +41,7 @@ run_task() {
     --rmi local
     exit $?
   fi
-  if [ "$TASK" = "dev-server" ] || [ "$TASK" = "sphinx" ]; then
+  if [ "$TASK" = "dev-server" ] || [ "$TASK" = "sphinx" ] || [ "$TASK" = "prod-server" ]; then
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "$TASK" \

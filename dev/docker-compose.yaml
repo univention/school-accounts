@@ -45,6 +45,7 @@ services:
       - clean-profile
       - dev-server
       - sphinx
+      - prod-server
     extra_hosts: *extra_hosts
     ports:
       - "80:80"
@@ -131,6 +132,30 @@ services:
       traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
+  production_container:
+    image: ucsschool-user-management-prod:latest
+    build:
+      context: ../
+      extra_hosts:
+        - git.knut.univention.de:${GITLAB_IP}
+    container_name: ucsschool-user-management-production
+    profiles:
+      - clean-profile
+      - prod-server
+    depends_on:
+      proxy:
+        condition: service_started
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    env_file:
+      - path: .env
+    environment:
+      USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
+    labels:
+      traefik.http.routers.prod.entrypoints: web
+      traefik.http.routers.prod.rule: PathPrefix(`/univention/ucsschool/user-management/`)
+      traefik.http.routers.prod.service: prod
+      traefik.http.services.prod.loadbalancer.server.port: 8000
   ui:
     image: ucsschool-user-management-dev:latest
     build: *docker-build
