@@ -13,6 +13,7 @@ services:
     profiles:
       - clean-profile
       - dev-server
+      - prod-server
     user: $DOCKER_USER
     extra_hosts: &extra_hosts
       - git.knut.univention.de:${GITLAB_IP}
@@ -61,6 +62,7 @@ services:
     profiles:
       - clean-profile
       - dev-server
+      - prod-server
     depends_on:
       install_deps:
         condition: service_completed_successfully
@@ -81,6 +83,7 @@ services:
     profiles:
       - clean-profile
       - dev-server
+      - prod-server
     healthcheck:
       test: "/opt/keycloak/bin/kcadm.sh get realms/master --server http://localhost:8080/keycloak --realm master --user admin --password admin"
       interval: 30s
@@ -151,6 +154,7 @@ services:
       keycloak_provisioning:
         condition: service_completed_successfully
     extra_hosts: *extra_hosts
+    volumes: *default-volumes
     env_file:
       - path: .env
     environment:

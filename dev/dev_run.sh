@@ -21,6 +21,7 @@ prod-server: Starts the production docker image
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
 pytest: Runs the pytests for the BFF.
+pytest-e2e: Runs pytest end to end tests.
 EOF
 }
 
@@ -69,6 +70,19 @@ run_task() {
     -vv \
     --cov=user_management_bff \
     --cov=keycloak_provisioning \
+    -m "not e2e" \
+    .
+    exit $?
+  fi
+  if [ "$TASK" = "pytest-e2e" ]; then
+    echo "Make sure the prod-server is running before starting the e2e tests!"
+    run_command env --chdir=user-management-bff/ poetry run \
+    pytest \
+    -vv \
+    --screenshot only-on-failure \
+    --tracing retain-on-failure \
+    --output "/src/.cache/test-results" \
+    -m "e2e" \
     .
     exit $?
   fi

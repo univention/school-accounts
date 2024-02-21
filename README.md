@@ -137,6 +137,35 @@ Copyright (C) 2024 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 ```
 
+#### Running e2e tests for the Backend
+
+You can run the e2e tests for the backend with
+
+```shell
+dev/dev_run.sh task pytest-e2e
+```
+
+For the tests to work you need to have the `prod-server` task running already.
+
+Playwright traces and screenshots for failing tests of the latest test run are stored in `./cache/test-results`.
+
+To inspect the trace of a test run you can run:
+
+```shell
+PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright show-trace .cache/test-results/$TEST_CASE_DIR/trace.zip
+```
+
+Please note that this only works if the `pytest-e2e` task was run at least once. Otherwise, necessary files
+to run the trace might be missing.
+
+You can interactively generate python code for playwright tests with the following command:
+
+```shell
+PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright codegen http://user-management-proxy/univention/ucsschool/user-management/bff/docs/
+```
+
+More information can be found [here](https://playwright.dev/python/docs/codegen-intro).
+
 ## App Center App
 
 ### Generating or updating files from templates
