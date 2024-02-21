@@ -42,6 +42,9 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__AUTHENTICATION"] = (
+        "user_management_bff.adapters.authentication:AlwaysAuthenticatedAdapter"
+    )
     os.environ["FILE_SCHOOLS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/schools.json"
     )

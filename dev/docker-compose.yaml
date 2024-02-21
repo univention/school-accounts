@@ -38,6 +38,7 @@ services:
   proxy:
     image: traefik:v2.11
     container_name: ucsschool-user-management-proxy
+    hostname: user-management-proxy
     command:
       - --providers.docker
       - --entryPoints.web.address=:80
@@ -123,6 +124,8 @@ services:
         condition: service_completed_successfully
       proxy:
         condition: service_started
+      keycloak_provisioning:
+        condition: service_completed_successfully
     user: $DOCKER_USER
     extra_hosts: *extra_hosts
     volumes: *default-volumes
@@ -145,8 +148,9 @@ services:
     depends_on:
       proxy:
         condition: service_started
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      keycloak_provisioning:
+        condition: service_completed_successfully
+    extra_hosts: *extra_hosts
     env_file:
       - path: .env
     environment:

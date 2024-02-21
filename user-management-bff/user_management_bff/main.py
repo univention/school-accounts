@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from importlib import metadata
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
 from .logging import configure_logger
-from .ports import UsersPersistencePort, UsersRepresentationPort
+from .ports import FastAPIAuthenticationPort
 from .routes import router
 
 
@@ -21,8 +21,11 @@ from .routes import router
 async def lifespan(fastapi_app: FastAPI):
     await configure_logger()
     configure_registry(ADAPTER_REGISTRY)
-    await initialize_adapters(ADAPTER_REGISTRY, [UsersPersistencePort, UsersRepresentationPort])
-    fastapi_app.include_router(router)
+    await initialize_adapters(ADAPTER_REGISTRY)
+    auth_adapter = await ADAPTER_REGISTRY.request_port(FastAPIAuthenticationPort)
+    fastapi_app.include_router(
+        router, dependencies=[Depends(await auth_adapter.get_authentication_dependency())]
+    )
     yield
 
 
@@ -33,6 +36,12 @@ app = FastAPI(
     openapi_url=f"{API_PREFIX}/openapi.json",
     docs_url=f"{API_PREFIX}/docs",
     default_response_class=ORJSONResponse,
+    swagger_ui_oauth2_redirect_url=f"{API_PREFIX}/docs/oauth2-redirect",
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+        "clientId": "ucsschool-user-management-ui",
+        "scopes": ["openid"],
+    },
 )
 # FastAPI doesn't allow adding middleware after the app has been started,
 # so unfortunately we can't put this in the lifespan to make use of the

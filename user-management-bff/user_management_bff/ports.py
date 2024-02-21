@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Callable, Coroutine, Generic, TypeVar
 
 from .models import School, User
 
@@ -40,3 +40,17 @@ class SchoolsRepresentationPort(ABC, Generic[SchoolsGetRepresentation]):
         self, schools: list[School]
     ) -> SchoolsGetRepresentation:  # pragma: no cover
         ...
+
+
+class FastAPIAuthenticationPort(ABC):
+
+    @abstractmethod
+    async def get_authentication_dependency(
+        self,
+    ) -> Callable[[], Coroutine[Any, Any, str]]:  # pragma: no cover
+        """
+        This function should return a FastAPI dependency for authentication.
+
+        The returned dependency should either raise an exception
+        or return the authenticated users' identifier
+        """

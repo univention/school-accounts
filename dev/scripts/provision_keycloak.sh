@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-KEYCLOAK_URL=http://keycloak:8080/keycloak/
+KEYCLOAK_URL=http://user-management-proxy/keycloak/
 
 poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 --username admin \

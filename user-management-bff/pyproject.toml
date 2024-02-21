@@ -27,6 +27,8 @@ kelvin-rest-api-client = "^2.2.3"
 typer = "^0.9.0"
 rich = "^13.7.0"
 python-keycloak = "^3.9.0"
+pyjwt = "^2.8.0"
+cryptography = "^42.0.4"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -35,6 +37,7 @@ pytest-cov = "^4.1.0"
 httpx = "^0.26.0"
 pytest-asyncio = "^0.23.4"
 pytest-mock = "^3.12.0"
+pytest-playwright = "^0.4.4"
 
 
 [[tool.poetry.source]]
@@ -73,3 +76,8 @@ omit = [
     "constants.py",
     "logging.py"
     ]
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: marks tests as e2e tests (deselect with '-m \"not e2e\"')",
+]
