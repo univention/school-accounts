@@ -22,3 +22,13 @@ Kelvin
 .. envvar:: ucsschool-user-management/kelvin/url
 
    Defines the URL of the Kelvin REST API for data queries.
+
+Authentication
+==============
+
+.. envvar:: ucsschool-user-management/oauth/well-known-url
+
+   Defines the well known URL for Oauth discovery.
+   If unset, the application tries to derive the URL from the UCR variable
+   :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`
+   or falls back to the domain name of the UCS system where you installed the application.

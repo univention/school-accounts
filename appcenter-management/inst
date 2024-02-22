@@ -106,9 +106,9 @@ univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
     --user-realm master \
     clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
     --ignore-exists \
-    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui" \
-    --override-web-origins "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui/*" \
-    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/ui/*" || die
+    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" \
+    --override-web-origins "https://${hostname:?}.${domainname:?}" \
+    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
 
 univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
     --username "$admin_username" \
@@ -119,7 +119,7 @@ univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
     clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
     --ignore-exists \
     --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" \
-    --override-web-origins "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" \
+    --override-web-origins "https://${hostname:?}.${domainname:?}" \
     --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" || die
 
 joinscript_save_current_version

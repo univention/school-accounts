@@ -30,3 +30,15 @@ kelvin_url = ucr.get(
     f"{ucr.get('hostname')}.{ucr.get('domainname')}",
 )
 print(kelvin_url, end='')@!@
+      USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:Oauth2FastAPIAuthenticationAdapter"
+      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: @!@
+ucr = configRegistry
+well_known_url = ucr.get('ucsschool-user-management/oauth/well-known-url')
+if not well_known_url:
+    base_url = ucr.get('keycloak/server/sso/fqdn', f"ucs-sso-ng.{ucr.get('domainname')}")
+    well_known_url = f"{base_url}/realms/ucs/.well-known/openid-configuration"
+if not well_known_url.startswith("http"):
+    well_known_url = f"https://{well_known_url}"
+print(well_known_url, end='')@!@
+      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__AUDIENCE: "ucsschool-user-management"
+      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "dn"
