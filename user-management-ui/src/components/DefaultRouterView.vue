@@ -1,0 +1,69 @@
+<!--
+Copyright (C) 2024 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<script setup lang="ts">
+import {onMounted, ref, type KeepAliveProps} from 'vue';
+import {UConfirmDialog, UStandbyFullScreen} from '@univention/univention-veb';
+import {useErrorStore} from '@/stores/error';
+
+const errors = useErrorStore();
+const loading = ref(true);
+
+interface Props {
+  keepAlive?: KeepAliveProps;
+}
+defineProps<Props>();
+
+onMounted(() => {
+  loading.value = false;
+});
+</script>
+
+<template>
+  <UStandbyFullScreen :active="loading" />
+  <template v-if="!loading">
+    <div
+      v-if="errors.activeError && errors.activeError.unRecoverable"
+      class="app__errorMessage"
+    >
+      <div class="uCard uContainer">
+        <h1 v-if="errors.activeError.title">
+          {{ errors.activeError.title }}
+        </h1>
+        {{ errors.activeError.message }}
+      </div>
+    </div>
+    <RouterView
+      v-else
+      v-slot="{Component}"
+    >
+      <KeepAlive v-bind="keepAlive">
+        <component :is="Component" />
+      </KeepAlive>
+      <UConfirmDialog
+        :active="!!errors.activeError"
+        :title="errors.activeError?.title || $t('ErrorModal.heading')"
+        :confirmLabel="$t('ErrorModal.button.confirmation')"
+        hideCancel
+        @confirm="errors.advance"
+      >
+        <template #description>
+          <p>{{ errors.activeError?.message }}</p>
+        </template>
+      </UConfirmDialog>
+    </RouterView>
+  </template>
+</template>
+
+<style lang="stylus">
+.app__errorMessage
+  position: fixed
+  inset: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  padding: calc(2 * var(--layout-spacing-unit))
+</style>

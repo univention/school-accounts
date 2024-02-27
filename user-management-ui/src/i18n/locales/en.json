@@ -1,0 +1,26 @@
+{
+  "ErrorModal": {
+    "button": {
+      "confirmation": "OK"
+    },
+    "heading": "Error"
+  },
+  "ListView": {
+    "fetchConfig.error": "An error occurred while loading the page. Please try again or contact your system administrator: {{msg}}",
+    "fetchObjects.error": "The search has failed: {{msg}}",
+    "header": "Users (schools)",
+    "searchForm": {
+      "school": {
+        "description": "Choose a school to see available users.",
+        "label": "School:"
+      },
+      "searchButton.label": "Search"
+    },
+    "subheader": "Management of school users"
+  },
+  "NotFoundView": {
+    "body.text": "We are unable to find the page you are looking for.",
+    "button.home": "Home",
+    "header": "Page Not Found"
+  }
+}

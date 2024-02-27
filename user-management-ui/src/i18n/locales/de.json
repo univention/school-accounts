@@ -1,0 +1,26 @@
+{
+  "ErrorModal": {
+    "button": {
+      "confirmation": "OK"
+    },
+    "heading": "Fehler"
+  },
+  "ListView": {
+    "fetchConfig.error": "Beim Laden der Seite ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Systemadministrator: {{msg}}",
+    "fetchObjects.error": "Die Suche ist fehlgeschlagen: {{msg}}",
+    "header": "Benutzer (Schulen)",
+    "searchForm": {
+      "school": {
+        "description": "W\u00e4hle eine Schule aus, um verf\u00fcgbare Benutzer zu sehen.",
+        "label": "Schule:"
+      },
+      "searchButton.label": "Suchen"
+    },
+    "subheader": "Verwaltung von Schulbenutzern"
+  },
+  "NotFoundView": {
+    "body.text": "Wir konnten die von Ihnen gesuchte Seite nicht finden.",
+    "button.home": "Startseite",
+    "header": "Seite nicht gefunden"
+  }
+}

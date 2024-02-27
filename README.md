@@ -14,6 +14,7 @@ This is the repository for the new UCS@school User Management Module.
 
 To develop the UCS@school User Management Module you just need [docker](https://www.docker.com/).
 Installation instructions for Ubuntu can be found [here](https://docs.docker.com/engine/install/ubuntu/).
+You must have at least Docker version 25.
 
 ### Running commands in the development container
 

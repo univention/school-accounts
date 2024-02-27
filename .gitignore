@@ -7,7 +7,7 @@
 _build/
 .coverage
 .cache/
-dev/.env
+**/.env
 
 # App Center files
 appcenter-management/preinst

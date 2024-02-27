@@ -2,17 +2,23 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import './assets/main.css';
+import '@univention/univention-veb/style.css';
 
 import {createApp} from 'vue';
 import {createPinia} from 'pinia';
+import i18next from 'i18next';
+import I18NextVue from 'i18next-vue';
+import {UniventionVebPlugin} from '@univention/univention-veb';
 
-import App from './App.vue';
-import router from './router';
+import {initializeI18next} from '@/i18n';
+import App from '@/App.vue';
+import router from '@/router';
 
-const app = createApp(App);
+const pinia = createPinia();
 
-app.use(createPinia());
-app.use(router);
+initializeI18next().then(() => {
+  document.documentElement.setAttribute('lang', i18next.language);
+  const app = createApp(App).use(router).use(I18NextVue, {i18next}).use(UniventionVebPlugin, {i18next}).use(pinia);
 
-app.mount('#app');
+  app.mount('#app');
+});
