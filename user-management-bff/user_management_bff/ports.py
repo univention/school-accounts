@@ -5,7 +5,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Coroutine, Generic, TypeVar
 
-from .models import School, User
+from .models import Permission, School, User
+
+from .models import Permission, School, Target, User
 
 
 class UsersPersistencePort(ABC):
@@ -53,4 +55,12 @@ class FastAPIAuthenticationPort(ABC):
 
         The returned dependency should either raise an exception
         or return the authenticated users' identifier
+        """
+
+
+class PermissionsPort(ABC):
+    @abstractmethod
+    async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
+        """
+        This method returns the permissions the provided actor has on the given targets.
         """

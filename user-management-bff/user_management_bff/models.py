@@ -1,7 +1,8 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-from typing import TypeVar
+from enum import StrEnum, auto
+from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -37,3 +38,22 @@ class School(BaseModel):
 
 class UsersGetRequest(BaseModel):
     school: str
+
+
+class TargetObjectType(StrEnum):
+    SCHOOL = auto()
+
+
+class TargetObject(BaseModel):
+    id: str
+    type: TargetObjectType
+    attributes: dict[str, Any]
+
+
+class Target(BaseModel):
+    old_target: Optional[TargetObject]
+    new_target: Optional[TargetObject]
+
+
+class Permission(StrEnum):
+    create_user = "create-user"
