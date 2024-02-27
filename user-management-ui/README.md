@@ -65,3 +65,9 @@ Use randomly-generated mock data:
 ```bash
 export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=in_memory
 ```
+
+Use the BFF running in docker:
+
+```bash
+export VITE__API_DATA_ADAPTER__URI=http://user-management-proxy/univention/ucsschool/user-management/bff
+```

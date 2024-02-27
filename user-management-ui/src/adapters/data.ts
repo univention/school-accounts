@@ -2,7 +2,9 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import i18next from 'i18next';
 import {type DataPort} from '@/ports/data';
+import {errorToString} from '@/helpers/error';
 import {type Result} from '@/helpers/models/http';
 import {
   type School,
@@ -22,8 +24,8 @@ import {makeMockUsers, makeMockUsersResponse} from '@/helpers/mocks/user';
 import {makeMockUserColumns, makeMockUserColumnsResponse} from '@/helpers/mocks/userColumn';
 
 class GenericDataAdapter implements DataPort {
-  async fetchSchoolsSearch(): Promise<Result<WrappedSchoolsList, string>> {
-    const result = await this.fetchSchoolsSearchRequest();
+  async fetchSchoolsConfig(): Promise<Result<WrappedSchoolsList, string>> {
+    const result = await this.fetchSchoolsConfigRequest();
     if (!result.ok) {
       return result;
     }
@@ -99,7 +101,7 @@ class GenericDataAdapter implements DataPort {
     return columnBase;
   }
 
-  fetchSchoolsSearchRequest(): Promise<Result<SchoolsResponse, string>> {
+  fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
     throw new Error('Not Implemented');
   }
 
@@ -138,7 +140,7 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     }
   }
 
-  fetchSchoolsSearchRequest(): Promise<Result<SchoolsResponse, string>> {
+  fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
@@ -173,5 +175,125 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
         });
       }, this._responseTimeout);
     });
+  }
+}
+
+export const apiDataSettings = {
+  uri: 'apiDataAdapter.uri',
+};
+
+export class ApiDataAdapter extends GenericDataAdapter {
+  private readonly _apiUri: string;
+
+  constructor(apiUri: string) {
+    super();
+
+    // Remove a trailing slash, if one exists,
+    // so we always create a correct URL.
+    const url = apiUri.replace(/\/$/, '');
+    this._apiUri = url;
+  }
+
+  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
+    return await this._get<SchoolsResponse>('/config-schools');
+  }
+
+  async fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
+    return await this._get<UsersResponse>(`/users?school=${school}`);
+  }
+
+  async fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
+    return await this._get<UserColumnsResponse>('/config-users');
+  }
+
+  _makeUrl(endpoint: string): string {
+    return `${this._apiUri}${endpoint}`;
+  }
+
+  _makeHeaders(): Record<string, string> {
+    const defaultHeaders = {
+      'Accept-Language': i18next.language,
+      accept: 'application/json',
+      'Content-Type': 'application/json;charset=UTF-8',
+    };
+    return defaultHeaders;
+  }
+
+  async _fetch<T>(endpointBase: string, httpMethod: string): Promise<Result<T, string>> {
+    const url = this._makeUrl(endpointBase);
+    const headers = await this._makeHeaders();
+    const response = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers}));
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: i18next.t('ApiDataAdapter.fetchFailed', {
+          method: httpMethod,
+          msg: response.error,
+        }),
+      };
+    }
+
+    const error = await this._parseError(response.value);
+    if (error) {
+      return {
+        ok: false,
+        error,
+      };
+    }
+
+    return await this._tryToJson<T>(response.value);
+  }
+
+  async _get<T>(endpointBase: string): Promise<Result<T, string>> {
+    return await this._fetch<T>(endpointBase, 'GET');
+  }
+
+  async _parseError(response: Response): Promise<string | null> {
+    if (!response.ok) {
+      const text = (await response.text()) || response.statusText;
+      let detail = text;
+      try {
+        const json = JSON.parse(text);
+        if (json && typeof json === 'object' && 'detail' in json) {
+          detail = json.detail;
+        }
+      } catch (err) {
+        // Either not a JSON response, or unparsable. We'll just ignore this.
+      }
+      return `${response.status}: ${detail}`;
+    }
+
+    return null;
+  }
+
+  async _tryFn<T>(fn: () => Promise<T>): Promise<Result<T, string>> {
+    try {
+      const value = await fn();
+      return {
+        ok: true,
+        value,
+      };
+    } catch (err: unknown) {
+      return {
+        ok: false,
+        error: errorToString(err),
+      };
+    }
+  }
+
+  async _tryToJson<T>(response: Response): Promise<Result<T, string>> {
+    const result = await this._tryFn(() => response.json());
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: i18next.t('ApiDataAdapter.jsonError', {msg: result.error}),
+      };
+    }
+
+    // TODO: Add run-time checks that `result.value` is of type `T`
+    // response.json() returns `any` as type so the type check against `T` will
+    // always work but might actually be wrong.
+    // Add run-time checks
+    return result;
   }
 }

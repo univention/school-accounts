@@ -1,4 +1,8 @@
 {
+  "ApiDataAdapter": {
+    "fetchFailed": "'{{method}}' failed: {{msg}}",
+    "jsonError": "Invalid JSON format received: {{msg}}"
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -22,5 +26,9 @@
     "body.text": "We are unable to find the page you are looking for.",
     "button.home": "Home",
     "header": "Page Not Found"
+  },
+  "errors": {
+    "invalidDataPort": "Invalid DataPort: {{adapter}}",
+    "unknownError": "Unknown error"
   }
 }

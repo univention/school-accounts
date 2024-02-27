@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import {errorToString} from '@/helpers/error';
 import {type ListViewConfig} from '@/helpers/models/interface';
 import {type Result} from '@/helpers/models/http';
 import {type WrappedUsersList} from '@/helpers/models/user';
@@ -23,8 +24,17 @@ export const getUsers = async (school: string): Promise<Result<WrappedUsersList,
 };
 
 export const getListViewConfig = async (): Promise<Result<ListViewConfig, string>> => {
-  const dataAdapter = await getDataAdapter();
-  const schoolsResult = await dataAdapter.fetchSchoolsSearch();
+  let dataAdapter: DataPort | null = null;
+  try {
+    dataAdapter = await getDataAdapter();
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error: errorToString(err),
+    };
+  }
+
+  const schoolsResult = await dataAdapter.fetchSchoolsConfig();
   if (!schoolsResult.ok) {
     return schoolsResult;
   }

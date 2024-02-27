@@ -6,8 +6,13 @@ interface SettingsPortConfig {
   adapter: string;
 }
 
+interface ApiDataConfig {
+  uri: string;
+}
+
 interface DataPortConfig {
   adapter: string;
+  apiConfig: ApiDataConfig;
 }
 
 export interface SettingsConfig {

@@ -46,7 +46,7 @@ COLUMN_CONFIGS: list[dict[str, Any]] = [
     },
     {
         "label": "Roles",
-        "attribute": "ucsschool_roles",
+        "attribute": "roles",
         "formatter": {"type": FormatterChoice.LIST},
     },
     {

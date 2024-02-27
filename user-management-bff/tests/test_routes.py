@@ -34,7 +34,7 @@ def test_get_users_config(test_client, api_prefix):
             },
             {
                 "label": "Roles",
-                "attribute": "ucsschool_roles",
+                "attribute": "roles",
                 "formatter": {"type": "list"},
                 "sorting": None,
                 "order": 3,

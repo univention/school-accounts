@@ -10,7 +10,7 @@ import {type WrappedUserColumnsList} from '@/helpers/models/userColumn';
 export const dataPortSetting = 'userManagementUi.adapter.dataPort';
 
 export interface DataPort {
-  fetchSchoolsSearch(): Promise<Result<WrappedSchoolsList, string>>;
+  fetchSchoolsConfig(): Promise<Result<WrappedSchoolsList, string>>;
   fetchUsers(school: string): Promise<Result<WrappedUsersList, string>>;
   fetchUserColumns(): Promise<Result<WrappedUserColumnsList, string>>;
 }

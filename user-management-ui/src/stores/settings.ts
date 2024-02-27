@@ -6,6 +6,7 @@ import {defineStore} from 'pinia';
 import {ref} from 'vue';
 import {EnvSettingsAdapter, InvalidAdapterError, type SettingsPort} from '@univention/univention-veb';
 import {dataPortSetting} from '@/ports/data';
+import {apiDataSettings} from '@/adapters/data';
 import {type SettingsConfig} from '@/helpers/models/stores/settings';
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -17,6 +18,9 @@ export const useSettingsStore = defineStore('settings', () => {
     },
     dataPort: {
       adapter: '',
+      apiConfig: {
+        uri: '',
+      },
     },
   });
 
@@ -42,8 +46,10 @@ export const useSettingsStore = defineStore('settings', () => {
     })();
     await settingsAdapter.init();
 
-    // DataPortSettings
+    // DataPort settings
     config.value.dataPort.adapter = settingsAdapter.getSetting(dataPortSetting);
+    // ApiDataAdapter settings
+    config.value.dataPort.apiConfig.uri = settingsAdapter.getSetting(apiDataSettings.uri);
 
     initialized.value = true;
   };
