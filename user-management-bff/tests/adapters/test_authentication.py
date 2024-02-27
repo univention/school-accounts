@@ -197,9 +197,9 @@ class TestOauth2FastAPIAuthenticationAdapter:
         }
         payload.update(overrides)
         token = jwt.encode(payload, private_key, algorithm="RS256")
-        with pytest.raises(HTTPException, match="403: Not Authorized") as exc_info:
+        with pytest.raises(HTTPException, match="401: Not authenticated") as exc_info:
             await dep(token=token)
-        assert exc_info.value.status_code == 403
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_authentication_dependency_wrong_key(
@@ -218,9 +218,32 @@ class TestOauth2FastAPIAuthenticationAdapter:
             "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
         }
         token = jwt.encode(payload, private_key2, algorithm="RS256")
-        with pytest.raises(HTTPException, match="403: Not Authorized") as exc_info:
+        with pytest.raises(HTTPException, match="401: Not authenticated") as exc_info:
             await dep(token=token)
-        assert exc_info.value.status_code == 403
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_get_authenticated_id(self, mocked_adapter, gen_rsa_key, mock_pyjwt_client, mocker):
+        request_mock = mocker.MagicMock()
+        private_key = gen_rsa_key()
+        mock_pyjwt_client(private_key)
+        payload = {
+            "iss": "ISSUER",
+            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
+            "sub": "admin",
+            "dn": "DN",
+            "iat": time.time(),
+            "exp": time.time() + 500,
+            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
+        }
+        token = jwt.encode(payload, private_key, algorithm="RS256")
+
+        async def _return_token(*args, **kwargs):
+            return token
+
+        get_oauth2_scheme_mock = mocker.MagicMock(return_value=mocker.Mock(return_value=_return_token()))
+        mocked_adapter._get_oauth2_scheme = get_oauth2_scheme_mock
+        assert await mocked_adapter.get_authenticated_id(request_mock) == "DN"
 
 
 class TestAlwaysAuthenticatedAdapter:
@@ -232,8 +255,12 @@ class TestAlwaysAuthenticatedAdapter:
     async def test_get_authentication_dependency(self, adapter):
         assert await (await adapter.get_authentication_dependency())() == "ALWAYS_AUTHENTICATED_ACTOR"
 
+    @pytest.mark.asyncio
+    async def test_get_authenticated_id(self, adapter, mocker):
+        assert await adapter.get_authenticated_id(mocker.Mock())
 
-class TestNeverAlwaysAuthenticatedAdapter:
+
+class TestNeverAuthenticatedAdapter:
     @pytest.fixture
     def adapter(self) -> NeverAuthenticatedAdapter:
         return NeverAuthenticatedAdapter()
@@ -242,5 +269,12 @@ class TestNeverAlwaysAuthenticatedAdapter:
     async def test_get_authentication_dependency(self, adapter):
         with pytest.raises(HTTPException) as exc_info:
             await (await adapter.get_authentication_dependency())()
-            assert exc_info.value.status_code == 403
-            assert exc_info.value.detail == "Never authenticated."
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Never authenticated."
+
+    @pytest.mark.asyncio
+    async def test_get_authenticated_id(self, adapter, mocker):
+        with pytest.raises(HTTPException) as exc_info:
+            await adapter.get_authenticated_id(mocker.Mock())
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Never authenticated."

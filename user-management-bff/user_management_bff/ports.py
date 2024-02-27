@@ -5,7 +5,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Coroutine, Generic, TypeVar
 
-from .models import Permission, School, User
+from fastapi import Request
 
 from .models import Permission, School, Target, User
 
@@ -63,6 +63,15 @@ class FastAPIAuthenticationPort(ABC):
 
         The returned dependency should either raise an exception
         or return the authenticated users' identifier
+        """
+
+    @abstractmethod
+    async def get_authenticated_id(self, request: Request) -> str:
+        """
+        This method authenticates the provided request and returns the identifier
+        of the authenticated user.
+
+        If no user can be authenticated, a HTTException with status code 403 should be raised.
         """
 
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, Type
 
 import jwt
 from fastapi import Depends, HTTPException
@@ -12,6 +12,7 @@ from jwt import PyJWKClient
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from starlette import status
+from starlette.requests import Request
 
 from user_management_bff.ports import FastAPIAuthenticationPort
 
@@ -42,8 +43,8 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
 
     def __init__(self):
         super().__init__()
-        self._settings: Optional[Oauth2FastAPIAuthenticationAdapterSettings] = None
-        self._oauth2_settings: Optional[dict[str, Any]] = None
+        self._settings = None
+        self._oauth2_settings = None
 
     @classmethod
     def get_settings_cls(cls) -> Type[Oauth2FastAPIAuthenticationAdapterSettings]:
@@ -74,15 +75,22 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
                 )
             return response.json()
 
+    def _get_oauth2_scheme(
+        self, authorization_endpoint: str, token_endpoint: str
+    ) -> OAuth2AuthorizationCodeBearer:
+        return OAuth2AuthorizationCodeBearer(
+            authorizationUrl=authorization_endpoint,
+            tokenUrl=token_endpoint,
+            scopes={"openid": "scope for openid"},
+        )
+
     async def configure(self, settings: Oauth2FastAPIAuthenticationAdapterSettings):
         self._settings = settings
 
     async def get_authentication_dependency(self) -> Callable[[], Coroutine[Any, Any, str]]:
         oauth2_settings = await self._get_oauth2_settings()
-        oauth2_scheme = OAuth2AuthorizationCodeBearer(
-            authorizationUrl=oauth2_settings["authorization_endpoint"],
-            tokenUrl=oauth2_settings["token_endpoint"],
-            scopes={"openid": "scope for openid"},
+        oauth2_scheme = self._get_oauth2_scheme(
+            oauth2_settings["authorization_endpoint"], oauth2_settings["token_endpoint"]
         )
         jwks_client = PyJWKClient(oauth2_settings["jwks_uri"], timeout=self.settings.request_timeout)
 
@@ -99,8 +107,8 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
                 )
             except jwt.exceptions.InvalidTokenError as exc:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not Authorized",
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
                 ) from exc
             if self.settings.identifier_claim not in decoded_token:
                 raise RuntimeError(
@@ -110,6 +118,14 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
             return decoded_token[self.settings.identifier_claim]
 
         return _oauth2_authentication
+
+    async def get_authenticated_id(self, request: Request) -> str:
+        oauth2_settings = await self._get_oauth2_settings()
+        oauth2_scheme = self._get_oauth2_scheme(
+            oauth2_settings["authorization_endpoint"], oauth2_settings["token_endpoint"]
+        )
+        dep = await self.get_authentication_dependency()
+        return await dep(token=await oauth2_scheme(request))  # type: ignore[call-arg]
 
 
 class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
@@ -124,6 +140,9 @@ class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
 
         return _dep
 
+    async def get_authenticated_id(self, request: Request) -> str:
+        return "ALWAYS_AUTHENTICATED_ACTOR"
+
 
 class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
 
@@ -133,6 +152,9 @@ class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
 
     async def get_authentication_dependency(self) -> Callable:
         def _dep():
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Never authenticated.")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Never authenticated.")
 
         return _dep
+
+    async def get_authenticated_id(self, request: Request) -> str:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Never authenticated.")
