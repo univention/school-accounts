@@ -15,6 +15,14 @@ class UsersPersistencePort(ABC):
     async def get_users(self, school: str) -> list[User]:  # pragma: no cover
         ...
 
+    @abstractmethod
+    async def get_user(self, identifier: str) -> User:  # pragma: no cover
+        """
+        This method returns the user, which is identified by identifier.
+
+        Raises an ObjectNotFoundError, if the user could not be found.q
+        """
+
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod

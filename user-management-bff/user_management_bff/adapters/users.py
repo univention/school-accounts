@@ -7,9 +7,10 @@ from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from ucsschool.kelvin.client import NoObject, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
-from ucsschool.kelvin.client import UserResource
 
+from ..errors import ObjectNotFoundError
 from ..models import User, UserAttributes
 from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter
@@ -34,6 +35,14 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         async with self.kelvin_session as session:
             kelvin_users = UserResource(session=session).search(school=school)
             return [self._user_from_kelvin_user(kelvin_user) async for kelvin_user in kelvin_users]
+
+    async def get_user(self, identifier: str) -> User:
+        async with self.kelvin_session as session:
+            try:
+                kelvin_user = await UserResource(session=session).get(name=identifier)
+                return self._user_from_kelvin_user(kelvin_user)
+            except NoObject as exc:
+                raise ObjectNotFoundError(identifier=identifier) from exc
 
 
 @dataclass
@@ -65,3 +74,10 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
             for user in self._data
             if school in user["attributes"]["schools"]
         ]
+
+    async def get_user(self, identifier: str) -> User:
+        try:
+            user = next(user for user in self._data if user["id"] == identifier)
+            return User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
+        except StopIteration:
+            raise ObjectNotFoundError(identifier=identifier)

@@ -6,6 +6,7 @@ import json
 import os
 
 import pytest
+from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.users
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -14,6 +15,7 @@ from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
 )
+from user_management_bff.errors import ObjectNotFoundError
 from user_management_bff.models import User, UserAttributes
 
 
@@ -126,12 +128,57 @@ class TestKelvinUsersPersistenceAdapter:
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
-        print(user_management_bff.adapters.users.UserResource)
         result = await adapter.get_users("school1")
         assert result == [
             User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
             for user_data in input_data
         ]
+
+    @pytest.mark.parametrize(
+        "return_user",
+        [
+            {
+                "attributes": {
+                    "disabled": False,
+                    "first_name": "firstname",
+                    "last_name": "lastname",
+                    "roles": ["teacher:school:test_school1"],
+                    "schools": ["test_school1"],
+                    "school_classes": {"test_school1": ["1a", "2b"]},
+                    "username": "test_user1",
+                },
+                "id": "test_user1",
+            }
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_get_user(
+        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_user_from_data, return_user
+    ):
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                return make_kelvin_user_from_data(return_user)
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        result = await adapter.get_user("test_user1")
+        assert result == User(
+            id=return_user["id"], attributes=UserAttributes(**return_user["attributes"])
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_user_not_found(self, adapter, dummy_settings, monkeypatch, mocker):
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                raise NoObject()
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(ObjectNotFoundError, match="Object not found: test_user1") as exc_info:
+            await adapter.get_user("test_user1")
+        assert exc_info.value.identifier == "test_user1"
 
 
 class TestFileUsersPersistenceAdapter:
@@ -221,3 +268,41 @@ class TestFileUsersPersistenceAdapter:
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
             for user in expected_users
         ]
+
+    @pytest.mark.asyncio
+    async def test_get_user(self, adapter):
+        await adapter.configure(
+            FileUsersPersistenceAdapterSettings(
+                source=os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "../../../dev/data/users.json",
+                )
+            )
+        )
+        result = await adapter.get_user("dev")
+        assert result == User(
+            id="dev",
+            attributes=UserAttributes(
+                last_name="User",
+                first_name="Dev",
+                username="dev",
+                disabled=False,
+                schools=["school1"],
+                school_classes={"school1": ["1a", "2b"]},
+                roles=["teacher:school:school1"],
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_user_not_found(self, adapter):
+        await adapter.configure(
+            FileUsersPersistenceAdapterSettings(
+                source=os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "../../../dev/data/users.json",
+                )
+            )
+        )
+        with pytest.raises(ObjectNotFoundError, match="Object not found: NON_EXISTENT") as exc_info:
+            await adapter.get_user("NON_EXISTENT")
+        assert exc_info.value.identifier == "NON_EXISTENT"
