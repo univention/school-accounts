@@ -32,3 +32,16 @@ Authentication
    If unset, the application tries to derive the URL from the UCR variable
    :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`
    or falls back to the domain name of the UCS system where you installed the application.
+
+Guardian
+========
+
+.. envvar:: ucsschool-user-management/guardian/url
+
+   Defines the URL of the Guardian Authorization API. It usually has the form of ``https://fqdn/guardian/authorization/``
+
+.. envvar:: ucsschool-user-management/guardian/client_secret
+
+   Defines the client secret of the OAuth2 client to authenticate against the Authorization API with.
+   The value is set by the join script to the secret of ``ucsschool-user-management-bff`` when it is first
+   installed. Otherwise it has to be set manually.
