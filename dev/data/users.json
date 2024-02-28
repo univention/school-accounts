@@ -141,16 +141,16 @@
       "first_name": "Dev",
       "last_name": "User",
       "roles": [
-        "teacher:school:test_school4"
+        "teacher:school:school1"
       ],
       "school_classes": {
-        "test_school4": [
+        "school1": [
           "1a",
           "2b"
         ]
       },
       "schools": [
-        "test_school4"
+        "school1"
       ],
       "username": "dev"
     },
