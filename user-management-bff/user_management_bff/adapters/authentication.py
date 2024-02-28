@@ -7,7 +7,6 @@ from typing import Any, Callable, Coroutine, Type
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2AuthorizationCodeBearer
-from httpx import AsyncClient, RequestError
 from jwt import PyJWKClient
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -15,6 +14,7 @@ from starlette import status
 from starlette.requests import Request
 
 from user_management_bff.ports import FastAPIAuthenticationPort
+from user_management_bff.utils import get_oauth2_settings
 
 
 @dataclass
@@ -59,21 +59,7 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
         return self._settings
 
     async def _get_oauth2_settings(self) -> dict[str, Any]:
-        async with AsyncClient() as client:
-            try:
-                response = await client.get(
-                    self.settings.well_known_url, timeout=self.settings.request_timeout
-                )
-            except RequestError as exc:
-                raise RuntimeError(
-                    f"Could not load oauth2 settings from {self.settings.well_known_url}: '{exc}'"
-                )
-            if response.status_code != 200:
-                raise RuntimeError(
-                    f"Could not load oauth2 settings from {self.settings.well_known_url}:"
-                    f" '{response.json()}'"
-                )
-            return response.json()
+        return await get_oauth2_settings(self.settings.well_known_url, self.settings.request_timeout)
 
     def _get_oauth2_scheme(
         self, authorization_endpoint: str, token_endpoint: str

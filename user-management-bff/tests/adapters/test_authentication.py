@@ -93,7 +93,7 @@ class TestOauth2FastAPIAuthenticationAdapter:
             assert kwargs == {"timeout": settings.request_timeout}
             return response_mock
 
-        monkeypatch.setattr(user_management_bff.adapters.authentication.AsyncClient, "get", get_mock)
+        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
         assert await configured_adapter._get_oauth2_settings() == {"foo": "bar"}
 
     @pytest.mark.asyncio
@@ -106,7 +106,7 @@ class TestOauth2FastAPIAuthenticationAdapter:
         async def get_mock(*args, **kwargs):
             return response_mock
 
-        monkeypatch.setattr(user_management_bff.adapters.authentication.AsyncClient, "get", get_mock)
+        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
         with pytest.raises(
             RuntimeError, match="^Could not load oauth2 settings from https://example.com: '"
         ):
@@ -117,7 +117,7 @@ class TestOauth2FastAPIAuthenticationAdapter:
         async def get_mock(*args, **kwargs):
             raise RequestError("ERROR MESSAGE")
 
-        monkeypatch.setattr(user_management_bff.adapters.authentication.AsyncClient, "get", get_mock)
+        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
         with pytest.raises(
             RuntimeError,
             match="Could not load oauth2 settings from https://example.com: 'ERROR MESSAGE'",
