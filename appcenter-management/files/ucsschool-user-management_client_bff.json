@@ -127,19 +127,8 @@
     {
       "config": {
         "access.token.claim": "true",
-        "id.token.claim": "false",
-        "included.client.audience": "ucsschool-user-management"
-      },
-      "consentRequired": false,
-      "name": "ucsschool-user-management-audience",
-      "protocol": "openid-connect",
-      "protocolMapper": "oidc-audience-mapper"
-    },
-    {
-      "config": {
-        "access.token.claim": "true",
         "id.token.claim": "true",
-        "included.client.audience": "ucsschool-user-management-bff",
+        "included.client.audience": "guardian",
         "userinfo.token.claim": "true"
       },
       "consentRequired": false,

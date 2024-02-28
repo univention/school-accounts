@@ -130,22 +130,6 @@
       "name": "audiencemap",
       "protocol": "openid-connect",
       "protocolMapper": "oidc-audience-mapper"
-    },
-    {
-      "config": {
-        "access.token.claim": "true",
-        "aggregate.attrs": "false",
-        "claim.name": "dn",
-        "id.token.claim": "false",
-        "jsonType.label": "String",
-        "multivalued": "false",
-        "user.attribute": "LDAP_ENTRY_DN",
-        "userinfo.token.claim": "false"
-      },
-      "consentRequired": false,
-      "name": "dn",
-      "protocol": "openid-connect",
-      "protocolMapper": "oidc-usermodel-attribute-mapper"
     }
   ],
   "publicClient": true,
