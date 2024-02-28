@@ -10,3 +10,5 @@ FRONTEND_PREFIX = os.environ.get(
     "USER_MANAGEMENT__FRONTEND_PREFIX", "/univention/ucsschool/user-management/ui"
 )
 FRONTEND_DIR = os.environ.get("USER_MANAGEMENT__FRONTEND_DIR", "/app/frontend")
+APP_NAME = "ucsschool-user-management"
+NAMESPACE_NAME = "user-management"
