@@ -4,6 +4,13 @@ Copyright (C) 2024 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
+<!--
+The intent of this component is to refactor common code into something we
+could put into univention-veb.
+
+Please do not put anything in here that is app-specific.
+-->
+
 <script setup lang="ts">
 import {onMounted, ref, type KeepAliveProps} from 'vue';
 import {UConfirmDialog, UStandbyFullScreen} from '@univention/univention-veb';
@@ -30,8 +37,8 @@ onMounted(() => {
       class="app__errorMessage"
     >
       <div class="uCard uContainer">
-        <h1 v-if="errors.activeError.title">
-          {{ errors.activeError.title }}
+        <h1>
+          {{ errors.activeError.title || $t('ErrorModal.heading') }}
         </h1>
         {{ errors.activeError.message }}
       </div>

@@ -177,6 +177,8 @@ services:
         condition: service_completed_successfully
       proxy:
         condition: service_started
+      keycloak_provisioning:
+        condition: service_completed_successfully
     user: $DOCKER_USER
     extra_hosts: *extra_hosts
     volumes: *default-volumes

@@ -3,6 +3,12 @@
     "fetchFailed": "'{{method}}' failed: {{msg}}",
     "jsonError": "Invalid JSON format received: {{msg}}"
   },
+  "App": {
+    "error": {
+      "config": "A configuration error occurred. Please contact your system administrator.",
+      "loginFailed": "Login failed."
+    }
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -28,6 +34,7 @@
     "header": "Page Not Found"
   },
   "errors": {
+    "invalidAuthenticationPort": "Invalid AuthenticationPort: {{adapter}}",
     "invalidDataPort": "Invalid DataPort: {{adapter}}",
     "unknownError": "Unknown error"
   }

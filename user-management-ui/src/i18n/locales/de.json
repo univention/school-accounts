@@ -3,6 +3,12 @@
     "fetchFailed": "'{{method}}' ist fehlgeschlagen: {{msg}}",
     "jsonError": "Ung\u00fcltiges JSON Format erhalten: {{msg}}"
   },
+  "App": {
+    "error": {
+      "config": "Es ist ein Konfigurationsfehler aufgetreten. Bitte wenden Sie sich an einen Systemadministrator.",
+      "loginFailed": "Login fehlgeschlagen."
+    }
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -28,6 +34,7 @@
     "header": "Seite nicht gefunden"
   },
   "errors": {
+    "invalidAuthenticationPort": "Ung\u00fcltiger AuthenticationPort: {{adapter}}",
     "invalidDataPort": "Ung\u00fcltiger DataPort: {{adapter}}",
     "unknownError": "Unbekannter Fehler"
   }

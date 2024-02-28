@@ -114,13 +114,13 @@ One way to achieve this, would be adapting your `/etc/hosts`:
 echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
 ```
 
-The UI can be accessed at http://user-management-proxy/univention/ucsschool/user-management/ui/
+The UI can be accessed with "dev:univention" at http://user-management-proxy/univention/ucsschool/user-management/ui/
 
 The API can be accessed at http://user-management-proxy/univention/ucsschool/user-management/bff/docs
 
 Both UI and API react to code changes without the need to restart the environment.
 
-Keycloak can be accessed at http://user-management-proxy/keycloak/admin/
+Keycloak can be accessed with "admin:admin" at http://user-management-proxy/keycloak/admin/
 
 #### Start live server for the manual
 

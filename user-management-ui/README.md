@@ -48,6 +48,15 @@ yarn format
 The `.env.example` file is located in the `dev` directory in the top-level folder.
 The defaults are fine for the docker environment.
 
+If you just want to do frontend development with yarn dev and without the backend,
+you can use a local `.env` file:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
+export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=in_memory
+export VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT=in_memory
+```
+
 If you want to test specific adapters, these are the available settings:
 
 ### Settings Adapter
@@ -56,6 +65,12 @@ Get the settings from the `.env` file:
 
 ```bash
 export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
+```
+
+Get the settings from a URL:
+
+```bash
+export VITE__URL_SETTINGS_ADAPTER__URL=http://user-management-proxy/univention/ucsschool/user-management/bff/config-app
 ```
 
 ### Data Adapter
@@ -70,4 +85,23 @@ Use the BFF running in docker:
 
 ```bash
 export VITE__API_DATA_ADAPTER__URI=http://user-management-proxy/univention/ucsschool/user-management/bff
+```
+
+### Authentication Adapter
+
+Use a mock login:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT=in_memory
+export VITE__IN_MEMORY_AUTHENTICATION_ADAPTER__IS_AUTHENTICATED=1
+export VITE__IN_MEMORY_AUTHENTICATION_ADAPTER__USERNAME=test-admin
+```
+
+Integrate with the Docker Keycloak instance:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT=keycloak
+export VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__SSO_URI=http://user-management-proxy/keycloak
+export VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__REALM=ucs
+export VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__CLIENT_ID=ucsschool-user-management-ui
 ```

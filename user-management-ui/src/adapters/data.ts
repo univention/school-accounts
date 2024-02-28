@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import i18next from 'i18next';
+import {type AuthenticationPort} from '@univention/univention-veb';
 import {type DataPort} from '@/ports/data';
 import {errorToString} from '@/helpers/error';
 import {type Result} from '@/helpers/models/http';
@@ -122,6 +123,7 @@ interface InMemoryDB {
 
 export class InMemoryDataAdapter extends GenericDataAdapter {
   private readonly _responseTimeout = 1000;
+  private readonly _authAdapter: AuthenticationPort;
 
   private _db: InMemoryDB = {
     schools: [],
@@ -129,8 +131,9 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     userColumns: [],
   };
 
-  constructor(dbData?: InMemoryDB) {
+  constructor(authAdapter: AuthenticationPort, dbData?: InMemoryDB) {
     super();
+    this._authAdapter = authAdapter;
     if (dbData) {
       this._db = dbData;
     } else {
@@ -140,39 +143,48 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     }
   }
 
-  fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
+  async _get_response<T>(value: T): Promise<Result<T, string>> {
+    try {
+      await this._authAdapter.getValidAuthorizationHeader();
+    } catch (error: any) {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
+    return {
+      ok: true,
+      value: value,
+    };
+  }
+
+  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
+    const result = await this._get_response<SchoolsResponse>(makeMockSchoolsResponse(this._db.schools));
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve({
-          ok: true,
-          value: makeMockSchoolsResponse(this._db.schools),
-        });
+        resolve(result);
       }, this._responseTimeout);
     });
   }
 
-  fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
+  async fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
     const users = this._db.users.filter(user => {
       const userSchools = user.attributes.schools.value as string[];
       return userSchools.includes(school);
     });
+    const result = await this._get_response<UsersResponse>(makeMockUsersResponse(users));
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve({
-          ok: true,
-          value: makeMockUsersResponse(users),
-        });
+        resolve(result);
       }, this._responseTimeout);
     });
   }
 
-  fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
+  async fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
+    const result = await this._get_response<UserColumnsResponse>(makeMockUserColumnsResponse(this._db.userColumns));
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve({
-          ok: true,
-          value: makeMockUserColumnsResponse(this._db.userColumns),
-        });
+        resolve(result);
       }, this._responseTimeout);
     });
   }
@@ -184,9 +196,11 @@ export const apiDataSettings = {
 
 export class ApiDataAdapter extends GenericDataAdapter {
   private readonly _apiUri: string;
+  private readonly _authAdapter: AuthenticationPort;
 
-  constructor(apiUri: string) {
+  constructor(apiUri: string, authAdapter: AuthenticationPort) {
     super();
+    this._authAdapter = authAdapter;
 
     // Remove a trailing slash, if one exists,
     // so we always create a correct URL.
@@ -210,13 +224,17 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return `${this._apiUri}${endpoint}`;
   }
 
-  _makeHeaders(): Record<string, string> {
+  async _makeHeaders(): Promise<Record<string, string>> {
+    const authHeader = await this._authAdapter.getValidAuthorizationHeader();
     const defaultHeaders = {
       'Accept-Language': i18next.language,
       accept: 'application/json',
       'Content-Type': 'application/json;charset=UTF-8',
     };
-    return defaultHeaders;
+    return {
+      ...defaultHeaders,
+      ...authHeader,
+    };
   }
 
   async _fetch<T>(endpointBase: string, httpMethod: string): Promise<Result<T, string>> {

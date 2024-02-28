@@ -26,9 +26,9 @@ Kelvin
 Authentication
 ==============
 
-.. envvar:: ucsschool-user-management/oauth/well-known-url
+.. envvar:: ucsschool-user-management/oauth/keycloak-uri
 
-   Defines the well known URL for Oauth discovery.
+   Defines the base URI of the Keycloak server for authentication.
    If unset, the application tries to derive the URL from the UCR variable
    :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`
    or falls back to the domain name of the UCS system where you installed the application.
@@ -39,6 +39,7 @@ Guardian
 .. envvar:: ucsschool-user-management/guardian/url
 
    Defines the URL of the Guardian Authorization API. It usually has the form of ``https://fqdn/guardian/authorization/``
+   If unset, the application tries to derive the URL from the domain name of the UCS system where you installed the application.
 
 .. envvar:: ucsschool-user-management/guardian/client_secret
 

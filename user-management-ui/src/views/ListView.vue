@@ -54,7 +54,6 @@ const loadConfig = async () => {
   const result = await getListViewConfig();
   if (!result.ok) {
     errorStore.push({
-      title: t('ErrorModal.heading'),
       message: t('ListView.fetchConfig.error', {msg: result.error}),
       unRecoverable: true,
     });
@@ -74,7 +73,6 @@ const search = async () => {
     const result = await getUsers(school);
     if (!result.ok) {
       errorStore.push({
-        title: t('ErrorModal.heading'),
         message: t('ListView.fetchObjects.error', {msg: result.error}),
         unRecoverable: false,
       });
