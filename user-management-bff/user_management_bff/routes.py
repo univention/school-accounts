@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from . import business_logic
 from .adapter_registry import port_dep
@@ -19,6 +19,8 @@ from .api_models import (
 from .constants import API_PREFIX
 from .models import UsersGetRequest
 from .ports import (
+    FastAPIAuthenticationPort,
+    PermissionsPort,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
     UsersPersistencePort,
@@ -87,9 +89,16 @@ async def get_users(
 
 @router.get("/schools-search")
 async def get_schools(
+    request: Request,
     schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
     representation_adapter: FastAPISchoolsRepresentationAdapter = Depends(
         port_dep(SchoolsRepresentationPort, adapter_cls=FastAPISchoolsRepresentationAdapter)
     ),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
+    users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
 ) -> ListSchoolsResponse:
-    return await business_logic.get_schools(schools_get_adapter, representation_adapter)
+    actor_id = await authentication_port.get_authenticated_id(request)
+    return await business_logic.get_schools(
+        schools_get_adapter, representation_adapter, permissions_port, users_get_adapter, actor_id
+    )

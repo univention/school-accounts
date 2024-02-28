@@ -14,8 +14,9 @@ from user_management_bff.api_models import (
     ListUser,
     ListUserFixedAttributes,
     ListUsersResponse,
+    SchoolContextPermission,
 )
-from user_management_bff.models import School, User, UserAttributes
+from user_management_bff.models import Permission, School, User, UserAttributes
 
 
 class TestFastAPIUsersRepresentationAdapter:
@@ -119,11 +120,16 @@ class TestFastAPISchoolsRepresentationAdapter:
             School(id=school_values["id"], display_name=school_values["display_name"])
             for school_values in values
         ]
+        permissions = {school_values["id"]: [Permission.create_user] for school_values in values}
         expected = ListSchoolsResponse(
             schools=[
-                ListSchool(value=school_values["id"], label=school_values["display_name"])
+                ListSchool(
+                    value=school_values["id"],
+                    label=school_values["display_name"],
+                    permissions=[SchoolContextPermission.ADD],
+                )
                 for school_values in values
             ]
         )
-        result = adapter.create_schools_representation(schools)
+        result = adapter.create_schools_representation(schools, permissions)
         assert result == expected

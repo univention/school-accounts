@@ -24,6 +24,10 @@ class AttributeAccess(StrEnum):
     NONE = auto()
 
 
+class SchoolContextPermission(StrEnum):
+    ADD = auto()
+
+
 class Formatter(BaseModel):
     type: FormatterChoice
 
@@ -77,6 +81,7 @@ class ListUsersResponse(BaseModel):
 class ListSchool(BaseModel):
     label: str
     value: str
+    permissions: list[SchoolContextPermission]
 
 
 class ListSchoolsResponse(BaseModel):

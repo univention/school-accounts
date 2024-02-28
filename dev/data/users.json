@@ -134,5 +134,26 @@
       "username": "firstname3.lastname3"
     },
     "id": "test_user3"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "Dev",
+      "last_name": "User",
+      "roles": [
+        "teacher:school:test_school4"
+      ],
+      "school_classes": {
+        "test_school4": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "test_school4"
+      ],
+      "username": "dev"
+    },
+    "id": "dev"
   }
 ]

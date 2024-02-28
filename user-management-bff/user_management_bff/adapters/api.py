@@ -9,8 +9,9 @@ from ..api_models import (
     ListUser,
     ListUserFixedAttributes,
     ListUsersResponse,
+    SchoolContextPermission,
 )
-from ..models import School, User
+from ..models import Permission, School, User
 from ..ports import SchoolsRepresentationPort, UsersRepresentationPort
 
 
@@ -46,6 +47,19 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
 
 
 class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsResponse]):
-    def create_schools_representation(self, schools: list[School]) -> ListSchoolsResponse:
-        list_schools = [ListSchool(label=school.display_name, value=school.id) for school in schools]
+    def create_schools_representation(
+        self, schools: list[School], permissions: dict[str, list[Permission]]
+    ) -> ListSchoolsResponse:
+        list_schools = [
+            ListSchool(
+                label=school.display_name,
+                value=school.id,
+                permissions=(
+                    [SchoolContextPermission.ADD]
+                    if "create-user" in permissions.get(school.id, [])
+                    else []
+                ),
+            )
+            for school in schools
+        ]
         return ListSchoolsResponse(schools=list_schools)

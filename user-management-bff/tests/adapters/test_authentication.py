@@ -253,7 +253,7 @@ class TestAlwaysAuthenticatedAdapter:
 
     @pytest.mark.asyncio
     async def test_get_authentication_dependency(self, adapter):
-        assert await (await adapter.get_authentication_dependency())() == "ALWAYS_AUTHENTICATED_ACTOR"
+        assert await (await adapter.get_authentication_dependency())() == "dev"
 
     @pytest.mark.asyncio
     async def test_get_authenticated_id(self, adapter, mocker):

@@ -148,10 +148,7 @@ def test_get_schools(test_client, api_prefix):
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "schools": [
-            {
-                "value": school["id"],
-                "label": school["display_name"],
-            }
+            {"value": school["id"], "label": school["display_name"], "permissions": ["add"]}
             for school in input_data
         ]
     }

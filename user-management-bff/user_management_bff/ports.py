@@ -47,7 +47,7 @@ SchoolsGetRepresentation = TypeVar("SchoolsGetRepresentation")
 class SchoolsRepresentationPort(ABC, Generic[SchoolsGetRepresentation]):
     @abstractmethod
     def create_schools_representation(
-        self, schools: list[School]
+        self, schools: list[School], permissions: dict[str, list[Permission]]
     ) -> SchoolsGetRepresentation:  # pragma: no cover
         ...
 

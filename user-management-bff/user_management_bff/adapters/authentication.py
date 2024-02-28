@@ -136,12 +136,12 @@ class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
 
     async def get_authentication_dependency(self) -> Callable[[], Coroutine[Any, Any, str]]:
         async def _dep():
-            return "ALWAYS_AUTHENTICATED_ACTOR"
+            return "dev"
 
         return _dep
 
     async def get_authenticated_id(self, request: Request) -> str:
-        return "ALWAYS_AUTHENTICATED_ACTOR"
+        return "dev"
 
 
 class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
