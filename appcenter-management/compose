@@ -21,6 +21,7 @@ services:
       USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE: "user_management_bff.adapters.users:KelvinUsersPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION: "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
+      USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:GuardianPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /etc/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /etc/machine.secret
       KELVIN_PERSISTENCE_ADAPTER__URL: @!@
@@ -31,7 +32,7 @@ kelvin_url = ucr.get(
 )
 print(kelvin_url, end='')@!@
       USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:Oauth2FastAPIAuthenticationAdapter"
-      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: @!@
+@!@
 ucr = configRegistry
 well_known_url = ucr.get('ucsschool-user-management/oauth/well-known-url')
 if not well_known_url:
@@ -39,6 +40,10 @@ if not well_known_url:
     well_known_url = f"{base_url}/realms/ucs/.well-known/openid-configuration"
 if not well_known_url.startswith("http"):
     well_known_url = f"https://{well_known_url}"
-print(well_known_url, end='')@!@
+print(f"      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
+print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_url}", end='')@!@
       OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__AUDIENCE: "ucsschool-user-management"
-      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "dn"
+      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
+      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_ID: "ucsschool-user-management-bff"
+      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET: "@%@ucsschool-user-management/guardian/client_secret@%@"
+      GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL: "@%@ucsschool-user-management/guardian/url@%@"

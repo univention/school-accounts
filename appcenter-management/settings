@@ -17,3 +17,19 @@ Description[de] = URL des Keycloak-Servers zur Authentifizierung. Falls dieser W
 Group = Authentication
 Scope = outside
 Show = Install,Settings
+
+[ucsschool-user-management/guardian/url]
+Type = String
+Description = DESC
+Description[de] = DESC
+Group = Guardian
+Scope = outside
+Show = Install,Settings
+
+[ucsschool-user-management/guardian/client_secret]
+Type = String
+Description = DESC
+Description[de] = DESC
+Group = Guardian
+Scope = outside
+Show = Install,Settings

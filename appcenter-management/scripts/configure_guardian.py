@@ -169,6 +169,7 @@ def main():
         ("read-data-for-all-schools", "Read Data for All Schools"),
         ("read-activation-state", "Read Activation State"),
         ("read-role", "Read Role"),
+        ("create-user", "Create User Action"),
     ]
 
     print("Creating Guardian objects for UCS@school User Management")

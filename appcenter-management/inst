@@ -98,29 +98,36 @@ $configure_guardian_script_path "https://${hostname:?}.${domainname:?}/guardian/
 
 admin_username=$(echo $binddn | grep -Po '(?<=^uid=)[^,]*')
 
-univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-    --username "$admin_username" \
-    --password "$admin_password" \
-    --url "https://ucs-sso-ng.${domainname:?}" \
-    --realm ucs \
-    --user-realm master \
-    clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
-    --ignore-exists \
-    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" \
-    --override-web-origins "https://${hostname:?}.${domainname:?}" \
-    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
+if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
 
-univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-    --username "$admin_username" \
-    --password "$admin_password" \
-    --url "https://ucs-sso-ng.${domainname:?}" \
-    --realm ucs \
-    --user-realm master \
-    clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
-    --ignore-exists \
-    --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" \
-    --override-web-origins "https://${hostname:?}.${domainname:?}" \
-    --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" || die
+  univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+      --username "$admin_username" \
+      --password "$admin_password" \
+      --url "https://ucs-sso-ng.${domainname:?}" \
+      --realm ucs \
+      --user-realm master \
+      clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
+      --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" \
+      --override-web-origins "https://${hostname:?}.${domainname:?}" \
+      --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
+
+  SECRET=$(openssl rand -base64 24)
+
+  univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+      --username "$admin_username" \
+      --password "$admin_password" \
+      --url "https://ucs-sso-ng.${domainname:?}" \
+      --realm ucs \
+      --user-realm master \
+      clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
+      --override-secret "$SECRET" \
+      --override-root-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" \
+      --override-web-origins "https://${hostname:?}.${domainname:?}" \
+      --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" || die
+
+  univention-app configure $APP_ID --set ucsschool-user-management/guardian/client_secret="$SECRET" || die
+
+fi
 
 joinscript_save_current_version
 
