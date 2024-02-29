@@ -29,7 +29,7 @@ rich = "^13.7.0"
 python-keycloak = "^3.9.0"
 pyjwt = "^2.8.0"
 cryptography = "^42.0.4"
-guardian-authz-client = {url = "https://git.knut.univention.de/univention/components/authorization-engine/guardian-authz-client/-/jobs/1320765/artifacts/raw/dist/guardian_authz_client-0.1.0.tar.gz"}
+guardian-authz-client = "^0.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -44,6 +44,12 @@ pytest-playwright = "^0.4.4"
 [[tool.poetry.source]]
 name = "port-loader"
 url = "https://git.knut.univention.de/api/v4/projects/908/packages/pypi/simple"
+priority = "supplemental"
+
+
+[[tool.poetry.source]]
+name = "guardian-authz-client"
+url = "https://git.knut.univention.de/api/v4/projects/1062/packages/pypi/simple"
 priority = "supplemental"
 
 [tool.poetry.scripts]

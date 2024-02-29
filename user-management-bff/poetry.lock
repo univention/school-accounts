@@ -484,7 +484,8 @@ description = ""
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "guardian_authz_client-0.1.0.tar.gz", hash = "sha256:230f85b43b8ce2bca526dd7a106709304d76dbc24fe05992d2924a9b1d71c7d5"},
+    {file = "guardian_authz_client-0.1.0-py3-none-any.whl", hash = "sha256:33cb2b0a488aaa425734fea28d41bf738d97c3a8014a1bc9e2b10efeca071b05"},
+    {file = "guardian_authz_client-0.1.0.tar.gz", hash = "sha256:cc8994097fb08e13ab7abb7e31b15f2951096d7b8992241e7094acda92b6435b"},
 ]
 
 [package.dependencies]
@@ -493,8 +494,9 @@ httpx = ">=0.27.0,<0.28.0"
 pydantic = ">=2.6.2,<3.0.0"
 
 [package.source]
-type = "url"
-url = "https://git.knut.univention.de/univention/components/authorization-engine/guardian-authz-client/-/jobs/1320765/artifacts/raw/dist/guardian_authz_client-0.1.0.tar.gz"
+type = "legacy"
+url = "https://git.knut.univention.de/api/v4/projects/1062/packages/pypi/simple"
+reference = "guardian-authz-client"
 
 [[package]]
 name = "gunicorn"
@@ -1390,4 +1392,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "fff97fb9f6cb4f77541c9db067318add1fb2e59ec9708e0e6fec19351b7fa1ee"
+content-hash = "df07b346ce9f0fd96eae77b33e9be97c9cfe77cd170749e172d98a3ef46e0181"
