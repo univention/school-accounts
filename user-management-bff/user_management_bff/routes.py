@@ -87,7 +87,7 @@ async def get_users(
     )
 
 
-@router.get("/schools-search")
+@router.get("/config-schools")
 async def get_schools(
     request: Request,
     schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),

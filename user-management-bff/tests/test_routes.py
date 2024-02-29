@@ -137,14 +137,14 @@ def test_get_users(
     }
 
 
-def test_get_schools(test_client, api_prefix):
+def test_config_schools(test_client, api_prefix):
     input_data = [
         {"display_name": "School 1", "id": "school1"},
         {"display_name": "School 2", "id": "school2"},
         {"display_name": "School 3", "id": "school3"},
     ]
 
-    response = test_client.get(f"{api_prefix}/schools-search")
+    response = test_client.get(f"{api_prefix}/config-schools")
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "schools": [
