@@ -9,6 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+def pytest_addoption(parser):
+    parser.addoption("--base_url", action="store")
+
+
 @pytest.fixture(scope="session")
 def test_client():
     from user_management_bff.main import app

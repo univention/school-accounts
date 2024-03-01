@@ -146,7 +146,13 @@ You can run the e2e tests for the backend with
 dev/dev_run.sh task pytest-e2e
 ```
 
-For the tests to work you need to have the `prod-server` task running already.
+For these tests you have to have a proper environment setup. The current requirements are:
+
+- The bff is running and available under the hostname `user-management-proxy`
+- The BFF uses Kelvin for persistence and the Guardian for Authorization
+- The UCS host contains one school named `school1`
+- The school `school1` has a teacher named `teacher` and a student named `student`, both with password `univention`
+- The teacher has the permission `create-user`, whereas the student does not.
 
 Playwright traces and screenshots for failing tests of the latest test run are stored in `./cache/test-results`.
 

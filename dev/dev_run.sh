@@ -75,7 +75,6 @@ run_task() {
     exit $?
   fi
   if [ "$TASK" = "pytest-e2e" ]; then
-    echo "Make sure the prod-server is running before starting the e2e tests!"
     run_command env --chdir=user-management-bff/ poetry run \
     pytest \
     -vv \
@@ -83,6 +82,7 @@ run_task() {
     --tracing retain-on-failure \
     --output "/src/.cache/test-results" \
     -m "e2e" \
+    --base_url "http://user-management-proxy/univention/ucsschool/user-management"
     .
     exit $?
   fi

@@ -32,7 +32,7 @@ repos:
   hooks:
     - id: mypy
       args: ["--config-file=user-management-bff/pyproject.toml"]
-      exclude: "docs/"
+      exclude: "docs/|tests/"
       additional_dependencies: [fastapi, loguru, pytest, types-requests]
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
