@@ -189,11 +189,11 @@ def main():
 
     print("Creating Role-Capability-Mapping")
     create_role_capability_mapping(
-        "super-admin",
-        f"super-admin has all permissions in {namespace_name}",
+        "super-admin_ucsschool-user-management",
+        f"super-admin has all permissions in {app_name}:{namespace_name}",
         app_name,
         namespace_name,
-        {"app_name": "guardian", "namespace_name": "builtin", "name": role_name},
+        {"app_name": app_name, "namespace_name": namespace_name, "name": "super-admin"},
         [permission[0] for permission in permissions],
     )
 

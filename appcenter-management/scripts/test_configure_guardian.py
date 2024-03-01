@@ -58,38 +58,51 @@ def get_capabilities(app_name, namespace_name, name):
     return response.json()
 
 
-def test_capabilities():
+def test_capabilities_ucsschool_user_management():
     app_name = "ucsschool-user-management"
     namespace_name = "user-management"
 
-    capabilities = get_capabilities(app_name, namespace_name, "super-admin")
-    assert capabilities["capability"]["app_name"] == "user-management", "wrong app_name"
+    capabilities = get_capabilities(app_name, namespace_name, "super-admin_ucsschool-user-management")
+    assert capabilities["capability"]["role"] == {
+        "app_name": "ucsschool-user-management",
+        "name": "super-admin",
+        "namespace_name": "user-management",
+    }, "wrong role"
+    assert capabilities["capability"]["app_name"] == "ucsschool-user-management", "wrong app_name"
     assert sorted(capabilities["capability"]["permissions"], key=itemgetter("name")) == sorted(
         [
-            {"app_name": "user-management", "namespace_name": "user-management", "name": "read-schools"},
-            {"app_name": "user-management", "namespace_name": "user-management", "name": "read-role"},
             {
-                "app_name": "user-management",
+                "app_name": "ucsschool-user-management",
+                "namespace_name": "user-management",
+                "name": "read-schools",
+            },
+            {
+                "app_name": "ucsschool-user-management",
+                "namespace_name": "user-management",
+                "name": "read-role",
+            },
+            {
+                "app_name": "ucsschool-user-management",
                 "namespace_name": "user-management",
                 "name": "read-lastname",
             },
             {
-                "app_name": "user-management",
+                "app_name": "ucsschool-user-management",
                 "namespace_name": "user-management",
                 "name": "read-username",
             },
             {
-                "app_name": "user-management",
+                "app_name": "ucsschool-user-management",
                 "namespace_name": "user-management",
                 "name": "read-activation-state",
             },
             {
-                "app_name": "user-management",
+                "app_name": "ucsschool-user-management",
                 "namespace_name": "user-management",
                 "name": "read-data-for-all-schools",
             },
             {
-                "app_name": "user-management",
+                "app_name": "ucsschool-user-management",
                 "namespace_name": "user-management",
                 "name": "read-firstname",
             },
@@ -99,7 +112,7 @@ def test_capabilities():
 
 
 def main():
-    test_capabilities()
+    test_capabilities_ucsschool_user_management()
 
 
 if __name__ == "__main__":
