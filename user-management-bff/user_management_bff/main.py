@@ -58,3 +58,18 @@ if CORS_ALLOWED_ORIGINS:
 # statically serve the frontend
 if os.path.exists(FRONTEND_DIR):
     app.mount(FRONTEND_PREFIX, StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
+
+@app.get(f"{API_PREFIX}/config-app")
+def get_app_config() -> dict:
+    """
+    Returns the environment variables needed by the frontend to run the app.
+
+    In production we run compiled javascript code in the frontend,
+    which does not have access to environment variables that weren't present
+    at compile time.
+    Since we need AppCenter settings that are set at runtime,
+    we work around this limitation by serving the variables as javascript,
+    which is then fetched by the frontend's `UrlSettingsAdapter`.
+    """
+    return {key: value for key, value in os.environ.items() if key.startswith("VITE__")}

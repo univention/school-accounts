@@ -32,7 +32,7 @@ yarn test:e2e
 Pre-commit should handle linting for you:
 
 ```bash
-../dev/dev_run.sh task pre-commit
+../dev/dev_run.sh pre-commit run -a
 ```
 
 But if you want to run linting manually, you can run the following three commands:

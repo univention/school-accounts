@@ -64,6 +64,17 @@ def patch_env():
 
 
 @pytest.fixture
+def patch_test_env(monkeypatch):
+    """Patch additional test-specific environment variables."""
+
+    def _patch_test_env(new_env):
+        for key, value in new_env.items():
+            monkeypatch.setenv(key, value)
+
+    return _patch_test_env
+
+
+@pytest.fixture
 def transform_user_dict_to_api_users_dict():
     def _transform_user_dict_to_api_users_dict(user_dict: dict[str, Any]) -> dict[str, Any]:
         transformed = {**user_dict}

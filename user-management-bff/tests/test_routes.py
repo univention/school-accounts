@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import os
 
 import pytest
 
@@ -61,6 +62,45 @@ def test_get_users_config(test_client, api_prefix):
             },
         ]
     }
+
+
+@pytest.mark.parametrize(
+    "environ,expected_response",
+    [
+        (
+            {
+                "COLORTERM": "truecolor",
+                "SHELL": "/bin/bash",
+                "SUPER_SECRET_PASSWORD": "password1234",
+            },
+            {},
+        ),
+        (
+            {
+                "LOGNAME": "admin",
+                "VITE__VALUE_1": "foo",
+                "VITE__VALUE_2__SUBVALUE_1": "bar1",
+                "VITE__VALUE_2__SUBVALUE_2": "bar2",
+                "YOLO": "1",
+            },
+            {
+                "VITE__VALUE_1": "foo",
+                "VITE__VALUE_2__SUBVALUE_1": "bar1",
+                "VITE__VALUE_2__SUBVALUE_2": "bar2",
+            },
+        ),
+    ],
+)
+def test_get_app_config(
+    test_client, api_prefix, patch_test_env, environ, expected_response, monkeypatch
+):
+    for key in os.environ.keys():
+        if key.startswith("VITE__"):
+            monkeypatch.delenv(key)
+    patch_test_env(environ)
+    response = test_client.get(f"{api_prefix}/config-app")
+    assert response.status_code == 200, response.json()
+    assert response.json() == expected_response
 
 
 @pytest.mark.parametrize(
