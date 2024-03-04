@@ -29,7 +29,7 @@ univention-directory-manager portals/entry create "$@" --ignore_exists \
     --append displayName='"de_DE" "UCS@school Benutzerverwaltung"' \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
     --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
-    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management/ui"' \
+    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management/ui/"' \
     --append allowedGroups="cn=Domain Users,cn=groups,$ldap_base" \
     --set linkTarget=newwindow || die
 
@@ -56,26 +56,26 @@ univention-directory-manager groups/group modify "$@" \
   --append users="$appcenter_apps_ucsschool_user_management_hostdn" || die
 
 extract_binddn_and_bindpwd_from_args() {
-	## parse binddn and bindpwd from command line arguments into shell variables
-	while [ $# -gt 0 ]; do
-		case "$1" in
-			"--binddn")
-				binddn="${2:?missing binddn}"
-				shift 2 || exit 2
-				;;
-			"--bindpwdfile")
-				bindpwdfile="${2:?missing bindpwdfile}"
-				shift 2 || exit 2
-				;;
-			*)
-				shift
-				;;
-		esac
-	done
+    ## parse binddn and bindpwd from command line arguments into shell variables
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            "--binddn")
+                binddn="${2:?missing binddn}"
+                shift 2 || exit 2
+                ;;
+            "--bindpwdfile")
+                bindpwdfile="${2:?missing bindpwdfile}"
+                shift 2 || exit 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
 }
 
 extract_binddn_and_bindpwd_from_args "$@"
-admin_user=$(echo $binddn | awk -F',' '{print $1}' | cut -d'=' -f2)
+admin_user=$(echo $binddn | grep -Po '(?<=^uid=)[^,]*')
 admin_password=$(cat $bindpwdfile)
 
 # TODO: move to Guardian joinscript, see https://git.knut.univention.de/univention/components/authorization-engine/guardian/-/issues/219
@@ -83,27 +83,29 @@ admin_password=$(cat $bindpwdfile)
 univention-directory-manager users/user modify "$@" \
     --dn "$binddn" --append "guardianRole=guardian:builtin:super-admin"
 
-base_url=$(ucr get keycloak/server/sso/fqdn)
+keycloak_url=$(ucr get keycloak/server/sso/fqdn)
 
-if [ -z $base_url ]
+if [ -z $keycloak_url ]
     then
-    base_url="https://ucs-sso-ng.${domainname:?}"
-elif ! [[ $base_url == http* ]]
+    keycloak_url="https://ucs-sso-ng.${domainname:?}"
+elif ! [[ $keycloak_url == http* ]]
     then
-    base_url='https://$base_url'
+    keycloak_url='https://$keycloak_url'
 fi
 
-configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
-$configure_guardian_script_path "https://${hostname:?}.${domainname:?}/guardian/management" $admin_user $admin_password "https://ucs-sso-ng.${domainname:?}/realms/ucs/protocol/openid-connect/token" guardian-scripts || die
-
-admin_username=$(echo $binddn | grep -Po '(?<=^uid=)[^,]*')
+$SCRIPTS_DIR/configure_guardian.py \
+    "https://${hostname:?}.${domainname:?}/guardian/management" \
+    $admin_user \
+    $admin_password \
+    "$keycloak_url/realms/ucs/protocol/openid-connect/token" \
+    guardian-scripts || die
 
 if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
 
   univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-      --username "$admin_username" \
+      --username "$admin_user" \
       --password "$admin_password" \
-      --url "https://ucs-sso-ng.${domainname:?}" \
+      --url "$keycloak_url" \
       --realm ucs \
       --user-realm master \
       clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
@@ -114,9 +116,9 @@ if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
   SECRET=$(openssl rand -base64 24)
 
   univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-      --username "$admin_username" \
+      --username "$admin_user" \
       --password "$admin_password" \
-      --url "https://ucs-sso-ng.${domainname:?}" \
+      --url "$keycloak_url" \
       --realm ucs \
       --user-realm master \
       clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
