@@ -24,6 +24,15 @@
   * read-data-for-all-schools
   * read-activation-state
   * read-role
+  * write-lastname
+  * write-firstname
+  * write-username
+  * write-schools
+  * write-data-for-all-schools
+  * write-activation-state
+  * write-role
+  * write-password
+  * create-user
 * Role-Capability-Mapping:
   * ucsschool:user-management:super-admin has all permissions listed above
 """
@@ -169,6 +178,14 @@ def main():
         ("read-data-for-all-schools", "Read Data for All Schools"),
         ("read-activation-state", "Read Activation State"),
         ("read-role", "Read Role"),
+        ("write-lastname", "Write Last Name"),
+        ("write-firstname", "Write First Name"),
+        ("write-username", "Write Username"),
+        ("write-schools", "Write Schools"),
+        ("write-data-for-all-schools", "Write Data for All Schools"),
+        ("write-activation-state", "Write Activation State"),
+        ("write-role", "Write Role"),
+        ("write-password", "Write Password"),
         ("create-user", "Create User Action"),
     ]
 
