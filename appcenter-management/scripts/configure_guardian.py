@@ -137,14 +137,18 @@ def create_permission(app_name, namespace_name, permission_name, display_name):
     print(f"Permission '{permission_name}' created:", response.json())
 
 
-def create_role_capability_mapping(name, display_name, app_name, namespace_name, role, permissions):
+def create_role_capability_mapping(
+    name, display_name, app_name, namespace_name, role, permissions, conditions=None, relation="AND"
+):
     headers = generate_headers()
+    if conditions is None:
+        conditions = []
     data = {
         "name": name,
         "display_name": display_name,
         "role": role,
-        "conditions": [],
-        "relation": "AND",
+        "conditions": conditions,
+        "relation": relation,
         "permissions": [
             {"app_name": app_name, "namespace_name": namespace_name, "name": permission}
             for permission in permissions
@@ -222,6 +226,33 @@ def main():
         {"app_name": app_name, "namespace_name": namespace_name, "name": "teacher"},
         ["create-user"],
     )
+    for role in ("student", "teacher", "staff", "school-admin"):
+        create_role_capability_mapping(
+            f"{role}-read-self",
+            f"{role} can read their own fields",
+            app_name,
+            namespace_name,
+            {"app_name": app_name, "namespace_name": namespace_name, "name": role},
+            [
+                f"read-{attr_name}"
+                for attr_name in (
+                    "lastname",
+                    "firstname",
+                    "username",
+                    "schools",
+                    "activation-state",
+                    "role",
+                )
+            ],
+            conditions=[
+                {
+                    "app_name": "guardian",
+                    "namespace_name": "builtin",
+                    "name": "target_is_self",
+                    "parameters": [],
+                }
+            ],
+        )
 
     print("All Guardian objects created")
 
