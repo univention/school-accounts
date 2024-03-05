@@ -6,7 +6,9 @@ import pytest
 import requests
 
 
-@pytest.mark.parametrize("username,expected_permissions", [("teacher", ["add"]), ("student", [])])
+@pytest.mark.parametrize(
+    "username,expected_permissions", [("mina.teacher", ["add"]), ("max.student", [])]
+)
 @pytest.mark.e2e
 def test_config_schools_permissions(access_token, base_url, username, expected_permissions):
     token = access_token(username, "univention")
@@ -15,5 +17,12 @@ def test_config_schools_permissions(access_token, base_url, username, expected_p
     )
     assert response.status_code == 200
     assert response.json() == {
-        "schools": [{"label": "School1", "value": "school1", "permissions": expected_permissions}]
+        "schools": [
+            {"label": school_label, "value": school_name, "permissions": expected_permissions}
+            for school_label, school_name in [
+                ("Demo School", "DEMOSCHOOL"),
+                ("school1", "school1"),
+                ("school2", "school2"),
+            ]
+        ]
     }

@@ -50,6 +50,7 @@ class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsR
     def create_schools_representation(
         self, schools: list[School], permissions: dict[str, list[Permission]]
     ) -> ListSchoolsResponse:
+        sorted_schools = sorted(schools, key=lambda x: x.display_name)
         list_schools = [
             ListSchool(
                 label=school.display_name,
@@ -60,6 +61,6 @@ class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsR
                     else []
                 ),
             )
-            for school in schools
+            for school in sorted_schools
         ]
         return ListSchoolsResponse(schools=list_schools)
