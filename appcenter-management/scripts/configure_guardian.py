@@ -36,15 +36,17 @@
 * Role-Capability-Mapping:
   * ucsschool:user-management:super-admin has all permissions listed above
 """
-
+import base64
+import json
+from pathlib import Path
 
 import requests
 import sys
 from functools import lru_cache
 
-if len(sys.argv) != 6:
+if len(sys.argv) != 7:
     print(
-        f"Usage: {sys.argv[0]} <management_url> <username> <password> <keycloak_url> <keycloak_client>"
+        f"Usage: {sys.argv[0]} <management_url> <username> <password> <keycloak_url> <keycloak_client> <condition_dir>"
     )
     sys.exit(1)
 
@@ -53,6 +55,7 @@ GUARDIAN_MANAGEMENT_USER = sys.argv[2]
 GUARDIAN_MANAGEMENT_PASSWORD = sys.argv[3]
 KEYCLOAK_URL = sys.argv[4]
 KEYCLOAK_CLIENT_ID = sys.argv[5]
+CONDITION_DIR = sys.argv[6]
 
 TIMEOUT = 10
 
@@ -137,6 +140,29 @@ def create_permission(app_name, namespace_name, permission_name, display_name):
     print(f"Permission '{permission_name}' created:", response.json())
 
 
+def create_condition(
+    app_name, namespace_name, condition_name, display_name, documentation, code, parameters=None
+):
+    headers = generate_headers()
+    if parameters is None:
+        parameters = []
+    data = {
+        "name": condition_name,
+        "display_name": display_name,
+        "documentation": documentation,
+        "parameters": parameters,
+        "code": code,
+    }
+    response = requests.post(
+        f"{GUARDIAN_MANAGEMENT_URL}/conditions/{app_name}/{namespace_name}",
+        headers=headers,
+        json=data,
+        timeout=TIMEOUT,
+    )
+    handle_status_code(response)
+    print(f"Condition '{condition_name}' created:", response.json())
+
+
 def create_role_capability_mapping(
     name, display_name, app_name, namespace_name, role, permissions, conditions=None, relation="AND"
 ):
@@ -166,7 +192,8 @@ def create_role_capability_mapping(
 
 def main():
     app_name = "ucsschool-user-management"
-    namespace_name = "user-management"
+    default_namespace_name = "user-management"
+    conditions_namespace_name = "conditions"
     roles = [
         ("student", "Student"),
         ("teacher", "Teacher"),
@@ -198,32 +225,51 @@ def main():
     print("Creating App")
     create_app(app_name, "UCS@school User Management")
 
-    print("Creating Namespace")
-    create_namespace(app_name, namespace_name)
+    print("Creating Namespaces")
+    create_namespace(app_name, default_namespace_name)
+    create_namespace(app_name, conditions_namespace_name)
+
+    print("Creating Conditions")
+    path_list = Path(CONDITION_DIR).glob("*.json")
+    for data_file in path_list:
+        with open(data_file, "r") as fd:
+            cond_info = json.load(fd)
+        cond_name = data_file.stem
+        with open(Path(CONDITION_DIR) / f"{cond_name}.rego", "rb") as fd:
+            code_raw = fd.read()
+        create_condition(
+            app_name,
+            conditions_namespace_name,
+            cond_name,
+            cond_info["display_name"],
+            cond_info["documentation"],
+            base64.b64encode(code_raw).decode(),
+            cond_info["parameters"],
+        )
 
     print("Creating Roles")
     for role_name, display_name in roles:
-        create_role(app_name, namespace_name, role_name, display_name)
+        create_role(app_name, default_namespace_name, role_name, display_name)
 
     print("Creating Permissions")
     for permission_name, display_name in permissions:
-        create_permission(app_name, namespace_name, permission_name, display_name)
+        create_permission(app_name, default_namespace_name, permission_name, display_name)
 
     print("Creating Role-Capability-Mappings")
     create_role_capability_mapping(
         "super-admin_ucsschool-user-management",
-        f"super-admin has all permissions in {app_name}:{namespace_name}",
+        f"super-admin has all permissions in {app_name}:{default_namespace_name}",
         app_name,
-        namespace_name,
-        {"app_name": app_name, "namespace_name": namespace_name, "name": "super-admin"},
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "super-admin"},
         [permission[0] for permission in permissions],
     )
     create_role_capability_mapping(
         "teacher-create-user",
         "Teacher can create users",
         app_name,
-        namespace_name,
-        {"app_name": app_name, "namespace_name": namespace_name, "name": "teacher"},
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
         ["create-user"],
     )
     for role in ("student", "teacher", "staff", "school-admin"):
@@ -231,8 +277,8 @@ def main():
             f"{role}-read-self",
             f"{role} can read their own fields",
             app_name,
-            namespace_name,
-            {"app_name": app_name, "namespace_name": namespace_name, "name": role},
+            default_namespace_name,
+            {"app_name": app_name, "namespace_name": default_namespace_name, "name": role},
             [
                 f"read-{attr_name}"
                 for attr_name in (

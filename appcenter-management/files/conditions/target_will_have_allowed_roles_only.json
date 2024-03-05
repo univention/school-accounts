@@ -1,0 +1,10 @@
+{
+  "display_name": "Only if target will have only the allowed roles",
+  "documentation": "True if the new target has only roles that are specified in the roles parameter. Roles should be separated by ','",
+  "parameters": [
+    {
+      "name": "roles",
+      "value_type": "STRING"
+    }
+  ]
+}

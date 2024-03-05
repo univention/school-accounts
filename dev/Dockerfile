@@ -5,11 +5,18 @@
 FROM gitregistry.knut.univention.de/univention/components/ucs-base-image/ucs-base-520:latest
 LABEL description="Development image for ucsschool-users-management"
 
+# The current version used in the Guardian as of 2024-03-06
+ARG opa_version=0.53.0
+
 EXPOSE 8000
 EXPOSE 5173
 
+ADD https://github.com/open-policy-agent/opa/releases/download/v${opa_version}/opa_linux_amd64_static /usr/bin/opa
+RUN chmod 755 /usr/bin/opa
+
 RUN apt-get update && \
     apt-get install -y sudo \
+    curl \
     git \
     python3-pip \
     nodejs \

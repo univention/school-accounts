@@ -12,9 +12,16 @@
 PREINST_TEMPLATE="templates/preinst.tmpl"
 CONFIGURE_GUARDIAN_SCRIPT="scripts/configure_guardian.py"
 FILES_DIR="files"
+CONDITIONS_DIR="$FILES_DIR/conditions"
 
 cp $PREINST_TEMPLATE preinst
 
 sed -i -e "/%CONFIGURE-GUARDIAN%/r $CONFIGURE_GUARDIAN_SCRIPT" -e "/%CONFIGURE-GUARDIAN%/d" preinst
 sed -i -e "/%UI_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_ui.json" -e "/%UI_CLIENT%/d" preinst
 sed -i -e "/%BFF_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_bff.json" -e "/%BFF_CLIENT%/d" preinst
+sed -i -e "/%ACTION_IS_CREATION_INFO%/r $CONDITIONS_DIR/action_is_creation.json" -e "/%ACTION_IS_CREATION_INFO%/d" preinst
+sed -i -e "/%ACTION_IS_CREATION_REGO%/r $CONDITIONS_DIR/action_is_creation.rego" -e "/%ACTION_IS_CREATION_REGO%/d" preinst
+sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%/r $CONDITIONS_DIR/target_will_be_in_same_school_only.json" -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%/d" preinst
+sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/r $CONDITIONS_DIR/target_will_be_in_same_school_only.rego" -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/d" preinst
+sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.json" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/d" preinst
+sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.rego" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/d" preinst

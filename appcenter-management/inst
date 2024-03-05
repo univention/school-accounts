@@ -13,6 +13,7 @@ VERSION=1
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 SCRIPTS_DIR="$APP_DIR/scripts"
+CONDITION_DIR="$SCRIPTS_DIR/conditions"
 CONF_DIR="$APP_DIR/conf"
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
@@ -98,7 +99,8 @@ $SCRIPTS_DIR/configure_guardian.py \
     $admin_user \
     $admin_password \
     "$keycloak_url/realms/ucs/protocol/openid-connect/token" \
-    guardian-scripts || die
+    guardian-scripts \
+    $CONDITION_DIR || die
 
 if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
 
