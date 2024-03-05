@@ -16,6 +16,25 @@ To develop the UCS@school User Management Module you just need [docker](https://
 Installation instructions for Ubuntu can be found [here](https://docs.docker.com/engine/install/ubuntu/).
 You must have at least Docker version 25.
 
+### Gitlab Pipeline
+
+#### integration-tests
+
+The `integration-tests` job is a manual job that has to be started and succeed in order to merge any MR that contains changes
+to the source code or the appcenter setup.
+If you manually start a job by clicking on its name, instead of the play button, you can overwrite the jobs variables.
+The following variables are important:
+
+- TARGET_VERSION=5.0-6: The UCS version the tests should run under.
+- KVM_SERVER=soft-test01.knut.univention.de: The KVM host to use for the tests.
+- UCSSCHOOL_USER_MANAGEMENT_VERSION=0.1: The version of the `ucsschool-user-management` app to install for the test run.
+- NO_HALT=UNSET: If the variable is set, the VMs are not automatically terminated.
+
+If you abort the pipeline job or set the `NO_HALT` variable, make sure to clean up your VMs after.
+
+They are named `build_ucsschool-user-management_$JOB_ID-{primary,backup1}`.
+The IP addresses of the VMs can be extracted from the job log. They can be found at the bottom of the log.
+
 ### Running commands in the development container
 
 This repository provides a script, which allows you to run commands within a docker container,
@@ -140,19 +159,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #### Running e2e tests for the Backend
 
-You can run the e2e tests for the backend with
+THe e2e tests are designed to run against the environment that is created by the integration-test pipeline job.
+
+If you want to manually run the tests, make sure to start the job with the `NO_HALT` variable set.
+This way you have access to the setup after the job is done.
+
+You can run the e2e tests for the backend with:
 
 ```shell
-dev/dev_run.sh task pytest-e2e
+E2E_BASE_URL="https://backup1.school.test/univention/ucsschool/user-management" dev/dev_run.sh task pytest-e2e
 ```
 
-For these tests you have to have a proper environment setup. The current requirements are:
+Make sure that the domain names can be resolved. This can be achieved by entering the following into your `/etc/hosts`:
 
-- The bff is running and available under the hostname `user-management-proxy`
-- The BFF uses Kelvin for persistence and the Guardian for Authorization
-- The UCS host contains one school named `school1`
-- The school `school1` has a teacher named `teacher` and a student named `student`, both with password `univention`
-- The teacher has the permission `create-user`, whereas the student does not.
+```text
+IP_PRIMARY ucs-sso-ng.school.test ucs-sso.school.test primary.school.test
+IP_BACKUP backup1.school.test
+```
+
+Make sure that the ssl certificate from the UCS domain is also downloaded and set in the .env file.
+
+You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
+integration test environment.
 
 Playwright traces and screenshots for failing tests of the latest test run are stored in `./cache/test-results`.
 

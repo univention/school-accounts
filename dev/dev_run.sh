@@ -82,7 +82,7 @@ run_task() {
     --tracing retain-on-failure \
     --output "/src/.cache/test-results" \
     -m "e2e" \
-    --base_url "http://user-management-proxy/univention/ucsschool/user-management"
+    --base_url "$E2E_BASE_URL"
     .
     exit $?
   fi
