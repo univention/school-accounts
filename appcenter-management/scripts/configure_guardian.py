@@ -19,7 +19,6 @@
 * Permissions:
   * read-lastname
   * read-firstname
-  * read-username
   * read-schools
   * read-data-for-all-schools
   * read-activation-state
@@ -35,6 +34,8 @@
   * create-user
 * Role-Capability-Mapping:
   * ucsschool:user-management:super-admin has all permissions listed above
+  * each role can read themselves
+  * school_admin can create teachers and students if they are only on the school admins school
 """
 import base64
 import json
@@ -204,7 +205,6 @@ def main():
     permissions = [
         ("read-lastname", "Read Last Name"),
         ("read-firstname", "Read First Name"),
-        ("read-username", "Read Username"),
         ("read-schools", "Read Schools"),
         ("read-data-for-all-schools", "Read Data for All Schools"),
         ("read-activation-state", "Read Activation State"),
@@ -284,7 +284,6 @@ def main():
                 for attr_name in (
                     "lastname",
                     "firstname",
-                    "username",
                     "schools",
                     "activation-state",
                     "role",
@@ -299,6 +298,63 @@ def main():
                 }
             ],
         )
+    create_role_capability_mapping(
+        "create-users-in-same-school",
+        "Create Users within same school",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school-admin"},
+        [
+            *[
+                f"write-{attr_name}"
+                for attr_name in (
+                    "lastname",
+                    "firstname",
+                    "username",
+                    "schools",
+                    "activation-state",
+                    "role",
+                    "password",
+                )
+            ],
+            *[
+                f"read-{attr_name}"
+                for attr_name in (
+                    "lastname",
+                    "firstname",
+                    "schools",
+                    "activation-state",
+                    "role",
+                )
+            ],
+            "create-user",
+        ],
+        conditions=[
+            {
+                "app_name": app_name,
+                "namespace_name": conditions_namespace_name,
+                "name": "action_is_creation",
+                "parameters": [],
+            },
+            {
+                "app_name": app_name,
+                "namespace_name": conditions_namespace_name,
+                "name": "target_will_be_in_same_school_only",
+                "parameters": [],
+            },
+            {
+                "app_name": app_name,
+                "namespace_name": conditions_namespace_name,
+                "name": "target_will_have_allowed_roles_only",
+                "parameters": [
+                    {
+                        "name": "roles",
+                        "value": f"{app_name}:{default_namespace_name}:student,{app_name}:{default_namespace_name}:teacher",
+                    }
+                ],
+            },
+        ],
+    )
 
     print("All Guardian objects created")
 
