@@ -13,6 +13,7 @@ import {
 import {dataPortSetting} from '@/ports/data';
 import {apiDataSettings} from '@/adapters/data';
 import {type SettingsConfig} from '@/helpers/models/stores/settings';
+import {inMemoryDataAdapterSettings, testDataAdapterSettings} from '@/adapters/data';
 
 export const useSettingsStore = defineStore('settings', () => {
   const initialized = ref(false);
@@ -28,6 +29,13 @@ export const useSettingsStore = defineStore('settings', () => {
       adapter: '',
       apiConfig: {
         uri: '',
+      },
+      inMemoryConfig: {
+        dbData: '',
+      },
+      testConfig: {
+        subAdapter: '',
+        errorResponses: '',
       },
     },
     authenticationPort: {
@@ -74,6 +82,32 @@ export const useSettingsStore = defineStore('settings', () => {
     config.value.dataPort.adapter = settingsAdapter.getSetting(dataPortSetting);
     // ApiDataAdapter settings
     config.value.dataPort.apiConfig.uri = settingsAdapter.getSetting(apiDataSettings.uri);
+    // InMemoryDataAdapter settings
+    config.value.dataPort.inMemoryConfig.dbData = settingsAdapter.getSetting(inMemoryDataAdapterSettings.dbData);
+    // TestDataAdapter settings
+    config.value.dataPort.testConfig.subAdapter = settingsAdapter.getSetting(testDataAdapterSettings.subAdapter);
+    config.value.dataPort.testConfig.errorResponses = settingsAdapter.getSetting(
+      testDataAdapterSettings.errorResponses
+    );
+
+    // AuthorizationPort settings
+    config.value.authenticationPort.adapter = settingsAdapter.getSetting('userManagementUi.adapter.authenticationPort');
+    // InMemoryAuthorizationAdapter settings
+    config.value.authenticationPort.inMemoryConfig.username = settingsAdapter.getSetting(
+      'inMemoryAuthenticationAdapter.username'
+    );
+    config.value.authenticationPort.inMemoryConfig.isAuthenticated =
+      settingsAdapter.getSetting('inMemoryAuthenticationAdapter.isAuthenticated') !== '0';
+    // KeycloakAuthorizationAdapter settings
+    config.value.authenticationPort.keycloakConfig.ssoUri = settingsAdapter.getSetting(
+      'keycloakAuthenticationAdapter.ssoUri'
+    );
+    config.value.authenticationPort.keycloakConfig.realm = settingsAdapter.getSetting(
+      'keycloakAuthenticationAdapter.realm'
+    );
+    config.value.authenticationPort.keycloakConfig.clientId = settingsAdapter.getSetting(
+      'keycloakAuthenticationAdapter.clientId'
+    );
 
     // AuthorizationPort settings
     config.value.authenticationPort.adapter = settingsAdapter.getSetting('userManagementUi.adapter.authenticationPort');

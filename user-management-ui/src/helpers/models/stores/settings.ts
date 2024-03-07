@@ -15,9 +15,37 @@ interface ApiDataConfig {
   uri: string;
 }
 
+interface InMemoryDataAdapterConfig {
+  dbData: string;
+}
+
+interface TestDataAdapterConfig {
+  subAdapter: string;
+  errorResponses: string;
+}
+
 interface DataPortConfig {
   adapter: string;
   apiConfig: ApiDataConfig;
+  inMemoryConfig: InMemoryDataAdapterConfig;
+  testConfig: TestDataAdapterConfig;
+}
+
+interface InMemoryAuthenticationConfig {
+  username: string;
+  isAuthenticated: boolean;
+}
+
+interface KeycloakAuthenticationConfig {
+  ssoUri: string;
+  realm: string;
+  clientId: string;
+}
+
+interface AuthenticationPortConfig {
+  adapter: string;
+  inMemoryConfig: InMemoryAuthenticationConfig;
+  keycloakConfig: KeycloakAuthenticationConfig;
 }
 
 interface InMemoryAuthenticationConfig {

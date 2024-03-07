@@ -10,22 +10,26 @@ This is the UI for the UCS@school `user-management` module.
 
 ## Development setup
 
-See the top-level README for running the docker environment.
+See the top-level README for running the docker environment,
+which is the preferred way to run the local development setup.
 
-### End-to-end tests
+### Manually running the frontend through yarn
 
-There is a docker task for this:
-
-```bash
-../dev/dev_run.sh task playwright
-```
-
-However, the end-to-end tests can also be run locally by:
+Copy and adjust the environment variables:
 
 ```bash
-yarn test:e2e:setup  # only needed first time
-yarn test:e2e
+cd user-management-ui
+cp .env.example .env.local
+vi .env.local
 ```
+
+Then start the frontend:
+
+```bash
+yarn dev
+```
+
+The frontend runs at [localhost:5173](http://localhost:5173/univention/ucsschool/user-management/ui/) by default.
 
 ### Linting
 
@@ -45,11 +49,26 @@ yarn format
 
 ## Environment Variables
 
-The `.env.example` file is located in the `dev` directory in the top-level folder.
-The defaults are fine for the docker environment.
+The `.env.example` files can be found in the following places:
+
+* **docker:** `dev` directory in the top-level folder.
+* **yarn:** `user-management-ui` directory.
+
+The default settings in each of these files are sufficient to run docker or yarn, respectively.
+
+Please note that for yarn, all variables must be prefixed with the `export` directive.
 
 If you just want to do frontend development with yarn dev and without the backend,
-you can use a local `.env` file:
+you can use a local `.env.local` file:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
+export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=in_memory
+export VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT=in_memory
+```
+
+If you just want to do frontend development with yarn dev and without the backend,
+you can use a local `.env.local` file:
 
 ```bash
 export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
@@ -61,7 +80,7 @@ If you want to test specific adapters, these are the available settings:
 
 ### Settings Adapter
 
-Get the settings from the `.env` file:
+Get the settings from the `.env.local` file:
 
 ```bash
 export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
@@ -79,6 +98,22 @@ Use randomly-generated mock data:
 
 ```bash
 export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=in_memory
+```
+
+Use an empty set of data:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=in_memory
+export VITE__IN_MEMORY_DATA_ADAPTER__DB_DATA=emptyData
+```
+
+Use a test adapter that can mock errors with the in-memory adapter:
+
+```bash
+export VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT=test
+export VITE__TEST_DATA_ADAPTER__SUB_ADAPTER=in_memory
+export VITE__TEST_DATA_ADAPTER__ERROR_RESPONSES="fetchUsers:403 Forbidden|fetchUserColumns:404 Not Found"
+export VITE__IN_MEMORY_DATA_ADAPTER__DB_DATA=testDefaultData
 ```
 
 Use the BFF running in docker:

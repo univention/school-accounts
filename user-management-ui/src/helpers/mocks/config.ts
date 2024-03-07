@@ -120,40 +120,44 @@ export const makeMockAddConfig = (accessConfig?: AccessConfig): FormConfig => {
             label: i18next.t('mocks.formConfig.fieldset.name'),
             name: 'userinfo',
             rows: [
-              {
-                type: 'USelect',
-                props: {
-                  label: i18next.t('mocks.formConfig.field.school'),
-                  name: 'school',
-                  required: true,
-                  access: access.school || 'read',
-                  options: [],
+              [
+                {
+                  type: 'UComboBox',
+                  props: {
+                    label: i18next.t('mocks.formConfig.field.school'),
+                    name: 'school',
+                    required: true,
+                    access: access.school || 'read',
+                    options: [],
+                  },
                 },
-              },
-              {
-                type: 'UInputText',
-                props: {
-                  label: i18next.t('mocks.formConfig.field.lastname'),
-                  name: 'lastname',
-                  required: true,
-                  access: access.lastname || 'write',
+              ],
+              [
+                {
+                  type: 'UInputText',
+                  props: {
+                    label: i18next.t('mocks.formConfig.field.lastname'),
+                    name: 'lastname',
+                    required: true,
+                    access: access.lastname || 'write',
+                  },
                 },
-              },
-              {
-                type: 'UInputText',
-                props: {
-                  label: i18next.t('mocks.formConfig.field.firstname'),
-                  name: 'firstname',
-                  required: true,
-                  access: access.firstname || 'write',
+                {
+                  type: 'UInputText',
+                  props: {
+                    label: i18next.t('mocks.formConfig.field.firstname'),
+                    name: 'firstname',
+                    required: true,
+                    access: access.firstname || 'write',
+                  },
                 },
-              },
+              ],
               {
                 type: 'UInputText',
                 props: {
                   label: i18next.t('mocks.formConfig.field.username'),
                   name: 'username',
-                  required: false,
+                  required: true,
                   access: access.username || 'write',
                 },
               },
@@ -265,7 +269,7 @@ export const makeMockEditConfig = (accessConfig?: AccessConfig): FormConfig => {
             name: 'userinfo',
             rows: [
               {
-                type: 'USelect',
+                type: 'UComboBox',
                 props: {
                   label: i18next.t('mocks.formConfig.field.school'),
                   name: 'school',
@@ -274,24 +278,26 @@ export const makeMockEditConfig = (accessConfig?: AccessConfig): FormConfig => {
                   options: [],
                 },
               },
-              {
-                type: 'UInputText',
-                props: {
-                  label: i18next.t('mocks.formConfig.field.lastname'),
-                  name: 'lastname',
-                  required: true,
-                  access: access.lastname || 'write',
+              [
+                {
+                  type: 'UInputText',
+                  props: {
+                    label: i18next.t('mocks.formConfig.field.lastname'),
+                    name: 'lastname',
+                    required: true,
+                    access: access.lastname || 'write',
+                  },
                 },
-              },
-              {
-                type: 'UInputText',
-                props: {
-                  label: i18next.t('mocks.formConfig.field.firstname'),
-                  name: 'firstname',
-                  required: true,
-                  access: access.firstname || 'write',
+                {
+                  type: 'UInputText',
+                  props: {
+                    label: i18next.t('mocks.formConfig.field.firstname'),
+                    name: 'firstname',
+                    required: true,
+                    access: access.firstname || 'write',
+                  },
                 },
-              },
+              ],
               {
                 type: 'UInputText',
                 props: {

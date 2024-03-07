@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type {AddViewConfig, EditViewConfig} from '@/helpers/models/config';
+import type {AddViewConfig, ColumnsConfig, EditViewConfig, SchoolsConfig} from '@/helpers/models/config';
 import type {FetchObjectError, Result, SaveError} from '@/helpers/models/http';
 import type {FormValues, ListViewConfig} from '@/helpers/models/interface';
 import type {WrappedUser, WrappedUsersList} from '@/helpers/models/user';
@@ -26,21 +26,21 @@ export const getUsers = async (school: string): Promise<Result<WrappedUsersList,
 export const getListViewConfig = async (): Promise<Result<ListViewConfig, string>> => {
   const dataAdapter = await getDataAdapter();
 
-  const schoolsResult = await dataAdapter.fetchSchoolsConfig();
-  if (!schoolsResult.ok) {
-    return schoolsResult;
+  const [schoolsConfigResult, columnsConfigResult]: [Result<SchoolsConfig, string>, Result<ColumnsConfig, string>] =
+    await Promise.all([dataAdapter.fetchSchoolsConfig(), dataAdapter.fetchListViewConfig()]);
+  if (!schoolsConfigResult.ok) {
+    return schoolsConfigResult;
   }
-  const columnConfigResult = await dataAdapter.fetchListViewConfig();
-  if (!columnConfigResult.ok) {
-    return columnConfigResult;
+  if (!columnsConfigResult.ok) {
+    return columnsConfigResult;
   }
 
   return {
     ok: true,
     value: {
-      schools: schoolsResult.value.schools,
+      schools: schoolsConfigResult.value.schools,
       users: {
-        columns: columnConfigResult.value.columns,
+        columns: columnsConfigResult.value.columns,
       },
     },
   };

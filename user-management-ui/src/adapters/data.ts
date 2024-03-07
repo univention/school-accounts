@@ -225,6 +225,10 @@ class GenericDataAdapter implements DataPort {
   }
 }
 
+export const inMemoryDataAdapterSettings = {
+  dbData: 'inMemoryDataAdapter.dbData',
+};
+
 export class InMemoryDataAdapter extends GenericDataAdapter {
   private readonly _responseTimeout = 1000;
 
@@ -611,7 +615,7 @@ export class ApiDataAdapter extends GenericDataAdapter {
     const headers = await this._makeHeaders();
 
     let result: Result<Response, string> | null = null;
-    if (body !== 'undefined') {
+    if (body !== undefined) {
       const bodyJson = JSON.stringify(body);
       result = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers, body: bodyJson}));
     } else {
@@ -775,5 +779,151 @@ export class ApiDataAdapter extends GenericDataAdapter {
     // always work but might actually be wrong.
     // Add run-time checks
     return result;
+  }
+}
+
+export const testDataAdapterSettings = {
+  subAdapter: 'testDataAdapter.subAdapter',
+  errorResponses: 'testDataAdapter.errorResponses',
+};
+
+export class TestDataAdapter implements DataPort {
+  private readonly _responseTimeout = 1000;
+
+  _adapter: DataPort;
+  _errorResponses: Map<string, string>;
+
+  constructor(adapter: DataPort, errorResponses?: Map<string, string>) {
+    this._adapter = adapter;
+    this._errorResponses = errorResponses || new Map();
+  }
+
+  async fetchSchoolsConfig(): Promise<Result<SchoolsConfig, string>> {
+    const errResponse = this._errorResponses.get('fetchSchoolsConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchSchoolsConfig();
+  }
+
+  async fetchListViewConfig(): Promise<Result<ColumnsConfig, string>> {
+    const errResponse = this._errorResponses.get('fetchListViewConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchListViewConfig();
+  }
+
+  async fetchAddViewConfig(school: string): Promise<Result<AddViewConfig, string>> {
+    const errResponse = this._errorResponses.get('fetchAddViewConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchAddViewConfig(school);
+  }
+
+  async fetchEditViewConfig(id: string, school: string): Promise<Result<EditViewConfig, FetchObjectError>> {
+    const errResponse = this._errorResponses.get('fetchEditViewConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'generic',
+              message: errResponse,
+            },
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchEditViewConfig(id, school);
+  }
+
+  async fetchUsers(school: string): Promise<Result<WrappedUsersList, string>> {
+    const errResponse = this._errorResponses.get('fetchUsers');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchUsers(school);
+  }
+
+  async createUser(school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>> {
+    const errResponse = this._errorResponses.get('createUser');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'generic',
+              message: errResponse,
+            },
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.createUser(school, userData);
+  }
+
+  async updateUser(id: string, school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>> {
+    const errResponse = this._errorResponses.get('updateUser');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'generic',
+              message: errResponse,
+            },
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.updateUser(id, school, userData);
+  }
+
+  async removeUser(id: string): Promise<Result<null, string>> {
+    const errResponse = this._errorResponses.get('removeUser');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.removeUser(id);
   }
 }
