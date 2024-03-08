@@ -63,7 +63,9 @@ if os.path.exists(FRONTEND_DIR):
 
 @app.exception_handler(PermissionsError)
 async def permissions_exception_handler(_request: Request, exc: PermissionsError):
-    return ORJSONResponse(status_code=403, content={"detail": exc.message})
+    return ORJSONResponse(
+        status_code=403, content={"detail": exc.message, "missing_permissions": exc.missing_permissions}
+    )
 
 
 @app.exception_handler(OperationNotSupportedError)

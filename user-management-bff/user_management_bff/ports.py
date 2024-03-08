@@ -63,7 +63,9 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRep
         ...
 
     @abstractmethod
-    def create_user_representation(self, user: User) -> UserCreateRepresentation:  # pragma: no cover
+    def create_user_representation(
+        self, user: User, permissions: set[Permission]
+    ) -> UserCreateRepresentation:  # pragma: no cover
         ...
 
 

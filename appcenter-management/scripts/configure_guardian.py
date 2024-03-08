@@ -3,40 +3,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""Script to create the necessary Guardian objects fot the User management App.
-
-
-* Apps:
-  * ucsschool
-* Namespaces:
-  * user-management
-* Roles:
-  * student
-  * teacher
-  * school-admin
-  * staff
-  * super-admin
-* Permissions:
-  * read-lastname
-  * read-firstname
-  * read-schools
-  * read-data-for-all-schools
-  * read-activation-state
-  * read-role
-  * write-lastname
-  * write-firstname
-  * write-username
-  * write-schools
-  * write-data-for-all-schools
-  * write-activation-state
-  * write-role
-  * write-password
-  * create-user
-* Role-Capability-Mapping:
-  * ucsschool:user-management:super-admin has all permissions listed above
-  * each role can read themselves
-  * school_admin can create teachers and students if they are only on the school admins school
-"""
+"""Script to create the necessary Guardian objects fot the User management App."""
 import base64
 import json
 from pathlib import Path
@@ -198,26 +165,26 @@ def main():
     roles = [
         ("student", "Student"),
         ("teacher", "Teacher"),
-        ("school-admin", "School Administrator"),
+        ("school_admin", "School Administrator"),
         ("staff", "Staff"),
         ("super-admin", "Super Administrator"),
     ]
     permissions = [
-        ("read-lastname", "Read Last Name"),
-        ("read-firstname", "Read First Name"),
-        ("read-schools", "Read Schools"),
-        ("read-data-for-all-schools", "Read Data for All Schools"),
-        ("read-activation-state", "Read Activation State"),
-        ("read-role", "Read Role"),
-        ("write-lastname", "Write Last Name"),
-        ("write-firstname", "Write First Name"),
-        ("write-username", "Write Username"),
-        ("write-schools", "Write Schools"),
-        ("write-data-for-all-schools", "Write Data for All Schools"),
-        ("write-activation-state", "Write Activation State"),
-        ("write-role", "Write Role"),
-        ("write-password", "Write Password"),
         ("create-user", "Create User Action"),
+        ("read-last_name", "Read Last Name"),
+        ("read-first_name", "Read First Name"),
+        ("read-disabled", "Read Disabled"),
+        ("read-schools", "Read Schools"),
+        ("read-school_classes", "Read School Classes"),
+        ("read-roles", "Read Roles"),
+        ("write-last_name", "Write Last Name"),
+        ("write-first_name", "Write First Name"),
+        ("write-username", "Write Username"),
+        ("write-disabled", "Write Disabled"),
+        ("write-schools", "Write Schools"),
+        ("write-school_classes", "Write School Classes"),
+        ("write-roles", "Write Roles"),
+        ("write-password", "Write Password"),  # nosec B105
     ]
 
     print("Creating Guardian objects for UCS@school User Management")
@@ -264,15 +231,7 @@ def main():
         {"app_name": app_name, "namespace_name": default_namespace_name, "name": "super-admin"},
         [permission[0] for permission in permissions],
     )
-    create_role_capability_mapping(
-        "teacher-create-user",
-        "Teacher can create users",
-        app_name,
-        default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
-        ["create-user"],
-    )
-    for role in ("student", "teacher", "staff", "school-admin"):
+    for role in ("student", "teacher", "staff", "school_admin"):
         create_role_capability_mapping(
             f"{role}-read-self",
             f"{role} can read their own fields",
@@ -282,11 +241,12 @@ def main():
             [
                 f"read-{attr_name}"
                 for attr_name in (
-                    "lastname",
-                    "firstname",
+                    "last_name",
+                    "first_name",
+                    "disabled",
                     "schools",
-                    "activation-state",
-                    "role",
+                    "school_classes",
+                    "roles",
                 )
             ],
             conditions=[
@@ -299,32 +259,52 @@ def main():
             ],
         )
     create_role_capability_mapping(
+        "create-users-general",
+        "Create Users (general permissions)",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        [
+            "create-user",
+        ],
+        conditions=[
+            {
+                "app_name": "guardian",
+                "namespace_name": "builtin",
+                "name": "no_targets",
+                "parameters": [],
+            },
+        ],
+    )
+    create_role_capability_mapping(
         "create-users-in-same-school",
         "Create Users within same school",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school-admin"},
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
         [
             *[
                 f"write-{attr_name}"
                 for attr_name in (
-                    "lastname",
-                    "firstname",
+                    "last_name",
+                    "first_name",
                     "username",
+                    "disabled",
                     "schools",
-                    "activation-state",
-                    "role",
+                    "school_classes",
+                    "roles",
                     "password",
                 )
             ],
             *[
                 f"read-{attr_name}"
                 for attr_name in (
-                    "lastname",
-                    "firstname",
+                    "last_name",
+                    "first_name",
+                    "disabled",
                     "schools",
-                    "activation-state",
-                    "role",
+                    "school_classes",
+                    "roles",
                 )
             ],
             "create-user",

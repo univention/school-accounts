@@ -2,6 +2,18 @@
   "dev": {
     "school": [
       "create-user"
+    ],
+    "user": [
+      "create-user",
+      "write-first_name",
+      "write-schools",
+      "write-roles",
+      "write-username",
+      "write-disabled",
+      "write-school_classes",
+      "write-password",
+      "write-last_name"
     ]
-  }
+  },
+  "not_allowed_user": {}
 }

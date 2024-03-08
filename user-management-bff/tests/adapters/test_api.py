@@ -25,6 +25,22 @@ class TestFastAPIUsersRepresentationAdapter:
         return FastAPIUsersRepresentationAdapter()
 
     @pytest.mark.parametrize(
+        "attribute_name,permissions,expected",
+        [
+            ("first_name", {Permission.read_first_name}, {"value": 1, "access": AttributeAccess.READ}),
+            ("first_name", {Permission.write_first_name}, {"value": 1, "access": AttributeAccess.WRITE}),
+            (
+                "first_name",
+                {Permission.read_first_name, Permission.write_first_name},
+                {"value": 1, "access": AttributeAccess.WRITE},
+            ),
+            ("unknown", {}, {"value": None, "access": AttributeAccess.NONE}),
+        ],
+    )
+    def test__get_attribute_dict(self, adapter, attribute_name, permissions, expected):
+        assert adapter._get_attribute_dict(attribute_name, 1, permissions) == expected
+
+    @pytest.mark.parametrize(
         "values",
         [
             [],

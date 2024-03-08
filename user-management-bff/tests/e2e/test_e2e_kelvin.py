@@ -7,8 +7,10 @@ import requests
 
 
 @pytest.mark.e2e
-def test_create_user(access_token, base_url, kelvin_user_deletion):
-    token = access_token("mina.teacher", "univention")
+@pytest.mark.parametrize("username, password", [("alex.admin", "univention")])
+@pytest.mark.asyncio
+async def test_create_user_allowed(access_token, base_url, kelvin_user_deletion, username, password):
+    token = access_token(username, password)
     user = {
         "first_name": "Max",
         "last_name": "Mustermann",
@@ -27,15 +29,82 @@ def test_create_user(access_token, base_url, kelvin_user_deletion):
         "user": {
             "id": "max.mustermann",
             "attributes": {
-                "last_name": {"value": "Mustermann", "access": "read"},
-                "first_name": {"value": "Max", "access": "read"},
-                "username": {"value": "max.mustermann", "access": "read"},
-                "activated": {"value": True, "access": "read"},
-                "schools": {"value": ["school1"], "access": "read"},
-                "classes": {"value": [], "access": "read"},
-                "roles": {"value": ["teacher"], "access": "read"},
+                "last_name": {"value": "Mustermann", "access": "write"},
+                "first_name": {"value": "Max", "access": "write"},
+                "username": {"value": "max.mustermann", "access": "write"},
+                "activated": {"value": True, "access": "write"},
+                "schools": {"value": ["school1"], "access": "write"},
+                "classes": {"value": [], "access": "write"},
+                "roles": {"value": ["teacher"], "access": "write"},
             },
         }
+    }
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    "username, password", [("max.student", "univention"), ("mina.teacher", "univention")]
+)
+@pytest.mark.asyncio
+async def test_create_user_not_allowed(access_token, base_url, get_kelvin_user, username, password):
+    token = access_token(username, password)
+    user = {
+        "first_name": "Max",
+        "last_name": "Mustermann",
+        "username": "max.mustermann",
+        "roles": ["teacher"],
+        "school": "school1",
+        "school_classes": [],
+        "disabled": False,
+        "password": "univention",
+    }
+    response = requests.post(
+        f"{base_url}/bff/users", headers={"Authorization": f"Bearer {token}"}, json=user
+    )
+    assert response.status_code == 403, response.json()
+    assert response.json()["detail"] == "You do not have the permission to create this user."
+    assert set(response.json()["missing_permissions"]) == {
+        "create-user",
+        "write-first_name",
+        "write-schools",
+        "write-roles",
+        "write-username",
+        "write-disabled",
+        "write-school_classes",
+        "write-last_name",
+        "write-password",
+    }
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_create_user_not_allowed_wrong_school(access_token, base_url, get_kelvin_user):
+    token = access_token("alex.admin", "univention")
+    user = {
+        "first_name": "Max",
+        "last_name": "Mustermann",
+        "username": "max.mustermann",
+        "roles": ["teacher"],
+        "school": "school2",
+        "school_classes": [],
+        "disabled": False,
+        "password": "univention",
+    }
+    response = requests.post(
+        f"{base_url}/bff/users", headers={"Authorization": f"Bearer {token}"}, json=user
+    )
+    assert response.status_code == 403, response.json()
+    assert response.json()["detail"] == "You do not have the permission to create this user."
+    assert set(response.json()["missing_permissions"]) == {
+        "create-user",
+        "write-first_name",
+        "write-schools",
+        "write-roles",
+        "write-username",
+        "write-disabled",
+        "write-school_classes",
+        "write-last_name",
+        "write-password",
     }
 
 
@@ -98,7 +167,7 @@ async def test_patch_user_wrong_school(access_token, base_url, kelvin_user_facto
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 400, response.json()
-    assert response.json() == {"detail": "Cannot patch user 'Megan.Chang' in school 'school5'."}
+    assert response.json() == {"detail": f"Cannot patch user '{kelvin_user.name}' in school 'school5'."}
 
 
 @pytest.mark.asyncio

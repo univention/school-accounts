@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from os import getenv
 from typing import Callable, Optional
 
 import pytest
@@ -104,3 +105,21 @@ def get_kelvin_user(kelvin_credentials):
             return await UserResource(session=session).get(name=username)
 
     return _get_kelvin_user
+
+
+@pytest.fixture
+def kelvin_session():
+    username = getenv("KELVIN_PERSISTENCE_ADAPTER__USERNAME")
+    if not username:
+        with open(getenv("KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE")) as f:
+            username = f.read().strip()
+    password = getenv("KELVIN_PERSISTENCE_ADAPTER__PASSWORD")
+    if not password:
+        with open(getenv("KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE")) as f:
+            password = f.read().strip()
+    return Session(
+        username=username,
+        password=password,
+        host=getenv("KELVIN_PERSISTENCE_ADAPTER__URL"),
+        verify=getenv("SSL_CERT_FILE"),
+    )

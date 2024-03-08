@@ -7,7 +7,7 @@ import requests
 
 
 @pytest.mark.parametrize(
-    "username,expected_permissions", [("mina.teacher", ["add"]), ("max.student", [])]
+    "username,expected_permissions", [("mina.teacher", []), ("max.student", []), ("alex.admin", [])]
 )
 @pytest.mark.e2e
 def test_config_schools_permissions(access_token, base_url, username, expected_permissions):

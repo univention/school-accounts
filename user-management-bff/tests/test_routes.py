@@ -3,11 +3,15 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from user_management_bff.adapter_registry import port_dep
+from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.errors import CreationError
+from user_management_bff.main import app
+from user_management_bff.ports import PermissionsPort
 
 
 def test_get_users_config(test_client, api_prefix):
@@ -221,13 +225,13 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
     expected_user = {
         "id": user["username"],
         "attributes": {
-            "first_name": {"value": user["first_name"], "access": "read"},
-            "last_name": {"value": user["last_name"], "access": "read"},
-            "username": {"value": user["username"], "access": "read"},
-            "schools": {"value": [user["school"]], "access": "read"},
-            "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "read"},
-            "activated": {"value": not user["disabled"], "access": "read"},
-            "roles": {"value": user["roles"], "access": "read"},
+            "first_name": {"value": user["first_name"], "access": "write"},
+            "last_name": {"value": user["last_name"], "access": "write"},
+            "username": {"value": user["username"], "access": "write"},
+            "schools": {"value": [user["school"]], "access": "write"},
+            "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "write"},
+            "activated": {"value": not user["disabled"], "access": "write"},
+            "roles": {"value": user["roles"], "access": "write"},
         },
     }
     assert response.json() == {"user": expected_user}
@@ -239,7 +243,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
 
 
 @patch("user_management_bff.business_logic.create_user", side_effect=CreationError("error"))
-def test_create_user_error(mock_save, test_client, api_prefix):
+def test_create_user_creation_error(mock_save, test_client, api_prefix):
     user = {
         "first_name": "firstname",
         "last_name": "lastname",
@@ -252,10 +256,40 @@ def test_create_user_error(mock_save, test_client, api_prefix):
         "disabled": False,
         "password": "password",
     }
+    mock_permssions_port = MagicMock()
+    app.dependency_overrides[port_dep(PermissionsPort)] = lambda: mock_permssions_port
     response = test_client.post(f"{api_prefix}/users", json=user)
     mock_save.called_once()
     assert response.status_code == 400, response.json()
     assert response.json() == {"detail": "error"}
+
+
+@patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+def test_create_user_permissions_error(
+    mock_create_user, test_client, api_prefix, transform_user_dict_to_api_users_dict
+):
+    user = {
+        "first_name": "firstname",
+        "last_name": "lastname",
+        "username": "bad_username",
+        "roles": [
+            "teacher",
+        ],
+        "school": "test_school1",
+        "school_classes": ["1a", "2b"],
+        "disabled": False,
+        "password": "password",
+    }
+    response = test_client.post(f"{api_prefix}/users", json=user)
+    assert response.status_code == 403, response.json()
+
+    mock_create_user.called_once()
+
+    # check that the user was not created in the persistence adapter
+    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "r") as file:
+        users = json.load(file)
+
+    assert users[-1]["id"] != user["username"]
 
 
 def test_delete_user_non_existent(test_client, api_prefix):
@@ -295,13 +329,13 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
     )
     original_user = {
         "attributes": {
-            "activated": {"access": "read", "value": True},
-            "classes": {"access": "read", "value": ["test_school1:1a", "test_school1:2b"]},
-            "first_name": {"access": "read", "value": "firstname"},
-            "last_name": {"access": "read", "value": "lastname"},
-            "roles": {"access": "read", "value": ["teacher:school:test_school1"]},
-            "schools": {"access": "read", "value": ["test_school1"]},
-            "username": {"access": "read", "value": "firstname.lastname"},
+            "activated": {"access": "write", "value": True},
+            "classes": {"access": "write", "value": ["test_school1:1a", "test_school1:2b"]},
+            "first_name": {"access": "write", "value": "firstname"},
+            "last_name": {"access": "write", "value": "lastname"},
+            "roles": {"access": "write", "value": ["teacher:school:test_school1"]},
+            "schools": {"access": "write", "value": ["test_school1"]},
+            "username": {"access": "write", "value": "firstname.lastname"},
         },
         "id": "test_user1",
     }

@@ -173,6 +173,41 @@ class TestGuardianPermissionsAdapter:
                 TargetObject(id="ID2", attributes={"1": 2}, type=TargetObjectType.SCHOOL),
                 GuardianObject(id="ID2", attributes={"1": 2}, roles=[]),
             ),
+            (
+                TargetObject(
+                    id="ID3",
+                    attributes={
+                        "roles": ["teacher:school:school1", "student:school:school2"],
+                        "schools": ["school1", "school2"],
+                    },
+                    type=TargetObjectType.USER,
+                ),
+                GuardianObject(
+                    id="ID3",
+                    attributes={
+                        "roles": ["teacher:school:school1", "student:school:school2"],
+                        "schools": ["school1", "school2"],
+                    },
+                    roles=[
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="teacher",
+                            context=Context(
+                                app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="school1"
+                            ),
+                        ),
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="student",
+                            context=Context(
+                                app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="school2"
+                            ),
+                        ),
+                    ],
+                ),
+            ),
         ],
     )
     def test__target_object_to_guardian_object(self, adapter, target_obj, expected):
@@ -370,3 +405,8 @@ class TestFilePermissionsAdapter:
         target1 = Target(old_target=TargetObject(id="ID", type="school", attributes={}), new_target=None)
         result = await adapter.get_permissions(actor, [target1])
         assert result == {target1.old_target.id: expected}
+
+        # same but with new_target
+        target2 = Target(old_target=None, new_target=TargetObject(id="ID", type="school", attributes={}))
+        result = await adapter.get_permissions(actor, [target2])
+        assert result == {target2.new_target.id: expected}

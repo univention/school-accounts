@@ -43,6 +43,7 @@ class UsersGetRequest(BaseModel):
 
 class TargetObjectType(StrEnum):
     SCHOOL = auto()
+    USER = auto()
 
 
 class TargetObject(BaseModel):
@@ -58,6 +59,20 @@ class Target(BaseModel):
 
 class Permission(StrEnum):
     create_user = "create-user"
+    read_last_name = "read-last_name"
+    read_first_name = "read-first_name"
+    read_disabled = "read-disabled"
+    read_schools = "read-schools"
+    read_school_classes = "read-school_classes"
+    read_roles = "read-roles"
+    write_last_name = "write-last_name"
+    write_first_name = "write-first_name"
+    write_username = "write-username"
+    write_disabled = "write-disabled"
+    write_schools = "write-schools"
+    write_school_classes = "write-school_classes"
+    write_roles = "write-roles"
+    write_password = "write-password"  # nosec B105
 
 
 class Role(StrEnum):

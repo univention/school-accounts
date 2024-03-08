@@ -13,3 +13,6 @@ dev/local
 # App Center files
 appcenter-management/preinst
 appcenter-management/univention-appcenter-control
+
+# dev
+dev/local/

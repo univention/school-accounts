@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+from typing import Any
 
 from ..api_models import (
     AttributeAccess,
@@ -20,6 +21,26 @@ from ..ports import SchoolsRepresentationPort, UsersRepresentationPort
 
 
 class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersResponse, CreateUserResponse]):
+
+    @staticmethod
+    def _get_attribute_dict(
+        attribute_name: str, value: Any, permissions: set[Permission]
+    ) -> dict[str, Any]:
+        result = {"value": None, "access": AttributeAccess.NONE}
+        try:
+            if Permission(f"read-{attribute_name}") in permissions:
+                result["access"] = AttributeAccess.READ
+                result["value"] = value
+        except ValueError:
+            pass
+        try:
+            if Permission(f"write-{attribute_name}") in permissions:
+                result["access"] = AttributeAccess.WRITE
+                result["value"] = value
+        except ValueError:
+            pass
+        return result
+
     def create_users_representation(self, users: list[User]) -> ListUsersResponse:
         list_users = [
             ListUser(
@@ -51,38 +72,43 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         ]
         return ListUsersResponse(users=list_users)
 
-    def create_user_representation(self, user: User) -> CreateUserResponse:
+    def create_user_representation(self, user: User, permissions: set[Permission]) -> CreateUserResponse:
         return CreateUserResponse(
             user=CreateUserResponseUser(
                 id=user.id,
                 attributes=ListUserFixedAttributes(
                     username=ListUserAttribute[str](
-                        value=user.attributes.username, access=AttributeAccess.READ
+                        **self._get_attribute_dict("username", user.attributes.username, permissions)
                     ),
                     last_name=ListUserAttribute[str](
-                        value=user.attributes.last_name, access=AttributeAccess.READ
+                        **self._get_attribute_dict("last_name", user.attributes.last_name, permissions)
                     ),
                     first_name=ListUserAttribute[str](
-                        value=user.attributes.first_name, access=AttributeAccess.READ
+                        **self._get_attribute_dict("first_name", user.attributes.first_name, permissions)
                     ),
                     activated=ListUserAttribute[bool](
-                        value=not user.attributes.disabled, access=AttributeAccess.READ
+                        **self._get_attribute_dict("disabled", not user.attributes.disabled, permissions)
                     ),
                     classes=ListUserAttribute[list[str]](
-                        value=[
-                            f"{school}:{school_class}"
-                            for school, school_classes in user.attributes.school_classes.items()
-                            for school_class in school_classes
-                        ],
-                        access=AttributeAccess.READ,
+                        **self._get_attribute_dict(
+                            "school_classes",
+                            [
+                                f"{school}:{school_class}"
+                                for school, school_classes in user.attributes.school_classes.items()
+                                for school_class in school_classes
+                            ],
+                            permissions,
+                        )
                     ),
                     schools=ListUserAttribute[list[str]](
-                        value=[school for school in user.attributes.schools],
-                        access=AttributeAccess.READ,
+                        **self._get_attribute_dict(
+                            "schools", [school for school in user.attributes.schools], permissions
+                        )
                     ),
                     roles=ListUserAttribute[list[str]](
-                        value=[role for role in user.attributes.roles],
-                        access=AttributeAccess.READ,
+                        **self._get_attribute_dict(
+                            "roles", [role for role in user.attributes.roles], permissions
+                        )
                     ),
                 ),
             )

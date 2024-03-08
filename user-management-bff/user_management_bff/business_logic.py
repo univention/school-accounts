@@ -5,8 +5,16 @@
 from loguru import logger
 
 from .api_models import UserCreateRequest
-from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError
-from .models import School, Target, TargetObject, TargetObjectType, UserPatchRequest, UsersGetRequest
+from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError, PermissionsError
+from .models import (
+    Permission,
+    School,
+    Target,
+    TargetObject,
+    TargetObjectType,
+    UserPatchRequest,
+    UsersGetRequest,
+)
 from .ports import (
     PermissionsPort,
     SchoolsGetRepresentation,
@@ -17,6 +25,7 @@ from .ports import (
     UsersPersistencePort,
     UsersRepresentationPort,
 )
+from .utils import get_required_permissions_for_create_request
 
 
 def school_to_target(school: School) -> Target:
@@ -58,13 +67,46 @@ async def get_schools(
     return representation_port.create_schools_representation(schools, permissions)
 
 
+def user_to_target(user: UserCreateRequest) -> Target:
+    user_attributes = user.model_dump(exclude={"school", "roles", "school_classes"})
+    user_attributes["schools"] = [user.school]
+    user_attributes["roles"] = [f"{role}:school:{user.school}" for role in user.roles]
+    user_attributes["school_classes"] = {user.school: user.school_classes}
+    target = Target(
+        old_target=None,
+        new_target=TargetObject(
+            id=user.username, type=TargetObjectType.USER, attributes=user_attributes
+        ),
+    )
+    return target
+
+
 async def create_user(
     users_create_adapter: UsersPersistencePort,
     representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    users_get_adapter: UsersPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
     request_data: UserCreateRequest,
 ) -> UserCreateRepresentation:
+    try:
+        actor = await users_get_adapter.get_user(actor_id)
+    except ObjectNotFoundError as exc:
+        raise NoSchoolUserError(
+            f"The logged in user '{exc.identifier}' is not a valid UCS@school user.",
+            identifier=exc.identifier,
+        ) from exc
+    permissions = await permissions_port.get_permissions(actor, [user_to_target(request_data)])
+    target_permissions = set(list(permissions.values())[0]) if permissions else set()
+    missing_permissions = get_required_permissions_for_create_request(request_data) - target_permissions
+    if len(missing_permissions) > 0:
+        raise PermissionsError(
+            "You do not have the permission to create this user.",
+            missing_permissions=list(missing_permissions),
+        )
+
     user = await users_create_adapter.create_user(request_data)
-    return representation_port.create_user_representation(user)
+    return representation_port.create_user_representation(user, target_permissions)
 
 
 async def delete_user(users_delete_adapter: UsersPersistencePort, identifier: str) -> None:
@@ -94,4 +136,6 @@ async def patch_user(
     ):
         user.attributes.school_classes[patch_data.school] = patch_data.attributes.school_classes
     user = await users_patch_adapter.save_user(user)
-    return representation_port.create_user_representation(user)
+    return representation_port.create_user_representation(
+        user, {Permission(permission) for permission in Permission}
+    )

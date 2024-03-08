@@ -119,14 +119,26 @@ async def get_schools(
 
 @router.post("/users", status_code=201)
 async def create_user(
+    request: Request,
     user: UserCreateRequest,
     users_post_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
     representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
         port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
     ),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
 ) -> CreateUserResponse:
+    actor_id = await authentication_port.get_authenticated_id(request)
     try:
-        return await business_logic.create_user(users_post_adapter, representation_adapter, user)
+        return await business_logic.create_user(
+            users_post_adapter,
+            representation_adapter,
+            users_get_adapter,
+            permissions_port,
+            actor_id,
+            user,
+        )
     except CreationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

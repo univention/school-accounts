@@ -2,3 +2,4 @@
 "school1","student","Max","Student","school1-1a","A student.","+05-288-340355",""
 "school1","teacher","Mina","Teacher","school1-1a,school1-1a","A teacher.","+99-882-970783",""
 "school1","student","To","Delete","school1-1a,school1-1a","A student to delete in test_e2e_kelvin.py::test_delete_user","+99-882-970783",""
+"school1","staff","Alex","Admin","","A school admin.","+99-882-970784",""

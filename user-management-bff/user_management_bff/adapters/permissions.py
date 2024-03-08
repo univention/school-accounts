@@ -59,7 +59,6 @@ def ucsschool_roles_to_guardian_roles(role_strings: list[str]) -> list[Role]:
 
 
 class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
-
     class Config:
         alias = "guardian"
         cached = True
@@ -86,6 +85,9 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
         role_strings: list[str] = []
         if target_object.type == TargetObjectType.SCHOOL:
             role_strings = []
+        elif target_object.type == TargetObjectType.USER:
+            role_strings = target_object.attributes.get("roles", [])
+
         return GuardianObject(
             id=target_object.id,
             roles=ucsschool_roles_to_guardian_roles(role_strings),
@@ -160,7 +162,6 @@ class FilePermissionsAdapterSettings:
 
 
 class FilePermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
-
     class Config:
         alias = "file"
         cached = True
@@ -177,11 +178,16 @@ class FilePermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
             self._data = json.load(fd)
 
     async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
-        permission_data = {
-            target.old_target.id: self._data.get(actor.id, {}).get(target.old_target.type, [])
-            for target in targets
-            if target.old_target
-        }
+        permission_data = {}
+        for target in targets:
+            if target.old_target:
+                permission_data[target.old_target.id] = self._data.get(actor.id, {}).get(
+                    target.old_target.type, []
+                )
+            elif target.new_target:
+                permission_data[target.new_target.id] = self._data.get(actor.id, {}).get(
+                    target.new_target.type, []
+                )
         result = {}
         for target_id, permission_strings in permission_data.items():
             permissions = []
