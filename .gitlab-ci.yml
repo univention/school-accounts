@@ -100,8 +100,15 @@ integration-tests:
   variables:
     TARGET_VERSION: "5.0-6"
     KVM_SERVER: "soft-test01.knut.univention.de"
+    UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
   before_script:
     - if [ -z ${UCSSCHOOL_USER_MANAGEMENT_VERSION+x} ]; then echo "Please specify an app version to install." && exit 1; fi
+    - apt-get update && apt-get install -y curl || echo "Curl installed."
+    - cd dev/tests/
+    - mkdir utils
+    - curl -o utils/utils.sh "$UCS_UTILS_URL/utils.sh"
+    - curl -o utils/utils-local.sh "$UCS_UTILS_URL/utils-local.sh"
+    - chmod +x utils/utils-local.sh
     - mkdir ~/.ssh/
     - mkdir -p ~/ec2/keys
     - cp "$SSH_PRIVATE_KEY_BUILD" ~/.ssh/id_rsa
@@ -109,15 +116,14 @@ integration-tests:
     - chmod 0600 ~/.ssh/id_rsa
     - chmod 0600 ~/ec2/keys/tech.pem
   script:
-    - cd dev/tests
-    - if [ -z ${NO_HALT+x} ]; then ucs-kvm-create -t -c integration_env.cfg; else ucs-kvm-create -c integration_env.cfg; fi
+    - if [ -z ${NO_HALT+x} ]; then ucs-kvm-create -t -c integration_tests.cfg; else ucs-kvm-create -c integration_tests.cfg; fi
     - test -e COMMAND_SUCCESS
   artifacts:
     when: always
     paths:
-      - dev/tests/backup1/test-reports/ucsschool-user-management-in_container.xml
+      - dev/tests/junit.xml
     reports:
-      junit: dev/tests/backup1/test-reports/ucsschool-user-management-in_container.xml
+      junit: dev/tests/junit.xml
 
 
 bff-coverage:
