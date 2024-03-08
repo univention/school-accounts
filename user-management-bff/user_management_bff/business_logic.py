@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from .api_models import UserCreateRequest
 from .models import School, Target, TargetObject, TargetObjectType, UsersGetRequest
 from .ports import (
     PermissionsPort,
     SchoolsGetRepresentation,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
+    UserCreateRepresentation,
     UsersGetRepresentation,
     UsersPersistencePort,
     UsersRepresentationPort,
@@ -25,7 +27,7 @@ def school_to_target(school: School) -> Target:
 
 async def get_users(
     users_get_adapter: UsersPersistencePort,
-    representation_port: UsersRepresentationPort[UsersGetRepresentation],
+    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
     request_data: UsersGetRequest,
 ) -> UsersGetRepresentation:
     users = await users_get_adapter.get_users(request_data.school)
@@ -45,3 +47,12 @@ async def get_schools(
         actor, [school_to_target(school) for school in schools]
     )
     return representation_port.create_schools_representation(schools, permissions)
+
+
+async def create_user(
+    users_create_adapter: UsersPersistencePort,
+    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    request_data: UserCreateRequest,
+) -> UserCreateRepresentation:
+    user = await users_create_adapter.create_user(request_data)
+    return representation_port.create_user_representation(user)

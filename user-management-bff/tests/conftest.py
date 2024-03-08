@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from ucsschool.kelvin.client import UserResource
 
 
 def pytest_addoption(parser):
@@ -89,3 +90,13 @@ def transform_user_dict_to_api_users_dict():
         return transformed
 
     return _transform_user_dict_to_api_users_dict
+
+
+@pytest.fixture
+def delete_user_kelvin():
+    async def _delete_user_kelvin(username: str, kelvin_session) -> None:
+        async with kelvin_session as session:
+            user = await UserResource(session=session).get(name=username)
+            await user.delete()
+
+    return _delete_user_kelvin

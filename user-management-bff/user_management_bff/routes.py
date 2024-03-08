@@ -4,19 +4,22 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from . import business_logic
 from .adapter_registry import port_dep
 from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepresentationAdapter
 from .api_models import (
     ColumnConfig,
+    CreateUserResponse,
     FormatterChoice,
     ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
+    UserCreateRequest,
 )
 from .constants import API_PREFIX
+from .errors import CreationError
 from .models import UsersGetRequest
 from .ports import (
     FastAPIAuthenticationPort,
@@ -102,3 +105,17 @@ async def get_schools(
     return await business_logic.get_schools(
         schools_get_adapter, representation_adapter, permissions_port, users_get_adapter, actor_id
     )
+
+
+@router.post("/user", status_code=201)
+async def create_user(
+    user: UserCreateRequest,
+    users_post_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
+        port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
+    ),
+) -> CreateUserResponse:
+    try:
+        return await business_logic.create_user(users_post_adapter, representation_adapter, user)
+    except CreationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

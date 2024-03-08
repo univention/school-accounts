@@ -4,9 +4,11 @@
 
 import json
 import os
+from unittest.mock import patch
 
 import pytest
 from ucsschool.kelvin.client import NoObject
+from ucsschool.kelvin.client import User as KelvinUser
 
 import user_management_bff.adapters.users
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -15,8 +17,8 @@ from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
 )
-from user_management_bff.errors import ObjectNotFoundError
-from user_management_bff.models import User, UserAttributes
+from user_management_bff.errors import CreationError, ObjectNotFoundError
+from user_management_bff.models import User, UserAttributes, UserCreateRequest
 
 
 class TestKelvinUsersPersistenceAdapter:
@@ -179,6 +181,110 @@ class TestKelvinUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found: test_user1") as exc_info:
             await adapter.get_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
+
+    @patch.object(KelvinUser, "save", return_value=None)
+    @pytest.mark.asyncio
+    async def test_create_user(self, mock_save, adapter, dummy_settings):
+        await adapter.configure(dummy_settings)
+        result = await adapter.create_user(
+            UserCreateRequest(
+                first_name="firstname",
+                last_name="lastname",
+                username="test_user1",
+                disabled=False,
+                schools=["school1"],
+                school_classes={"school1": ["1a", "2b"]},
+                roles=["teacher"],
+                password="univention",
+            )
+        )
+        await mock_save.called_once()
+        assert result == User(
+            id="test_user1",
+            attributes=UserAttributes(
+                last_name="lastname",
+                first_name="firstname",
+                username="test_user1",
+                disabled=False,
+                schools=["school1"],
+                school_classes={"school1": ["1a", "2b"]},
+                roles=["teacher"],
+                password=None,
+            ),
+        )
+
+    @patch.object(KelvinUser, "save", side_effect=NoObject("error"))
+    @pytest.mark.asyncio
+    async def test_create_user_error(self, mock_save, adapter, dummy_settings):
+        await adapter.configure(dummy_settings)
+        with pytest.raises(CreationError) as exc_info:
+            await adapter.create_user(
+                UserCreateRequest(
+                    first_name="firstname",
+                    last_name="lastname",
+                    username="test_user1",
+                    disabled=False,
+                    schools=["school1"],
+                    school_classes={"school1": ["1a", "2b"]},
+                    roles=["teacher"],
+                    password="univention",
+                )
+            )
+        await mock_save.called_once()
+        assert exc_info.value.message == "error"
+
+
+@pytest.mark.e2e
+class TestKelvinUsersPersistenceAdapterIntegration:
+    @pytest.fixture
+    def adapter(self):
+        return KelvinUsersPersistenceAdapter()
+
+    @pytest.fixture
+    def settings(self):
+        username = os.environ.get("KELVIN_PERSISTENCE_ADAPTER__USERNAME")
+        if not username:
+            with open(os.environ["KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE"]) as fd:
+                username = fd.read().strip()
+        password = os.environ.get("KELVIN_PERSISTENCE_ADAPTER__PASSWORD")
+        if not password:
+            with open(os.environ["KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE"]) as fd:
+                password = fd.read().strip()
+        return KelvinPersistenceAdapterSettings(
+            url=os.environ["KELVIN_PERSISTENCE_ADAPTER__URL"],
+            username=username,
+            password=password,
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_user(self, adapter, settings, delete_user_kelvin):
+        await adapter.configure(settings)
+        result = await adapter.create_user(
+            UserAttributes(
+                first_name="firstname",
+                last_name="lastname",
+                username="test_user1",
+                disabled=False,
+                schools=["school1"],
+                school_classes={},
+                roles=["teacher"],
+                password="univention1234567890",
+            )
+        )
+        assert result
+        assert result == User(
+            id="test_user1",
+            attributes=UserAttributes(
+                last_name="lastname",
+                first_name="firstname",
+                username="test_user1",
+                disabled=False,
+                schools=["school1"],
+                school_classes={},
+                roles=["teacher"],
+            ),
+        )
+        await delete_user_kelvin("test_user1", adapter.kelvin_session)
 
 
 class TestFileUsersPersistenceAdapter:

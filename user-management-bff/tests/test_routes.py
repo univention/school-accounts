@@ -1,9 +1,13 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import json
 import os
+from unittest.mock import patch
 
 import pytest
+
+from user_management_bff.errors import CreationError
 
 
 def test_get_users_config(test_client, api_prefix):
@@ -192,3 +196,66 @@ def test_config_schools(test_client, api_prefix):
             for school in input_data
         ]
     }
+
+
+def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_dict):
+    # backup json file
+    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "r") as file:
+        data = file.read()
+
+    user = {
+        "first_name": "firstname",
+        "last_name": "lastname",
+        "username": "username",
+        "roles": [
+            "teacher",
+        ],
+        "schools": ["test_school1"],
+        "school_classes": {"test_school1": ["1a", "2b"]},
+        "disabled": False,
+        "password": "password",
+    }
+    response = test_client.post(f"{api_prefix}/user", json=user)
+    assert response.status_code == 201, response.json()
+    expected_user = {
+        "id": user["username"],
+        "attributes": {
+            "first_name": {"value": user["first_name"], "access": "read"},
+            "last_name": {"value": user["last_name"], "access": "read"},
+            "username": {"value": user["username"], "access": "read"},
+            "schools": {"value": user["schools"], "access": "read"},
+            "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "read"},
+            "activated": {"value": not user["disabled"], "access": "read"},
+            "roles": {"value": user["roles"], "access": "read"},
+        },
+    }
+    assert response.json() == {"user": expected_user}
+    # check that the user was created in the persistence adapter
+    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "r") as file:
+        users = json.load(file)
+
+    assert users[-1]["id"] == user["username"]
+
+    # restore json file
+    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "w") as file:
+        file.write(data)
+
+
+@patch("user_management_bff.business_logic.create_user", side_effect=CreationError("error"))
+def test_create_user_error(mock_save, test_client, api_prefix):
+    user = {
+        "first_name": "firstname",
+        "last_name": "lastname",
+        "username": "username",
+        "roles": [
+            "teacher",
+        ],
+        "schools": ["test_school1"],
+        "school_classes": {"test_school1": ["1a", "2b"]},
+        "disabled": False,
+        "password": "password",
+    }
+    response = test_client.post(f"{api_prefix}/user", json=user)
+    mock_save.called_once()
+    assert response.status_code == 400, response.json()
+    assert response.json() == {"detail": "error"}

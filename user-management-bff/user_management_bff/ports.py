@@ -7,6 +7,7 @@ from typing import Any, Callable, Coroutine, Generic, TypeVar
 
 from fastapi import Request
 
+from .api_models import UserCreateRequest
 from .models import Permission, School, Target, User
 
 
@@ -23,6 +24,10 @@ class UsersPersistencePort(ABC):
         Raises an ObjectNotFoundError, if the user could not be found.q
         """
 
+    @abstractmethod
+    async def create_user(self, user: UserCreateRequest) -> User:  # pragma: no cover
+        ...
+
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod
@@ -31,13 +36,18 @@ class SchoolsPersistencePort(ABC):
 
 
 UsersGetRepresentation = TypeVar("UsersGetRepresentation")
+UserCreateRepresentation = TypeVar("UserCreateRepresentation")
 
 
-class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation]):
+class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRepresentation]):
     @abstractmethod
     def create_users_representation(
         self, users: list[User]
     ) -> UsersGetRepresentation:  # pragma: no cover
+        ...
+
+    @abstractmethod
+    def create_user_representation(self, user: User) -> UserCreateRepresentation:  # pragma: no cover
         ...
 
 

@@ -4,7 +4,7 @@
 from enum import StrEnum, auto
 from typing import Any, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 AttributeType = TypeVar("AttributeType")
 
@@ -24,6 +24,7 @@ class UserAttributes(BaseModel):
     schools: list[str]
     school_classes: dict[str, list[str]]
     roles: list[str]
+    password: str | None = None
 
 
 class User(BaseModel):
@@ -57,3 +58,35 @@ class Target(BaseModel):
 
 class Permission(StrEnum):
     create_user = "create-user"
+
+
+class Role(StrEnum):
+    STUDENT = "student"
+    TEACHER = "teacher"
+    STAFF = "staff"
+
+
+class UserCreateRequest(BaseModel):
+    last_name: str
+    first_name: str
+    username: str | None = None
+    password: str | None = None
+    schools: list[str]
+    school_classes: dict[str, list[str]]
+    roles: list[Role]
+    disabled: bool = False
+
+    @model_validator(mode="after")
+    def check_schools(self) -> "UserCreateRequest":
+        for school, classes in self.school_classes.items():
+            if school not in self.schools:
+                raise ValueError(f"School '{school}' is not present in the user's schools list")
+        return self
+
+    @model_validator(mode="after")
+    def check_school_classes_for_student(self) -> "UserCreateRequest":
+        if Role.STUDENT in self.roles and not self.school_classes:
+            raise ValueError(
+                "At least one school class for each school must be present when the user is a student"
+            )
+        return self

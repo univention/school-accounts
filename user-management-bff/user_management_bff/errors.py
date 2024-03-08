@@ -18,4 +18,9 @@ class ObjectNotFoundError(PersistenceError):
         self.identifier = identifier
 
 
+class CreationError(PersistenceError):
+    def __init__(self, message: str):  # pragma: no cover
+        super().__init__(message)
+
+
 class PermissionsError(BaseError): ...

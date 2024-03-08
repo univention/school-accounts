@@ -4,9 +4,12 @@
 
 from ..api_models import (
     AttributeAccess,
+    CreateUserResponse,
+    CreateUserResponseUser,
     ListSchool,
     ListSchoolsResponse,
     ListUser,
+    ListUserAttribute,
     ListUserFixedAttributes,
     ListUsersResponse,
     SchoolContextPermission,
@@ -15,7 +18,7 @@ from ..models import Permission, School, User
 from ..ports import SchoolsRepresentationPort, UsersRepresentationPort
 
 
-class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersResponse]):
+class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersResponse, CreateUserResponse]):
     def create_users_representation(self, users: list[User]) -> ListUsersResponse:
         list_users = [
             ListUser(
@@ -44,6 +47,43 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
             for user in users
         ]
         return ListUsersResponse(users=list_users)
+
+    def create_user_representation(self, user: User) -> CreateUserResponse:
+        return CreateUserResponse(
+            user=CreateUserResponseUser(
+                id=user.id,
+                attributes=ListUserFixedAttributes(
+                    username=ListUserAttribute[str](
+                        value=user.attributes.username, access=AttributeAccess.READ
+                    ),
+                    last_name=ListUserAttribute[str](
+                        value=user.attributes.last_name, access=AttributeAccess.READ
+                    ),
+                    first_name=ListUserAttribute[str](
+                        value=user.attributes.first_name, access=AttributeAccess.READ
+                    ),
+                    activated=ListUserAttribute[bool](
+                        value=not user.attributes.disabled, access=AttributeAccess.READ
+                    ),
+                    classes=ListUserAttribute[list[str]](
+                        value=[
+                            f"{school}:{school_class}"
+                            for school, school_classes in user.attributes.school_classes.items()
+                            for school_class in school_classes
+                        ],
+                        access=AttributeAccess.READ,
+                    ),
+                    schools=ListUserAttribute[list[str]](
+                        value=[school for school in user.attributes.schools],
+                        access=AttributeAccess.READ,
+                    ),
+                    roles=ListUserAttribute[list[str]](
+                        value=[role for role in user.attributes.roles],
+                        access=AttributeAccess.READ,
+                    ),
+                ),
+            )
+        )
 
 
 class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsResponse]):
