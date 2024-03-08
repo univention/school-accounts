@@ -4,6 +4,7 @@
 
 import {createRouter, createWebHistory} from 'vue-router';
 import ListView from '@/views/ListView.vue';
+import EditView from '@/views/EditView.vue';
 import PageNotFound from '@/views/PageNotFound.vue';
 
 const router = createRouter({
@@ -13,6 +14,18 @@ const router = createRouter({
       path: '/',
       name: 'users',
       component: ListView,
+    },
+    {
+      path: '/edit/:id/:page?',
+      name: 'edit',
+      component: EditView,
+      props: {action: 'edit'},
+    },
+    {
+      path: '/add/:page?',
+      name: 'add',
+      component: EditView,
+      props: {action: 'add'},
     },
     {
       path: '/:pathMatch(.*)*',

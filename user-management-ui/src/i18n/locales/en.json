@@ -21,6 +21,14 @@
     "description": "Not all selected users could be deleted:",
     "title": "Deleting users failed"
   },
+  "EditView": {
+    "button": {
+      "back": "Back"
+    },
+    "heading": {
+      "add": "Users (schools)"
+    }
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -30,10 +38,13 @@
   "ListView": {
     "contextActions": {
       "deleteLabel": "Delete",
-      "editLabel": "Edit"
+      "editLabel": "Detail"
     },
     "fetchConfig.error": "An error occurred while loading the page. Please try again or contact your system administrator: {{msg}}",
     "fetchObjects.error": "The search has failed: {{msg}}",
+    "globalActions": {
+      "addLabel": "Add"
+    },
     "header": "Users (schools)",
     "searchForm": {
       "school": {

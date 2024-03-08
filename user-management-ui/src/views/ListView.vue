@@ -5,7 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref, type ComputedRef} from 'vue';
+import {computed, onMounted, reactive, ref, type ComputedRef, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import {useTranslation} from 'i18next-vue';
 import {
   useStandby,
@@ -18,7 +19,7 @@ import {
   UConfirmDialog,
 } from '@univention/univention-veb';
 import {getListViewConfig, getUsers, deleteUsers} from '@/helpers/dataAccess';
-import type {ListViewConfig, ListViewState, GridRow} from '@/helpers/models/interface';
+import type {GridRow, ListViewConfig, ListViewState} from '@/helpers/models/interface';
 import {useErrorStore} from '@/stores/error';
 
 const {t} = useTranslation();
@@ -26,6 +27,8 @@ const {t} = useTranslation();
 /** Stores **/
 
 const errorStore = useErrorStore();
+const router = useRouter();
+const route = useRoute();
 
 /** Refs **/
 
@@ -47,6 +50,58 @@ const state = ref<ListViewState>({
   },
 });
 
+const globalActions = computed(() => {
+  const canAdd = (): boolean => {
+    const currentSchool = state.value.users.searchFormValues.school;
+    const schoolConfig = config.value.schools.filter(school => school.value === currentSchool)[0];
+    if (schoolConfig) {
+      return schoolConfig.permissions.includes('add');
+    }
+    return false;
+  };
+
+  return [
+    {
+      label: t('ListView.globalActions.addLabel'),
+      icon: 'plus',
+      callback: onAdd,
+      disabled: !canAdd(),
+    },
+  ];
+});
+
+const editContextAction: ComputedRef<UGridContextAction> = computed(() => ({
+  label: t('ListView.contextActions.editLabel'),
+  icon: 'edit-2',
+  callback: onEdit,
+  canExecute: (row: UGridRow) => typeof row !== 'undefined',
+  multi: false,
+}));
+
+const contextActions: ComputedRef<UGridContextAction[]> = computed(() => {
+  const canDo =
+    (action: string): ((row: UGridRow) => boolean) =>
+    (row: UGridRow) =>
+      (row as GridRow).allowedActions.includes(action);
+
+  const actions: UGridContextAction[] = [
+    editContextAction.value,
+    {
+      label: t('ListView.contextActions.deleteLabel'),
+      icon: 'trash',
+      callback: (ids: string[], objectsToDelete: UGridRow[], sel: string[]): void => {
+        deleteModalProps.selected = sel;
+        deleteModalProps.toDelete = ids;
+        deleteModalActive.value = true;
+      },
+      canExecute: canDo('delete'),
+      multi: true,
+      enablingMode: 'some',
+    },
+  ];
+  return actions;
+});
+
 const searchDisabled = computed(() => {
   const searchFormValues = Object.entries(state.value.users.searchFormValues);
   const atLeastOneSelection =
@@ -55,6 +110,19 @@ const searchDisabled = computed(() => {
       return selection !== undefined && selection !== '';
     }).length > 0;
   return !atLeastOneSelection;
+});
+
+const deleteModalError = reactive({
+  active: false,
+  failedUsers: [] as {id: string; error: string}[],
+});
+const deleteModalActive = ref(false);
+const deleteModalProps = reactive<{
+  selected: string[];
+  toDelete: string[];
+}>({
+  selected: [],
+  toDelete: [],
 });
 
 /** Helper functions **/
@@ -72,29 +140,22 @@ const loadConfig = async () => {
   state.value.users.searchFormValues.school = result.value.schools[0]?.value || '';
 };
 
-const search = async () => {
-  const school = state.value.users.searchFormValues.school;
-  if (school === '' || school === undefined) {
-    return;
-  }
-
-  await standby.wrap(async () => {
-    const result = await getUsers(school);
-    if (!result.ok) {
-      errorStore.push({
-        message: t('ListView.fetchObjects.error', {msg: result.error}),
-        unRecoverable: false,
-      });
-      return;
-    }
-    state.value.users.rows = result.value.users;
+const onAdd = (): void => {
+  const currentSchool = state.value.users.searchFormValues.school;
+  router.push({
+    name: 'add',
+    query: {school: encodeURIComponent(currentSchool)},
   });
 };
 
-onMounted(async () => {
-  await standby.wrap(() => loadConfig());
-  loading.value = false;
-});
+const onEdit = (ids: string[]): void => {
+  const currentSchool = state.value.users.searchFormValues.school;
+  router.push({
+    name: 'edit',
+    params: {id: encodeURIComponent(ids[0])},
+    query: {school: encodeURIComponent(currentSchool)},
+  });
+};
 
 const onDelete = async (ids: string[]): Promise<void> => {
   deleteModalActive.value = false;
@@ -110,39 +171,58 @@ const onDelete = async (ids: string[]): Promise<void> => {
   state.value.users.rows = state.value.users.rows.filter(row => !successes.has(row.id));
   state.value.users.rowSelection = state.value.users.rowSelection.filter(id => !successes.has(id));
 };
-const deleteModalError = reactive({
-  active: false,
-  failedUsers: [] as {id: string; error: string}[],
-});
-const deleteModalActive = ref(false);
-const deleteModalProps = reactive<{
-  selected: string[];
-  toDelete: string[];
-}>({
-  selected: [],
-  toDelete: [],
-});
 
-const canDo =
-  (action: string): ((row: UGridRow) => boolean) =>
-  (row: UGridRow) =>
-    (row as GridRow).allowedActions.includes(action);
-const contextActions: ComputedRef<UGridContextAction[]> = computed(() => {
-  const actions: UGridContextAction[] = [
-    {
-      label: t('ListView.contextActions.deleteLabel'),
-      icon: 'trash',
-      callback: (ids: string[], objectsToDelete: UGridRow[], sel: string[]): void => {
-        deleteModalProps.selected = sel;
-        deleteModalProps.toDelete = ids;
-        deleteModalActive.value = true;
-      },
-      canExecute: canDo('delete'),
-      multi: true,
-      enablingMode: 'some',
-    },
-  ];
-  return actions;
+const onSearch = async (keepSelection = false) => {
+  const school = state.value.users.searchFormValues.school;
+  if (school === '' || school === undefined) {
+    return;
+  }
+
+  await standby.wrap(async () => {
+    const result = await getUsers(school);
+    if (!result.ok) {
+      errorStore.push({
+        message: t('ListView.fetchObjects.error', {msg: result.error}),
+        unRecoverable: false,
+      });
+      return;
+    }
+    state.value.users.rows = result.value.users;
+
+    if (keepSelection) {
+      const rowIds = new Set(state.value.users.rows.map(row => row.id));
+      state.value.users.rowSelection = state.value.users.rowSelection.filter(selectionId => rowIds.has(selectionId));
+    } else {
+      state.value.users.rowSelection = [];
+    }
+  });
+};
+
+/** Watches **/
+
+watch(
+  () => route.query['refetch'],
+  async val => {
+    if (val !== undefined) {
+      const query = JSON.parse(JSON.stringify(route.query));
+      delete query.refetch;
+      router.replace({
+        ...route,
+        query,
+      });
+      if (state.value.users.rows.length > 0) {
+        await onSearch(true);
+      }
+    }
+  },
+  {
+    immediate: true,
+  }
+);
+
+onMounted(async () => {
+  await standby.wrap(() => loadConfig());
+  loading.value = false;
 });
 </script>
 
@@ -162,7 +242,7 @@ const contextActions: ComputedRef<UGridContextAction[]> = computed(() => {
 
     <form
       class="searchForm"
-      @submit.prevent="search()"
+      @submit.prevent="onSearch()"
     >
       <div class="searchForm__elements">
         <UComboBox
@@ -189,9 +269,11 @@ const contextActions: ComputedRef<UGridContextAction[]> = computed(() => {
       class="listView__uGrid"
       v-model:selection="state.users.rowSelection"
       :columns="config.users.columns"
+      :globalActions="globalActions"
       :rows="state.users.rows"
       :contextActions="contextActions"
       :itemsPerPageOptions="[20, 50, -1]"
+      :clickCallback="editContextAction"
     />
     <UConfirmDialog
       v-model:active="deleteModalActive"

@@ -21,6 +21,14 @@
     "description": "Die folgenden Benutzer konnten nicht gel\u00f6scht werden:",
     "title": "Das L\u00f6schen von Benutzern ist fehlgeschlagen"
   },
+  "EditView": {
+    "button": {
+      "back": "Zur\u00fcck"
+    },
+    "heading": {
+      "add": "Benutzer (Schulen)"
+    }
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -30,10 +38,13 @@
   "ListView": {
     "contextActions": {
       "deleteLabel": "L\u00f6schen",
-      "editLabel": "Bearbeiten"
+      "editLabel": "Detail"
     },
     "fetchConfig.error": "Beim Laden der Seite ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Systemadministrator: {{msg}}",
     "fetchObjects.error": "Die Suche ist fehlgeschlagen: {{msg}}",
+    "globalActions": {
+      "addLabel": "Hinzuf\u00fcgen"
+    },
     "header": "Benutzer (Schulen)",
     "searchForm": {
       "school": {
