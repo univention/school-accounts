@@ -82,7 +82,8 @@ run_task() {
     --tracing retain-on-failure \
     --output "/src/.cache/test-results" \
     -m "e2e" \
-    --base_url "$E2E_BASE_URL"
+    --base_url "$E2E_BASE_URL" \
+    --guardian_management_url "$E2E_GUARDIAN_MANAGEMENT_URL" \
     .
     exit $?
   fi

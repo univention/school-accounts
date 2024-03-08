@@ -12,6 +12,7 @@ from ucsschool.kelvin.client import UserResource
 
 def pytest_addoption(parser):
     parser.addoption("--base_url", action="store")
+    parser.addoption("--guardian_management_url", action="store")
 
 
 @pytest.fixture(scope="session")

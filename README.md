@@ -167,7 +167,9 @@ This way you have access to the setup after the job is done.
 You can run the e2e tests for the backend with:
 
 ```shell
-E2E_BASE_URL="https://backup1.school.test/univention/ucsschool/user-management" dev/dev_run.sh task pytest-e2e
+E2E_BASE_URL="https://backup1.school.test/univention/ucsschool/user-management" \
+E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.school.test/guardian/management" \
+dev/dev_run.sh task pytest-e2e
 ```
 
 Make sure that the domain names can be resolved. This can be achieved by entering the following into your `/etc/hosts`:

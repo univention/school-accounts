@@ -13,6 +13,11 @@ def base_url(pytestconfig):
     return pytestconfig.getoption("base_url")
 
 
+@pytest.fixture(scope="session")
+def guardian_management_url(pytestconfig):
+    return pytestconfig.getoption("guardian_management_url")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def browser_context_args(browser_context_args):
     return {**browser_context_args, "ignore_https_errors": True}
