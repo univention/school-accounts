@@ -27,13 +27,19 @@ The following variables are important:
 
 - TARGET_VERSION=5.0-6: The UCS version the tests should run under.
 - KVM_SERVER=soft-test01.knut.univention.de: The KVM host to use for the tests.
-- UCSSCHOOL_USER_MANAGEMENT_VERSION=0.1: The version of the `ucsschool-user-management` app to install for the test run.
 - NO_HALT=UNSET: If the variable is set, the VMs are not automatically terminated.
 
 If you abort the pipeline job or set the `NO_HALT` variable, make sure to clean up your VMs after.
 
 They are named `build_ucsschool-user-management_$JOB_ID-{primary,backup1}`.
-The IP addresses of the VMs can be extracted from the job log. They can be found at the bottom of the log.
+The IP addresses of the VMs can be extracted from the job log.
+
+The job automatically determines which docker image to use for the app install. If the same pipeline builds a docker
+image, that one is used. Otherwise, it defaults to the image specified in the compose file. You can overwrite which image
+to use buy manually setting the `IMAGE_TAG` variable.
+
+The job also installs the app with the appcenter files from the branch. Any changes made to compose, ini, etc., are
+included automatically.
 
 ### Running commands in the development container
 

@@ -36,7 +36,7 @@ workflow:
 stages:
   - prepare
   - test
-  - build_docker
+  - integration_test
   - lint
   - publish
   - build
@@ -69,6 +69,7 @@ run_pre-commit:
 
 bff-test:
   stage: test
+  needs: []
   image: docker-registry.knut.univention.de/python:3.11-slim
   script:
     - cd user-management-bff
@@ -85,8 +86,11 @@ bff-test:
         - user-management-ui/**/*
 
 integration-tests:
-  stage: test
-  needs: []
+  stage: integration_test
+  needs:
+    - job: build_docker_image_user_management
+      optional: true
+      artifacts: true
   rules:
     - changes:
         - user-management-bff/**/*
@@ -94,15 +98,15 @@ integration-tests:
         - appcenter-management/**/*
         - dev/tests/**/*
       when: manual
-  when: manual
-  allow_failure: false
+      allow_failure: false
+    - when: manual
+      allow_failure: true
   image: $IMAGE_UCS_EC2_TOOLS
   variables:
     TARGET_VERSION: "5.0-6"
     KVM_SERVER: "soft-test01.knut.univention.de"
     UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
   before_script:
-    - if [ -z ${UCSSCHOOL_USER_MANAGEMENT_VERSION+x} ]; then echo "Please specify an app version to install." && exit 1; fi
     - apt-get update && apt-get install -y curl || echo "Curl installed."
     - cd dev/tests/
     - mkdir utils
@@ -116,6 +120,7 @@ integration-tests:
     - chmod 0600 ~/.ssh/id_rsa
     - chmod 0600 ~/ec2/keys/tech.pem
   script:
+    - env --chdir ../../appcenter-management/ ./scripts/generate-preinst
     - if [ -z ${NO_HALT+x} ]; then ucs-kvm-create -t -c integration_tests.cfg; else ucs-kvm-create -c integration_tests.cfg; fi
     - test -e COMMAND_SUCCESS
   artifacts:
@@ -145,10 +150,7 @@ bff-coverage:
         path: user_management_bff/coverage.xml
 
 build_docker_image_user_management:
-  stage: build_docker
-  needs:
-    - bff-test
-    - bff-coverage
+  stage: prepare
   rules:
     - changes:
         - user-management-bff/**/*
