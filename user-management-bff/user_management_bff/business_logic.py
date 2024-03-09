@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from .api_models import UserCreateRequest
+from .errors import NoSchoolUserError, ObjectNotFoundError
 from .models import School, Target, TargetObject, TargetObjectType, UsersGetRequest
 from .ports import (
     PermissionsPort,
@@ -41,7 +42,13 @@ async def get_schools(
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
 ) -> SchoolsGetRepresentation:
-    actor = await users_get_adapter.get_user(actor_id)
+    try:
+        actor = await users_get_adapter.get_user(actor_id)
+    except ObjectNotFoundError as exc:
+        raise NoSchoolUserError(
+            f"The logged in user '{exc.identifier}' is not a valid UCS@school user.",
+            identifier=exc.identifier,
+        ) from exc
     schools = await schools_get_adapter.get_schools()
     permissions = await permissions_port.get_permissions(
         actor, [school_to_target(school) for school in schools]

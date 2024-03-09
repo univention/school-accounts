@@ -5,13 +5,14 @@ import os
 from contextlib import asynccontextmanager
 from importlib import metadata
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
+from .errors import PermissionsError
 from .logging import configure_logger
 from .ports import FastAPIAuthenticationPort
 from .routes import router
@@ -58,6 +59,11 @@ if CORS_ALLOWED_ORIGINS:
 # statically serve the frontend
 if os.path.exists(FRONTEND_DIR):
     app.mount(FRONTEND_PREFIX, StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
+
+@app.exception_handler(PermissionsError)
+async def permissions_exception_handler(_request: Request, exc: PermissionsError):
+    return ORJSONResponse(status_code=403, content={"detail": exc.message})
 
 
 @app.get(f"{API_PREFIX}/config-app")

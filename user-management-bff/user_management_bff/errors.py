@@ -24,3 +24,9 @@ class CreationError(PersistenceError):
 
 
 class PermissionsError(BaseError): ...
+
+
+class NoSchoolUserError(PermissionsError):
+    def __init__(self, message: str, identifier: str):
+        super().__init__(message)
+        self.identifier = identifier
