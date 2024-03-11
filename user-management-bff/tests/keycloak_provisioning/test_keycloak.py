@@ -34,12 +34,22 @@ class TestKeycloakClient:
         KeycloakClient.connect(
             LoginCredentials(username="user", password="password", url="url", realm="realm")
         )
-        assert kc_oidc_mock.called_once_with("url", "user", "password", "realm", None, True)
+        kc_oidc_mock.assert_called_once_with(
+            server_url="url",
+            username="user",
+            password="password",
+            realm_name="realm",
+            user_realm_name=None,
+            verify=True,
+        )
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_realm(self, client_instance, ignore_exists):
         client_instance.create_realm("REALM", ignore_exists)
-        assert client_instance.keycloak_admin.create_realm.called_once_with("REALM", ignore_exists)
+        client_instance.keycloak_admin.create_realm.assert_called_once_with(
+            payload={"realm": "REALM", "enabled": True},
+            skip_exists=ignore_exists,
+        )
 
     @pytest.mark.parametrize(
         "error,match",
@@ -58,8 +68,14 @@ class TestKeycloakClient:
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_user(self, client_instance, ignore_exists):
         client_instance.create_user("username", "password", ignore_exists)
-        assert client_instance.keycloak_admin.create_user.called_once_with(
-            "username", "password", ignore_exists
+
+        client_instance.keycloak_admin.create_user.assert_called_once_with(
+            payload={
+                "username": "username",
+                "enabled": True,
+                "credentials": [{"value": "password", "type": "password"}],
+            },
+            exist_ok=ignore_exists,
         )
 
     @pytest.mark.parametrize(
@@ -79,7 +95,9 @@ class TestKeycloakClient:
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_client(self, client_instance, ignore_exists):
         client_instance.create_client({}, ignore_exists)
-        assert client_instance.keycloak_admin.create_client.called_once_with({}, ignore_exists)
+        client_instance.keycloak_admin.create_client.assert_called_once_with(
+            payload={}, skip_exists=ignore_exists
+        )
 
     @pytest.mark.parametrize(
         "error,match",
