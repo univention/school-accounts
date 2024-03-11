@@ -36,10 +36,11 @@ class KeycloakClient:
                 verify=login_credentials.secure,
             )
 
-    def create_realm(self, realm_name: str, ignore_exists: bool = False):
+    def create_realm(self, realm_name: str, ignore_exists: bool = False, realm_data=None):
+        realm_data = realm_data or {}
         try:
             self.keycloak_admin.create_realm(
-                payload={"realm": realm_name, "enabled": True}, skip_exists=ignore_exists
+                payload={"realm": realm_name, "enabled": True, **realm_data}, skip_exists=ignore_exists
             )
         except KeycloakPostError as exc:
             try:

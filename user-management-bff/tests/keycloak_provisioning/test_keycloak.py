@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 import pytest
-from keycloak import KeycloakError, KeycloakPostError
+from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection, KeycloakPostError
 
 import keycloak_provisioning.keycloak
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError, get_keycloak_client
@@ -12,8 +12,8 @@ from keycloak_provisioning.models import LoginCredentials
 class TestKeycloakClient:
     @pytest.fixture
     def client_instance(self, mocker, monkeypatch):
-        kc_oidc_mock = mocker.Mock()
-        kc_admin_mock = mocker.Mock()
+        kc_oidc_mock = mocker.Mock(spec=KeycloakOpenIDConnection)
+        kc_admin_mock = mocker.Mock(spec=KeycloakAdmin)
         monkeypatch.setattr(keycloak_provisioning.keycloak, "KeycloakOpenIDConnection", kc_oidc_mock)
         monkeypatch.setattr(keycloak_provisioning.keycloak, "KeycloakAdmin", kc_admin_mock)
         return KeycloakClient(
@@ -45,10 +45,17 @@ class TestKeycloakClient:
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_realm(self, client_instance, ignore_exists):
-        client_instance.create_realm("REALM", ignore_exists)
+        client_instance.create_realm("REALM", ignore_exists=ignore_exists)
         client_instance.keycloak_admin.create_realm.assert_called_once_with(
             payload={"realm": "REALM", "enabled": True},
             skip_exists=ignore_exists,
+        )
+
+    def test_create_realm_with_extra_data(self, client_instance):
+        client_instance.create_realm("REALM", realm_data={"requiredActions": []})
+        client_instance.keycloak_admin.create_realm.assert_called_once_with(
+            payload={"realm": "REALM", "enabled": True, "requiredActions": []},
+            skip_exists=False,
         )
 
     @pytest.mark.parametrize(

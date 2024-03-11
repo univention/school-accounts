@@ -11,7 +11,8 @@ poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 --password admin \
 --url "$KEYCLOAK_URL" \
 --realm master \
-realms add ucs || exit 1
+realms add ucs \
+  --realm-data $PROJECT_DIR/dev/data/realm.json || exit 1
 
 poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 --username admin \

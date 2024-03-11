@@ -42,7 +42,7 @@ def add(
     Command to add a new client to a realm.
     """
     try:
-        client_data = json.load(client_data)
+        client_json = json.load(client_data)
     except JSONDecodeError:
         print("The provided client data is not a valid json file.")
         raise typer.Exit(1)
@@ -57,7 +57,7 @@ def add(
         overrides["webOrigins"] = override_web_origins
     try:
         client = get_keycloak_client(ctx.obj.login_credentials)
-        client.create_client({**client_data, **overrides}, ignore_exists=ignore_exists)
+        client.create_client({**client_json, **overrides}, ignore_exists=ignore_exists)
     except KeycloakClientError as exc:
         print(f"Client creation failed with the following error: {exc.error_message}")
         raise typer.Exit(1)
