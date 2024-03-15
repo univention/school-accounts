@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from enum import StrEnum, auto
-from typing import Generic, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from .models import Role
 
@@ -123,3 +123,32 @@ class CreateUserResponseUser(BaseModel):
 
 class CreateUserResponse(BaseModel):
     user: CreateUserResponseUser
+
+
+class Watcher(BaseModel):
+    fields: list[str]
+    callback_url: str
+
+
+class WidgetType(StrEnum):
+    UInputText = "UInputText"
+    UInputPassword = "UInputPassword"
+    USelect = "USelect"
+    UMultiSelect = "UMultiSelect"
+    UInputCheckbox = "UInputCheckbox"
+
+
+class Fieldset(BaseModel):
+    type: WidgetType
+    props: dict[str, Any]
+    watches: list[Watcher] = Field(default_factory=list)
+
+
+class PageConfig(BaseModel):
+    label: str
+    name: str
+    fieldsets: list[Fieldset]
+
+
+class AddUsersConfig(BaseModel):
+    pages: list[PageConfig]

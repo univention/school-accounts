@@ -10,13 +10,19 @@ from . import business_logic
 from .adapter_registry import port_dep
 from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepresentationAdapter
 from .api_models import (
+    AddUsersConfig,
+    AttributeAccess,
     ColumnConfig,
     CreateUserResponse,
+    Fieldset,
     FormatterChoice,
     ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
+    PageConfig,
     UserCreateRequest,
+    Watcher,
+    WidgetType,
 )
 from .constants import API_PREFIX
 from .errors import CreationError
@@ -119,3 +125,120 @@ async def create_user(
         return await business_logic.create_user(users_post_adapter, representation_adapter, user)
     except CreationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# currenty a mock
+# currently a mock
+@router.get("/config/users/add")
+def get_user_add_config() -> AddUsersConfig:  # pragma: no cover
+    return AddUsersConfig(
+        pages=[
+            PageConfig(
+                label="Add user",
+                name="useradd",
+                fieldsets=[
+                    Fieldset(
+                        type=WidgetType.UInputText,
+                        props=dict(
+                            label="Last name",
+                            name="last_name",
+                            description="Last name of the user",
+                            hint="Last name",
+                            required=True,
+                            access=AttributeAccess.WRITE,
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.UInputText,
+                        props=dict(
+                            label="First name",
+                            name="first_name",
+                            description="First name of the user",
+                            hint="First name",
+                            required=True,
+                            access=AttributeAccess.WRITE,
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.UInputText,
+                        props=dict(
+                            label="Username",
+                            name="username",
+                            description="Username of the user",
+                            hint="Username",
+                            required=False,
+                            access=AttributeAccess.WRITE,
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.UInputPassword,
+                        props=dict(
+                            label="Password",
+                            name="password",
+                            description="Password of the user",
+                            hint="Password",
+                            required=False,
+                            access=AttributeAccess.WRITE,
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.USelect,
+                        props=dict(
+                            label="School",
+                            name="school",
+                            description="School of the user",
+                            hint="School",
+                            required=True,
+                            access=AttributeAccess.WRITE,
+                            options=[
+                                {"label": "school1", "value": "school1"},
+                                {"label": "school2", "value": "school2"},
+                            ],
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.UMultiSelect,
+                        watches=[Watcher(fields=["school"], callback_url="/config/classes")],
+                        props=dict(
+                            label="School classes",
+                            name="school_classes",
+                            description="School classes of the user",
+                            hint="School classes",
+                            required=True,
+                            access=AttributeAccess.WRITE,
+                            columns=[
+                                ColumnConfig(label="school class", attribute="class_name", order=0)
+                            ],
+                            rows=[],
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.USelect,
+                        props=dict(
+                            label="Roles",
+                            name="roles",
+                            description="Roles of the user",
+                            hint="Roles",
+                            required=True,
+                            access=AttributeAccess.WRITE,
+                            options=[
+                                {"label": "student", "value": "Student"},
+                                {"label": "Teacher", "value": "teacher"},
+                            ],
+                        ),
+                    ),
+                    Fieldset(
+                        type=WidgetType.UInputCheckbox,
+                        props=dict(
+                            label="Disabled",
+                            name="disabled",
+                            description="Disabled",
+                            hint="Disabled",
+                            required=False,
+                            access=AttributeAccess.WRITE,
+                        ),
+                    ),
+                ],
+            )
+        ]
+    )
