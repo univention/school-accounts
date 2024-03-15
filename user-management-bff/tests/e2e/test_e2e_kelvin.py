@@ -14,8 +14,8 @@ def test_create_user(access_token, base_url):
         "last_name": "Mustermann",
         "username": "max.mustermann",
         "roles": ["teacher"],
-        "schools": ["school1"],
-        "school_classes": {},
+        "school": "school1",
+        "school_classes": [],
         "disabled": False,
     }
     response = requests.post(

@@ -214,8 +214,8 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
         "roles": [
             "teacher",
         ],
-        "schools": ["test_school1"],
-        "school_classes": {"test_school1": ["1a", "2b"]},
+        "school": "test_school1",
+        "school_classes": ["1a", "2b"],
         "disabled": False,
         "password": "password",
     }
@@ -227,7 +227,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
             "first_name": {"value": user["first_name"], "access": "read"},
             "last_name": {"value": user["last_name"], "access": "read"},
             "username": {"value": user["username"], "access": "read"},
-            "schools": {"value": user["schools"], "access": "read"},
+            "schools": {"value": [user["school"]], "access": "read"},
             "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "read"},
             "activated": {"value": not user["disabled"], "access": "read"},
             "roles": {"value": user["roles"], "access": "read"},
@@ -254,8 +254,8 @@ def test_create_user_error(mock_save, test_client, api_prefix):
         "roles": [
             "teacher",
         ],
-        "schools": ["test_school1"],
-        "school_classes": {"test_school1": ["1a", "2b"]},
+        "school": "test_school1",
+        "school_classes": ["1a", "2b"],
         "disabled": False,
         "password": "password",
     }

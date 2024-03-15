@@ -110,24 +110,15 @@ class UserCreateRequest(BaseModel):
     first_name: str
     username: str | None = None
     password: str | None = None
-    schools: list[str]
-    school_classes: dict[str, list[str]]
+    school: str
+    school_classes: list[str]
     roles: list[Role]
     disabled: bool = False
 
     @model_validator(mode="after")
-    def check_schools(self) -> "UserCreateRequest":
-        for school, classes in self.school_classes.items():
-            if school not in self.schools:
-                raise ValueError(f"School '{school}' is not present in the user's schools list")
-        return self
-
-    @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
-        if Role.STUDENT in self.roles and not self.school_classes:
-            raise ValueError(
-                "At least one school class for each school must be present when the user is a student"
-            )
+        if Role.STUDENT in self.roles and len(self.school_classes) == 0:
+            raise ValueError("A student must have at least one school class.")
         return self
 
 

@@ -8,19 +8,6 @@ from user_management_bff.models import Role, UserCreateRequest
 
 
 class TestUserCreateRequest:
-    def test_check_schools(self):
-        with pytest.raises(ValidationError) as e:
-            UserCreateRequest(
-                first_name="testuser",
-                last_name="smith",
-                username="testuser",
-                password="testpassword",
-                roles=[Role.STUDENT],
-                disabled=False,
-                school_classes={"school1": ["1a", "2b"]},
-                schools=["school2"],
-            )
-        e.match("Value error, School 'school1' is not present in the user's schools list")
 
     def test_check_school_classes_for_student(self):
         UserCreateRequest(
@@ -30,8 +17,8 @@ class TestUserCreateRequest:
             password="testpassword",
             roles=[Role.TEACHER],
             disabled=False,
-            school_classes={},
-            schools=["school1"],
+            school_classes=[],
+            school="school1",
         )
         with pytest.raises(ValidationError) as e:
             UserCreateRequest(
@@ -41,10 +28,7 @@ class TestUserCreateRequest:
                 password="testpassword",
                 roles=[Role.STUDENT],
                 disabled=False,
-                school_classes={},
-                schools=["school1"],
+                school_classes=[],
+                school="school1",
             )
-        e.match(
-            "Value error, At least one school class for each school must be "
-            "present when the user is a student"
-        )
+        e.match("Value error, A student must have at least one school class.")

@@ -192,8 +192,8 @@ class TestKelvinUsersPersistenceAdapter:
                 last_name="lastname",
                 username="test_user1",
                 disabled=False,
-                schools=["school1"],
-                school_classes={"school1": ["1a", "2b"]},
+                school="school1",
+                school_classes=["1a", "2b"],
                 roles=["teacher"],
                 password="univention",
             )
@@ -224,8 +224,8 @@ class TestKelvinUsersPersistenceAdapter:
                     last_name="lastname",
                     username="test_user1",
                     disabled=False,
-                    schools=["school1"],
-                    school_classes={"school1": ["1a", "2b"]},
+                    school="school1",
+                    school_classes=["1a", "2b"],
                     roles=["teacher"],
                     password="univention",
                 )
@@ -288,13 +288,13 @@ class TestKelvinUsersPersistenceAdapterIntegration:
     async def test_create_user(self, adapter, settings, delete_user_kelvin):
         await adapter.configure(settings)
         result = await adapter.create_user(
-            UserAttributes(
+            UserCreateRequest(
                 first_name="firstname",
                 last_name="lastname",
                 username="test_user1",
                 disabled=False,
-                schools=["school1"],
-                school_classes={},
+                school="school1",
+                school_classes=[],
                 roles=["teacher"],
                 password="univention1234567890",
             )
