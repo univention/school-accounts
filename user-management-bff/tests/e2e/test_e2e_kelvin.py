@@ -63,7 +63,7 @@ async def test_create_user_not_allowed(access_token, base_url, get_kelvin_user, 
     )
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to create this user."
-    assert set(response.json()["missing_permissions"]) == {
+    assert set(response.json()["missingPermissions"]) == {
         "create-user",
         "write-first_name",
         "write-schools",
@@ -95,7 +95,7 @@ async def test_create_user_not_allowed_wrong_school(access_token, base_url, get_
     )
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to create this user."
-    assert set(response.json()["missing_permissions"]) == {
+    assert set(response.json()["missingPermissions"]) == {
         "create-user",
         "write-first_name",
         "write-schools",
@@ -170,7 +170,7 @@ async def test_patch_user_not_allowed(access_token, base_url, kelvin_user_factor
     )
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to edit this user."
-    assert response.json()["missing_permissions"] == ["write-last_name"]
+    assert response.json()["missingPermissions"] == ["write-last_name"]
 
 
 @pytest.mark.asyncio

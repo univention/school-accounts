@@ -70,7 +70,7 @@ export VITE__USER_MANAGEMENT_UI__ADAPTER__SETTINGS_PORT=env
 Get the settings from a URL:
 
 ```bash
-export VITE__URL_SETTINGS_ADAPTER__URL=http://user-management-proxy/univention/ucsschool/user-management/bff/config-app
+export VITE__URL_SETTINGS_ADAPTER__URL=http://user-management-proxy/univention/ucsschool/user-management/bff/config/app
 ```
 
 ### Data Adapter

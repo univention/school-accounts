@@ -82,7 +82,7 @@ COLUMN_CONFIGS: list[dict[str, Any]] = [
 ]
 
 
-@router.get("/config-users")
+@router.get("/config/users/list")
 def get_users_config() -> ListUsersConfig:
     return ListUsersConfig(
         columns=[ColumnConfig(**column, order=index) for index, column in enumerate(COLUMN_CONFIGS)]
@@ -110,7 +110,7 @@ async def get_users(
     )
 
 
-@router.get("/config-schools")
+@router.get("/config/schools")
 async def get_schools(
     request: Request,
     schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),

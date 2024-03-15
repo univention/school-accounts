@@ -53,5 +53,35 @@
     "invalidAuthenticationPort": "Invalid AuthenticationPort: {{adapter}}",
     "invalidDataPort": "Invalid DataPort: {{adapter}}",
     "unknownError": "Unknown error"
+  },
+  "mocks": {
+    "formConfig": {
+      "field": {
+        "active": "Active",
+        "class": "Class",
+        "classes": "Classes",
+        "firstname": "First Name",
+        "lastname": "Last Name",
+        "password": "Password",
+        "role": "Role",
+        "roles": {
+          "label": "Roles",
+          "options": {
+            "administrator": "Administrator",
+            "staff": "Staff",
+            "student": "Student",
+            "teacher": "Teacher"
+          }
+        },
+        "school": "School",
+        "schools": "Schools",
+        "username": "Username"
+      },
+      "fieldset.name": "Basic settings",
+      "page.name": {
+        "add": "Add User",
+        "edit": "User Detail"
+      }
+    }
   }
 }

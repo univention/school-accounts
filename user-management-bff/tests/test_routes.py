@@ -16,7 +16,7 @@ from user_management_bff.ports import PermissionsPort
 
 
 def test_get_users_config(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config-users")
+    response = test_client.get(f"{api_prefix}/config/users/list")
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "columns": [
@@ -107,7 +107,7 @@ def test_get_app_config(
         if key.startswith("VITE__"):
             monkeypatch.delenv(key)
     patch_test_env(environ)
-    response = test_client.get(f"{api_prefix}/config-app")
+    response = test_client.get(f"{api_prefix}/config/app")
     assert response.status_code == 200, response.json()
     assert response.json() == expected_response
 
@@ -285,7 +285,7 @@ def test_config_schools(test_client, api_prefix):
         {"display_name": "School 3", "id": "school3"},
     ]
 
-    response = test_client.get(f"{api_prefix}/config-schools")
+    response = test_client.get(f"{api_prefix}/config/schools")
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "schools": [
@@ -434,7 +434,7 @@ def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefi
     print(response)
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to edit this user."
-    assert response.json()["missing_permissions"] == ["write-first_name"]
+    assert response.json()["missingPermissions"] == ["write-first_name"]
 
 
 @pytest.mark.parametrize(

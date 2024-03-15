@@ -2,20 +2,17 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import {type User} from '@/helpers/models/user';
-import {type SchoolResponseData} from '@/helpers/models/school';
-import {type UserColumn} from '@/helpers/models/userColumn';
+import type {User} from '@/helpers/models/user';
+import type {ColumnsConfig, SchoolConfigData} from '@/helpers/models/config';
 import {type UGridRow} from '@univention/univention-veb';
+
+export type GlobalAction = 'add';
 
 type FormValues = Record<string, any>;
 
-interface UserConfig {
-  columns: UserColumn[];
-}
-
 export interface ListViewConfig {
-  schools: SchoolResponseData[];
-  users: UserConfig;
+  schools: SchoolConfigData[];
+  users: ColumnsConfig;
 }
 
 interface UserState {

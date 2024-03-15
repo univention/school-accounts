@@ -14,7 +14,7 @@ import requests
 def test_config_schools_permissions(access_token, base_url, username, expected_permissions):
     token = access_token(username, "univention")
     response = requests.get(
-        f"{base_url}/bff/config-schools", headers={"Authorization": f"Bearer {token}"}
+        f"{base_url}/bff/config/schools", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
     assert response.json() == {

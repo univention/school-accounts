@@ -16,8 +16,6 @@ export const useErrorStore = defineStore('error', () => {
 
   const _updateActiveError = (): void => {
     if (errorQueue.length > 0) {
-      // TODO typing
-      // @ts-ignore
       activeError.value = errorQueue[0];
     } else {
       activeError.value = null;

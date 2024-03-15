@@ -53,5 +53,35 @@
     "invalidAuthenticationPort": "Ung\u00fcltiger AuthenticationPort: {{adapter}}",
     "invalidDataPort": "Ung\u00fcltiger DataPort: {{adapter}}",
     "unknownError": "Unbekannter Fehler"
+  },
+  "mocks": {
+    "addView": {
+      "field": {
+        "active": "Activ",
+        "class": "Klasse",
+        "classes": "Klassen",
+        "firstname": "Vorname",
+        "lastname": "Nachname",
+        "password": "Passwort",
+        "role": "Rolle",
+        "roles": {
+          "label": "UCS@school Rollen",
+          "options": {
+            "administrator": "Administrator",
+            "staff": "Mitarbeiter",
+            "student": "Sch\u00fcler",
+            "teacher": "Lehrer"
+          }
+        },
+        "school": "Schule",
+        "schools": "Schulen",
+        "username": "Benutzername"
+      },
+      "fieldset.name": "Grundeinstellungen",
+      "page.name": {
+        "add": "Benutzer Hinzuf\u00fcgen",
+        "edit": "Benutzerdetails"
+      }
+    }
   }
 }

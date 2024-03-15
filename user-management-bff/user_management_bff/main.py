@@ -64,7 +64,7 @@ if os.path.exists(FRONTEND_DIR):
 @app.exception_handler(PermissionsError)
 async def permissions_exception_handler(_request: Request, exc: PermissionsError):
     return ORJSONResponse(
-        status_code=403, content={"detail": exc.message, "missing_permissions": exc.missing_permissions}
+        status_code=403, content={"detail": exc.message, "missingPermissions": exc.missing_permissions}
     )
 
 
@@ -78,7 +78,7 @@ async def object_not_found_exception_handler(_request: Request, exc: ObjectNotFo
     return ORJSONResponse(status_code=404, content={"detail": exc.message})
 
 
-@app.get(f"{API_PREFIX}/config-app")
+@app.get(f"{API_PREFIX}/config/app")
 def get_app_config() -> dict:
     """
     Returns the environment variables needed by the frontend to run the app.

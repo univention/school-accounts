@@ -3,29 +3,48 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import i18next from 'i18next';
-import {type AuthenticationPort} from '@univention/univention-veb';
-import {type DataPort} from '@/ports/data';
+import type {AuthenticationPort} from '@univention/univention-veb';
+import type {DataPort} from '@/ports/data';
 import {errorToString} from '@/helpers/error';
-import {type Result} from '@/helpers/models/http';
+import type {InMemoryDB} from '@/helpers/models/db';
+import type {FetchObjectError, FieldError, Result, SaveError} from '@/helpers/models/http';
+import type {
+  AddViewConfig,
+  AddViewResponse,
+  ColumnConfigData,
+  ColumnsConfig,
+  ColumnsConfigResponse,
+  EditViewConfig,
+  EditViewResponse,
+  SchoolConfigData,
+  SchoolsConfig,
+  SchoolsConfigResponse,
+  SchoolConfigResponseData,
+} from '@/helpers/models/config';
+import type {
+  User,
+  UserData,
+  UserResponse,
+  UsersResponse,
+  UserResponseData,
+  WrappedUser,
+  WrappedUsersList,
+} from '@/helpers/models/user';
 import {
-  type School,
-  type SchoolsResponse,
-  type SchoolResponseData,
-  type WrappedSchoolsList,
-} from '@/helpers/models/school';
-import {type User, type UsersResponse, type UserResponseData, type WrappedUsersList} from '@/helpers/models/user';
-import {
-  type UserColumn,
-  type UserColumnsResponse,
-  type UserColumnResponseData,
-  type WrappedUserColumnsList,
-} from '@/helpers/models/userColumn';
-import {makeMockSchools, makeMockSchoolsResponse} from '@/helpers/mocks/school';
-import {makeMockUsers, makeMockUsersResponse} from '@/helpers/mocks/user';
-import {makeMockUserColumns, makeMockUserColumnsResponse} from '@/helpers/mocks/userColumn';
+  makeMockAddConfig,
+  makeMockAddConfigResponse,
+  makeMockColumnsConfig,
+  makeMockColumnsConfigResponse,
+  makeMockEditConfig,
+  makeMockEditConfigResponse,
+  makeMockSchoolsConfig,
+  makeMockSchoolsConfigResponse,
+} from '@/helpers/mocks/config';
+import {makeMockClasses} from '@/helpers/mocks/class';
+import {makeMockUsers, makeMockUsersResponse, makeRole} from '@/helpers/mocks/user';
 
 class GenericDataAdapter implements DataPort {
-  async fetchSchoolsConfig(): Promise<Result<WrappedSchoolsList, string>> {
+  async fetchSchoolsConfig(): Promise<Result<SchoolsConfig, string>> {
     const result = await this.fetchSchoolsConfigRequest();
     if (!result.ok) {
       return result;
@@ -33,8 +52,41 @@ class GenericDataAdapter implements DataPort {
     return {
       ok: true,
       value: {
-        schools: result.value.schools.map(school => this._schoolFromApi(school)),
+        schools: result.value.schools.map(school => this._schoolConfigFromApi(school)),
       },
+    };
+  }
+
+  async fetchListViewConfig(): Promise<Result<ColumnsConfig, string>> {
+    const result = await this.fetchListViewConfigRequest();
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: this._listViewConfigFromApi(result.value),
+    };
+  }
+
+  async fetchAddViewConfig(school: string): Promise<Result<AddViewConfig, string>> {
+    const result = await this.fetchAddViewConfigRequest(school);
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: this._addViewConfigFromApi(result.value),
+    };
+  }
+
+  async fetchEditViewConfig(id: string, school: string): Promise<Result<EditViewConfig, FetchObjectError>> {
+    const result = await this.fetchEditViewConfigRequest(id, school);
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: this._editViewConfigFromApi(result.value),
     };
   }
 
@@ -51,18 +103,28 @@ class GenericDataAdapter implements DataPort {
     };
   }
 
-  async fetchUserColumns(): Promise<Result<WrappedUserColumnsList, string>> {
-    const result = await this.fetchUserColumnsRequest();
+  async createUser(school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>> {
+    const result = await this.createUserRequest(school, userData);
     if (!result.ok) {
       return result;
     }
-    result.value.columns.sort((a, b) => {
-      return a.order - b.order;
-    });
     return {
       ok: true,
       value: {
-        columns: result.value.columns.map(column => this._userColumnFromApi(column)),
+        user: this._userFromApi(result.value.user),
+      },
+    };
+  }
+
+  async updateUser(id: string, school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>> {
+    const result = await this.updateUserRequest(id, school, userData);
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: {
+        user: this._userFromApi(result.value.user),
       },
     };
   }
@@ -71,14 +133,47 @@ class GenericDataAdapter implements DataPort {
     return await this.removeUserRequest(id);
   }
 
-  removeUserRequest(id: string): Promise<Result<null, string>> {
-    throw new Error(`Not Implemented. id=${id};`);
-  }
-
-  _schoolFromApi(schoolData: SchoolResponseData): School {
+  _schoolConfigFromApi(schoolData: SchoolConfigResponseData): SchoolConfigData {
     return {
       label: schoolData.label,
       value: schoolData.value,
+      permissions: schoolData.permissions,
+    };
+  }
+
+  _listViewConfigFromApi(columnsConfigResponse: ColumnsConfigResponse): ColumnsConfig {
+    columnsConfigResponse.columns.sort((a, b) => {
+      return a.order - b.order;
+    });
+
+    const columns: ColumnConfigData[] = [];
+    for (const columnConfig of columnsConfigResponse.columns) {
+      const columnBase: ColumnConfigData = {
+        label: columnConfig.label,
+        attribute: columnConfig.attribute,
+      };
+      if (columnConfig.sorting !== null) {
+        columnBase.sorting = columnConfig.sorting;
+      }
+      if (columnConfig.formatter !== null) {
+        columnBase.formatter = columnConfig.formatter;
+      }
+      columns.push(columnBase);
+    }
+    return {columns};
+  }
+
+  _addViewConfigFromApi(addViewResponse: AddViewResponse): AddViewConfig {
+    return {
+      pages: addViewResponse.pages,
+    };
+  }
+
+  _editViewConfigFromApi(editViewResponse: EditViewResponse): EditViewConfig {
+    return {
+      id: editViewResponse.id,
+      user: editViewResponse.user,
+      pages: editViewResponse.pages,
     };
   }
 
@@ -97,46 +192,49 @@ class GenericDataAdapter implements DataPort {
     return userBase;
   }
 
-  _userColumnFromApi(userColumnData: UserColumnResponseData): UserColumn {
-    const columnBase: UserColumn = {
-      label: userColumnData.label,
-      attribute: userColumnData.attribute,
-    };
-    if (userColumnData.sorting !== null) {
-      columnBase.sorting = userColumnData.sorting;
-    }
-    if (userColumnData.formatter !== null) {
-      columnBase.formatter = userColumnData.formatter;
-    }
-    return columnBase;
+  fetchSchoolsConfigRequest(): Promise<Result<SchoolsConfigResponse, string>> {
+    throw new Error('Not Implemented');
   }
 
-  fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
+  fetchListViewConfigRequest(): Promise<Result<ColumnsConfigResponse, string>> {
     throw new Error('Not Implemented');
+  }
+
+  fetchAddViewConfigRequest(school: string): Promise<Result<AddViewResponse, string>> {
+    throw new Error(`Not Implemented. school=${school}`);
+  }
+
+  fetchEditViewConfigRequest(id: string, school: string): Promise<Result<EditViewResponse, FetchObjectError>> {
+    throw new Error(`Not Implemented. id=${id} school=${school}`);
   }
 
   fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
-    throw new Error(`Not Implemented: school=${school}`);
+    throw new Error(`Not Implemented. school=${school}`);
   }
 
-  fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
-    throw new Error('Not Implemented');
+  createUserRequest(school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    throw new Error(`Not Implemented. school=${school} userData=${userData}`);
   }
-}
 
-interface InMemoryDB {
-  schools: SchoolResponseData[];
-  users: UserResponseData[];
-  userColumns: UserColumnResponseData[];
+  updateUserRequest(id: string, school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    throw new Error(`Not Implemented. id=${id} school=${school} userData=${userData}`);
+  }
+
+  removeUserRequest(id: string): Promise<Result<null, string>> {
+    throw new Error(`Not Implemented. id=${id};`);
+  }
 }
 
 export class InMemoryDataAdapter extends GenericDataAdapter {
   private readonly _responseTimeout = 1000;
 
   private _db: InMemoryDB = {
-    schools: [],
+    schoolsConfig: [],
+    columnsConfig: [],
+    addFormConfig: {pages: []},
+    editFormConfig: {pages: []},
+    classes: [],
     users: [],
-    userColumns: [],
   };
 
   constructor(dbData?: InMemoryDB) {
@@ -144,14 +242,75 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     if (dbData) {
       this._db = dbData;
     } else {
-      this._db.schools = makeMockSchools();
+      this._db.schoolsConfig = makeMockSchoolsConfig();
+      this._db.columnsConfig = makeMockColumnsConfig();
+      this._db.addFormConfig = makeMockAddConfig();
+      this._db.editFormConfig = makeMockEditConfig();
+      this._db.classes = makeMockClasses();
       this._db.users = makeMockUsers();
-      this._db.userColumns = makeMockUserColumns();
     }
   }
 
-  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
-    const response = makeMockSchoolsResponse(this._db.schools);
+  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsConfigResponse, string>> {
+    const response = makeMockSchoolsConfigResponse(this._db.schoolsConfig);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  async fetchListViewConfigRequest(): Promise<Result<ColumnsConfigResponse, string>> {
+    const response = makeMockColumnsConfigResponse(this._db.columnsConfig);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  fetchAddViewConfigRequest(school: string): Promise<Result<AddViewResponse, string>> {
+    const classes = this._db.classes.filter(schoolClass => schoolClass.school === school);
+    const response = makeMockAddConfigResponse(this._db.schoolsConfig, classes, this._db.addFormConfig);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  fetchEditViewConfigRequest(id: string, school: string): Promise<Result<EditViewResponse, FetchObjectError>> {
+    const mockUser = this._db.users.find(user => user.id === id);
+    if (!mockUser) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'objectNotFound',
+            },
+          });
+        });
+      });
+    }
+
+    const classes = this._db.classes.filter(schoolClass => schoolClass.school === school);
+    const response = makeMockEditConfigResponse(
+      mockUser,
+      school,
+      this._db.schoolsConfig,
+      classes,
+      this._db.editFormConfig
+    );
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
@@ -178,24 +337,145 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     });
   }
 
-  async fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
-    const response = makeMockUserColumnsResponse(this._db.userColumns);
+  async createUserRequest(school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    let username = userData.username;
+    if (!username || username === '') {
+      const base = `${userData.firstname}.${userData.lastname}`;
+      const suffix = Math.floor(Math.random() * 1000) + 100;
+      username = `${base}${suffix}`;
+    }
+
+    const existingUser = this._db.users.filter(user => user.id === username)[0];
+    if (existingUser) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'generic',
+              message: '400: object already exists',
+            },
+          });
+        }, this._responseTimeout);
+      });
+    }
+
+    const user: User = {
+      id: username,
+      allowedActions: ['delete'],
+      attributes: {},
+    };
+    for (const key in userData) {
+      let value = userData[key];
+
+      if (key === 'school') {
+        user.attributes['schools'] = {
+          access: 'read',
+          value: [value],
+        };
+      } else {
+        if (key === 'roles') {
+          const roles: string[] = [];
+          const school = userData.school || '';
+          for (const role of userData[key]) {
+            roles.push(makeRole(role, school));
+          }
+          value = roles;
+        } else if (key == 'username') {
+          value = username;
+        }
+
+        user.attributes[key] = {
+          access: 'read',
+          value: value,
+        };
+      }
+    }
+    this._db.users.push(user);
+
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
           ok: true,
-          value: response,
+          value: {user},
         });
       }, this._responseTimeout);
     });
   }
 
-  removeUserRequest(id: string): Promise<Result<null, string>> {
+  async updateUserRequest(id: string, school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    const existingUser = this._db.users.filter(user => user.id === id)[0];
+    if (!existingUser) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: {
+              type: 'objectNotFound',
+            },
+          });
+        }, this._responseTimeout);
+      });
+    }
+
+    for (const key in userData) {
+      const existingValue = existingUser.attributes[key].value;
+      let value = userData[key];
+
+      if (key === 'school') {
+        // Do nothing; we can't modify schools
+      } else {
+        if (key === 'roles') {
+          const existingRoles = (existingValue as string[]).filter(role => (role.split(':')[2] || '') !== school);
+
+          const roles: string[] = [];
+          const school = userData.school || '';
+          for (const role of userData[key]) {
+            roles.push(makeRole(role, school));
+          }
+          value = roles.concat(existingRoles);
+        } else if (key === 'classes') {
+          const existingClasses = (existingValue as string[]).filter(
+            userClass => (userClass.split('_')[0] || '') !== school
+          );
+          value = value.concat(existingClasses);
+        }
+
+        existingUser.attributes[key] = {
+          access: 'read',
+          value: value,
+        };
+        if (key === 'username') {
+          existingUser.id = value;
+        }
+      }
+    }
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: {
+            user: existingUser,
+          },
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  async removeUserRequest(id: string): Promise<Result<null, string>> {
     const existingUser = this._db.users.find(user => user.id === id);
 
     if (existingUser) {
-      const index = this._db.users.indexOf(existingUser);
-      this._db.users.splice(index, 1);
+      if (existingUser.allowedActions.includes('delete')) {
+        const index = this._db.users.indexOf(existingUser);
+        this._db.users.splice(index, 1);
+      } else {
+        return {
+          ok: false,
+          error: '403: Permission denied',
+        };
+      }
     }
     // We don't check for a non existingUser.
     // We treat deleting non-existent objects as a success.
@@ -229,16 +509,47 @@ export class ApiDataAdapter extends GenericDataAdapter {
     this._apiUri = url;
   }
 
-  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
-    return await this._get<SchoolsResponse>('/config-schools');
+  async fetchSchoolsConfigRequest(): Promise<Result<SchoolsConfigResponse, string>> {
+    return await this._get<SchoolsConfigResponse>('/config/schools');
+  }
+
+  async fetchListViewConfigRequest(): Promise<Result<ColumnsConfigResponse, string>> {
+    return await this._get<ColumnsConfigResponse>('/config/users/list');
+  }
+
+  async fetchAddViewConfigRequest(school: string): Promise<Result<AddViewResponse, string>> {
+    const schoolParam = encodeURIComponent(school);
+    return await this._get<AddViewResponse>(`/config/users/add?school=${schoolParam}`);
+  }
+
+  async fetchEditViewConfigRequest(id: string, school: string): Promise<Result<EditViewResponse, FetchObjectError>> {
+    const idParam = encodeURIComponent(id);
+    const schoolParam = encodeURIComponent(school);
+
+    const result = await this._get<EditViewResponse>(`/config/users/edit?id=${idParam}&school=${schoolParam}`);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this._parseFetchObjectError(result.error),
+      };
+    }
+
+    return result;
   }
 
   async fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
     return await this._get<UsersResponse>(`/users?school=${school}`);
   }
 
-  async fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
-    return await this._get<UserColumnsResponse>('/config-users');
+  async createUserRequest(school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    const schoolParam = encodeURIComponent(school);
+    return await this._save<UserResponse>(`/users?school=${schoolParam}`, userData, 'post');
+  }
+
+  async updateUserRequest(id: string, school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
+    const idParam = encodeURIComponent(id);
+    const schoolParam = encodeURIComponent(school);
+    return await this._save<UserResponse>(`/users/${idParam}?school=${schoolParam}`, userData, 'patch');
   }
 
   async removeUserRequest(id: string): Promise<Result<null, string>> {
@@ -278,8 +589,8 @@ export class ApiDataAdapter extends GenericDataAdapter {
     };
   }
 
-  async _fetchToJson<T>(endpointBase: string, httpMethod: string): Promise<Result<T, string>> {
-    const result = await this._fetch(endpointBase, httpMethod);
+  async _fetchToJson<T>(endpointBase: string, httpMethod: string, body?: unknown): Promise<Result<T, string>> {
+    const result = await this._fetch(endpointBase, httpMethod, body);
     if (!result.ok) {
       return result;
     }
@@ -295,10 +606,18 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return await this._tryToJson<T>(result.value);
   }
 
-  async _fetch(endpointBase: string, httpMethod: string): Promise<Result<Response, string>> {
+  async _fetch(endpointBase: string, httpMethod: string, body?: unknown): Promise<Result<Response, string>> {
     const url = this._makeUrl(endpointBase);
     const headers = await this._makeHeaders();
-    const result = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers}));
+
+    let result: Result<Response, string> | null = null;
+    if (body !== 'undefined') {
+      const bodyJson = JSON.stringify(body);
+      result = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers, body: bodyJson}));
+    } else {
+      result = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers}));
+    }
+
     if (!result.ok) {
       return {
         ok: false,
@@ -315,14 +634,24 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return await this._fetchToJson<T>(endpointBase, 'GET');
   }
 
+  async _patch<T>(endpointBase: string, body: any): Promise<Result<T, string>> {
+    return await this._fetchToJson<T>(endpointBase, 'PATCH', body);
+  }
+
+  async _post<T>(endpointBase: string, body: any): Promise<Result<T, string>> {
+    return await this._fetchToJson<T>(endpointBase, 'POST', body);
+  }
+
   async _parseError(response: Response): Promise<string | null> {
     if (!response.ok) {
       const text = (await response.text()) || response.statusText;
       let detail = text;
       try {
         const json = JSON.parse(text);
-        if (json && typeof json === 'object' && 'detail' in json) {
-          detail = json.detail;
+        // Most errors are going to be in a simple format with just a `detail` key.
+        // Anything more complex, and we'll just go with the original response text.
+        if (json && typeof json === 'object' && 'detail' in json && Object.keys(json).length === 1) {
+          detail = JSON.stringify(json.detail);
         }
       } catch (err) {
         // Either not a JSON response, or unparsable. We'll just ignore this.
@@ -331,6 +660,90 @@ export class ApiDataAdapter extends GenericDataAdapter {
     }
 
     return null;
+  }
+
+  _parseFetchObjectError(error: string): FetchObjectError {
+    const statusCode = error.split(':', 1)[0].trim();
+    if (statusCode === '404') {
+      return {
+        type: 'objectNotFound',
+      };
+    }
+
+    const errorText = error.split(':').slice(1).join(':').trim();
+    return {
+      type: 'generic',
+      message: errorText,
+    };
+  }
+
+  _parseSaveError(error: string): SaveError {
+    const statusCode = error.split(':', 1)[0].trim();
+    if (statusCode === '404') {
+      return {
+        type: 'objectNotFound',
+      };
+    }
+
+    let errorText = error.split(':').slice(1).join(':').trim();
+    if (statusCode === '403' || statusCode === '422') {
+      try {
+        const errorJson = JSON.parse(errorText);
+
+        if (statusCode === '403') {
+          return {
+            type: 'permissionsError',
+            message: errorJson.message || '',
+            missingPermissions: errorJson.missingPermissions || [],
+          };
+        } else {
+          if (Array.isArray(errorJson)) {
+            const error: SaveError = {
+              type: 'fieldErrors',
+              errors: [],
+            };
+            for (const detail of errorJson) {
+              const err = detail as FieldError;
+              const field = err.loc[err.loc.length - 1];
+              if (field) {
+                error.errors.push({
+                  field,
+                  message: err.msg,
+                });
+              }
+            }
+            return error;
+          }
+        }
+      } catch (err) {
+        // JSON parse error or misc error.
+        // Just return original error so we get the full information.
+        errorText = error;
+      }
+    }
+
+    // Returned for 400 status, unexpected statuses, and JSON parse errors
+    return {
+      type: 'generic',
+      message: errorText,
+    };
+  }
+
+  async _save<T>(endpointBase: string, body: any, method: 'post' | 'patch'): Promise<Result<T, SaveError>> {
+    const _method = {
+      post: this._post,
+      patch: this._patch,
+    }[method].bind(this);
+
+    const result = await _method<T>(endpointBase, body);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this._parseSaveError(result.error),
+      };
+    }
+
+    return result;
   }
 
   async _tryFn<T>(fn: () => Promise<T>): Promise<Result<T, string>> {

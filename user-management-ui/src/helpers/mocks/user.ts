@@ -2,7 +2,9 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import {type UsersResponse, type UserResponseData} from '@/helpers/models/user';
+import {classes, makeClassId} from '@/helpers/mocks/class';
+import {schools} from '@/helpers/mocks/config';
+import type {UsersResponse, UserResponseData} from '@/helpers/models/user';
 
 const exampleFirstNames = [
   'Alex',
@@ -91,8 +93,6 @@ const exampleLastNames = [
   'Woodward',
 ];
 
-const schools = ['school-1', 'school-2', 'school-3', 'school-4', 'school-5'];
-
 const roles = [
   'student',
   'student',
@@ -114,8 +114,6 @@ const roles = [
   'staff',
   'administrator',
 ];
-
-const classes = ['1a', '1b', '2a', '2b', '3a', '3b', '4a', '4b'];
 
 const choose = (items: string[]): string => {
   return items[Math.floor(Math.random() * items.length)];
@@ -139,6 +137,10 @@ const isActive = (): boolean => {
   return Math.floor(Math.random() * 12) > 0;
 };
 
+const canBeDeleted = (): boolean => {
+  return Math.floor(Math.random() * 2) > 0;
+};
+
 const isVisible = (): boolean => {
   return Math.floor(Math.random() * 5) > 0;
 };
@@ -158,12 +160,8 @@ const getExtraSchool = (school: string): string => {
   return newSchool;
 };
 
-const makeRole = (roleName: string, school: string): string => {
+export const makeRole = (roleName: string, school: string): string => {
   return `${roleName}:school:${school}`;
-};
-
-const makeClass = (className: string, school: string): string => {
-  return `${className}:${school}`;
 };
 
 export const makeMockUsers = (): UserResponseData[] => {
@@ -189,7 +187,7 @@ export const makeMockUsers = (): UserResponseData[] => {
       });
       const userClasses: string[] = [];
       userSchools.forEach(school => {
-        const klass = makeClass(choose(classes), school);
+        const klass = makeClassId(choose(classes), school);
         userClasses.push(klass);
       });
       const rolesIsVisible = isVisible();
@@ -200,7 +198,7 @@ export const makeMockUsers = (): UserResponseData[] => {
         attributes: {
           username: {
             access: usernameIsVisible ? 'read' : 'none',
-            value: usernameIsVisible ? username : null,
+            value: username,
           },
           firstname: {
             access: 'read',
@@ -210,9 +208,13 @@ export const makeMockUsers = (): UserResponseData[] => {
             access: 'read',
             value: lastname,
           },
+          password: {
+            access: 'none',
+            value: null,
+          },
           roles: {
             access: rolesIsVisible ? 'read' : 'none',
-            value: rolesIsVisible ? userRoles : null,
+            value: userRoles,
           },
           classes: {
             access: 'read',
@@ -227,7 +229,7 @@ export const makeMockUsers = (): UserResponseData[] => {
             value: active,
           },
         },
-        allowedActions: ['delete'],
+        allowedActions: canBeDeleted() ? ['delete'] : [],
       });
     }
   }

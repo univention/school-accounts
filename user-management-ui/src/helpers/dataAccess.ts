@@ -29,7 +29,7 @@ export const getListViewConfig = async (): Promise<Result<ListViewConfig, string
   if (!schoolsResult.ok) {
     return schoolsResult;
   }
-  const columnConfigResult = await dataAdapter.fetchUserColumns();
+  const columnConfigResult = await dataAdapter.fetchListViewConfig();
   if (!columnConfigResult.ok) {
     return columnConfigResult;
   }
