@@ -16,10 +16,14 @@ from .api_models import (
     CreateUserResponse,
     Fieldset,
     FormatterChoice,
+    LabeledValue,
     ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
     PageConfig,
+    SchoolClassesConfig,
+    SchoolClassRow,
+    SchoolCLassRowAttributes,
     UserCreateRequest,
     Watcher,
     WidgetType,
@@ -127,7 +131,27 @@ async def create_user(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-# currenty a mock
+# currently a mock
+@router.get("/config/classes")
+def get_school_classes(school: str) -> SchoolClassesConfig:  # pragma: no cover
+    return SchoolClassesConfig(
+        rows=[
+            SchoolClassRow(
+                id="school_class1",
+                attributes=SchoolCLassRowAttributes(
+                    class_name=LabeledValue(label="school_class1", value="school_class1")
+                ),
+            ),
+            SchoolClassRow(
+                id="school_class2",
+                attributes=SchoolCLassRowAttributes(
+                    class_name=LabeledValue(label="school_class1", value="school_class2")
+                ),
+            ),
+        ]
+    )
+
+
 # currently a mock
 @router.get("/config/users/add")
 def get_user_add_config() -> AddUsersConfig:  # pragma: no cover

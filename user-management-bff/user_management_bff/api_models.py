@@ -34,6 +34,11 @@ class Formatter(BaseModel):
     type: FormatterChoice
 
 
+class LabeledValue(BaseModel):
+    label: str
+    value: str
+
+
 class ColumnConfig(BaseModel):
     label: str
     attribute: str
@@ -152,3 +157,16 @@ class PageConfig(BaseModel):
 
 class AddUsersConfig(BaseModel):
     pages: list[PageConfig]
+
+
+class SchoolCLassRowAttributes(BaseModel):
+    class_name: LabeledValue
+
+
+class SchoolClassRow(BaseModel):
+    id: str
+    attributes: SchoolCLassRowAttributes
+
+
+class SchoolClassesConfig(BaseModel):
+    rows: list[SchoolClassRow]
