@@ -159,6 +159,12 @@ class AddUsersConfig(BaseModel):
     pages: list[PageConfig]
 
 
+class EditUsersConfig(BaseModel):
+    id: str
+    user: dict[str, Any]
+    pages: list[PageConfig]
+
+
 class SchoolCLassRowAttributes(BaseModel):
     class_name: LabeledValue
 
