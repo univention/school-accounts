@@ -25,12 +25,10 @@ from .api_models import (
     ListUsersConfig,
     ListUsersResponse,
     PageConfig,
-    SchoolClassesConfig,
     SchoolClassRow,
     SchoolCLassRowAttributes,
     UserCreateRequest,
     UserPatchRequest,
-    Watcher,
     WidgetType,
 )
 from .constants import API_PREFIX
@@ -168,35 +166,25 @@ def patch_user(
 
 
 # currently a mock
-@router.get("/config/classes")
-def get_school_classes(school: str) -> SchoolClassesConfig:  # pragma: no cover
-    return SchoolClassesConfig(
-        rows=[
-            SchoolClassRow(
-                id="school_class1",
-                attributes=SchoolCLassRowAttributes(
-                    class_name=LabeledValue(label="school_class1", value="school_class1")
-                ),
-            ),
-            SchoolClassRow(
-                id="school_class2",
-                attributes=SchoolCLassRowAttributes(
-                    class_name=LabeledValue(label="school_class1", value="school_class2")
-                ),
-            ),
-        ]
-    )
-
-
-# currently a mock
 @router.get("/config/users/add")
-def get_user_add_config() -> AddUsersConfig:  # pragma: no cover
+def get_user_add_config(school: str) -> AddUsersConfig:  # pragma: no cover
     return AddUsersConfig(
         pages=[
             PageConfig(
                 label="Add user",
                 name="useradd",
                 fieldsets=[
+                    Fieldset(
+                        type=WidgetType.UInputText,
+                        props=dict(
+                            label="School",
+                            name="school",
+                            description="School of the user",
+                            hint="School",
+                            required=True,
+                            access=AttributeAccess.READ,
+                        ),
+                    ),
                     Fieldset(
                         type=WidgetType.UInputText,
                         props=dict(
@@ -242,23 +230,7 @@ def get_user_add_config() -> AddUsersConfig:  # pragma: no cover
                         ),
                     ),
                     Fieldset(
-                        type=WidgetType.USelect,
-                        props=dict(
-                            label="School",
-                            name="school",
-                            description="School of the user",
-                            hint="School",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                            options=[
-                                {"label": "school1", "value": "school1"},
-                                {"label": "school2", "value": "school2"},
-                            ],
-                        ),
-                    ),
-                    Fieldset(
                         type=WidgetType.UMultiSelect,
-                        watches=[Watcher(fields=["school"], callback_url="/config/classes")],
                         props=dict(
                             label="School classes",
                             name="school_classes",
@@ -269,7 +241,24 @@ def get_user_add_config() -> AddUsersConfig:  # pragma: no cover
                             columns=[
                                 ColumnConfig(label="school class", attribute="class_name", order=0)
                             ],
-                            rows=[],
+                            rows=[
+                                SchoolClassRow(
+                                    id="school_class1",
+                                    attributes=SchoolCLassRowAttributes(
+                                        class_name=LabeledValue(
+                                            label="school_class1", value="school_class1"
+                                        )
+                                    ),
+                                ),
+                                SchoolClassRow(
+                                    id="school_class2",
+                                    attributes=SchoolCLassRowAttributes(
+                                        class_name=LabeledValue(
+                                            label="school_class1", value="school_class2"
+                                        )
+                                    ),
+                                ),
+                            ],
                         ),
                     ),
                     Fieldset(
@@ -307,7 +296,7 @@ def get_user_add_config() -> AddUsersConfig:  # pragma: no cover
 # currently a mock
 @router.get("/config/users/edit")
 def get_user_edit_config(
-    user_id: Annotated[str, Query(alias="id")]
+    user_id: Annotated[str, Query(alias="id")], school: str
 ) -> EditUsersConfig:  # pragma: no cover
     return EditUsersConfig(
         id="user1",
@@ -315,14 +304,25 @@ def get_user_edit_config(
             "username": "User 1",
             "first_name": "Max",
             "last_name": "Mustermann",
-            "school": "school1",
+            "school": school,
             "school_classes": "school_class1",
         },
         pages=[
             PageConfig(
-                label="Add user",
-                name="useradd",
+                label="Edit user",
+                name="useredit",
                 fieldsets=[
+                    Fieldset(
+                        type=WidgetType.UInputText,
+                        props=dict(
+                            label="School",
+                            name="school",
+                            description="School of the user",
+                            hint="School",
+                            required=True,
+                            access=AttributeAccess.READ,
+                        ),
+                    ),
                     Fieldset(
                         type=WidgetType.UInputText,
                         props=dict(
@@ -368,23 +368,7 @@ def get_user_edit_config(
                         ),
                     ),
                     Fieldset(
-                        type=WidgetType.USelect,
-                        props=dict(
-                            label="School",
-                            name="school",
-                            description="School of the user",
-                            hint="School",
-                            required=True,
-                            access=AttributeAccess.READ,
-                            options=[
-                                {"label": "school1", "value": "school1"},
-                                {"label": "school2", "value": "school2"},
-                            ],
-                        ),
-                    ),
-                    Fieldset(
                         type=WidgetType.UMultiSelect,
-                        watches=[Watcher(fields=["school"], callback_url="/config/classes")],
                         props=dict(
                             label="School classes",
                             name="school_classes",
@@ -395,7 +379,24 @@ def get_user_edit_config(
                             columns=[
                                 ColumnConfig(label="school class", attribute="class_name", order=0)
                             ],
-                            rows=[],
+                            rows=[
+                                SchoolClassRow(
+                                    id="school_class1",
+                                    attributes=SchoolCLassRowAttributes(
+                                        class_name=LabeledValue(
+                                            label="school_class1", value="school_class1"
+                                        )
+                                    ),
+                                ),
+                                SchoolClassRow(
+                                    id="school_class2",
+                                    attributes=SchoolCLassRowAttributes(
+                                        class_name=LabeledValue(
+                                            label="school_class1", value="school_class2"
+                                        )
+                                    ),
+                                ),
+                            ],
                         ),
                     ),
                     Fieldset(
