@@ -29,7 +29,7 @@ install_local_app_version () {
     echo "Not changing docker image."
   fi
   for file in $(ls $app_file_dir); do
-    mv "$app_file_dir/$file" "$APPCENTER_CACHE/ucsschool-user-management_00000000000000.$file"
+    cp "$app_file_dir/$file" "$APPCENTER_CACHE/ucsschool-user-management_00000000000000.$file"
   done
   env --chdir $APPCENTER_CACHE tar -rf .all.tar "$(ls ucsschool-user-management_00000000000000.*)"
   install_apps_via_cmdline_no_update Administrator univention ucsschool-user-management=0.0.0-ci
