@@ -202,11 +202,8 @@ def test_config_schools(test_client, api_prefix):
     }
 
 
+@pytest.mark.usefixtures("restore_users_json")
 def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_dict):
-    # backup json file
-    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "r") as file:
-        data = file.read()
-
     user = {
         "first_name": "firstname",
         "last_name": "lastname",
@@ -240,10 +237,6 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
 
     assert users[-1]["id"] == user["username"]
 
-    # restore json file
-    with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "w") as file:
-        file.write(data)
-
 
 @patch("user_management_bff.business_logic.create_user", side_effect=CreationError("error"))
 def test_create_user_error(mock_save, test_client, api_prefix):
@@ -272,3 +265,62 @@ def test_delete_user_non_existent(test_client, api_prefix):
     identifier = "NON_EXISTENT"  # depends on this id not being in dev/data/users.json
     response = test_client.delete(f"{api_prefix}/users/{identifier}")
     assert response.status_code == 204
+
+
+@pytest.mark.usefixtures("restore_users_json")
+def test_patch_user_wrong_school(test_client, api_prefix):
+    response = test_client.patch(
+        f"{api_prefix}/users/test_user1", params={"school": "NON_EXISTENT"}, json={}
+    )
+    assert response.status_code == 400, response.json()
+    assert response.json() == {"detail": "Cannot patch user 'test_user1' in school 'NON_EXISTENT'."}
+
+
+@pytest.mark.usefixtures("restore_users_json")
+def test_patch_user_not_found(test_client, api_prefix):
+    response = test_client.patch(
+        f"{api_prefix}/users/NON_EXISTENT", params={"school": "NON_EXISTENT"}, json={}
+    )
+    assert response.status_code == 404, response.json()
+    assert response.json() == {"detail": "Object not found: NON_EXISTENT"}
+
+
+@pytest.mark.parametrize(
+    "patch_dict", [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}]
+)
+@pytest.mark.usefixtures("restore_users_json")
+def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
+    response = test_client.patch(
+        f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json=patch_dict
+    )
+    original_user = {
+        "attributes": {
+            "activated": {"access": "read", "value": True},
+            "classes": {"access": "read", "value": ["test_school1:1a", "test_school1:2b"]},
+            "first_name": {"access": "read", "value": "firstname"},
+            "last_name": {"access": "read", "value": "lastname"},
+            "roles": {"access": "read", "value": ["teacher:school:test_school1"]},
+            "schools": {"access": "read", "value": ["test_school1"]},
+            "username": {"access": "read", "value": "firstname.lastname"},
+        },
+        "id": "test_user1",
+    }
+    for key, value in patch_dict.items():
+        original_user["attributes"][key]["value"] = value
+    assert response.status_code == 200, response.json()
+    assert response.json()["user"] == original_user
+
+
+@pytest.mark.usefixtures("restore_users_json")
+def test_patch_user_school_classes(test_client, api_prefix):
+    response = test_client.patch(
+        f"{api_prefix}/users/test_user3",
+        params={"school": "test_school2"},
+        json={"school_classes": ["1a"]},
+    )
+    assert response.status_code == 200
+    assert response.json()["user"]["attributes"]["classes"]["value"] == [
+        "test_school1:1a",
+        "test_school1:2b",
+        "test_school2:1a",
+    ]

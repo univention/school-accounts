@@ -1,13 +1,13 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-
+import copy
 import json
 import os
 from unittest.mock import patch
 
 import pytest
-from ucsschool.kelvin.client import NoObject
+from ucsschool.kelvin.client import InvalidRequest, NoObject
 from ucsschool.kelvin.client import User as KelvinUser
 
 import user_management_bff.adapters.users
@@ -17,7 +17,7 @@ from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
 )
-from user_management_bff.errors import CreationError, ObjectNotFoundError
+from user_management_bff.errors import CreationError, ObjectNotFoundError, OperationNotSupportedError
 from user_management_bff.models import User, UserAttributes, UserCreateRequest
 
 
@@ -49,6 +49,19 @@ class TestKelvinUsersPersistenceAdapter:
 
     def test_get_settings_cls(self):
         assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
+
+    @pytest.mark.parametrize(
+        "attr_name,expected",
+        [
+            ("first_name", "firstname"),
+            ("last_name", "lastname"),
+            ("username", "name"),
+            ("", ""),
+            ("foo", "foo"),
+        ],
+    )
+    def test__user_attribute_to_kelvin_attribute(self, adapter, attr_name, expected):
+        assert adapter._user_attribute_to_kelvin_attribute(attr_name) == expected
 
     @pytest.mark.parametrize(
         "input_data",
@@ -261,6 +274,66 @@ class TestKelvinUsersPersistenceAdapter:
             await adapter.delete_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
 
+    @pytest.mark.asyncio
+    async def test_save_user(self, mocker, monkeypatch, adapter, dummy_settings, generate_user):
+        user = generate_user()
+        user_mock = mocker.AsyncMock()
+        user_mock.ucsschool_roles = user.attributes.roles
+
+        async def mock_save():
+            return user_mock
+
+        user_mock.save = mock_save
+
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                return user_mock
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        result = await adapter.save_user(user)
+        expected = copy.deepcopy(user)
+        expected.id = user.attributes.username
+        expected.attributes.password = None
+        assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_save_user_invalid_request(
+        self, mocker, monkeypatch, adapter, dummy_settings, generate_user
+    ):
+        user_mock = mocker.MagicMock()
+        user_mock.save = mocker.MagicMock(side_effect=InvalidRequest(reason="REASON"))
+
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                return user_mock
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        user = generate_user()
+        await adapter.configure(dummy_settings)
+        with pytest.raises(OperationNotSupportedError, match="REASON") as exc_info:
+            await adapter.save_user(user)
+        assert exc_info.value.message == "REASON"
+
+    @pytest.mark.asyncio
+    async def test_save_user_object_not_found(
+        self, mocker, monkeypatch, adapter, dummy_settings, generate_user
+    ):
+
+        class MockUserResource:
+            async def get(self, *_args, **kwargs):
+                raise NoObject()
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        user = generate_user()
+        await adapter.configure(dummy_settings)
+        with pytest.raises(ObjectNotFoundError, match="Object not found: ") as exc_info:
+            await adapter.save_user(user)
+        assert exc_info.value.identifier == user.id
+
 
 @pytest.mark.e2e
 class TestKelvinUsersPersistenceAdapterIntegration:
@@ -440,3 +513,36 @@ class TestFileUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found: user1") as exc_info:
             await adapter.delete_user("user1")
         assert exc_info.value.identifier == "user1"
+
+    @pytest.mark.asyncio
+    async def test_save_user_not_found(self, adapter, users_json_path, generate_user):
+        user = generate_user()
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json_path))
+        with pytest.raises(ObjectNotFoundError, match="Object not found: ") as exc_info:
+            await adapter.save_user(user)
+        assert exc_info.value.identifier == user.id
+
+    @pytest.mark.usefixtures("restore_users_json")
+    @pytest.mark.asyncio
+    async def test_save_user(self, adapter, users_json_path, generate_user):
+        user = generate_user(identifier="test_user1")
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json_path))
+        await adapter.save_user(user)
+        with open(users_json_path, "r") as fd:
+            users = json.load(fd)
+        user_json = next(entry for entry in users if entry["id"] == "test_user1")
+        assert sorted(user_json) == sorted(
+            {
+                "id": user.id,
+                "attributes": {
+                    "disabled": user.attributes.disabled,
+                    "first_name": user.attributes.first_name,
+                    "last_name": user.attributes.last_name,
+                    "roles": user.attributes.roles,
+                    "school_classes": user.attributes.school_classes,
+                    "schools": user.attributes.schools,
+                    "username": user.attributes.username,
+                    "password": user.attributes.password,
+                },
+            }
+        )

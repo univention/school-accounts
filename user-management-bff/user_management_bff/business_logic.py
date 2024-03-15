@@ -5,8 +5,8 @@
 from loguru import logger
 
 from .api_models import UserCreateRequest
-from .errors import NoSchoolUserError, ObjectNotFoundError
-from .models import School, Target, TargetObject, TargetObjectType, UsersGetRequest
+from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError
+from .models import School, Target, TargetObject, TargetObjectType, UserPatchRequest, UsersGetRequest
 from .ports import (
     PermissionsPort,
     SchoolsGetRepresentation,
@@ -73,3 +73,25 @@ async def delete_user(users_delete_adapter: UsersPersistencePort, identifier: st
     except ObjectNotFoundError:
         logger.warning("Deletion failed because user did not exist", identifier=identifier)
         return None  # we treat non existing users as successful deletion in the frontend
+
+
+async def patch_user(
+    users_patch_adapter: UsersPersistencePort,
+    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    patch_data: UserPatchRequest,
+) -> UserCreateRepresentation:
+    user = await users_patch_adapter.get_user(patch_data.identifier)
+    if patch_data.school not in user.attributes.schools:
+        raise OperationNotSupportedError(
+            f"Cannot patch user '{patch_data.identifier}' in school '{patch_data.school}'."
+        )
+    patch_attributes = patch_data.attributes.model_dump(exclude_unset=True, exclude={"school_classes"})
+    for key, value in patch_attributes.items():
+        setattr(user.attributes, key, value)
+    if (
+        "school_classes" in patch_data.attributes.model_fields_set
+        and patch_data.attributes.school_classes is not None
+    ):
+        user.attributes.school_classes[patch_data.school] = patch_data.attributes.school_classes
+    user = await users_patch_adapter.save_user(user)
+    return representation_port.create_user_representation(user)

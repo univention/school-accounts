@@ -11,29 +11,26 @@ from .adapter_registry import port_dep
 from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepresentationAdapter
 from .api_models import (
     AddUsersConfig,
+    APIUserPatchRequest,
     AttributeAccess,
     ColumnConfig,
     CreateUserResponse,
-    CreateUserResponseUser,
     EditUsersConfig,
     Fieldset,
     FormatterChoice,
     LabeledValue,
     ListSchoolsResponse,
-    ListUserAttribute,
-    ListUserFixedAttributes,
     ListUsersConfig,
     ListUsersResponse,
     PageConfig,
     SchoolClassRow,
     SchoolCLassRowAttributes,
     UserCreateRequest,
-    UserPatchRequest,
     WidgetType,
 )
 from .constants import API_PREFIX
 from .errors import CreationError
-from .models import UsersGetRequest
+from .models import UserPatchAttributes, UserPatchRequest, UsersGetRequest
 from .ports import (
     FastAPIAuthenticationPort,
     PermissionsPort,
@@ -136,33 +133,21 @@ async def create_user(
 
 # Currently a mock. Response model should be renamed with proper implementation
 @router.patch("/users/{id}")
-def patch_user(
-    user_id: Annotated[str, Path(alias="id")], user_patch_data: UserPatchRequest
-) -> CreateUserResponse:  # pragma: no cover
-    return CreateUserResponse(
-        user=CreateUserResponseUser(
-            id=user_id,
-            attributes=ListUserFixedAttributes(
-                **{
-                    "last_name": ListUserAttribute[str](value="Mustermann", access=AttributeAccess.READ),
-                    "first_name": ListUserAttribute[str](value="Max", access=AttributeAccess.READ),
-                    "username": ListUserAttribute[str](
-                        value="max.mustermann", access=AttributeAccess.READ
-                    ),
-                    "activated": ListUserAttribute[bool](value=True, access=AttributeAccess.READ),
-                    "schools": ListUserAttribute[list[str]](
-                        value=["school1"], access=AttributeAccess.READ
-                    ),
-                    "classes": ListUserAttribute[list[str]](
-                        value=["school_class1"], access=AttributeAccess.READ
-                    ),
-                    "roles": ListUserAttribute[list[str]](
-                        value=["teacher"], access=AttributeAccess.READ
-                    ),
-                },
-            ),
-        )
+async def patch_user(
+    user_id: Annotated[str, Path(alias="id")],
+    school: str,
+    user_patch_data: APIUserPatchRequest,
+    users_patch_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
+        port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
+    ),
+) -> CreateUserResponse:
+    patch_data = UserPatchRequest(
+        identifier=user_id,
+        school=school,
+        attributes=UserPatchAttributes(**user_patch_data.model_dump(exclude_unset=True)),
     )
+    return await business_logic.patch_user(users_patch_adapter, representation_adapter, patch_data)
 
 
 # currently a mock

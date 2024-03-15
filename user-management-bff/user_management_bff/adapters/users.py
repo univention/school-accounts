@@ -11,13 +11,23 @@ from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
 from ..api_models import UserCreateRequest
-from ..errors import CreationError, ObjectNotFoundError
+from ..errors import CreationError, ObjectNotFoundError, OperationNotSupportedError
 from ..models import User, UserAttributes
 from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter
 
 
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
+
+    @staticmethod
+    def _user_attribute_to_kelvin_attribute(attribute_name: str) -> str:
+        MAPPING = {
+            "last_name": "lastname",
+            "first_name": "firstname",
+            "username": "name",
+        }
+        return MAPPING.get(attribute_name, attribute_name)
+
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
         return User(
             id=kelvin_user.name,
@@ -86,6 +96,19 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 await kelvin_user.delete()
             except NoObject as exc:
                 raise ObjectNotFoundError(identifier=identifier) from exc
+
+    async def save_user(self, user: User) -> User:
+        async with self.kelvin_session as session:
+            try:
+                kelvin_user = await UserResource(session=session).get(name=user.id)
+            except NoObject as exc:
+                raise ObjectNotFoundError(identifier=user.id) from exc
+            for key, value in user.attributes.model_dump(exclude={"roles"}).items():
+                setattr(kelvin_user, self._user_attribute_to_kelvin_attribute(key), value)
+            try:
+                return self._user_from_kelvin_user(await kelvin_user.save())
+            except InvalidRequest as exc:
+                raise OperationNotSupportedError(exc.reason) from exc
 
 
 @dataclass
@@ -166,3 +189,12 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
 
         with open(self.settings.source, "w") as fd:
             json.dump(self._data, fd)
+
+    async def save_user(self, user: User) -> User:
+        for user_data in self._data:
+            if user_data["id"] == user.id:
+                user_data["attributes"].update(user.attributes.model_dump())
+                with open(self.settings.source, "w") as fd:
+                    json.dump(self._data, fd)
+                return User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
+        raise ObjectNotFoundError(identifier=user.id)

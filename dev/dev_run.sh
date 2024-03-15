@@ -84,6 +84,7 @@ run_task() {
     -m "e2e" \
     --base_url "$E2E_BASE_URL" \
     --guardian_management_url "$E2E_GUARDIAN_MANAGEMENT_URL" \
+    --kelvin_url "$E2E_KELVIN_URL" \
     .
     exit $?
   fi

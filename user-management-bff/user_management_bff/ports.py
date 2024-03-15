@@ -36,6 +36,14 @@ class UsersPersistencePort(ABC):
         Raises an ObjectNotFoundError, if the user could not be found.
         """
 
+    @abstractmethod
+    async def save_user(self, user: User) -> User:  # pragma: no cover
+        """
+        This method saves a given user.
+
+        Raises ObjectNotFoundError, if the user could not be found.
+        """
+
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod

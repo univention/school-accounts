@@ -122,14 +122,12 @@ class UserCreateRequest(BaseModel):
         return self
 
 
-class UserPatchRequest(BaseModel):
+class APIUserPatchRequest(BaseModel):
     last_name: Optional[str] = None
     first_name: Optional[str] = None
     username: Optional[str] = None
     password: str | None = None
-    schools: Optional[list[str]] = None
-    school_classes: Optional[dict[str, list[str]]] = None
-    roles: Optional[list[Role]] = None
+    school_classes: Optional[list[str]] = None
     disabled: Optional[bool] = None
 
 

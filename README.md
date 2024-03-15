@@ -175,6 +175,7 @@ You can run the e2e tests for the backend with:
 ```shell
 E2E_BASE_URL="https://backup1.school.test/univention/ucsschool/user-management" \
 E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.school.test/guardian/management" \
+E2E_KELVIN_URL="primary.school.test" \
 dev/dev_run.sh task pytest-e2e
 ```
 

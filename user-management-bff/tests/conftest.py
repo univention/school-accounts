@@ -1,18 +1,24 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-
 import os
-from typing import Any
+import random
+from typing import Any, Optional
 
+import nest_asyncio
 import pytest
 from fastapi.testclient import TestClient
 from ucsschool.kelvin.client import UserResource
+
+from user_management_bff.models import User, UserAttributes
+
+nest_asyncio.apply()
 
 
 def pytest_addoption(parser):
     parser.addoption("--base_url", action="store")
     parser.addoption("--guardian_management_url", action="store")
+    parser.addoption("--kelvin_url", action="store")
 
 
 @pytest.fixture(scope="session")
@@ -101,3 +107,46 @@ def delete_user_kelvin():
             await user.delete()
 
     return _delete_user_kelvin
+
+
+@pytest.fixture
+def users_json_path():
+    return os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"]
+
+
+@pytest.fixture
+def restore_users_json(users_json_path):
+    with open(users_json_path, "r") as file:
+        data = file.read()
+    yield
+    with open(users_json_path, "w") as file:
+        file.write(data)
+
+
+@pytest.fixture
+def generate_user(faker):
+    def _generate_user(*, identifier: Optional[str] = None) -> User:
+        schools = [faker.word() for _ in range(random.randint(1, 3))]
+        return User(
+            id=identifier if identifier else faker.word(),
+            attributes=UserAttributes(
+                last_name=faker.last_name(),
+                first_name=faker.first_name(),
+                username=faker.user_name(),
+                disabled=faker.boolean(),
+                schools=schools,
+                school_classes={
+                    school: [faker.word() for _ in range(random.randint(1, 3))] for school in schools
+                },
+                roles=[
+                    f"{role}:school:{school}"
+                    for school in schools
+                    for role in random.choices(
+                        ["student", "teacher", "staff", "school_admin"], k=random.randint(1, 2)
+                    )
+                ],
+                password=faker.password(),
+            ),
+        )
+
+    return _generate_user

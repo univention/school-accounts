@@ -4,7 +4,7 @@
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Optional, Type
+from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -26,7 +26,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin, ABC):
         return KelvinPersistenceAdapterSettings
 
     def __init__(self):
-        self._settings: Optional[KelvinPersistenceAdapterSettings] = None
+        self._settings = None
 
     async def configure(self, settings: KelvinPersistenceAdapterSettings):
         self._settings = settings

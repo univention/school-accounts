@@ -81,3 +81,18 @@ class UserCreateRequest(BaseModel):
         if Role.STUDENT in self.roles and not self.school_classes:
             raise ValueError("A student must have at least one school class.")
         return self
+
+
+class UserPatchAttributes(BaseModel):
+    last_name: Optional[str] = None
+    first_name: Optional[str] = None
+    username: Optional[str] = None
+    password: str | None = None
+    school_classes: Optional[list[str]] = None
+    disabled: Optional[bool] = None
+
+
+class UserPatchRequest(BaseModel):
+    identifier: str
+    school: str
+    attributes: UserPatchAttributes

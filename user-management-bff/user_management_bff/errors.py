@@ -9,6 +9,9 @@ class BaseError(Exception):
         self.message = message
 
 
+class OperationNotSupportedError(BaseError): ...
+
+
 class PersistenceError(BaseError): ...
 
 
