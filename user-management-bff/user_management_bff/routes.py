@@ -4,7 +4,7 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from . import business_logic
 from .adapter_registry import port_dep
@@ -14,11 +14,14 @@ from .api_models import (
     AttributeAccess,
     ColumnConfig,
     CreateUserResponse,
+    CreateUserResponseUser,
     EditUsersConfig,
     Fieldset,
     FormatterChoice,
     LabeledValue,
     ListSchoolsResponse,
+    ListUserAttribute,
+    ListUserFixedAttributes,
     ListUsersConfig,
     ListUsersResponse,
     PageConfig,
@@ -26,6 +29,7 @@ from .api_models import (
     SchoolClassRow,
     SchoolCLassRowAttributes,
     UserCreateRequest,
+    UserPatchRequest,
     Watcher,
     WidgetType,
 )
@@ -130,6 +134,37 @@ async def create_user(
         return await business_logic.create_user(users_post_adapter, representation_adapter, user)
     except CreationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# Currently a mock. Response model should be renamed with proper implementation
+@router.patch("/users/{id}")
+def patch_user(
+    user_id: Annotated[str, Path(alias="id")], user_patch_data: UserPatchRequest
+) -> CreateUserResponse:  # pragma: no cover
+    return CreateUserResponse(
+        user=CreateUserResponseUser(
+            id=user_id,
+            attributes=ListUserFixedAttributes(
+                **{
+                    "last_name": ListUserAttribute[str](value="Mustermann", access=AttributeAccess.READ),
+                    "first_name": ListUserAttribute[str](value="Max", access=AttributeAccess.READ),
+                    "username": ListUserAttribute[str](
+                        value="max.mustermann", access=AttributeAccess.READ
+                    ),
+                    "activated": ListUserAttribute[bool](value=True, access=AttributeAccess.READ),
+                    "schools": ListUserAttribute[list[str]](
+                        value=["school1"], access=AttributeAccess.READ
+                    ),
+                    "classes": ListUserAttribute[list[str]](
+                        value=["school_class1"], access=AttributeAccess.READ
+                    ),
+                    "roles": ListUserAttribute[list[str]](
+                        value=["teacher"], access=AttributeAccess.READ
+                    ),
+                },
+            ),
+        )
+    )
 
 
 # currently a mock

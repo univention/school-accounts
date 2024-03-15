@@ -121,6 +121,17 @@ class UserCreateRequest(BaseModel):
         return self
 
 
+class UserPatchRequest(BaseModel):
+    last_name: Optional[str] = None
+    first_name: Optional[str] = None
+    username: Optional[str] = None
+    password: str | None = None
+    schools: Optional[list[str]] = None
+    school_classes: Optional[dict[str, list[str]]] = None
+    roles: Optional[list[Role]] = None
+    disabled: Optional[bool] = None
+
+
 class CreateUserResponseUser(BaseModel):
     id: str
     attributes: ListUserFixedAttributes
