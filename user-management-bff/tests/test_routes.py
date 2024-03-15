@@ -215,7 +215,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
         "disabled": False,
         "password": "password",
     }
-    response = test_client.post(f"{api_prefix}/user", json=user)
+    response = test_client.post(f"{api_prefix}/users", json=user)
     assert response.status_code == 201, response.json()
     expected_user = {
         "id": user["username"],
@@ -255,7 +255,7 @@ def test_create_user_error(mock_save, test_client, api_prefix):
         "disabled": False,
         "password": "password",
     }
-    response = test_client.post(f"{api_prefix}/user", json=user)
+    response = test_client.post(f"{api_prefix}/users", json=user)
     mock_save.called_once()
     assert response.status_code == 400, response.json()
     assert response.json() == {"detail": "error"}

@@ -117,7 +117,7 @@ async def get_schools(
     )
 
 
-@router.post("/user", status_code=201)
+@router.post("/users", status_code=201)
 async def create_user(
     user: UserCreateRequest,
     users_post_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),

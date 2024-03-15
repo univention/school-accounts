@@ -19,7 +19,7 @@ def test_create_user(access_token, base_url):
         "disabled": False,
     }
     response = requests.post(
-        f"{base_url}/bff/user", headers={"Authorization": f"Bearer {token}"}, json=user
+        f"{base_url}/bff/users", headers={"Authorization": f"Bearer {token}"}, json=user
     )
     assert response.status_code == 201, response.json()
     assert response.json() == {
