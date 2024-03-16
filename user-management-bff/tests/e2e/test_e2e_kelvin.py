@@ -140,7 +140,7 @@ def test_delete_user(access_token, base_url):
 @pytest.mark.asyncio
 @pytest.mark.e2e
 async def test_patch_user(access_token, base_url, kelvin_user_factory, get_kelvin_user):
-    token = access_token("mina.teacher", "univention")
+    token = access_token("alex.admin", "univention")
     kelvin_user = await kelvin_user_factory(schools=["school1"], school="school1", roles=["teacher"])
     response = requests.patch(
         f"{base_url}/bff/users/{kelvin_user.name}",
@@ -153,6 +153,22 @@ async def test_patch_user(access_token, base_url, kelvin_user_factory, get_kelvi
     patched_kelvin_user = await get_kelvin_user(kelvin_user.name)
     kelvin_user.firstname = "John"
     assert patched_kelvin_user.as_dict() == kelvin_user.as_dict()
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_patch_user_not_allowed(access_token, base_url, kelvin_user_factory):
+    token = access_token("mina.teacher", "univention")
+    kelvin_user = await kelvin_user_factory(schools=["school1"], school="school1", roles=["teacher"])
+    response = requests.patch(
+        f"{base_url}/bff/users/{kelvin_user.name}",
+        params={"school": "school1"},
+        json={"last_name": "Meyer"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403, response.json()
+    assert response.json()["detail"] == "You do not have the permission to edit this user."
+    assert response.json()["missing_permissions"] == ["write-last_name"]
 
 
 @pytest.mark.asyncio
@@ -187,7 +203,7 @@ async def test_patch_user_not_found(access_token, base_url, kelvin_user_factory,
 @pytest.mark.asyncio
 @pytest.mark.e2e
 async def test_patch_user_multi_school(access_token, base_url, kelvin_user_factory, get_kelvin_user):
-    token = access_token("mina.teacher", "univention")
+    token = access_token("alex.admin", "univention")
     kelvin_user = await kelvin_user_factory(
         schools=["school1", "school2"],
         school="school1",

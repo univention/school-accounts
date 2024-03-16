@@ -7,7 +7,7 @@ from typing import Any
 from httpx import AsyncClient, RequestError
 
 from user_management_bff.api_models import UserCreateRequest
-from user_management_bff.models import Permission
+from user_management_bff.models import Permission, UserPatchRequest
 
 
 async def get_oauth2_settings(well_known_url: str, timeout: int) -> dict[str, Any]:
@@ -31,3 +31,7 @@ def get_required_permissions_for_create_request(request_data: UserCreateRequest)
     }
     required_permissions.add(Permission.create_user)
     return required_permissions
+
+
+def get_required_permissions_for_patch_request(request_data: UserPatchRequest) -> set[Permission]:
+    return {Permission(f"write-{field_name}") for field_name in request_data.attributes.model_fields_set}

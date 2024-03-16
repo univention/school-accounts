@@ -319,6 +319,17 @@ def test_patch_user_not_found(test_client, api_prefix):
     assert response.json() == {"detail": "Object not found: NON_EXISTENT"}
 
 
+@patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefix):
+    response = test_client.patch(
+        f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json={"first_name": "John"}
+    )
+    print(response)
+    assert response.status_code == 403, response.json()
+    assert response.json()["detail"] == "You do not have the permission to edit this user."
+    assert response.json()["missing_permissions"] == ["write-first_name"]
+
+
 @pytest.mark.parametrize(
     "patch_dict", [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}]
 )

@@ -335,6 +335,48 @@ def main():
             },
         ],
     )
+    create_role_capability_mapping(
+        "edit-users-in-same-school",
+        "Edit users (teachers, students, staff) in same school",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        [
+            *[
+                f"write-{attr_name}"
+                for attr_name in (
+                    "last_name",
+                    "first_name",
+                    "username",
+                    "disabled",
+                    "school_classes",
+                    "password",
+                )
+            ],
+            *[
+                f"read-{attr_name}"
+                for attr_name in (
+                    "schools",
+                    "roles",
+                )
+            ],
+        ],
+        conditions=[
+            {
+                "app_name": "guardian",
+                "namespace_name": "builtin",
+                "name": "target_has_role_in_same_context",
+                "parameters": [
+                    {
+                        "name": "role",
+                        "value": f"{app_name}:{default_namespace_name}:{role}",
+                    }
+                ],
+            }
+            for role in ("student", "teacher", "staff")
+        ],
+        relation="OR",
+    )
 
     print("All Guardian objects created")
 

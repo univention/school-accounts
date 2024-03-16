@@ -146,6 +146,7 @@ async def create_user(
 # Currently a mock. Response model should be renamed with proper implementation
 @router.patch("/users/{id}")
 async def patch_user(
+    request: Request,
     user_id: Annotated[str, Path(alias="id")],
     school: str,
     user_patch_data: APIUserPatchRequest,
@@ -153,13 +154,18 @@ async def patch_user(
     representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
         port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
     ),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
 ) -> CreateUserResponse:
+    actor_id = await authentication_port.get_authenticated_id(request)
     patch_data = UserPatchRequest(
         identifier=user_id,
         school=school,
         attributes=UserPatchAttributes(**user_patch_data.model_dump(exclude_unset=True)),
     )
-    return await business_logic.patch_user(users_patch_adapter, representation_adapter, patch_data)
+    return await business_logic.patch_user(
+        users_patch_adapter, representation_adapter, permissions_port, actor_id, patch_data
+    )
 
 
 # currently a mock

@@ -5,7 +5,7 @@
 import pytest
 
 from user_management_bff.api_models import UserCreateRequest
-from user_management_bff.business_logic import create_user, get_schools, user_to_target
+from user_management_bff.business_logic import create_user, get_schools, user_create_request_to_target
 from user_management_bff.errors import NoSchoolUserError, ObjectNotFoundError
 from user_management_bff.models import Role, Target, TargetObject, TargetObjectType
 
@@ -44,7 +44,7 @@ async def test_create_user_actor_not_found(mocker, users_get_not_found_mock):
     assert exc_info.value.identifier == "USER"
 
 
-def test_user_to_target():
+def test_user_create_request_to_target():
     user = UserCreateRequest(
         last_name="Mustermann",
         first_name="Max",
@@ -72,4 +72,4 @@ def test_user_to_target():
             ),
         ),
     )
-    assert user_to_target(user) == expected
+    assert user_create_request_to_target(user) == expected
