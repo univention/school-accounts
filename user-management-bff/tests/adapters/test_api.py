@@ -84,6 +84,7 @@ class TestFastAPIUsersRepresentationAdapter:
             users=[
                 ListUser(
                     id=user_values["id"],
+                    allowed_actions=["delete"],
                     attributes=ListUserFixedAttributes(
                         **{
                             name: {"value": value, "access": AttributeAccess.READ}

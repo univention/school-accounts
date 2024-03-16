@@ -4,9 +4,11 @@
 
 import {type Attribute} from '@univention/univention-veb';
 
+export type ContextAction = 'delete';
 export interface UserResponseData {
   id: string;
   attributes: Record<string, Attribute>;
+  allowedActions: ContextAction[];
 }
 
 export interface UsersResponse {
@@ -16,6 +18,7 @@ export interface UsersResponse {
 export interface User {
   id: string;
   attributes: Record<string, Attribute>;
+  allowedActions: ContextAction[];
 }
 
 export interface WrappedUsersList {

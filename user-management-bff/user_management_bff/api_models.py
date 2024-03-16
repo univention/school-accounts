@@ -5,9 +5,14 @@
 from enum import StrEnum, auto
 from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.alias_generators import to_camel
 
 from .models import Role
+
+
+class APIBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class SortingChoice(StrEnum):
@@ -28,6 +33,10 @@ class AttributeAccess(StrEnum):
 
 class SchoolContextPermission(StrEnum):
     ADD = auto()
+
+
+class ListUserPermissions(StrEnum):
+    DELETE = auto()
 
 
 class Formatter(BaseModel):
@@ -76,8 +85,9 @@ class ListUserFixedAttributes(BaseModel):
     roles: ListUserAttribute[list[str]]
 
 
-class ListUser(BaseModel):
+class ListUser(APIBaseModel):
     id: str
+    allowed_actions: list[ListUserPermissions]
     attributes: ListUserFixedAttributes
 
 

@@ -9,6 +9,18 @@
       "loginFailed": "Login failed."
     }
   },
+  "DeleteModal": {
+    "cancelLabel": "Cancel",
+    "confirmLabel": "Delete",
+    "description": "Please confirm the irrevocable deletion for {{toDelete}} of {{selected}} users.",
+    "title": "Delete user",
+    "warning": "{{numberWarning}} of {{selected}} selected users can't be deleted."
+  },
+  "DeleteModalError": {
+    "confirmLabel": "OK",
+    "description": "Not all selected users could be deleted:",
+    "title": "Deleting users failed"
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -16,6 +28,10 @@
     "heading": "Error"
   },
   "ListView": {
+    "contextActions": {
+      "deleteLabel": "Delete",
+      "editLabel": "Edit"
+    },
     "fetchConfig.error": "An error occurred while loading the page. Please try again or contact your system administrator: {{msg}}",
     "fetchObjects.error": "The search has failed: {{msg}}",
     "header": "Users (schools)",

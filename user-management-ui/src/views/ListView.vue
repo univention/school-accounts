@@ -5,11 +5,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue';
+import {computed, onMounted, reactive, ref, type ComputedRef} from 'vue';
 import {useTranslation} from 'i18next-vue';
-import {useStandby, UButton, UComboBox, UGrid, UStandbyFullScreen} from '@univention/univention-veb';
-import {getListViewConfig, getUsers} from '@/helpers/dataAccess';
-import {type ListViewConfig, type ListViewState} from '@/helpers/models/interface';
+import {
+  useStandby,
+  UButton,
+  UComboBox,
+  UGrid,
+  UStandbyFullScreen,
+  type UGridContextAction,
+  type UGridRow,
+  UConfirmDialog,
+} from '@univention/univention-veb';
+import {getListViewConfig, getUsers, deleteUsers} from '@/helpers/dataAccess';
+import type {ListViewConfig, ListViewState, GridRow} from '@/helpers/models/interface';
 import {useErrorStore} from '@/stores/error';
 
 const {t} = useTranslation();
@@ -86,6 +95,55 @@ onMounted(async () => {
   await standby.wrap(() => loadConfig());
   loading.value = false;
 });
+
+const onDelete = async (ids: string[]): Promise<void> => {
+  deleteModalActive.value = false;
+  const failedUsers = await standby.wrap(() => deleteUsers(ids));
+  if (failedUsers.length) {
+    deleteModalError.failedUsers = failedUsers;
+    deleteModalError.active = true;
+  }
+
+  // remove successfully deleted objects from list and selection
+  const failedIdsSet = new Set(failedUsers.map(x => x.id));
+  const successes = new Set(ids.filter(id => !failedIdsSet.has(id)));
+  state.value.users.rows = state.value.users.rows.filter(row => !successes.has(row.id));
+  state.value.users.rowSelection = state.value.users.rowSelection.filter(id => !successes.has(id));
+};
+const deleteModalError = reactive({
+  active: false,
+  failedUsers: [] as {id: string; error: string}[],
+});
+const deleteModalActive = ref(false);
+const deleteModalProps = reactive<{
+  selected: string[];
+  toDelete: string[];
+}>({
+  selected: [],
+  toDelete: [],
+});
+
+const canDo =
+  (action: string): ((row: UGridRow) => boolean) =>
+  (row: UGridRow) =>
+    (row as GridRow).allowedActions.includes(action);
+const contextActions: ComputedRef<UGridContextAction[]> = computed(() => {
+  const actions: UGridContextAction[] = [
+    {
+      label: t('ListView.contextActions.deleteLabel'),
+      icon: 'trash',
+      callback: (ids: string[], objectsToDelete: UGridRow[], sel: string[]): void => {
+        deleteModalProps.selected = sel;
+        deleteModalProps.toDelete = ids;
+        deleteModalActive.value = true;
+      },
+      canExecute: canDo('delete'),
+      multi: true,
+      enablingMode: 'some',
+    },
+  ];
+  return actions;
+});
 </script>
 
 <template>
@@ -132,8 +190,59 @@ onMounted(async () => {
       v-model:selection="state.users.rowSelection"
       :columns="config.users.columns"
       :rows="state.users.rows"
+      :contextActions="contextActions"
       :itemsPerPageOptions="[20, 50, -1]"
     />
+    <UConfirmDialog
+      v-model:active="deleteModalActive"
+      :title="t('DeleteModal.title')"
+      :confirmLabel="t('DeleteModal.confirmLabel')"
+      :cancelLabel="t('DeleteModal.cancelLabel')"
+      @confirm="onDelete(deleteModalProps.toDelete)"
+    >
+      <template #description>
+        <div>
+          <p>
+            {{
+              t('DeleteModal.description', {
+                toDelete: deleteModalProps.toDelete.length,
+                selected: deleteModalProps.selected.length,
+              })
+            }}
+          </p>
+          <p v-if="deleteModalProps.toDelete.length !== deleteModalProps.selected.length">
+            {{
+              t('DeleteModal.warning', {
+                numberWarning: deleteModalProps.selected.length - deleteModalProps.toDelete.length,
+                selected: deleteModalProps.selected.length,
+              })
+            }}
+          </p>
+        </div>
+      </template>
+    </UConfirmDialog>
+    <UConfirmDialog
+      v-model:active="deleteModalError.active"
+      :title="t('DeleteModalError.title')"
+      :confirmLabel="t('DeleteModalError.confirmLabel')"
+      hideCancel
+    >
+      <template #description>
+        <div>
+          <p>
+            {{ t('DeleteModalError.description') }}
+          </p>
+          <ul>
+            <li
+              v-for="fail in deleteModalError.failedUsers"
+              :key="fail.id"
+            >
+              {{ fail.id }} - {{ fail.error }}
+            </li>
+          </ul>
+        </div>
+      </template>
+    </UConfirmDialog>
   </main>
   <UStandbyFullScreen :active="standby.active" />
 </template>

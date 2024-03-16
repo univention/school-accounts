@@ -9,6 +9,18 @@
       "loginFailed": "Login fehlgeschlagen."
     }
   },
+  "DeleteModal": {
+    "cancelLabel": "Abbrechen",
+    "confirmLabel": "L\u00f6schen",
+    "description": "Bitte best\u00e4tigen Sie das unwiderrufliche L\u00f6schen der {{toDelete}} von {{selected}} Benutzer.",
+    "title": "Capability l\u00f6schen",
+    "warning": "{{numberWarning}} von {{selected}} der ausgew\u00e4hlten Benutzer k\u00f6nnen nicht gel\u00f6scht werden."
+  },
+  "DeleteModalError": {
+    "confirmLabel": "OK",
+    "description": "Die folgenden Benutzer konnten nicht gel\u00f6scht werden:",
+    "title": "Das L\u00f6schen von Benutzern ist fehlgeschlagen"
+  },
   "ErrorModal": {
     "button": {
       "confirmation": "OK"
@@ -16,6 +28,10 @@
     "heading": "Fehler"
   },
   "ListView": {
+    "contextActions": {
+      "deleteLabel": "L\u00f6schen",
+      "editLabel": "Bearbeiten"
+    },
     "fetchConfig.error": "Beim Laden der Seite ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Systemadministrator: {{msg}}",
     "fetchObjects.error": "Die Suche ist fehlgeschlagen: {{msg}}",
     "header": "Benutzer (Schulen)",

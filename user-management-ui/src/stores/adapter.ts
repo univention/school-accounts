@@ -41,7 +41,7 @@ export const useAdapterStore = (config: SettingsConfig) => {
         case 'api':
           return new ApiDataAdapter(config.dataPort.apiConfig.uri, authenticationAdapter);
         case 'in_memory':
-          return new InMemoryDataAdapter(authenticationAdapter);
+          return new InMemoryDataAdapter();
         default:
           throw new InvalidAdapterError(i18next.t('errors.invalidDataPort', {adapter: portSetting}));
       }

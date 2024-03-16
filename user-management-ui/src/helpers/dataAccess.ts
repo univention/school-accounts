@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import {errorToString} from '@/helpers/error';
 import {type ListViewConfig} from '@/helpers/models/interface';
 import {type Result} from '@/helpers/models/http';
 import {type WrappedUsersList} from '@/helpers/models/user';
@@ -10,7 +9,7 @@ import {type DataPort} from '@/ports/data';
 import {useAdapterStore} from '@/stores/adapter';
 import {useSettingsStore} from '@/stores/settings';
 
-const getDataAdapter = async (): Promise<DataPort> => {
+export const getDataAdapter = async (): Promise<DataPort> => {
   const settingsStore = useSettingsStore();
   await settingsStore.init();
   const adapterStore = useAdapterStore(settingsStore.config);
@@ -24,15 +23,7 @@ export const getUsers = async (school: string): Promise<Result<WrappedUsersList,
 };
 
 export const getListViewConfig = async (): Promise<Result<ListViewConfig, string>> => {
-  let dataAdapter: DataPort | null = null;
-  try {
-    dataAdapter = await getDataAdapter();
-  } catch (err: unknown) {
-    return {
-      ok: false,
-      error: errorToString(err),
-    };
-  }
+  const dataAdapter = await getDataAdapter();
 
   const schoolsResult = await dataAdapter.fetchSchoolsConfig();
   if (!schoolsResult.ok) {
@@ -52,4 +43,21 @@ export const getListViewConfig = async (): Promise<Result<ListViewConfig, string
       },
     },
   };
+};
+
+export const deleteUsers = async (ids: string[]): Promise<{id: string; error: string}[]> => {
+  const dataAdapter = await getDataAdapter();
+  const results = await Promise.all(ids.map(id => dataAdapter.removeUser(id)));
+  const errors = results.map(result => (result.ok ? null : result.error));
+  const fails: {id: string; error: string}[] = [];
+  for (let x = 0; x < results.length; x++) {
+    const error = errors[x];
+    if (error) {
+      fails.push({
+        id: ids[x],
+        error,
+      });
+    }
+  }
+  return fails;
 };

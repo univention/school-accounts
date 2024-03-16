@@ -12,21 +12,17 @@ Please do not put anything in here that is app-specific.
 -->
 
 <script setup lang="ts">
-import {onMounted, ref, type KeepAliveProps} from 'vue';
+import {type KeepAliveProps} from 'vue';
 import {UConfirmDialog, UStandbyFullScreen} from '@univention/univention-veb';
 import {useErrorStore} from '@/stores/error';
 
 const errors = useErrorStore();
-const loading = ref(true);
 
 interface Props {
   keepAlive?: KeepAliveProps;
+  loading: boolean;
 }
 defineProps<Props>();
-
-onMounted(() => {
-  loading.value = false;
-});
 </script>
 
 <template>

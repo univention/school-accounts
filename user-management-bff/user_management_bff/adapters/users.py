@@ -79,6 +79,14 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             ),
         )
 
+    async def delete_user(self, identifier: str) -> None:
+        async with self.kelvin_session as session:
+            try:
+                kelvin_user = await UserResource(session=session).get(name=identifier)
+                await kelvin_user.delete()
+            except NoObject as exc:
+                raise ObjectNotFoundError(identifier=identifier) from exc
+
 
 @dataclass
 class FileUsersPersistenceAdapterSettings:
@@ -148,3 +156,13 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 disabled=user_create_request.disabled,
             ),
         )
+
+    async def delete_user(self, identifier: str) -> None:
+        prev_users_count = len(self._data)
+        self._data = [user for user in self._data if user["id"] != identifier]
+
+        if len(self._data) == prev_users_count:
+            raise ObjectNotFoundError(identifier=identifier)
+
+        with open(self.settings.source, "w") as fd:
+            json.dump(self._data, fd)

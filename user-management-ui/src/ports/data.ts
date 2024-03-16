@@ -13,4 +13,6 @@ export interface DataPort {
   fetchSchoolsConfig(): Promise<Result<WrappedSchoolsList, string>>;
   fetchUsers(school: string): Promise<Result<WrappedUsersList, string>>;
   fetchUserColumns(): Promise<Result<WrappedUserColumnsList, string>>;
+
+  removeUser(id: string): Promise<Result<null, string>>;
 }

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from loguru import logger
+
 from .api_models import UserCreateRequest
 from .errors import NoSchoolUserError, ObjectNotFoundError
 from .models import School, Target, TargetObject, TargetObjectType, UsersGetRequest
@@ -63,3 +65,11 @@ async def create_user(
 ) -> UserCreateRepresentation:
     user = await users_create_adapter.create_user(request_data)
     return representation_port.create_user_representation(user)
+
+
+async def delete_user(users_delete_adapter: UsersPersistencePort, identifier: str) -> None:
+    try:
+        await users_delete_adapter.delete_user(identifier)
+    except ObjectNotFoundError:
+        logger.warning("Deletion failed because user did not exist", identifier=identifier)
+        return None  # we treat non existing users as successful deletion in the frontend

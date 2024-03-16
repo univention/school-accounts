@@ -5,6 +5,7 @@
 import {type User} from '@/helpers/models/user';
 import {type SchoolResponseData} from '@/helpers/models/school';
 import {type UserColumn} from '@/helpers/models/userColumn';
+import {type UGridRow} from '@univention/univention-veb';
 
 type FormValues = Record<string, any>;
 
@@ -25,4 +26,8 @@ interface UserState {
 
 export interface ListViewState {
   users: UserState;
+}
+
+export interface GridRow extends UGridRow {
+  allowedActions: string[];
 }

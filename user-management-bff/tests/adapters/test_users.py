@@ -233,6 +233,34 @@ class TestKelvinUsersPersistenceAdapter:
         await mock_save.called_once()
         assert exc_info.value.message == "error"
 
+    @pytest.mark.asyncio
+    async def test_delete_user(self, adapter, dummy_settings, monkeypatch, mocker):
+        user_mock = mocker.AsyncMock()
+
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                return user_mock
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        result = await adapter.delete_user("test_user1")
+        await user_mock.delete.called_once()
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_delete_user_not_found(self, adapter, dummy_settings, monkeypatch, mocker):
+        class MockUserResource:
+            async def get(self, *_args, **_kwargs):
+                raise NoObject()
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(ObjectNotFoundError, match="Object not found: test_user1") as exc_info:
+            await adapter.delete_user("test_user1")
+        assert exc_info.value.identifier == "test_user1"
+
 
 @pytest.mark.e2e
 class TestKelvinUsersPersistenceAdapterIntegration:
@@ -291,6 +319,17 @@ class TestFileUsersPersistenceAdapter:
     @pytest.fixture
     def adapter(self):
         return FileUsersPersistenceAdapter()
+
+    @pytest.fixture
+    def users_json(self, tmpdir):
+        mock_users_json_path = tmpdir / "users.json"
+        disk_users_json_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "../../../dev/data/users.json",
+        )
+        with open(disk_users_json_path, "r") as disk, open(mock_users_json_path, "w") as mock:
+            mock.write(disk.read())
+        return mock_users_json_path
 
     def test_get_settings_cls(self, adapter):
         assert adapter.get_settings_cls() == FileUsersPersistenceAdapterSettings
@@ -360,15 +399,8 @@ class TestFileUsersPersistenceAdapter:
         ],
     )
     @pytest.mark.asyncio
-    async def test_get_users(self, adapter, school, expected_users):
-        await adapter.configure(
-            FileUsersPersistenceAdapterSettings(
-                source=os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "../../../dev/data/users.json",
-                )
-            )
-        )
+    async def test_get_users(self, adapter, school, expected_users, users_json):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         result = await adapter.get_users(school)
         assert result == [
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
@@ -376,15 +408,8 @@ class TestFileUsersPersistenceAdapter:
         ]
 
     @pytest.mark.asyncio
-    async def test_get_user(self, adapter):
-        await adapter.configure(
-            FileUsersPersistenceAdapterSettings(
-                source=os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "../../../dev/data/users.json",
-                )
-            )
-        )
+    async def test_get_user(self, adapter, users_json):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         result = await adapter.get_user("dev")
         assert result == User(
             id="dev",
@@ -400,15 +425,18 @@ class TestFileUsersPersistenceAdapter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_user_not_found(self, adapter):
-        await adapter.configure(
-            FileUsersPersistenceAdapterSettings(
-                source=os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "../../../dev/data/users.json",
-                )
-            )
-        )
+    async def test_get_user_not_found(self, adapter, users_json):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         with pytest.raises(ObjectNotFoundError, match="Object not found: NON_EXISTENT") as exc_info:
             await adapter.get_user("NON_EXISTENT")
         assert exc_info.value.identifier == "NON_EXISTENT"
+
+    @pytest.mark.asyncio
+    async def test_delete_user(self, adapter, users_json):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        # TODO should we check here first that the user exists?
+        # It works out now since delete_user raises ObjectNotFoundError
+        await adapter.delete_user("user1")
+        with pytest.raises(ObjectNotFoundError, match="Object not found: user1") as exc_info:
+            await adapter.delete_user("user1")
+        assert exc_info.value.identifier == "user1"

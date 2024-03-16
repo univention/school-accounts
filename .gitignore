@@ -8,6 +8,7 @@ _build/
 .coverage
 .cache/
 **/.env
+dev/local
 
 # App Center files
 appcenter-management/preinst

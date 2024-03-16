@@ -227,6 +227,7 @@ export const makeMockUsers = (): UserResponseData[] => {
             value: active,
           },
         },
+        allowedActions: ['delete'],
       });
     }
   }

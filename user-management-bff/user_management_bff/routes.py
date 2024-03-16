@@ -429,3 +429,10 @@ def get_user_edit_config(
             )
         ],
     )
+
+
+@router.delete("/users/{identifier}", status_code=204)
+async def delete_user(
+    identifier: str, users_delete_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort))
+) -> None:
+    return await business_logic.delete_user(users_delete_adapter, identifier)

@@ -124,6 +124,7 @@ def test_get_app_config(
                         "school_classes": {"test_school1": ["1a", "2b"]},
                         "username": "firstname.lastname",
                     },
+                    "allowedActions": ["delete"],
                     "id": "test_user1",
                 }
             ],
@@ -141,6 +142,7 @@ def test_get_app_config(
                         "school_classes": {"test_school2": ["1a", "2b"]},
                         "username": "firstname2.lastname2",
                     },
+                    "allowedActions": ["delete"],
                     "id": "test_user2",
                 },
                 {
@@ -156,6 +158,7 @@ def test_get_app_config(
                         "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
                         "username": "firstname3.lastname3",
                     },
+                    "allowedActions": ["delete"],
                     "id": "test_user3",
                 },
             ],
@@ -171,6 +174,7 @@ def test_get_users(
         "users": [
             {
                 "id": user["id"],
+                "allowedActions": ["delete"],
                 "attributes": {
                     name: {"value": value, "access": "read"}
                     for name, value in transform_user_dict_to_api_users_dict(user)["attributes"].items()
@@ -259,3 +263,12 @@ def test_create_user_error(mock_save, test_client, api_prefix):
     mock_save.called_once()
     assert response.status_code == 400, response.json()
     assert response.json() == {"detail": "error"}
+
+
+def test_delete_user_non_existent(test_client, api_prefix):
+    # The tests are currently set up globally to use the FileUsersPersistenceAdapter
+    # with dev/data/users.json as data.
+    # For now we only test here that deleting a non existing user returns 204
+    identifier = "NON_EXISTENT"  # depends on this id not being in dev/data/users.json
+    response = test_client.delete(f"{api_prefix}/users/{identifier}")
+    assert response.status_code == 204

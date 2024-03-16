@@ -21,12 +21,20 @@ class UsersPersistencePort(ABC):
         """
         This method returns the user, which is identified by identifier.
 
-        Raises an ObjectNotFoundError, if the user could not be found.q
+        Raises an ObjectNotFoundError, if the user could not be found.
         """
 
     @abstractmethod
     async def create_user(self, user: UserCreateRequest) -> User:  # pragma: no cover
         ...
+
+    @abstractmethod
+    async def delete_user(self, identifier: str) -> None:  # pragma: no cover
+        """
+        This method deletes the user, which is identified by identifier.
+
+        Raises an ObjectNotFoundError, if the user could not be found.
+        """
 
 
 class SchoolsPersistencePort(ABC):

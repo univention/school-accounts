@@ -11,6 +11,7 @@ from ..api_models import (
     ListUser,
     ListUserAttribute,
     ListUserFixedAttributes,
+    ListUserPermissions,
     ListUsersResponse,
     SchoolContextPermission,
 )
@@ -23,6 +24,8 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         list_users = [
             ListUser(
                 id=user.id,
+                # TODO replace hard coded permission
+                allowed_actions=[ListUserPermissions.DELETE],
                 attributes=ListUserFixedAttributes(
                     **{
                         **{

@@ -67,6 +67,14 @@ class GenericDataAdapter implements DataPort {
     };
   }
 
+  async removeUser(id: string): Promise<Result<null, string>> {
+    return await this.removeUserRequest(id);
+  }
+
+  removeUserRequest(id: string): Promise<Result<null, string>> {
+    throw new Error(`Not Implemented. id=${id};`);
+  }
+
   _schoolFromApi(schoolData: SchoolResponseData): School {
     return {
       label: schoolData.label,
@@ -78,6 +86,7 @@ class GenericDataAdapter implements DataPort {
     const userBase: User = {
       id: userData.id,
       attributes: {},
+      allowedActions: userData.allowedActions,
     };
     for (const [key, attr] of Object.entries(userData.attributes)) {
       userBase.attributes[key] = {
@@ -123,7 +132,6 @@ interface InMemoryDB {
 
 export class InMemoryDataAdapter extends GenericDataAdapter {
   private readonly _responseTimeout = 1000;
-  private readonly _authAdapter: AuthenticationPort;
 
   private _db: InMemoryDB = {
     schools: [],
@@ -131,9 +139,8 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     userColumns: [],
   };
 
-  constructor(authAdapter: AuthenticationPort, dbData?: InMemoryDB) {
+  constructor(dbData?: InMemoryDB) {
     super();
-    this._authAdapter = authAdapter;
     if (dbData) {
       this._db = dbData;
     } else {
@@ -143,26 +150,14 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     }
   }
 
-  async _get_response<T>(value: T): Promise<Result<T, string>> {
-    try {
-      await this._authAdapter.getValidAuthorizationHeader();
-    } catch (error: any) {
-      return {
-        ok: false,
-        error: error.message,
-      };
-    }
-    return {
-      ok: true,
-      value: value,
-    };
-  }
-
   async fetchSchoolsConfigRequest(): Promise<Result<SchoolsResponse, string>> {
-    const result = await this._get_response<SchoolsResponse>(makeMockSchoolsResponse(this._db.schools));
+    const response = makeMockSchoolsResponse(this._db.schools);
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve(result);
+        resolve({
+          ok: true,
+          value: response,
+        });
       }, this._responseTimeout);
     });
   }
@@ -172,19 +167,45 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
       const userSchools = user.attributes.schools.value as string[];
       return userSchools.includes(school);
     });
-    const result = await this._get_response<UsersResponse>(makeMockUsersResponse(users));
+    const response = makeMockUsersResponse(users);
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve(result);
+        resolve({
+          ok: true,
+          value: response,
+        });
       }, this._responseTimeout);
     });
   }
 
   async fetchUserColumnsRequest(): Promise<Result<UserColumnsResponse, string>> {
-    const result = await this._get_response<UserColumnsResponse>(makeMockUserColumnsResponse(this._db.userColumns));
+    const response = makeMockUserColumnsResponse(this._db.userColumns);
     return new Promise(resolve => {
       setTimeout(() => {
-        resolve(result);
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  removeUserRequest(id: string): Promise<Result<null, string>> {
+    const existingUser = this._db.users.find(user => user.id === id);
+
+    if (existingUser) {
+      const index = this._db.users.indexOf(existingUser);
+      this._db.users.splice(index, 1);
+    }
+    // We don't check for a non existingUser.
+    // We treat deleting non-existent objects as a success.
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: null,
+        });
       }, this._responseTimeout);
     });
   }
@@ -220,6 +241,26 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return await this._get<UserColumnsResponse>('/config-users');
   }
 
+  async removeUserRequest(id: string): Promise<Result<null, string>> {
+    const result = await this._fetch(`/users/${id}`, 'DELETE');
+    if (!result.ok) {
+      return result;
+    }
+
+    const error = await this._parseError(result.value);
+    if (error) {
+      return {
+        ok: false,
+        error,
+      };
+    }
+
+    return {
+      ok: true,
+      value: null,
+    };
+  }
+
   _makeUrl(endpoint: string): string {
     return `${this._apiUri}${endpoint}`;
   }
@@ -237,21 +278,13 @@ export class ApiDataAdapter extends GenericDataAdapter {
     };
   }
 
-  async _fetch<T>(endpointBase: string, httpMethod: string): Promise<Result<T, string>> {
-    const url = this._makeUrl(endpointBase);
-    const headers = await this._makeHeaders();
-    const response = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers}));
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: i18next.t('ApiDataAdapter.fetchFailed', {
-          method: httpMethod,
-          msg: response.error,
-        }),
-      };
+  async _fetchToJson<T>(endpointBase: string, httpMethod: string): Promise<Result<T, string>> {
+    const result = await this._fetch(endpointBase, httpMethod);
+    if (!result.ok) {
+      return result;
     }
 
-    const error = await this._parseError(response.value);
+    const error = await this._parseError(result.value);
     if (error) {
       return {
         ok: false,
@@ -259,11 +292,27 @@ export class ApiDataAdapter extends GenericDataAdapter {
       };
     }
 
-    return await this._tryToJson<T>(response.value);
+    return await this._tryToJson<T>(result.value);
+  }
+
+  async _fetch(endpointBase: string, httpMethod: string): Promise<Result<Response, string>> {
+    const url = this._makeUrl(endpointBase);
+    const headers = await this._makeHeaders();
+    const result = await this._tryFn(() => fetch(url, {method: httpMethod, headers: headers}));
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: i18next.t('ApiDataAdapter.fetchFailed', {
+          method: httpMethod,
+          msg: result.error,
+        }),
+      };
+    }
+    return result;
   }
 
   async _get<T>(endpointBase: string): Promise<Result<T, string>> {
-    return await this._fetch<T>(endpointBase, 'GET');
+    return await this._fetchToJson<T>(endpointBase, 'GET');
   }
 
   async _parseError(response: Response): Promise<string | null> {
