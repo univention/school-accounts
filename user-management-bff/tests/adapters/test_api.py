@@ -13,6 +13,7 @@ from user_management_bff.api_models import (
     ListSchoolsResponse,
     ListUser,
     ListUserFixedAttributes,
+    ListUserPermissions,
     ListUsersResponse,
     SchoolContextPermission,
 )
@@ -100,10 +101,10 @@ class TestFastAPIUsersRepresentationAdapter:
             users=[
                 ListUser(
                     id=user_values["id"],
-                    allowed_actions=["delete"],
+                    allowed_actions=[ListUserPermissions.DELETE],
                     attributes=ListUserFixedAttributes(
                         **{
-                            name: {"value": value, "access": AttributeAccess.READ}
+                            name: {"value": value, "access": AttributeAccess.WRITE}
                             for name, value in transform_user_dict_to_api_users_dict(user_values)[
                                 "attributes"
                             ].items()
@@ -113,7 +114,13 @@ class TestFastAPIUsersRepresentationAdapter:
                 for user_values in values
             ]
         )
-        result = adapter.create_users_representation(users)
+        result = adapter.create_users_representation(
+            users,
+            {
+                user_values["id"]: [Permission(permission) for permission in Permission]
+                for user_values in values
+            },
+        )
         assert result == expected
 
 

@@ -27,6 +27,9 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         attribute_name: str, value: Any, permissions: set[Permission]
     ) -> dict[str, Any]:
         result = {"value": None, "access": AttributeAccess.NONE}
+        if attribute_name == "username":  # username is always readable
+            result["access"] = AttributeAccess.READ
+            result["value"] = value
         try:
             if Permission(f"read-{attribute_name}") in permissions:
                 result["access"] = AttributeAccess.READ
@@ -41,34 +44,67 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
             pass
         return result
 
-    def create_users_representation(self, users: list[User]) -> ListUsersResponse:
+    @staticmethod
+    def _get_list_user_attributes_from_user(
+        user: User, permissions: set[Permission]
+    ) -> ListUserFixedAttributes:
+        return ListUserFixedAttributes(
+            username=ListUserAttribute[str](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "username", user.attributes.username, permissions
+                )
+            ),
+            last_name=ListUserAttribute[str](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "last_name", user.attributes.last_name, permissions
+                )
+            ),
+            first_name=ListUserAttribute[str](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "first_name", user.attributes.first_name, permissions
+                )
+            ),
+            activated=ListUserAttribute[bool](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "disabled", not user.attributes.disabled, permissions
+                )
+            ),
+            classes=ListUserAttribute[list[str]](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "school_classes",
+                    [
+                        f"{school}:{school_class}"
+                        for school, school_classes in user.attributes.school_classes.items()
+                        for school_class in school_classes
+                    ],
+                    permissions,
+                )
+            ),
+            schools=ListUserAttribute[list[str]](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "schools", [school for school in user.attributes.schools], permissions
+                )
+            ),
+            roles=ListUserAttribute[list[str]](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "roles", [role for role in user.attributes.roles], permissions
+                )
+            ),
+        )
+
+    def create_users_representation(
+        self, users: list[User], permissions: dict[str, list[Permission]]
+    ) -> ListUsersResponse:
         list_users = [
             ListUser(
                 id=user.id,
-                # TODO replace hard coded permission
-                allowed_actions=[ListUserPermissions.DELETE],
-                attributes=ListUserFixedAttributes(
-                    **{
-                        **{
-                            name: {"value": value, "access": AttributeAccess.READ}
-                            for name, value in user.attributes.model_dump().items()
-                        },
-                        "activated": {
-                            "value": not user.attributes.disabled,
-                            "access": AttributeAccess.READ,
-                        },
-                        "classes": {
-                            "value": [
-                                f"{school}:{school_class}"
-                                for school, school_classes in user.attributes.school_classes.items()
-                                for school_class in school_classes
-                            ],
-                            "access": AttributeAccess.READ,
-                        },
-                    },
+                allowed_actions=(
+                    [ListUserPermissions.DELETE] if Permission.delete_user in user_permissions else []
                 ),
+                attributes=self._get_list_user_attributes_from_user(user, set(user_permissions)),
             )
             for user in users
+            if (user_permissions := permissions.get(user.id, [])) is not None
         ]
         return ListUsersResponse(users=list_users)
 
@@ -76,41 +112,7 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         return CreateUserResponse(
             user=CreateUserResponseUser(
                 id=user.id,
-                attributes=ListUserFixedAttributes(
-                    username=ListUserAttribute[str](
-                        **self._get_attribute_dict("username", user.attributes.username, permissions)
-                    ),
-                    last_name=ListUserAttribute[str](
-                        **self._get_attribute_dict("last_name", user.attributes.last_name, permissions)
-                    ),
-                    first_name=ListUserAttribute[str](
-                        **self._get_attribute_dict("first_name", user.attributes.first_name, permissions)
-                    ),
-                    activated=ListUserAttribute[bool](
-                        **self._get_attribute_dict("disabled", not user.attributes.disabled, permissions)
-                    ),
-                    classes=ListUserAttribute[list[str]](
-                        **self._get_attribute_dict(
-                            "school_classes",
-                            [
-                                f"{school}:{school_class}"
-                                for school, school_classes in user.attributes.school_classes.items()
-                                for school_class in school_classes
-                            ],
-                            permissions,
-                        )
-                    ),
-                    schools=ListUserAttribute[list[str]](
-                        **self._get_attribute_dict(
-                            "schools", [school for school in user.attributes.schools], permissions
-                        )
-                    ),
-                    roles=ListUserAttribute[list[str]](
-                        **self._get_attribute_dict(
-                            "roles", [role for role in user.attributes.roles], permissions
-                        )
-                    ),
-                ),
+                attributes=self._get_list_user_attributes_from_user(user, permissions),
             )
         )
 

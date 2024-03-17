@@ -171,6 +171,7 @@ def main():
     ]
     permissions = [
         ("create-user", "Create User Action"),
+        ("delete-user", "Delete User Action"),
         ("read-last_name", "Read Last Name"),
         ("read-first_name", "Read First Name"),
         ("read-disabled", "Read Disabled"),
@@ -259,6 +260,38 @@ def main():
             ],
         )
     create_role_capability_mapping(
+        "teacher-read-student",
+        "Teachers can read student fields",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
+        [
+            f"read-{attr_name}"
+            for attr_name in (
+                "last_name",
+                "first_name",
+                "disabled",
+                "schools",
+                "school_classes",
+                "roles",
+            )
+        ],
+        conditions=[
+            {
+                "app_name": "guardian",
+                "namespace_name": "builtin",
+                "name": "target_has_role_in_same_context",
+                "parameters": [
+                    {
+                        "name": "role",
+                        "value": "ucsschool-user-management:user-management:student",
+                        "value_type": "ROLE",
+                    }
+                ],
+            }
+        ],
+    )
+    create_role_capability_mapping(
         "create-users-general",
         "Create Users (general permissions)",
         app_name,
@@ -336,8 +369,8 @@ def main():
         ],
     )
     create_role_capability_mapping(
-        "edit-users-in-same-school",
-        "Edit users (teachers, students, staff) in same school",
+        "administrate-users-in-same-school",
+        "Administrate (edit,delete) users (teachers, students, staff) in same school.",
         app_name,
         default_namespace_name,
         {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
@@ -360,6 +393,7 @@ def main():
                     "roles",
                 )
             ],
+            "delete-user",
         ],
         conditions=[
             {

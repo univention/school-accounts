@@ -5,6 +5,7 @@
     ],
     "user": [
       "create-user",
+      "delete-user",
       "write-first_name",
       "write-schools",
       "write-roles",

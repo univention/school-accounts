@@ -180,7 +180,95 @@ def test_get_users(
                 "id": user["id"],
                 "allowedActions": ["delete"],
                 "attributes": {
-                    name: {"value": value, "access": "read"}
+                    name: {"value": value, "access": "write"}
+                    for name, value in transform_user_dict_to_api_users_dict(user)["attributes"].items()
+                },
+            }
+            for user in expected_users
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "school,expected_users",
+    [
+        ("NON_EXISTENT", []),
+        (
+            "test_school1",
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname",
+                        "last_name": "lastname",
+                        "roles": ["teacher:school:test_school1"],
+                        "schools": ["test_school1"],
+                        "school_classes": {"test_school1": ["1a", "2b"]},
+                        "username": "firstname.lastname",
+                    },
+                    "allowedActions": ["delete"],
+                    "id": "test_user1",
+                }
+            ],
+        ),
+        (
+            "test_school2",
+            [
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname2",
+                        "last_name": "lastname2",
+                        "roles": ["teacher:school:test_school2"],
+                        "schools": ["test_school2"],
+                        "school_classes": {"test_school2": ["1a", "2b"]},
+                        "username": "firstname2.lastname2",
+                    },
+                    "allowedActions": ["delete"],
+                    "id": "test_user2",
+                },
+                {
+                    "attributes": {
+                        "disabled": False,
+                        "first_name": "firstname3",
+                        "last_name": "lastname3",
+                        "roles": [
+                            "teacher:school:test_school2",
+                            "student:school:test_school3",
+                        ],
+                        "schools": ["test_school2", "test_school3"],
+                        "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
+                        "username": "firstname3.lastname3",
+                    },
+                    "allowedActions": ["delete"],
+                    "id": "test_user3",
+                },
+            ],
+        ),
+    ],
+)
+@patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+def test_get_users_no_permissions(
+    _permissions_mock,
+    school,
+    expected_users,
+    test_client,
+    api_prefix,
+    transform_user_dict_to_api_users_dict,
+):
+    response = test_client.get(f"{api_prefix}/users", params={"school": school})
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "users": [
+            {
+                "id": user["id"],
+                "allowedActions": [],
+                "attributes": {
+                    name: (
+                        {"value": value, "access": "read"}
+                        if name == "username"
+                        else {"value": None, "access": "none"}
+                    )
                     for name, value in transform_user_dict_to_api_users_dict(user)["attributes"].items()
                 },
             }

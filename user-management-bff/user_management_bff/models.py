@@ -59,6 +59,7 @@ class Target(BaseModel):
 
 class Permission(StrEnum):
     create_user = "create-user"
+    delete_user = "delete-user"
     read_last_name = "read-last_name"
     read_first_name = "read-first_name"
     read_disabled = "read-disabled"

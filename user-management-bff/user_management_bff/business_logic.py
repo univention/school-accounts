@@ -69,10 +69,25 @@ def user_create_request_to_target(user_create_request: UserCreateRequest) -> Tar
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    permissions_port: PermissionsPort,
+    actor_id: str,
     request_data: UsersGetRequest,
 ) -> UsersGetRepresentation:
+    actor = await get_actor(actor_id, users_get_adapter)
     users = await users_get_adapter.get_users(request_data.school)
-    return representation_port.create_users_representation(users)
+    permissions = await permissions_port.get_permissions(
+        actor,
+        [
+            Target(old_target=target_object, new_target=target_object)
+            for user in users
+            if (
+                target_object := TargetObject(
+                    id=user.id, type=TargetObjectType.USER, attributes=user.attributes.model_dump()
+                )
+            )
+        ],
+    )
+    return representation_port.create_users_representation(users, permissions)
 
 
 async def get_schools(
