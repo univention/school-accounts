@@ -109,8 +109,10 @@ async def test_create_user_not_allowed_wrong_school(access_token, base_url, get_
 
 
 @pytest.mark.e2e
-def test_delete_user(access_token, base_url):
-    token = access_token("mina.teacher", "univention")
+@pytest.mark.asyncio
+async def test_delete_user(access_token, base_url, kelvin_user_factory):
+    token = access_token("alex.admin", "univention")
+    user = await kelvin_user_factory(school="school1", schools=["school1"], roles=["teacher"])
 
     def search_and_assert_existence(identifier: str, should_exist: bool):
         params = {"school": "school1"}
@@ -130,7 +132,7 @@ def test_delete_user(access_token, base_url):
         )
         assert response.status_code == 204
 
-    user_to_delete = "to.delete"
+    user_to_delete = user.name
     search_and_assert_existence(user_to_delete, True)
     delete_user_and_assert_204(user_to_delete)
     search_and_assert_existence(user_to_delete, False)

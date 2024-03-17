@@ -74,3 +74,34 @@ def test_delete_allowed_permission(
     }
     for user in response.json()["users"]:
         assert ("delete" in user["allowedActions"]) == test_mapping[user["id"]]
+
+
+@pytest.mark.parametrize(
+    "username,role,expected",
+    [
+        ("mina.teacher", "student", 403),
+        ("mina.teacher", "teacher", 403),
+        ("mina.teacher", "staff", 403),
+        ("mina.teacher", "school_admin", 403),
+        ("max.student", "student", 403),
+        ("max.student", "teacher", 403),
+        ("max.student", "staff", 403),
+        ("max.student", "school_admin", 403),
+        ("alex.admin", "student", 204),
+        ("alex.admin", "teacher", 204),
+        ("alex.admin", "staff", 204),
+        ("alex.admin", "school_admin", 403),
+    ],
+)
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_deletion(access_token, base_url, kelvin_user_factory, username, role, expected):
+    token = access_token(username, "univention")
+    user = await kelvin_user_factory(
+        school="school1", schools=["school1"], roles=[role], school_classes={"school1": ["1a"]}
+    )
+    response = requests.delete(
+        f"{base_url}/bff/users/{user.name}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected

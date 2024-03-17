@@ -7,6 +7,7 @@ from loguru import logger
 from .api_models import UserCreateRequest
 from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError, PermissionsError
 from .models import (
+    Permission,
     School,
     Target,
     TargetObject,
@@ -129,7 +130,34 @@ async def create_user(
     return representation_port.create_user_representation(user, target_permissions)
 
 
-async def delete_user(users_delete_adapter: UsersPersistencePort, identifier: str) -> None:
+async def delete_user(
+    users_delete_adapter: UsersPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    identifier: str,
+) -> None:
+    actor = await get_actor(actor_id, users_delete_adapter)
+    try:
+        user = await users_delete_adapter.get_user(identifier)
+    except ObjectNotFoundError:
+        return  # We treat a not found user as a successful deletion
+    permissions = await permissions_port.get_permissions(
+        actor,
+        [
+            Target(
+                old_target=TargetObject(
+                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
+                ),
+                new_target=None,
+            )
+        ],
+    )
+    target_permissions = set(list(permissions.values())[0]) if permissions else set()
+    if Permission.delete_user not in target_permissions:
+        raise PermissionsError(
+            "You do not have the permission to edit this user.",
+            missing_permissions=[Permission.delete_user],
+        )
     try:
         await users_delete_adapter.delete_user(identifier)
     except ObjectNotFoundError:

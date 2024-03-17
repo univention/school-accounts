@@ -444,6 +444,11 @@ def get_user_edit_config(
 
 @router.delete("/users/{identifier}", status_code=204)
 async def delete_user(
-    identifier: str, users_delete_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort))
+    request: Request,
+    identifier: str,
+    users_delete_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
 ) -> None:
-    return await business_logic.delete_user(users_delete_adapter, identifier)
+    actor_id = await authentication_port.get_authenticated_id(request)
+    return await business_logic.delete_user(users_delete_adapter, permissions_port, actor_id, identifier)

@@ -9,7 +9,8 @@ import pytest
 
 from user_management_bff.adapter_registry import port_dep
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
-from user_management_bff.errors import CreationError
+from user_management_bff.adapters.users import FileUsersPersistenceAdapter
+from user_management_bff.errors import CreationError, ObjectNotFoundError
 from user_management_bff.main import app
 from user_management_bff.ports import PermissionsPort
 
@@ -381,10 +382,28 @@ def test_create_user_permissions_error(
 
 
 def test_delete_user_non_existent(test_client, api_prefix):
-    # The tests are currently set up globally to use the FileUsersPersistenceAdapter
-    # with dev/data/users.json as data.
-    # For now we only test here that deleting a non existing user returns 204
     identifier = "NON_EXISTENT"  # depends on this id not being in dev/data/users.json
+    response = test_client.delete(f"{api_prefix}/users/{identifier}")
+    assert response.status_code == 204
+
+
+@pytest.mark.usefixtures("restore_users_json")
+def test_delete_user(test_client, api_prefix):
+    identifier = "test_user1"
+    response = test_client.delete(f"{api_prefix}/users/{identifier}")
+    assert response.status_code == 204
+
+
+@patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+def test_delete_user_not_allowed(_permission_mock, test_client, api_prefix):
+    identifier = "test_user1"
+    response = test_client.delete(f"{api_prefix}/users/{identifier}")
+    assert response.status_code == 403
+
+
+@patch.object(FileUsersPersistenceAdapter, "delete_user", side_effect=ObjectNotFoundError("ID"))
+def test_delete_user_race_condition(_delete_mock, test_client, api_prefix):
+    identifier = "test_user1"
     response = test_client.delete(f"{api_prefix}/users/{identifier}")
     assert response.status_code == 204
 

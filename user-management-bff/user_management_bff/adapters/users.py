@@ -130,12 +130,16 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
     ) -> Type[FileUsersPersistenceAdapterSettings]:  # pragma: no cover
         return FileUsersPersistenceAdapterSettings
 
-    async def configure(self, settings: FileUsersPersistenceAdapterSettings):
-        self.settings = settings
-        with open(settings.source, "r") as fd:
+    def _reload_data(self):
+        with open(self.settings.source, "r") as fd:
             self._data = json.load(fd)
 
+    async def configure(self, settings: FileUsersPersistenceAdapterSettings):
+        self.settings = settings
+        self._reload_data()
+
     async def get_users(self, school: str) -> list[User]:
+        self._reload_data()
         return [
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
             for user in self._data
@@ -143,6 +147,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
         ]
 
     async def get_user(self, identifier: str) -> User:
+        self._reload_data()
         try:
             user = next(user for user in self._data if user["id"] == identifier)
             return User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
