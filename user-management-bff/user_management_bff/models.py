@@ -37,6 +37,11 @@ class School(BaseModel):
     display_name: str
 
 
+class SchoolClass(BaseModel):
+    id: str
+    display_name: str
+
+
 class UsersGetRequest(BaseModel):
     school: str
 

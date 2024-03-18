@@ -9,6 +9,7 @@ from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupporte
 from .models import (
     Permission,
     School,
+    SchoolClass,
     Target,
     TargetObject,
     TargetObjectType,
@@ -18,6 +19,7 @@ from .models import (
 )
 from .ports import (
     PermissionsPort,
+    SchoolClassesPersistencePort,
     SchoolsGetRepresentation,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
@@ -211,3 +213,12 @@ async def patch_user(
         )
     user = await users_patch_adapter.save_user(user)
     return representation_port.create_user_representation(user, target_permissions)
+
+
+async def get_user_add_config_data(
+    school_classes_persistence_port: SchoolClassesPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    school: str,
+) -> list[SchoolClass]:
+    return await school_classes_persistence_port.get_school_classes(school)

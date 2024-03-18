@@ -8,7 +8,7 @@ from typing import Any, Callable, Coroutine, Generic, TypeVar
 from fastapi import Request
 
 from .api_models import UserCreateRequest
-from .models import Permission, School, Target, User
+from .models import Permission, School, SchoolClass, Target, User
 
 
 class UsersPersistencePort(ABC):
@@ -49,6 +49,14 @@ class SchoolsPersistencePort(ABC):
     @abstractmethod
     async def get_schools(self) -> list[School]:  # pragma: no cover
         ...
+
+
+class SchoolClassesPersistencePort(ABC):
+    @abstractmethod
+    async def get_school_classes(self, school: str) -> list[SchoolClass]:
+        """
+        This method returns all school classes of a given school.
+        """
 
 
 UsersGetRepresentation = TypeVar("UsersGetRepresentation")

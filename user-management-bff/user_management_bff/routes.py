@@ -34,6 +34,7 @@ from .models import UserPatchAttributes, UserPatchRequest, UsersGetRequest
 from .ports import (
     FastAPIAuthenticationPort,
     PermissionsPort,
+    SchoolClassesPersistencePort,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
     UsersPersistencePort,
@@ -176,9 +177,20 @@ async def patch_user(
     )
 
 
-# currently a mock
 @router.get("/config/users/add")
-def get_user_add_config(school: str) -> AddUsersConfig:  # pragma: no cover
+async def get_user_add_config(
+    request: Request,
+    school: str,
+    school_classes_persistence_port: SchoolClassesPersistencePort = Depends(
+        port_dep(SchoolClassesPersistencePort)
+    ),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
+) -> AddUsersConfig:
+    actor_id = await authentication_port.get_authenticated_id(request)
+    school_classes = await business_logic.get_user_add_config_data(
+        school_classes_persistence_port, permissions_port, actor_id, school
+    )
     return AddUsersConfig(
         pages=[
             PageConfig(
@@ -225,7 +237,7 @@ def get_user_add_config(school: str) -> AddUsersConfig:  # pragma: no cover
                             name="username",
                             description="Username of the user",
                             hint="Username",
-                            required=False,
+                            required=True,
                             access=AttributeAccess.WRITE,
                         ),
                     ),
@@ -254,21 +266,14 @@ def get_user_add_config(school: str) -> AddUsersConfig:  # pragma: no cover
                             ],
                             rows=[
                                 SchoolClassRow(
-                                    id="school_class1",
+                                    id=school_class.id,
                                     attributes=SchoolCLassRowAttributes(
                                         class_name=LabeledValue(
-                                            label="school_class1", value="school_class1"
+                                            label=school_class.display_name, value=school_class.id
                                         )
                                     ),
-                                ),
-                                SchoolClassRow(
-                                    id="school_class2",
-                                    attributes=SchoolCLassRowAttributes(
-                                        class_name=LabeledValue(
-                                            label="school_class1", value="school_class2"
-                                        )
-                                    ),
-                                ),
+                                )
+                                for school_class in school_classes
                             ],
                         ),
                     ),

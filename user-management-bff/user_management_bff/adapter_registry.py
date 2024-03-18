@@ -15,6 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .ports import (
     FastAPIAuthenticationPort,
     PermissionsPort,
+    SchoolClassesPersistencePort,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
     UsersPersistencePort,
@@ -37,6 +38,7 @@ class AdapterSelection(BaseSettings):
     users_representation: ImportString
     schools_persistence: ImportString
     schools_representation: ImportString
+    school_classes_persistence: ImportString
     authentication: ImportString
     permissions: ImportString
 
@@ -51,6 +53,7 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
         (UsersRepresentationPort, adapter_selection.users_representation),
         (SchoolsPersistencePort, adapter_selection.schools_persistence),
         (SchoolsRepresentationPort, adapter_selection.schools_representation),
+        (SchoolClassesPersistencePort, adapter_selection.school_classes_persistence),
         (FastAPIAuthenticationPort, adapter_selection.authentication),
         (PermissionsPort, adapter_selection.permissions),
     ]:

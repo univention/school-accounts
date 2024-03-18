@@ -66,6 +66,12 @@ def patch_env():
     os.environ["FILE_PERMISSIONS_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/permissions.json"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE"] = (
+        "user_management_bff.adapters.school_classes:FileSchoolClassesPersistenceAdapter"
+    )
+    os.environ["FILE_SCHOOL_CLASSES_ADAPTER__SOURCE"] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
+    )
     yield
     os.environ.clear()
     os.environ.update(_environ)
