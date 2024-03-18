@@ -167,11 +167,35 @@ class TestGuardianPermissionsAdapter:
             (None, None),
             (
                 TargetObject(id="ID", attributes={}, type=TargetObjectType.SCHOOL),
-                GuardianObject(id="ID", attributes={}, roles=[]),
+                GuardianObject(
+                    id="ID",
+                    attributes={},
+                    roles=[
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="school",
+                            context=Context(app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="ID"),
+                        )
+                    ],
+                ),
             ),
             (
                 TargetObject(id="ID2", attributes={"1": 2}, type=TargetObjectType.SCHOOL),
-                GuardianObject(id="ID2", attributes={"1": 2}, roles=[]),
+                GuardianObject(
+                    id="ID2",
+                    attributes={"1": 2},
+                    roles=[
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="school",
+                            context=Context(
+                                app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="ID2"
+                            ),
+                        )
+                    ],
+                ),
             ),
             (
                 TargetObject(
