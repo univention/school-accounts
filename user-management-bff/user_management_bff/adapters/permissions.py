@@ -84,7 +84,7 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
             return None
         role_strings: list[str] = []
         if target_object.type == TargetObjectType.SCHOOL:
-            role_strings = []
+            role_strings = [f"school:school:{target_object.id}"]  # made up role, just for the Guardian
         elif target_object.type == TargetObjectType.USER:
             role_strings = target_object.attributes.get("roles", [])
 

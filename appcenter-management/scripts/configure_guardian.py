@@ -293,7 +293,7 @@ def main():
     )
     create_role_capability_mapping(
         "create-users-general",
-        "Create Users (general permissions)",
+        "Create Users (school level permission)",
         app_name,
         default_namespace_name,
         {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
@@ -304,8 +304,13 @@ def main():
             {
                 "app_name": "guardian",
                 "namespace_name": "builtin",
-                "name": "no_targets",
-                "parameters": [],
+                "name": "target_has_role_in_same_context",
+                "parameters": [
+                    {
+                        "name": "role",
+                        "value": "ucsschool-user-management:user-management:school",
+                    }
+                ],
             },
         ],
     )
