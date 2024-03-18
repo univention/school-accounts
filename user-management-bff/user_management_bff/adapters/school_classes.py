@@ -8,9 +8,21 @@ from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from ucsschool.kelvin.client import SchoolClassResource
 
 from ..models import SchoolClass
 from ..ports import SchoolClassesPersistencePort
+from .base import KelvinPersistenceBaseAdapter
+
+
+class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
+    async def get_school_classes(self, school: str) -> list[SchoolClass]:
+        async with self.kelvin_session as session:
+            kelvin_school_classes = SchoolClassResource(session=session).search()
+            return [
+                SchoolClass(id=school_class.name, display_name=school_class.display_name)
+                async for school_class in kelvin_school_classes
+            ]
 
 
 @dataclass

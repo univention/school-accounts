@@ -17,6 +17,7 @@ from .api_models import (
     CreateUserResponse,
     EditUsersConfig,
     Fieldset,
+    FieldsetRow,
     FormatterChoice,
     LabeledValue,
     ListSchoolsResponse,
@@ -198,111 +199,120 @@ async def get_user_add_config(
                 name="useradd",
                 fieldsets=[
                     Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="School",
-                            name="school",
-                            description="School of the user",
-                            hint="School",
-                            required=True,
-                            access=AttributeAccess.READ,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="Last name",
-                            name="last_name",
-                            description="Last name of the user",
-                            hint="Last name",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="First name",
-                            name="first_name",
-                            description="First name of the user",
-                            hint="First name",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="Username",
-                            name="username",
-                            description="Username of the user",
-                            hint="Username",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputPassword,
-                        props=dict(
-                            label="Password",
-                            name="password",
-                            description="Password of the user",
-                            hint="Password",
-                            required=False,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UMultiSelect,
-                        props=dict(
-                            label="School classes",
-                            name="school_classes",
-                            description="School classes of the user",
-                            hint="School classes",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                            columns=[
-                                ColumnConfig(label="school class", attribute="class_name", order=0)
-                            ],
-                            rows=[
-                                SchoolClassRow(
-                                    id=school_class.id,
-                                    attributes=SchoolCLassRowAttributes(
-                                        class_name=LabeledValue(
-                                            label=school_class.display_name, value=school_class.id
+                        name="userinfo",
+                        label="User Info",
+                        rows=[
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="School",
+                                    name="school",
+                                    description="School of the user",
+                                    hint="School",
+                                    required=True,
+                                    access=AttributeAccess.READ,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="Last name",
+                                    name="last_name",
+                                    description="Last name of the user",
+                                    hint="Last name",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="First name",
+                                    name="first_name",
+                                    description="First name of the user",
+                                    hint="First name",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="Username",
+                                    name="username",
+                                    description="Username of the user",
+                                    hint="Username",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputPassword,
+                                props=dict(
+                                    label="Password",
+                                    name="password",
+                                    description="Password of the user",
+                                    hint="Password",
+                                    required=False,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UMultiSelect,
+                                props=dict(
+                                    label="School classes",
+                                    name="school_classes",
+                                    description="School classes of the user",
+                                    hint="School classes",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                    columns=[
+                                        ColumnConfig(
+                                            label="school class", attribute="class_name", order=0
                                         )
-                                    ),
-                                )
-                                for school_class in school_classes
-                            ],
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.USelect,
-                        props=dict(
-                            label="Roles",
-                            name="roles",
-                            description="Roles of the user",
-                            hint="Roles",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                            options=[
-                                {"label": "student", "value": "Student"},
-                                {"label": "Teacher", "value": "teacher"},
-                            ],
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputCheckbox,
-                        props=dict(
-                            label="Disabled",
-                            name="disabled",
-                            description="Disabled",
-                            hint="Disabled",
-                            required=False,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
+                                    ],
+                                    rows=[
+                                        SchoolClassRow(
+                                            id=school_class.id,
+                                            attributes=SchoolCLassRowAttributes(
+                                                class_name=LabeledValue(
+                                                    label=school_class.display_name,
+                                                    value=school_class.id,
+                                                )
+                                            ),
+                                        )
+                                        for school_class in school_classes
+                                    ],
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.USelect,
+                                props=dict(
+                                    label="Roles",
+                                    name="roles",
+                                    description="Roles of the user",
+                                    hint="Roles",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                    options=[
+                                        {"label": "student", "value": "Student"},
+                                        {"label": "Teacher", "value": "teacher"},
+                                    ],
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputCheckbox,
+                                props=dict(
+                                    label="Active",
+                                    name="active",
+                                    description="Active",
+                                    hint="Active",
+                                    required=False,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                        ],
+                    )
                 ],
             )
         ]
@@ -329,118 +339,126 @@ def get_user_edit_config(
                 name="useredit",
                 fieldsets=[
                     Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="School",
-                            name="school",
-                            description="School of the user",
-                            hint="School",
-                            required=True,
-                            access=AttributeAccess.READ,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="Last name",
-                            name="last_name",
-                            description="Last name of the user",
-                            hint="Last name",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="First name",
-                            name="first_name",
-                            description="First name of the user",
-                            hint="First name",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputText,
-                        props=dict(
-                            label="Username",
-                            name="username",
-                            description="Username of the user",
-                            hint="Username",
-                            required=False,
-                            access=AttributeAccess.WRITE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputPassword,
-                        props=dict(
-                            label="Password",
-                            name="password",
-                            description="Password of the user",
-                            hint="Password",
-                            required=False,
-                            access=AttributeAccess.NONE,
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UMultiSelect,
-                        props=dict(
-                            label="School classes",
-                            name="school_classes",
-                            description="School classes of the user",
-                            hint="School classes",
-                            required=True,
-                            access=AttributeAccess.WRITE,
-                            columns=[
-                                ColumnConfig(label="school class", attribute="class_name", order=0)
-                            ],
-                            rows=[
-                                SchoolClassRow(
-                                    id="school_class1",
-                                    attributes=SchoolCLassRowAttributes(
-                                        class_name=LabeledValue(
-                                            label="school_class1", value="school_class1"
-                                        )
-                                    ),
+                        name="userinfo",
+                        label="User Info",
+                        rows=[
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="School",
+                                    name="school",
+                                    description="School of the user",
+                                    hint="School",
+                                    required=True,
+                                    access=AttributeAccess.READ,
                                 ),
-                                SchoolClassRow(
-                                    id="school_class2",
-                                    attributes=SchoolCLassRowAttributes(
-                                        class_name=LabeledValue(
-                                            label="school_class1", value="school_class2"
-                                        )
-                                    ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="Last name",
+                                    name="last_name",
+                                    description="Last name of the user",
+                                    hint="Last name",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
                                 ),
-                            ],
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.USelect,
-                        props=dict(
-                            label="Roles",
-                            name="roles",
-                            description="Roles of the user",
-                            hint="Roles",
-                            required=True,
-                            access=AttributeAccess.READ,
-                            options=[
-                                {"label": "student", "value": "Student"},
-                                {"label": "Teacher", "value": "teacher"},
-                            ],
-                        ),
-                    ),
-                    Fieldset(
-                        type=WidgetType.UInputCheckbox,
-                        props=dict(
-                            label="Disabled",
-                            name="disabled",
-                            description="Disabled",
-                            hint="Disabled",
-                            required=False,
-                            access=AttributeAccess.READ,
-                        ),
-                    ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="First name",
+                                    name="first_name",
+                                    description="First name of the user",
+                                    hint="First name",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputText,
+                                props=dict(
+                                    label="Username",
+                                    name="username",
+                                    description="Username of the user",
+                                    hint="Username",
+                                    required=False,
+                                    access=AttributeAccess.WRITE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputPassword,
+                                props=dict(
+                                    label="Password",
+                                    name="password",
+                                    description="Password of the user",
+                                    hint="Password",
+                                    required=False,
+                                    access=AttributeAccess.NONE,
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UMultiSelect,
+                                props=dict(
+                                    label="School classes",
+                                    name="school_classes",
+                                    description="School classes of the user",
+                                    hint="School classes",
+                                    required=True,
+                                    access=AttributeAccess.WRITE,
+                                    columns=[
+                                        ColumnConfig(
+                                            label="school class", attribute="class_name", order=0
+                                        )
+                                    ],
+                                    rows=[
+                                        SchoolClassRow(
+                                            id="school_class1",
+                                            attributes=SchoolCLassRowAttributes(
+                                                class_name=LabeledValue(
+                                                    label="school_class1", value="school_class1"
+                                                )
+                                            ),
+                                        ),
+                                        SchoolClassRow(
+                                            id="school_class2",
+                                            attributes=SchoolCLassRowAttributes(
+                                                class_name=LabeledValue(
+                                                    label="school_class1", value="school_class2"
+                                                )
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.USelect,
+                                props=dict(
+                                    label="Roles",
+                                    name="roles",
+                                    description="Roles of the user",
+                                    hint="Roles",
+                                    required=True,
+                                    access=AttributeAccess.READ,
+                                    options=[
+                                        {"label": "student", "value": "Student"},
+                                        {"label": "Teacher", "value": "teacher"},
+                                    ],
+                                ),
+                            ),
+                            FieldsetRow(
+                                type=WidgetType.UInputCheckbox,
+                                props=dict(
+                                    label="Disabled",
+                                    name="disabled",
+                                    description="Disabled",
+                                    hint="Disabled",
+                                    required=False,
+                                    access=AttributeAccess.READ,
+                                ),
+                            ),
+                        ],
+                    )
                 ],
             )
         ],

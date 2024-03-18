@@ -121,7 +121,7 @@ def test_get_app_config(
             [
                 {
                     "attributes": {
-                        "disabled": False,
+                        "active": True,
                         "first_name": "firstname",
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
@@ -139,7 +139,7 @@ def test_get_app_config(
             [
                 {
                     "attributes": {
-                        "disabled": False,
+                        "active": True,
                         "first_name": "firstname2",
                         "last_name": "lastname2",
                         "roles": ["teacher:school:test_school2"],
@@ -152,7 +152,7 @@ def test_get_app_config(
                 },
                 {
                     "attributes": {
-                        "disabled": False,
+                        "active": True,
                         "first_name": "firstname3",
                         "last_name": "lastname3",
                         "roles": [
@@ -476,3 +476,143 @@ def test_patch_user_school_classes(test_client, api_prefix):
         "test_school1:2b",
         "test_school2:1a",
     ]
+
+
+def test_get_user_add_config(test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/config/users/add?school=school1")
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "pages": [
+            {
+                "fieldsets": [
+                    {
+                        "label": "User Info",
+                        "name": "userinfo",
+                        "rows": [
+                            {
+                                "props": {
+                                    "access": "read",
+                                    "description": "School of the user",
+                                    "hint": "School",
+                                    "label": "School",
+                                    "name": "school",
+                                    "required": True,
+                                },
+                                "type": "UInputText",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Last name of the user",
+                                    "hint": "Last name",
+                                    "label": "Last name",
+                                    "name": "last_name",
+                                    "required": True,
+                                },
+                                "type": "UInputText",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "First name of the user",
+                                    "hint": "First name",
+                                    "label": "First name",
+                                    "name": "first_name",
+                                    "required": True,
+                                },
+                                "type": "UInputText",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Username of the user",
+                                    "hint": "Username",
+                                    "label": "Username",
+                                    "name": "username",
+                                    "required": True,
+                                },
+                                "type": "UInputText",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Password of the user",
+                                    "hint": "Password",
+                                    "label": "Password",
+                                    "name": "password",
+                                    "required": False,
+                                },
+                                "type": "UInputPassword",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "columns": [
+                                        {
+                                            "attribute": "class_name",
+                                            "formatter": None,
+                                            "label": "school class",
+                                            "order": 0,
+                                            "sorting": None,
+                                        }
+                                    ],
+                                    "description": "School classes of the user",
+                                    "hint": "School classes",
+                                    "label": "School classes",
+                                    "name": "school_classes",
+                                    "required": True,
+                                    "rows": [
+                                        {
+                                            "attributes": {"class_name": {"label": "1a", "value": "1a"}},
+                                            "id": "1a",
+                                        },
+                                        {
+                                            "attributes": {"class_name": {"label": "2b", "value": "2b"}},
+                                            "id": "2b",
+                                        },
+                                    ],
+                                },
+                                "type": "UMultiSelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Roles of the user",
+                                    "hint": "Roles",
+                                    "label": "Roles",
+                                    "name": "roles",
+                                    "options": [
+                                        {"label": "student", "value": "Student"},
+                                        {"label": "Teacher", "value": "teacher"},
+                                    ],
+                                    "required": True,
+                                },
+                                "type": "USelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Active",
+                                    "hint": "Active",
+                                    "label": "Active",
+                                    "name": "active",
+                                    "required": False,
+                                },
+                                "type": "UInputCheckbox",
+                                "watches": [],
+                            },
+                        ],
+                    }
+                ],
+                "label": "Add user",
+                "name": "useradd",
+            }
+        ]
+    }

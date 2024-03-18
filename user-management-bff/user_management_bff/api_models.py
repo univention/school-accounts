@@ -153,10 +153,16 @@ class WidgetType(StrEnum):
     UInputCheckbox = "UInputCheckbox"
 
 
-class Fieldset(BaseModel):
+class FieldsetRow(BaseModel):
     type: WidgetType
     props: dict[str, Any]
     watches: list[Watcher] = Field(default_factory=list)
+
+
+class Fieldset(BaseModel):
+    name: str
+    label: str
+    rows: list[FieldsetRow]
 
 
 class PageConfig(BaseModel):

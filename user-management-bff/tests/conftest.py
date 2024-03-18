@@ -69,7 +69,7 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE"] = (
         "user_management_bff.adapters.school_classes:FileSchoolClassesPersistenceAdapter"
     )
-    os.environ["FILE_SCHOOL_CLASSES_ADAPTER__SOURCE"] = os.path.join(
+    os.environ["FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
     )
     yield
@@ -92,14 +92,19 @@ def patch_test_env(monkeypatch):
 def transform_user_dict_to_api_users_dict():
     def _transform_user_dict_to_api_users_dict(user_dict: dict[str, Any]) -> dict[str, Any]:
         transformed = {**user_dict}
-        transformed["attributes"]["activated"] = not user_dict["attributes"]["disabled"]
+        transformed["attributes"]["activated"] = (
+            user_dict["attributes"].get("active", None) or not user_dict["attributes"]["disabled"]
+        )
         transformed["attributes"]["classes"] = [
             f"{school}:{school_class}"
             for school, school_classes in user_dict["attributes"]["school_classes"].items()
             for school_class in school_classes
         ]
         del transformed["attributes"]["school_classes"]
-        del transformed["attributes"]["disabled"]
+        if "active" in transformed["attributes"]:
+            del transformed["attributes"]["active"]
+        else:
+            del transformed["attributes"]["disabled"]
         return transformed
 
     return _transform_user_dict_to_api_users_dict
