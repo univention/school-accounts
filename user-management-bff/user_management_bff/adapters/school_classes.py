@@ -18,9 +18,11 @@ from .base import KelvinPersistenceBaseAdapter
 class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         async with self.kelvin_session as session:
-            kelvin_school_classes = SchoolClassResource(session=session).search()
+            kelvin_school_classes = SchoolClassResource(session=session).search(school=school)
             return [
-                SchoolClass(id=school_class.name, display_name=school_class.display_name)
+                SchoolClass(
+                    id=school_class.name, display_name=school_class.description or school_class.name
+                )
                 async for school_class in kelvin_school_classes
             ]
 

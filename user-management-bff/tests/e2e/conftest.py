@@ -8,7 +8,7 @@ from typing import Callable, Optional
 import pytest
 import pytest_asyncio
 from authlib.integrations.requests_client import OAuth2Session
-from ucsschool.kelvin.client import NoObject, Session, UserResource
+from ucsschool.kelvin.client import NoObject, SchoolClass, SchoolClassResource, Session, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
 
@@ -96,6 +96,44 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
             return result
 
     return _kelvin_user_factory
+
+
+@pytest_asyncio.fixture
+async def kelvin_school_class_deletion(kelvin_credentials) -> Callable[[str], None]:
+    to_delete = set()
+
+    def _add_to_delete_list(school, name):
+        to_delete.add((school, name))
+
+    yield _add_to_delete_list
+    async with Session(**kelvin_credentials) as session:
+        for school, name in to_delete:
+            try:
+                school_class = await SchoolClassResource(session=session).get(school=school, name=name)
+                await school_class.delete()
+            except NoObject:
+                pass
+
+
+@pytest.fixture
+def kelvin_school_class_factory(kelvin_credentials, kelvin_school_class_deletion, faker):
+    async def _kelvin_school_class_factory(
+        *,
+        school: str,
+        name: str,
+    ):
+        async with Session(**kelvin_credentials) as session:
+            school_class = SchoolClass(
+                name=name,
+                school=school,
+                users=[],
+                session=session,
+            )
+            result = await school_class.save()
+            kelvin_school_class_deletion(school=school, name=name)
+            return result
+
+    return _kelvin_school_class_factory
 
 
 @pytest.fixture

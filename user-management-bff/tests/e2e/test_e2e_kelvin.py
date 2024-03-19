@@ -227,3 +227,30 @@ async def test_patch_user_multi_school(access_token, base_url, kelvin_user_facto
     patched_kelvin_user = await get_kelvin_user(kelvin_user.name)
     kelvin_user.school_classes["school1"] = ["1c"]
     assert patched_kelvin_user.as_dict() == kelvin_user.as_dict()
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_get_user_add_config(access_token, base_url, kelvin_school_class_factory):
+    token = access_token("alex.admin", "univention")
+    school_class = await kelvin_school_class_factory(school="school1", name="test_school_class_1")
+    response = requests.get(
+        f"{base_url}/bff/config/users/add",
+        params={"school": "school1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.json()
+
+    assert {
+        "attributes": {"class_name": {"label": school_class.name, "value": school_class.name}},
+        "id": school_class.name,
+    } in next(
+        filter(
+            lambda x: x["props"]["name"] == "school_classes",
+            response.json()["pages"][0]["fieldsets"][0]["rows"],
+        )
+    )[
+        "props"
+    ][
+        "rows"
+    ]

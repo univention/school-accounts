@@ -33,7 +33,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
         def _make_kelvin_school_from_data(school_data: dict):
             kelvin_school = mocker.MagicMock()
             kelvin_school.name = school_data["id"]
-            kelvin_school.display_name = school_data["display_name"]
+            kelvin_school.description = school_data["display_name"]
             return kelvin_school
 
         return _make_kelvin_school_from_data
