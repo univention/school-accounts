@@ -9,6 +9,17 @@
       "loginFailed": "Login fehlgeschlagen."
     }
   },
+  "ConfirmBackModal": {
+    "button": {
+      "continue_add": "Erstellen fortf\u00fchren",
+      "continue_edit": "Bearbeiten fortf\u00fchren",
+      "discard_add": "Erstellen abbrechen",
+      "discard_edit": "\u00c4nderungen verwerfen"
+    },
+    "description_add": "M\u00f6chten Sie den Erstellungsdialog abbrechen?",
+    "description_edit": "Einige \u00c4nderungen sind noch nicht gespeichert. M\u00f6chten Sie abbrechen?",
+    "heading": "Best\u00e4tigung"
+  },
   "DeleteModal": {
     "cancelLabel": "Abbrechen",
     "confirmLabel": "L\u00f6schen",
@@ -23,11 +34,35 @@
   },
   "EditView": {
     "button": {
-      "back": "Zur\u00fcck"
+      "add": "Benutzer anlegen",
+      "back": "Zur\u00fcck",
+      "save": "Speichern"
     },
+    "fetchAddViewConfig.error": "Beim Laden der Seite ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Systemadministrator: {{msg}}",
+    "fetchClassOptions.error": "Die Klassen f\u00fcr die Schule '{{school}}' konnten nicht geladen werden: {{msg}}",
     "heading": {
-      "add": "Benutzer (Schulen)"
-    }
+      "add": "Benutzer (Schulen)",
+      "edit": "Benutzer (Schulen)"
+    },
+    "loading.schoolMissing": "Bitte legen Sie zun\u00e4chst eine Schule fest.",
+    "notFound": "Der Benutzer existiert nicht"
+  },
+  "EditViewSaveFailedModal": {
+    "baseDescription_add": "Beim Anlegen ist ein unbekannter Fehler aufgetreten",
+    "baseDescription_edit": "Beim Speichern ist ein unbekannter Fehler aufgetreten",
+    "button": {
+      "confirmation": "OK"
+    },
+    "fieldErrors.description": "Einige Felder enthalten Fehler:",
+    "heading_add": "Der Benutzer konnte nicht angelegt werden",
+    "heading_edit": "Die Benutzer-\u00c4nderungen konnten nicht gespeichert werden",
+    "objectNotFound": "Der Benutzer existiert nicht mehr"
+  },
+  "EditViewSaveSuccessModal": {
+    "button": {
+      "confirmation": "OK"
+    },
+    "heading": "Der Benutzer '{{name}}' wurde erfolgreich angelegt"
   },
   "ErrorModal": {
     "button": {
@@ -54,11 +89,6 @@
       "searchButton.label": "Suchen"
     },
     "subheader": "Verwaltung von Schulbenutzern"
-  },
-  "NotFoundView": {
-    "body.text": "Wir konnten die von Ihnen gesuchte Seite nicht finden.",
-    "button.home": "Startseite",
-    "header": "Seite nicht gefunden"
   },
   "errors": {
     "invalidAuthenticationPort": "Ung\u00fcltiger AuthenticationPort: {{adapter}}",

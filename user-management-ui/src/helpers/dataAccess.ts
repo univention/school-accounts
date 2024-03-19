@@ -2,10 +2,11 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import {type ListViewConfig} from '@/helpers/models/interface';
-import {type Result} from '@/helpers/models/http';
-import {type WrappedUsersList} from '@/helpers/models/user';
-import {type DataPort} from '@/ports/data';
+import type {AddViewConfig, EditViewConfig} from '@/helpers/models/config';
+import type {FetchObjectError, Result, SaveError} from '@/helpers/models/http';
+import type {FormValues, ListViewConfig} from '@/helpers/models/interface';
+import type {WrappedUser, WrappedUsersList} from '@/helpers/models/user';
+import type {DataPort} from '@/ports/data';
 import {useAdapterStore} from '@/stores/adapter';
 import {useSettingsStore} from '@/stores/settings';
 
@@ -43,6 +44,33 @@ export const getListViewConfig = async (): Promise<Result<ListViewConfig, string
       },
     },
   };
+};
+
+export const fetchAddViewConfig = async (school: string): Promise<Result<AddViewConfig, string>> => {
+  const dataAdapter = await getDataAdapter();
+  return dataAdapter.fetchAddViewConfig(school);
+};
+
+export const fetchEditViewConfig = async (
+  id: string,
+  school: string
+): Promise<Result<EditViewConfig, FetchObjectError>> => {
+  const dataAdapter = await getDataAdapter();
+  return dataAdapter.fetchEditViewConfig(id, school);
+};
+
+export const createUser = async (school: string, values: FormValues): Promise<Result<WrappedUser, SaveError>> => {
+  const dataAdapter = await getDataAdapter();
+  return dataAdapter.createUser(school, values);
+};
+
+export const updateUser = async (
+  id: string,
+  school: string,
+  values: FormValues
+): Promise<Result<WrappedUser, SaveError>> => {
+  const dataAdapter = await getDataAdapter();
+  return dataAdapter.updateUser(id, school, values);
 };
 
 export const deleteUsers = async (ids: string[]): Promise<{id: string; error: string}[]> => {

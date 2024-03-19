@@ -8,7 +8,7 @@ import {type UGridRow} from '@univention/univention-veb';
 
 export type GlobalAction = 'add';
 
-type FormValues = Record<string, any>;
+export type FormValues = Record<string, any>;
 
 export interface ListViewConfig {
   schools: SchoolConfigData[];

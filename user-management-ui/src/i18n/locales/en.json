@@ -9,6 +9,17 @@
       "loginFailed": "Login failed."
     }
   },
+  "ConfirmBackModal": {
+    "button": {
+      "continue_add": "Continue creating",
+      "continue_edit": "Continue editing",
+      "discard_add": "Cancel creation",
+      "discard_edit": "Discard changes"
+    },
+    "description_add": "Do you want to cancel the creation dialog?",
+    "description_edit": "There are unsaved changes. Are you sure to cancel?",
+    "heading": "Confirmation"
+  },
   "DeleteModal": {
     "cancelLabel": "Cancel",
     "confirmLabel": "Delete",
@@ -23,11 +34,35 @@
   },
   "EditView": {
     "button": {
-      "back": "Back"
+      "add": "Create user",
+      "back": "Back",
+      "save": "Save"
     },
+    "fetchAddViewConfig.error": "An error occurred while loading the page. Please try again or contact your system administrator: {{msg}}",
+    "fetchClassOptions.error": "The classes for the school '{{school}}' could not be loaded: {{msg}}",
     "heading": {
-      "add": "Users (schools)"
-    }
+      "add": "Users (schools)",
+      "edit": "Users (schools)"
+    },
+    "loading.schoolMissing": "Please select a school first.",
+    "notFound": "The user does not exist"
+  },
+  "EditViewSaveFailedModal": {
+    "baseDescription_add": "An unknown error occurred during creation",
+    "baseDescription_edit": "An unknown error occurred during saving",
+    "button": {
+      "confirmation": "OK"
+    },
+    "fieldErrors.description": "Some fields contain errors:",
+    "heading_add": "The user could not be created",
+    "heading_edit": "The user changes could not be saved",
+    "objectNotFound": "The user no longer exists"
+  },
+  "EditViewSaveSuccessModal": {
+    "button": {
+      "confirmation": "OK"
+    },
+    "heading": "The user '{{name}}' was successfully created"
   },
   "ErrorModal": {
     "button": {
