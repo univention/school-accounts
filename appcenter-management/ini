@@ -31,12 +31,12 @@ WebInterfacePortHttp = 8000
 WebInterfacePortHttps = 8000
 WebInterfaceProxyScheme = http
 DockerScriptConfigure = /tmp/ucsschool-user-management-configure
-RequiredAppsInDomain = ucsschool-kelvin-rest-api
+RequiredAppsInDomain = guardian-authorization-api, guardian-management-api, ucsschool-kelvin-rest-api
 NotifyVendor = True
 UCSOverviewCategory = False
 SupportType = univention
-ServerRole = domaincontroller_backup
-RequiredApps = guardian-authorization-api, guardian-management-api
+ServerRole = domaincontroller_master, domaincontroller_backup
+SupportedUcsVersions = 5.0-6 errata978
 
 [de]
 Description = UCS@school Benutzerverwaltung

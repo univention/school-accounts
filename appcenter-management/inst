@@ -56,33 +56,6 @@ univention-directory-manager groups/group modify "$@" \
   --dn "$KELVIN_REST_GROUP_DN" \
   --append users="$appcenter_apps_ucsschool_user_management_hostdn" || die
 
-extract_binddn_and_bindpwd_from_args() {
-    ## parse binddn and bindpwd from command line arguments into shell variables
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            "--binddn")
-                binddn="${2:?missing binddn}"
-                shift 2 || exit 2
-                ;;
-            "--bindpwdfile")
-                bindpwdfile="${2:?missing bindpwdfile}"
-                shift 2 || exit 2
-                ;;
-            *)
-                shift
-                ;;
-        esac
-    done
-}
-
-extract_binddn_and_bindpwd_from_args "$@"
-admin_user=$(echo $binddn | grep -Po '(?<=^uid=)[^,]*')
-admin_password=$(cat $bindpwdfile)
-
-# TODO: move to Guardian joinscript, see https://git.knut.univention.de/univention/components/authorization-engine/guardian/-/issues/219
-# add guardian super-admin role to Administrator
-univention-directory-manager users/user modify "$@" \
-    --dn "$binddn" --append "guardianRole=guardian:builtin:super-admin"
 
 keycloak_url=$(ucr get keycloak/server/sso/fqdn)
 
@@ -91,22 +64,39 @@ if [ -z $keycloak_url ]
     keycloak_url="https://ucs-sso-ng.${domainname:?}"
 elif ! [[ $keycloak_url == http* ]]
     then
-    keycloak_url='https://$keycloak_url'
+    keycloak_url="https://$keycloak_url"
 fi
 
+# Create temporary user for guardian administration.
+SYS_USER_PW=$(openssl rand -base64 12)
+udm users/user create "$@" \
+  --position "cn=users,$ldap_base" \
+  --set guardianRole="guardian:builtin:super-admin" \
+  --set username="ucsschool-user-management-sys-user" \
+  --set lastname="Sysuser" \
+  --set password="$SYS_USER_PW" || die
+
+guardian_management_api_url="https://$(univention-ldapsearch "(univentionService=guardian-management-api)" cn | grep -Po '(?<=^cn: )[^,]*' | head -1).$domainname/guardian/management"
+echo "Configuring Guardian objects at $guardian_management_api_url"
 $SCRIPTS_DIR/configure_guardian.py \
-    "https://${hostname:?}.${domainname:?}/guardian/management" \
-    $admin_user \
-    $admin_password \
+    "$guardian_management_api_url" \
+    "ucsschool-user-management-sys-user" \
+    "$SYS_USER_PW" \
     "$keycloak_url/realms/ucs/protocol/openid-connect/token" \
     guardian-scripts \
     $CONDITION_DIR || die
 
+
+udm users/user remove "$@" --dn "uid=ucsschool-user-management-sys-user,cn=users,$ldap_base" || die
+
 if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
 
+  machine_username="$hostname$"
+  machine_pw="$(cat /etc/machine.secret)"
+
   univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-      --username "$admin_user" \
-      --password "$admin_password" \
+      --username "$machine_username" \
+      --password "$machine_pw" \
       --url "$keycloak_url" \
       --realm ucs \
       --user-realm master \
@@ -118,8 +108,8 @@ if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
   SECRET=$(openssl rand -base64 24)
 
   univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
-      --username "$admin_user" \
-      --password "$admin_password" \
+      --username "$machine_username" \
+      --password "$machine_pw" \
       --url "$keycloak_url" \
       --realm ucs \
       --user-realm master \
@@ -129,7 +119,10 @@ if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
       --override-web-origins "https://${hostname:?}.${domainname:?}" \
       --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff/*" || die
 
-  univention-app configure $APP_ID --set ucsschool-user-management/guardian/client_secret="$SECRET" || die
+  guardian_authorization_api_url="https://$(univention-ldapsearch "$@" "(univentionService=guardian-authorization-api)" cn | grep -Po '(?<=^cn: )[^,]*' | head -1).$domainname/guardian/authorization"
+
+  univention-app configure $APP_ID --set ucsschool-user-management/guardian/client_secret="$SECRET" \
+                                         ucsschool-user-management/guardian/url="$guardian_authorization_api_url" || die
 
 fi
 

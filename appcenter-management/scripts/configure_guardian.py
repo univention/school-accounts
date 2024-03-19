@@ -52,7 +52,7 @@ def handle_status_code(response):
         return
 
     if not response.ok:
-        print(response.json())
+        print(response.__dict__)
     response.raise_for_status()
 
 

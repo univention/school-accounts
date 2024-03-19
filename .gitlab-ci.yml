@@ -104,7 +104,7 @@ integration-tests:
   image: $IMAGE_UCS_EC2_TOOLS
   variables:
     TARGET_VERSION: "5.0-7"
-    KVM_SERVER: "soft-test01.knut.univention.de"
+    KVM_SERVER: "soft-test03.knut.univention.de"
     UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
   before_script:
     - apt-get update && apt-get install -y curl || echo "Curl installed."
@@ -127,6 +127,7 @@ integration-tests:
     when: always
     paths:
       - dev/tests/junit.xml
+      - dev/tests/join.log
     reports:
       junit: dev/tests/junit.xml
 

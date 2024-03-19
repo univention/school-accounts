@@ -26,7 +26,7 @@ If you manually start a job by clicking on its name, instead of the play button,
 The following variables are important:
 
 - TARGET_VERSION=5.0-6: The UCS version the tests should run under.
-- KVM_SERVER=soft-test01.knut.univention.de: The KVM host to use for the tests.
+- KVM_SERVER=soft-test03.knut.univention.de: The KVM host to use for the tests.
 - NO_HALT=UNSET: If the variable is set, the VMs are not automatically terminated.
 
 If you abort the pipeline job or set the `NO_HALT` variable, make sure to clean up your VMs after.
