@@ -17,6 +17,9 @@ mkdir -p $SCRIPTS_DIR
 mkdir -p $CONF_DIR
 mkdir -p $CONDITIONS_DIR
 
+echo "CHANGE ME" > "$CONF_DIR/client.secret"
+chmod 600 "$CONF_DIR/client.secret"
+
 configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
 cat <<%EOF >"$configure_guardian_script_path"
 %CONFIGURE-GUARDIAN%

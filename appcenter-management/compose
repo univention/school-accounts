@@ -47,7 +47,7 @@ print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_u
       OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__AUDIENCE: "ucsschool-user-management"
       OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
       GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_ID: "ucsschool-user-management-bff"
-      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET: "@%@ucsschool-user-management/guardian/client_secret@%@"
+      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET_FILE: "/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret"
       GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL: @!@
 ucr = configRegistry
 api_url = ucr.get(

@@ -25,11 +25,3 @@ Description[de] = URL des Guardian-Servers zur Autorisierung. Falls dieser Wert 
 Group = Guardian
 Scope = outside
 Show = Install,Settings
-
-[ucsschool-user-management/guardian/client_secret]
-Type = String
-Description = DESC
-Description[de] = DESC
-Group = Guardian
-Scope = outside
-Show = Install,Settings

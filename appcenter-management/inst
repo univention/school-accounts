@@ -106,6 +106,7 @@ if [ $JS_LAST_EXECUTED_VERSION -lt 1 ]; then
       --override-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
 
   SECRET=$(openssl rand -base64 24)
+  echo "$SECRET" > "$CONF_DIR/client.secret"
 
   univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
       --username "$machine_username" \
