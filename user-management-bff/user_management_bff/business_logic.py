@@ -182,6 +182,9 @@ async def patch_user(
             f"Cannot patch user '{patch_data.identifier}' in school '{patch_data.school}'."
         )
     patch_attributes = patch_data.attributes.model_dump(exclude_unset=True, exclude={"school_classes"})
+    if patch_data.attributes.active is not None:
+        patch_attributes["disabled"] = not patch_data.attributes.active
+        patch_attributes.pop("active")
     for key, value in patch_attributes.items():
         setattr(user.attributes, key, value)
     if (

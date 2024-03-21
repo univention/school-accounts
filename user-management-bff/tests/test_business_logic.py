@@ -68,8 +68,11 @@ def test_user_create_request_to_target():
                 schools=["school1"],
                 school_classes={"school1": ["1a"]},
                 roles=["teacher:school:school1"],
-                disabled=False,
+                active=True,
             ),
         ),
     )
     assert user_create_request_to_target(user) == expected
+
+
+# todo test?

@@ -63,8 +63,8 @@ def test_get_users_config(test_client, api_prefix):
                 "order": 5,
             },
             {
-                "label": "Activated",
-                "attribute": "activated",
+                "label": "Active",
+                "attribute": "active",
                 "formatter": {"type": "boolean"},
                 "sorting": None,
                 "order": 6,
@@ -319,7 +319,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
             "username": {"value": user["username"], "access": "write"},
             "schools": {"value": [user["school"]], "access": "write"},
             "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "write"},
-            "activated": {"value": not user["disabled"], "access": "write"},
+            "active": {"value": not user["disabled"], "access": "write"},
             "roles": {"value": user["roles"], "access": "write"},
         },
     }
@@ -438,7 +438,8 @@ def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefi
 
 
 @pytest.mark.parametrize(
-    "patch_dict", [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}]
+    "patch_dict",
+    [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}, {"active": False}],
 )
 @pytest.mark.usefixtures("restore_users_json")
 def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
@@ -447,7 +448,7 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
     )
     original_user = {
         "attributes": {
-            "activated": {"access": "write", "value": True},
+            "active": {"access": "write", "value": True},
             "classes": {"access": "write", "value": ["test_school1:1a", "test_school1:2b"]},
             "first_name": {"access": "write", "value": "firstname"},
             "last_name": {"access": "write", "value": "lastname"},
@@ -457,6 +458,34 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
         },
         "id": "test_user1",
     }
+    for key, value in patch_dict.items():
+        original_user["attributes"][key]["value"] = value
+    assert response.status_code == 200, response.json()
+    assert response.json()["user"] == original_user
+
+
+@pytest.mark.parametrize(
+    "patch_dict",
+    [{}, {"active": False}],
+)
+@pytest.mark.usefixtures("restore_users_json")
+def test_patch_user_active(test_client, api_prefix, patch_dict, users_json_path):
+    response = test_client.patch(
+        f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json=patch_dict
+    )
+    original_user = {
+        "attributes": {
+            "active": {"access": "write", "value": True},
+            "classes": {"access": "write", "value": ["test_school1:1a", "test_school1:2b"]},
+            "first_name": {"access": "write", "value": "firstname"},
+            "last_name": {"access": "write", "value": "lastname"},
+            "roles": {"access": "write", "value": ["teacher:school:test_school1"]},
+            "schools": {"access": "write", "value": ["test_school1"]},
+            "username": {"access": "write", "value": "firstname.lastname"},
+        },
+        "id": "test_user1",
+    }
+
     for key, value in patch_dict.items():
         original_user["attributes"][key]["value"] = value
     assert response.status_code == 200, response.json()

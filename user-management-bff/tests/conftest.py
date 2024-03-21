@@ -92,7 +92,7 @@ def patch_test_env(monkeypatch):
 def transform_user_dict_to_api_users_dict():
     def _transform_user_dict_to_api_users_dict(user_dict: dict[str, Any]) -> dict[str, Any]:
         transformed = {**user_dict}
-        transformed["attributes"]["activated"] = (
+        transformed["attributes"]["active"] = (
             user_dict["attributes"].get("active", None) or not user_dict["attributes"]["disabled"]
         )
         transformed["attributes"]["classes"] = [
@@ -101,9 +101,7 @@ def transform_user_dict_to_api_users_dict():
             for school_class in school_classes
         ]
         del transformed["attributes"]["school_classes"]
-        if "active" in transformed["attributes"]:
-            del transformed["attributes"]["active"]
-        else:
+        if "disabled" in transformed["attributes"]:
             del transformed["attributes"]["disabled"]
         return transformed
 

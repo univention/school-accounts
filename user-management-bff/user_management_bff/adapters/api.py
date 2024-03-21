@@ -64,9 +64,9 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                     "first_name", user.attributes.first_name, permissions
                 )
             ),
-            activated=ListUserAttribute[bool](
+            active=ListUserAttribute[bool](
                 **FastAPIUsersRepresentationAdapter._get_attribute_dict(
-                    "disabled", not user.attributes.disabled, permissions
+                    "active", not user.attributes.disabled, permissions
                 )
             ),
             classes=ListUserAttribute[list[str]](

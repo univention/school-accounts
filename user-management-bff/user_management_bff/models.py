@@ -68,13 +68,14 @@ class Permission(StrEnum):
     read_last_name = "read-last_name"
     read_first_name = "read-first_name"
     read_disabled = "read-disabled"
+    read_active = "read-active"
     read_schools = "read-schools"
     read_school_classes = "read-school_classes"
     read_roles = "read-roles"
     write_last_name = "write-last_name"
     write_first_name = "write-first_name"
     write_username = "write-username"
-    write_disabled = "write-disabled"
+    write_active = "write-active"
     write_schools = "write-schools"
     write_school_classes = "write-school_classes"
     write_roles = "write-roles"
@@ -95,7 +96,7 @@ class UserCreateRequest(BaseModel):
     school: str
     school_classes: list[str]
     roles: list[Role]
-    disabled: bool = False
+    active: bool = True
 
     @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
@@ -110,7 +111,7 @@ class UserPatchAttributes(BaseModel):
     username: Optional[str] = None
     password: str | None = None
     school_classes: Optional[list[str]] = None
-    disabled: Optional[bool] = None
+    active: Optional[bool] = None
 
 
 class UserPatchRequest(BaseModel):

@@ -77,8 +77,8 @@ COLUMN_CONFIGS: list[dict[str, Any]] = [
         "formatter": {"type": FormatterChoice.LIST},
     },
     {
-        "label": "Activated",
-        "attribute": "activated",
+        "label": "Active",
+        "attribute": "active",
         "formatter": {"type": FormatterChoice.BOOLEAN},
     },
 ]
