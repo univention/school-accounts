@@ -121,11 +121,13 @@ def kelvin_school_class_factory(kelvin_credentials, kelvin_school_class_deletion
         *,
         school: str,
         name: str,
+        description: Optional[str] = None,
     ):
         async with Session(**kelvin_credentials) as session:
             school_class = SchoolClass(
                 name=name,
                 school=school,
+                description=description,
                 users=[],
                 session=session,
             )

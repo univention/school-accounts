@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import i18next from 'i18next';
-import type {AuthenticationPort} from '@univention/univention-veb';
+import type {AuthenticationPort, Field, Fieldset, Page} from '@univention/univention-veb';
 import type {DataPort} from '@/ports/data';
 import {errorToString} from '@/helpers/error';
 import type {InMemoryDB} from '@/helpers/models/db';
@@ -13,6 +13,7 @@ import type {
   AddViewResponse,
   ColumnConfigData,
   ColumnsConfig,
+  ColumnConfigResponseData,
   ColumnsConfigResponse,
   EditViewConfig,
   EditViewResponse,
@@ -133,6 +134,74 @@ class GenericDataAdapter implements DataPort {
     return await this.removeUserRequest(id);
   }
 
+  _columnConfigFromApi(columnConfig: ColumnConfigResponseData): ColumnConfigData {
+    const columnBase: ColumnConfigData = {
+      label: columnConfig.label,
+      attribute: columnConfig.attribute,
+    };
+
+    // The univention-veb library does not currently handle null values in these fields;
+    // however the backend needs to send them.
+    // We need to remove these from the response that gets sent to the frontend.
+    if (columnConfig.sorting !== null) {
+      columnBase.sorting = columnConfig.sorting;
+    }
+    if (columnConfig.formatter !== null) {
+      columnBase.formatter = columnConfig.formatter;
+    }
+
+    return columnBase;
+  }
+
+  _pageFromApi(pageResponse: Page): Page {
+    const page: Page = {
+      label: pageResponse.label,
+      name: pageResponse.name,
+      fieldsets: [],
+    };
+    for (const fieldsetResponse of pageResponse.fieldsets) {
+      const fieldset: Fieldset = {
+        label: fieldsetResponse.label,
+        name: fieldsetResponse.name,
+        rows: [],
+      };
+
+      for (const rowResponse of fieldsetResponse.rows) {
+        const row = Array.isArray(rowResponse) ? rowResponse : [rowResponse];
+        const fields: Field[] = [];
+
+        for (const fieldResponse of row) {
+          const field: Field = {
+            type: fieldResponse.type,
+            props: JSON.parse(JSON.stringify(fieldResponse.props)),
+          };
+          if (fieldResponse.type === 'UMultiSelect') {
+            // @ts-ignore -- We already checked that this is a UMultiSelect
+            field.props.columns = fieldResponse.props.columns.map((column: ColumnConfigResponseData) =>
+              this._columnConfigFromApi(column)
+            );
+          } else if (fieldResponse.type === 'UMultiObjectSelect') {
+            // @ts-ignore -- We already checked that this is a UMultiObjectSelect
+            field.props.columns = fieldResponse.props.columns.map((column: ColumnConfigResponseData) =>
+              this._columnConfigFromApi(column)
+            );
+            // @ts-ignore -- We already checked that this is a UMultiObjectSelect
+            field.props.searchColumns = fieldResponse.props.searchColumns.map((column: ColumnConfigResponseData) =>
+              this._columnConfigFromApi(column)
+            );
+          }
+
+          fields.push(field);
+        }
+
+        fieldset.rows.push(fields);
+      }
+
+      page.fieldsets.push(fieldset);
+    }
+    return page;
+  }
+
   _schoolConfigFromApi(schoolData: SchoolConfigResponseData): SchoolConfigData {
     return {
       label: schoolData.label,
@@ -146,26 +215,13 @@ class GenericDataAdapter implements DataPort {
       return a.order - b.order;
     });
 
-    const columns: ColumnConfigData[] = [];
-    for (const columnConfig of columnsConfigResponse.columns) {
-      const columnBase: ColumnConfigData = {
-        label: columnConfig.label,
-        attribute: columnConfig.attribute,
-      };
-      if (columnConfig.sorting !== null) {
-        columnBase.sorting = columnConfig.sorting;
-      }
-      if (columnConfig.formatter !== null) {
-        columnBase.formatter = columnConfig.formatter;
-      }
-      columns.push(columnBase);
-    }
+    const columns = columnsConfigResponse.columns.map(columnConfig => this._columnConfigFromApi(columnConfig));
     return {columns};
   }
 
   _addViewConfigFromApi(addViewResponse: AddViewResponse): AddViewConfig {
     return {
-      pages: addViewResponse.pages,
+      pages: addViewResponse.pages.map(page => this._pageFromApi(page)),
     };
   }
 
@@ -173,7 +229,7 @@ class GenericDataAdapter implements DataPort {
     return {
       id: editViewResponse.id,
       user: editViewResponse.user,
-      pages: editViewResponse.pages,
+      pages: editViewResponse.pages.map(page => this._pageFromApi(page)),
     };
   }
 
@@ -697,7 +753,7 @@ export class ApiDataAdapter extends GenericDataAdapter {
         if (statusCode === '403') {
           return {
             type: 'permissionsError',
-            message: errorJson.message || '',
+            message: errorJson.detail || '',
             missingPermissions: errorJson.missingPermissions || [],
           };
         } else {

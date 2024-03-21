@@ -493,43 +493,44 @@ def test_get_user_add_config(test_client, api_prefix):
                                 "props": {
                                     "access": "read",
                                     "description": "School of the user",
-                                    "hint": "School",
                                     "label": "School",
                                     "name": "school",
                                     "required": True,
+                                    "options": [
+                                        {"label": "School1", "value": "school1"},
+                                    ],
                                 },
-                                "type": "UInputText",
+                                "type": "UComboBox",
                                 "watches": [],
                             },
-                            {
-                                "props": {
-                                    "access": "write",
-                                    "description": "Last name of the user",
-                                    "hint": "Last name",
-                                    "label": "Last name",
-                                    "name": "last_name",
-                                    "required": True,
+                            [
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": "Last name of the user",
+                                        "label": "Last name",
+                                        "name": "last_name",
+                                        "required": True,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
                                 },
-                                "type": "UInputText",
-                                "watches": [],
-                            },
-                            {
-                                "props": {
-                                    "access": "write",
-                                    "description": "First name of the user",
-                                    "hint": "First name",
-                                    "label": "First name",
-                                    "name": "first_name",
-                                    "required": True,
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": "First name of the user",
+                                        "label": "First name",
+                                        "name": "first_name",
+                                        "required": True,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
                                 },
-                                "type": "UInputText",
-                                "watches": [],
-                            },
+                            ],
                             {
                                 "props": {
                                     "access": "write",
                                     "description": "Username of the user",
-                                    "hint": "Username",
                                     "label": "Username",
                                     "name": "username",
                                     "required": True,
@@ -541,7 +542,6 @@ def test_get_user_add_config(test_client, api_prefix):
                                 "props": {
                                     "access": "write",
                                     "description": "Password of the user",
-                                    "hint": "Password",
                                     "label": "Password",
                                     "name": "password",
                                     "required": False,
@@ -556,23 +556,26 @@ def test_get_user_add_config(test_client, api_prefix):
                                         {
                                             "attribute": "class_name",
                                             "formatter": None,
-                                            "label": "school class",
+                                            "label": "School class",
                                             "order": 0,
                                             "sorting": None,
                                         }
                                     ],
                                     "description": "School classes of the user",
-                                    "hint": "School classes",
                                     "label": "School classes",
                                     "name": "school_classes",
                                     "required": True,
                                     "rows": [
                                         {
-                                            "attributes": {"class_name": {"label": "1a", "value": "1a"}},
+                                            "attributes": {
+                                                "class_name": {"access": "read", "value": "1a"}
+                                            },
                                             "id": "1a",
                                         },
                                         {
-                                            "attributes": {"class_name": {"label": "2b", "value": "2b"}},
+                                            "attributes": {
+                                                "class_name": {"access": "read", "value": "2b"}
+                                            },
                                             "id": "2b",
                                         },
                                     ],
@@ -584,23 +587,46 @@ def test_get_user_add_config(test_client, api_prefix):
                                 "props": {
                                     "access": "write",
                                     "description": "Roles of the user",
-                                    "hint": "Roles",
                                     "label": "Roles",
                                     "name": "roles",
-                                    "options": [
-                                        {"label": "student", "value": "Student"},
-                                        {"label": "Teacher", "value": "teacher"},
-                                    ],
                                     "required": True,
+                                    "columns": [
+                                        {
+                                            "label": "Role",
+                                            "attribute": "role_name",
+                                            "sorting": None,
+                                            "order": 0,
+                                            "formatter": None,
+                                        },
+                                    ],
+                                    "rows": [
+                                        {
+                                            "id": "student",
+                                            "attributes": {
+                                                "role_name": {
+                                                    "value": "Student",
+                                                    "access": "read",
+                                                },
+                                            },
+                                        },
+                                        {
+                                            "id": "teacher",
+                                            "attributes": {
+                                                "role_name": {
+                                                    "value": "Teacher",
+                                                    "access": "read",
+                                                },
+                                            },
+                                        },
+                                    ],
                                 },
-                                "type": "USelect",
+                                "type": "UMultiSelect",
                                 "watches": [],
                             },
                             {
                                 "props": {
                                     "access": "write",
                                     "description": "Active",
-                                    "hint": "Active",
                                     "label": "Active",
                                     "name": "active",
                                     "required": False,

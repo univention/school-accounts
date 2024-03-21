@@ -31,6 +31,11 @@ class AttributeAccess(StrEnum):
     NONE = auto()
 
 
+class Attribute(BaseModel):
+    value: str
+    access: AttributeAccess
+
+
 class SchoolContextPermission(StrEnum):
     ADD = auto()
 
@@ -148,7 +153,7 @@ class Watcher(BaseModel):
 class WidgetType(StrEnum):
     UInputText = "UInputText"
     UInputPassword = "UInputPassword"
-    USelect = "USelect"
+    UComboBox = "UComboBox"
     UMultiSelect = "UMultiSelect"
     UInputCheckbox = "UInputCheckbox"
 
@@ -162,7 +167,7 @@ class FieldsetRow(BaseModel):
 class Fieldset(BaseModel):
     name: str
     label: str
-    rows: list[FieldsetRow]
+    rows: list[FieldsetRow | list[FieldsetRow]]
 
 
 class PageConfig(BaseModel):
@@ -181,14 +186,19 @@ class EditUsersConfig(BaseModel):
     pages: list[PageConfig]
 
 
+class RoleRowAttributes(BaseModel):
+    role_name: Attribute
+
+
+class RoleRow(BaseModel):
+    id: str
+    attributes: RoleRowAttributes
+
+
 class SchoolCLassRowAttributes(BaseModel):
-    class_name: LabeledValue
+    class_name: Attribute
 
 
 class SchoolClassRow(BaseModel):
     id: str
     attributes: SchoolCLassRowAttributes
-
-
-class SchoolClassesConfig(BaseModel):
-    rows: list[SchoolClassRow]

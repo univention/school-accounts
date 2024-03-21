@@ -233,7 +233,9 @@ async def test_patch_user_multi_school(access_token, base_url, kelvin_user_facto
 @pytest.mark.e2e
 async def test_get_user_add_config(access_token, base_url, kelvin_school_class_factory):
     token = access_token("alex.admin", "univention")
-    school_class = await kelvin_school_class_factory(school="school1", name="test_school_class_1")
+    school_class = await kelvin_school_class_factory(
+        school="school1", name="test_school_class_1", description="Test School Class 1"
+    )
     response = requests.get(
         f"{base_url}/bff/config/users/add",
         params={"school": "school1"},
@@ -242,11 +244,11 @@ async def test_get_user_add_config(access_token, base_url, kelvin_school_class_f
     assert response.status_code == 200, response.json()
 
     assert {
-        "attributes": {"class_name": {"label": school_class.name, "value": school_class.name}},
+        "attributes": {"class_name": {"value": school_class.description, "access": "read"}},
         "id": school_class.name,
     } in next(
         filter(
-            lambda x: x["props"]["name"] == "school_classes",
+            lambda x: not isinstance(x, list) and x["props"]["name"] == "school_classes",
             response.json()["pages"][0]["fieldsets"][0]["rows"],
         )
     )[

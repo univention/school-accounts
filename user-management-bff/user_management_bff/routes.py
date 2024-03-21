@@ -12,6 +12,7 @@ from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepre
 from .api_models import (
     AddUsersConfig,
     APIUserPatchRequest,
+    Attribute,
     AttributeAccess,
     ColumnConfig,
     CreateUserResponse,
@@ -19,11 +20,12 @@ from .api_models import (
     Fieldset,
     FieldsetRow,
     FormatterChoice,
-    LabeledValue,
     ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
     PageConfig,
+    RoleRow,
+    RoleRowAttributes,
     SchoolClassRow,
     SchoolCLassRowAttributes,
     UserCreateRequest,
@@ -192,6 +194,15 @@ async def get_user_add_config(
     school_classes = await business_logic.get_user_add_config_data(
         school_classes_persistence_port, permissions_port, actor_id, school
     )
+    # TODO: get school data, and put in 'school' FieldsetRow
+    schoolobj = {
+        "id": school,
+        "name": school.title(),
+    }
+    # TODO: Construction of a response really belongs in business logic, not here.
+    # Routers should be relatively sparse, and this makes the router bloated.
+    # Putting the response creation in business logic allows for better unit tests,
+    # especially if we need to add conditional logic later.
     return AddUsersConfig(
         pages=[
             PageConfig(
@@ -203,45 +214,46 @@ async def get_user_add_config(
                         label="User Info",
                         rows=[
                             FieldsetRow(
-                                type=WidgetType.UInputText,
+                                type=WidgetType.UComboBox,
                                 props=dict(
                                     label="School",
                                     name="school",
                                     description="School of the user",
-                                    hint="School",
                                     required=True,
                                     access=AttributeAccess.READ,
+                                    options=[
+                                        {"label": schoolobj["name"], "value": schoolobj["id"]},
+                                    ],
                                 ),
                             ),
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="Last name",
-                                    name="last_name",
-                                    description="Last name of the user",
-                                    hint="Last name",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
+                            [
+                                FieldsetRow(
+                                    type=WidgetType.UInputText,
+                                    props=dict(
+                                        label="Last name",
+                                        name="last_name",
+                                        description="Last name of the user",
+                                        required=True,
+                                        access=AttributeAccess.WRITE,
+                                    ),
                                 ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="First name",
-                                    name="first_name",
-                                    description="First name of the user",
-                                    hint="First name",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
+                                FieldsetRow(
+                                    type=WidgetType.UInputText,
+                                    props=dict(
+                                        label="First name",
+                                        name="first_name",
+                                        description="First name of the user",
+                                        required=True,
+                                        access=AttributeAccess.WRITE,
+                                    ),
                                 ),
-                            ),
+                            ],
                             FieldsetRow(
                                 type=WidgetType.UInputText,
                                 props=dict(
                                     label="Username",
                                     name="username",
                                     description="Username of the user",
-                                    hint="Username",
                                     required=True,
                                     access=AttributeAccess.WRITE,
                                 ),
@@ -252,7 +264,6 @@ async def get_user_add_config(
                                     label="Password",
                                     name="password",
                                     description="Password of the user",
-                                    hint="Password",
                                     required=False,
                                     access=AttributeAccess.WRITE,
                                 ),
@@ -263,21 +274,20 @@ async def get_user_add_config(
                                     label="School classes",
                                     name="school_classes",
                                     description="School classes of the user",
-                                    hint="School classes",
                                     required=True,
                                     access=AttributeAccess.WRITE,
                                     columns=[
                                         ColumnConfig(
-                                            label="school class", attribute="class_name", order=0
+                                            label="School class", attribute="class_name", order=0
                                         )
                                     ],
                                     rows=[
                                         SchoolClassRow(
                                             id=school_class.id,
                                             attributes=SchoolCLassRowAttributes(
-                                                class_name=LabeledValue(
-                                                    label=school_class.display_name,
-                                                    value=school_class.id,
+                                                class_name=Attribute(
+                                                    value=school_class.display_name,
+                                                    access=AttributeAccess.READ,
                                                 )
                                             ),
                                         )
@@ -286,17 +296,33 @@ async def get_user_add_config(
                                 ),
                             ),
                             FieldsetRow(
-                                type=WidgetType.USelect,
+                                type=WidgetType.UMultiSelect,
                                 props=dict(
                                     label="Roles",
                                     name="roles",
                                     description="Roles of the user",
-                                    hint="Roles",
                                     required=True,
                                     access=AttributeAccess.WRITE,
-                                    options=[
-                                        {"label": "student", "value": "Student"},
-                                        {"label": "Teacher", "value": "teacher"},
+                                    columns=[ColumnConfig(label="Role", attribute="role_name", order=0)],
+                                    rows=[
+                                        RoleRow(
+                                            id="student",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Student",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
+                                        RoleRow(
+                                            id="teacher",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Teacher",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
                                     ],
                                 ),
                             ),
@@ -306,7 +332,6 @@ async def get_user_add_config(
                                     label="Active",
                                     name="active",
                                     description="Active",
-                                    hint="Active",
                                     required=False,
                                     access=AttributeAccess.WRITE,
                                 ),
@@ -324,14 +349,25 @@ async def get_user_add_config(
 def get_user_edit_config(
     user_id: Annotated[str, Query(alias="id")], school: str
 ) -> EditUsersConfig:  # pragma: no cover
+    # TODO: get school data, and put in 'school' FieldsetRow
+    schoolobj = {
+        "id": school,
+        "name": school.title(),
+    }
     return EditUsersConfig(
         id="user1",
-        user={  # Sending only partial data on purpose for testing
-            "username": "User 1",
+        # Be sure to send complete data,
+        # otherwise it confuses the frontend,
+        # unless the AttributeAccess is NONE,
+        # in which case don't send it or send None.
+        user={
+            "username": "user1",  # username should match id
             "first_name": "Max",
             "last_name": "Mustermann",
             "school": school,
-            "school_classes": "school_class1",
+            "school_classes": ["school_class1"],
+            "roles": ["student"],
+            "active": True,
         },
         pages=[
             PageConfig(
@@ -343,56 +379,62 @@ def get_user_edit_config(
                         label="User Info",
                         rows=[
                             FieldsetRow(
-                                type=WidgetType.UInputText,
+                                type=WidgetType.UComboBox,
                                 props=dict(
                                     label="School",
                                     name="school",
                                     description="School of the user",
-                                    hint="School",
                                     required=True,
                                     access=AttributeAccess.READ,
+                                    options=[
+                                        {"label": schoolobj["name"], "value": schoolobj["id"]},
+                                    ],
                                 ),
                             ),
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="Last name",
-                                    name="last_name",
-                                    description="Last name of the user",
-                                    hint="Last name",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
+                            [
+                                FieldsetRow(
+                                    type=WidgetType.UInputText,
+                                    props=dict(
+                                        label="Last name",
+                                        name="last_name",
+                                        description="Last name of the user",
+                                        required=True,
+                                        access=AttributeAccess.WRITE,
+                                    ),
                                 ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="First name",
-                                    name="first_name",
-                                    description="First name of the user",
-                                    hint="First name",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
+                                FieldsetRow(
+                                    type=WidgetType.UInputText,
+                                    props=dict(
+                                        label="First name",
+                                        name="first_name",
+                                        description="First name of the user",
+                                        required=True,
+                                        access=AttributeAccess.WRITE,
+                                    ),
                                 ),
-                            ),
+                            ],
                             FieldsetRow(
                                 type=WidgetType.UInputText,
                                 props=dict(
                                     label="Username",
                                     name="username",
                                     description="Username of the user",
-                                    hint="Username",
                                     required=False,
                                     access=AttributeAccess.WRITE,
                                 ),
                             ),
+                            # The frontend can technically handle this,
+                            # and we'll keep it here for now.
+                            # But you might want to consider just omitting NONE fields,
+                            # so the user isn't aware of what they shouldn't know about.
+                            # It also makes for a better Detail view,
+                            # when it's not cluttered with disabled fields.
                             FieldsetRow(
                                 type=WidgetType.UInputPassword,
                                 props=dict(
                                     label="Password",
                                     name="password",
                                     description="Password of the user",
-                                    hint="Password",
                                     required=False,
                                     access=AttributeAccess.NONE,
                                 ),
@@ -403,7 +445,6 @@ def get_user_edit_config(
                                     label="School classes",
                                     name="school_classes",
                                     description="School classes of the user",
-                                    hint="School classes",
                                     required=True,
                                     access=AttributeAccess.WRITE,
                                     columns=[
@@ -415,16 +456,16 @@ def get_user_edit_config(
                                         SchoolClassRow(
                                             id="school_class1",
                                             attributes=SchoolCLassRowAttributes(
-                                                class_name=LabeledValue(
-                                                    label="school_class1", value="school_class1"
+                                                class_name=Attribute(
+                                                    value="Class 1", access=AttributeAccess.READ
                                                 )
                                             ),
                                         ),
                                         SchoolClassRow(
                                             id="school_class2",
                                             attributes=SchoolCLassRowAttributes(
-                                                class_name=LabeledValue(
-                                                    label="school_class1", value="school_class2"
+                                                class_name=Attribute(
+                                                    value="Class 2", access=AttributeAccess.READ
                                                 )
                                             ),
                                         ),
@@ -432,27 +473,64 @@ def get_user_edit_config(
                                 ),
                             ),
                             FieldsetRow(
-                                type=WidgetType.USelect,
+                                type=WidgetType.UMultiSelect,
                                 props=dict(
                                     label="Roles",
                                     name="roles",
                                     description="Roles of the user",
-                                    hint="Roles",
                                     required=True,
                                     access=AttributeAccess.READ,
-                                    options=[
-                                        {"label": "student", "value": "Student"},
-                                        {"label": "Teacher", "value": "teacher"},
+                                    columns=[ColumnConfig(label="Role", attribute="role_name", order=0)],
+                                    # We need to include all roles here
+                                    # in order for it to display properly.
+                                    # If you don't want to show certain roles,
+                                    # set AttributeAccess.NONE
+                                    rows=[
+                                        RoleRow(
+                                            id="student",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Student",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
+                                        RoleRow(
+                                            id="teacher",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Teacher",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
+                                        RoleRow(
+                                            id="staff",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Staff",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
+                                        RoleRow(
+                                            id="administrator",
+                                            attributes=RoleRowAttributes(
+                                                role_name=Attribute(
+                                                    value="Administrator",
+                                                    access=AttributeAccess.READ,
+                                                ),
+                                            ),
+                                        ),
                                     ],
                                 ),
                             ),
                             FieldsetRow(
                                 type=WidgetType.UInputCheckbox,
                                 props=dict(
-                                    label="Disabled",
-                                    name="disabled",
-                                    description="Disabled",
-                                    hint="Disabled",
+                                    label="Active",
+                                    name="active",
+                                    description="User is active",
                                     required=False,
                                     access=AttributeAccess.READ,
                                 ),
