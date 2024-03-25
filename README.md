@@ -173,7 +173,7 @@ This way you have access to the setup after the job is done.
 You can run the e2e tests for the backend with:
 
 ```shell
-E2E_BASE_URL="https://backup1.school.test/univention/ucsschool/user-management" \
+E2E_BASE_URL="https://primary.school.test/univention/ucsschool/user-management" \
 E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.school.test/guardian/management" \
 E2E_KELVIN_URL="primary.school.test" \
 dev/dev_run.sh task pytest-e2e
@@ -187,6 +187,19 @@ IP_BACKUP backup1.school.test
 ```
 
 Make sure that the ssl certificate from the UCS domain is also downloaded and set in the .env file.
+
+```shell
+curl -o dev/local/ucs-root-ca.crt http://primary.school.test/ucs-root-ca.crt
+```
+
+Uncomment the following lines in the `.env` file:
+
+```text
+REQUESTS_CA_BUNDLE=/src/dev/local/ucs-root-ca.crt
+SSL_CERT_FILE=/src/dev/local/ucs-root-ca.crt
+```
+
+**NOTE:** You will need to disable these lines again before running the `dev-server  task.
 
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.

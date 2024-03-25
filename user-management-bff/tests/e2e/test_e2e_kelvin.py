@@ -243,6 +243,18 @@ async def test_get_user_add_config(access_token, base_url, kelvin_school_class_f
     )
     assert response.status_code == 200, response.json()
 
+    school_options = next(
+        filter(
+            lambda x: not isinstance(x, list) and x["props"]["name"] == "school",
+            response.json()["pages"][0]["fieldsets"][0]["rows"],
+        )
+    )["props"]["options"]
+    assert len(school_options) == 1
+    assert {
+        "label": "school1",
+        "value": "school1",
+    } in school_options
+
     assert {
         "attributes": {"class_name": {"value": school_class.description, "access": "read"}},
         "id": school_class.name,
@@ -276,7 +288,6 @@ async def test_get_user_edit_config(
     assert response.json()["id"] == user.name
     assert response.json()["user"] == {
         "username": user.name,
-        "schools": ["school1"],
         "school": "school1",
         "first_name": user.firstname,
         "active": True,
@@ -284,6 +295,19 @@ async def test_get_user_edit_config(
         "school_classes": [],
         "last_name": user.lastname,
     }
+
+    school_options = next(
+        filter(
+            lambda x: not isinstance(x, list) and x["props"]["name"] == "school",
+            response.json()["pages"][0]["fieldsets"][0]["rows"],
+        )
+    )["props"]["options"]
+    assert len(school_options) == 1, school_options
+    assert {
+        "label": "school1",
+        "value": "school1",
+    } in school_options
+
     assert {
         "attributes": {"class_name": {"access": "read", "value": school_class.name}},
         "id": school_class.name,

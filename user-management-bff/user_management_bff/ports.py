@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Generic, TypeVar
+from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
 
 from fastapi import Request
 
-from .api_models import UserCreateRequest
+from .api_models import EditUserResponseUser, UserCreateRequest
 from .models import Permission, School, SchoolClass, Target, User
 
 
@@ -47,7 +47,7 @@ class UsersPersistencePort(ABC):
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod
-    async def get_schools(self) -> list[School]:  # pragma: no cover
+    async def get_schools(self, name: Optional[str] = None) -> list[School]:  # pragma: no cover
         ...
 
 
@@ -75,6 +75,11 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRep
         self, user: User, permissions: set[Permission]
     ) -> UserCreateRepresentation:  # pragma: no cover
         ...
+
+    @abstractmethod
+    def edit_user_representation(
+        self, user: User, permissions: set[Permission]
+    ) -> EditUserResponseUser: ...
 
 
 SchoolsGetRepresentation = TypeVar("SchoolsGetRepresentation")
@@ -117,3 +122,26 @@ class PermissionsPort(ABC):
         """
         This method returns the permissions the provided actor has on the given targets.
         """
+
+
+AddUserConfigRepresentation = TypeVar("AddUserConfigRepresentation")
+
+
+class AddConfigRepresentationPort(ABC, Generic[AddUserConfigRepresentation]):
+    @abstractmethod
+    def add_config_representation(
+        self, school: School, school_classes: list[SchoolClass]
+    ) -> AddUserConfigRepresentation: ...
+
+
+EditUserConfigRepresentation = TypeVar("EditUserConfigRepresentation")
+
+
+class EditConfigRepresentationPort(ABC, Generic[EditUserConfigRepresentation, UserCreateRepresentation]):
+    @abstractmethod
+    def edit_config_representation(
+        self,
+        user_data: UserCreateRepresentation,
+        school: School,
+        school_classes: list[SchoolClass],
+    ) -> EditUserConfigRepresentation: ...

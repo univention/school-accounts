@@ -4,12 +4,11 @@
 
 from loguru import logger
 
-from .api_models import UserCreateRequest
+from .api_models import AddUsersConfig, EditUsersConfig, UserCreateRequest
 from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError, PermissionsError
 from .models import (
     Permission,
     School,
-    SchoolClass,
     Target,
     TargetObject,
     TargetObjectType,
@@ -18,6 +17,8 @@ from .models import (
     UsersGetRequest,
 )
 from .ports import (
+    AddConfigRepresentationPort,
+    EditConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
     SchoolsGetRepresentation,
@@ -91,29 +92,6 @@ async def get_users(
         ],
     )
     return representation_port.create_users_representation(users, permissions)
-
-
-async def get_user(
-    users_get_adapter: UsersPersistencePort,
-    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
-    permissions_port: PermissionsPort,
-    actor_id: str,
-    user_id: str,
-) -> UserCreateRepresentation:
-    actor = await get_actor(actor_id, users_get_adapter)
-    user = await users_get_adapter.get_user(user_id)
-    permissions = await permissions_port.get_permissions(
-        actor,
-        [
-            Target(
-                old_target=TargetObject(
-                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
-                ),
-                new_target=None,
-            )
-        ],
-    )
-    return representation_port.create_user_representation(user, set(permissions[user.id]))
 
 
 async def get_schools(
@@ -241,10 +219,53 @@ async def patch_user(
     return representation_port.create_user_representation(user, target_permissions)
 
 
-async def get_user_add_config_data(
+async def get_user_add_config(
+    schools_get_port: SchoolsPersistencePort,
     school_classes_persistence_port: SchoolClassesPersistencePort,
+    representation_port: AddConfigRepresentationPort,
+    school: str,
+) -> AddUsersConfig:
+    try:
+        school_obj = (await schools_get_port.get_schools(name=school))[0]
+    except IndexError:
+        raise ObjectNotFoundError(school)
+    school_classes = await school_classes_persistence_port.get_school_classes(school)
+    return representation_port.add_config_representation(school_obj, school_classes)
+
+
+async def get_user_edit_config(
+    users_get_port: UsersPersistencePort,
+    user_representation_port: UsersRepresentationPort,
+    schools_get_port: SchoolsPersistencePort,
+    school_classes_persistence_port: SchoolClassesPersistencePort,
+    representation_port: EditConfigRepresentationPort,
     permissions_port: PermissionsPort,
     actor_id: str,
+    user_id: str,
     school: str,
-) -> list[SchoolClass]:
-    return await school_classes_persistence_port.get_school_classes(school)
+) -> EditUsersConfig:
+    try:
+        school_obj = (await schools_get_port.get_schools(name=school))[0]
+    except IndexError:
+        raise ObjectNotFoundError(school)
+
+    actor = await get_actor(actor_id, users_get_port)
+    user = await users_get_port.get_user(user_id)
+    permissions = await permissions_port.get_permissions(
+        actor,
+        [
+            Target(
+                old_target=TargetObject(
+                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
+                ),
+                new_target=None,
+            )
+        ],
+    )
+    user_data = user_representation_port.edit_user_representation(user, set(permissions[user.id]))
+    if not user_data.attributes.schools.value or school not in user_data.attributes.schools.value:
+        raise ObjectNotFoundError(f"{user_id}:{school}")
+
+    school_classes = await school_classes_persistence_port.get_school_classes(school)
+
+    return representation_port.edit_config_representation(user_data, school_obj, school_classes)

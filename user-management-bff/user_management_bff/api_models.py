@@ -180,6 +180,11 @@ class AddUsersConfig(BaseModel):
     pages: list[PageConfig]
 
 
+class EditUserResponseUser(BaseModel):
+    id: str
+    attributes: ListUserFixedAttributes
+
+
 class EditUsersConfig(BaseModel):
     id: str
     user: dict[str, Any]
@@ -195,10 +200,10 @@ class RoleRow(BaseModel):
     attributes: RoleRowAttributes
 
 
-class SchoolCLassRowAttributes(BaseModel):
+class SchoolClassRowAttributes(BaseModel):
     class_name: Attribute
 
 
 class SchoolClassRow(BaseModel):
     id: str
-    attributes: SchoolCLassRowAttributes
+    attributes: SchoolClassRowAttributes

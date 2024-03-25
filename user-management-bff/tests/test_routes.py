@@ -283,6 +283,7 @@ def test_config_schools(test_client, api_prefix):
         {"display_name": "School 1", "id": "school1"},
         {"display_name": "School 2", "id": "school2"},
         {"display_name": "School 3", "id": "school3"},
+        {"display_name": "Test School 1", "id": "test_school1"},
     ]
 
     response = test_client.get(f"{api_prefix}/config/schools")
@@ -526,7 +527,7 @@ def test_get_user_add_config(test_client, api_prefix):
                                     "name": "school",
                                     "required": True,
                                     "options": [
-                                        {"label": "School1", "value": "school1"},
+                                        {"label": "School 1", "value": "school1"},
                                     ],
                                 },
                                 "type": "UComboBox",
@@ -673,6 +674,13 @@ def test_get_user_add_config(test_client, api_prefix):
     }
 
 
+def test_get_user_add_config_school_doesnt_exist(test_client, api_prefix):
+    fake_school = "fake_school"
+    response = test_client.get(f"{api_prefix}/config/users/add?school={fake_school}")
+    assert response.status_code == 404, response.json()
+    assert response.json() == {"detail": f"Object not found: {fake_school}"}
+
+
 def test_get_user_edit_config(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?school=school1&id=user3")
     assert response.status_code == 200, response.json()
@@ -691,7 +699,7 @@ def test_get_user_edit_config(test_client, api_prefix):
                                     "description": "School of the user",
                                     "label": "School",
                                     "name": "school",
-                                    "options": [{"label": "School1", "value": "school1"}],
+                                    "options": [{"label": "School 1", "value": "school1"}],
                                     "required": True,
                                 },
                                 "type": "UComboBox",
@@ -848,7 +856,6 @@ def test_get_user_edit_config(test_client, api_prefix):
             "roles": ["teacher"],
             "school": "school1",
             "school_classes": ["1a", "2b"],
-            "schools": ["school2", "school1"],
             "username": "kim.klein",
         },
     }
@@ -857,10 +864,17 @@ def test_get_user_edit_config(test_client, api_prefix):
 def test_get_user_edit_config_non_existing_user(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?school=test_school1&id=NON_EXISTING")
     assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": "Object not found: NON_EXISTING"}
+    assert response.json() == {"detail": "User not found in school"}
 
 
 def test_get_user_edit_config_wrong_school(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config/users/edit?school=NON_EXISTING&id=test_user1")
+    response = test_client.get(f"{api_prefix}/config/users/edit?school=school1&id=test_user1")
+    assert response.status_code == 404, response.json()
+    assert response.json() == {"detail": "User not found in school"}
+
+
+def test_get_user_edit_config_school_doesnt_exist(test_client, api_prefix):
+    fake_school = "fake_school"
+    response = test_client.get(f"{api_prefix}/config/users/edit?school={fake_school}&id=test_user1")
     assert response.status_code == 404, response.json()
     assert response.json() == {"detail": "User not found in school"}

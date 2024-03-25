@@ -8,33 +8,30 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from . import business_logic
 from .adapter_registry import port_dep
-from .adapters.api import FastAPISchoolsRepresentationAdapter, FastAPIUsersRepresentationAdapter
+from .adapters.api import (
+    FastAPIAddConfigRepresentationAdapter,
+    FastAPIEditConfigRepresentationAdapter,
+    FastAPISchoolsRepresentationAdapter,
+    FastAPIUsersRepresentationAdapter,
+)
 from .api_models import (
     AddUsersConfig,
     APIUserPatchRequest,
-    Attribute,
-    AttributeAccess,
     ColumnConfig,
     CreateUserResponse,
     EditUsersConfig,
-    Fieldset,
-    FieldsetRow,
     FormatterChoice,
     ListSchoolsResponse,
     ListUsersConfig,
     ListUsersResponse,
-    PageConfig,
-    RoleRow,
-    RoleRowAttributes,
-    SchoolClassRow,
-    SchoolCLassRowAttributes,
     UserCreateRequest,
-    WidgetType,
 )
 from .constants import API_PREFIX
-from .errors import CreationError
+from .errors import CreationError, ObjectNotFoundError
 from .models import UserPatchAttributes, UserPatchRequest, UsersGetRequest
 from .ports import (
+    AddConfigRepresentationPort,
+    EditConfigRepresentationPort,
     FastAPIAuthenticationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
@@ -183,163 +180,18 @@ async def patch_user(
 async def get_user_add_config(
     request: Request,
     school: str,
+    schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
     school_classes_persistence_port: SchoolClassesPersistencePort = Depends(
         port_dep(SchoolClassesPersistencePort)
+    ),
+    representation_adapter: FastAPIAddConfigRepresentationAdapter = Depends(
+        port_dep(AddConfigRepresentationPort, adapter_cls=FastAPIAddConfigRepresentationAdapter)
     ),
     authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
     permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
 ) -> AddUsersConfig:
-    actor_id = await authentication_port.get_authenticated_id(request)
-    school_classes = await business_logic.get_user_add_config_data(
-        school_classes_persistence_port, permissions_port, actor_id, school
-    )
-    # TODO: get school data, and put in 'school' FieldsetRow
-    schoolobj = {
-        "id": school,
-        "name": school.title(),
-    }
-    # TODO: Construction of a response really belongs in business logic, not here.
-    # Routers should be relatively sparse, and this makes the router bloated.
-    # Putting the response creation in business logic allows for better unit tests,
-    # especially if we need to add conditional logic later.
-    return AddUsersConfig(
-        pages=[
-            PageConfig(
-                label="Add user",
-                name="useradd",
-                fieldsets=[
-                    Fieldset(
-                        name="userinfo",
-                        label="User Info",
-                        rows=[
-                            FieldsetRow(
-                                type=WidgetType.UComboBox,
-                                props=dict(
-                                    label="School",
-                                    name="school",
-                                    description="School of the user",
-                                    required=True,
-                                    access=AttributeAccess.READ,
-                                    options=[
-                                        {"label": schoolobj["name"], "value": schoolobj["id"]},
-                                    ],
-                                ),
-                            ),
-                            [
-                                FieldsetRow(
-                                    type=WidgetType.UInputText,
-                                    props=dict(
-                                        label="Last name",
-                                        name="last_name",
-                                        description="Last name of the user",
-                                        required=True,
-                                        access=AttributeAccess.WRITE,
-                                    ),
-                                ),
-                                FieldsetRow(
-                                    type=WidgetType.UInputText,
-                                    props=dict(
-                                        label="First name",
-                                        name="first_name",
-                                        description="First name of the user",
-                                        required=True,
-                                        access=AttributeAccess.WRITE,
-                                    ),
-                                ),
-                            ],
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="Username",
-                                    name="username",
-                                    description="Username of the user",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UInputPassword,
-                                props=dict(
-                                    label="Password",
-                                    name="password",
-                                    description="Password of the user",
-                                    required=False,
-                                    access=AttributeAccess.WRITE,
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UMultiSelect,
-                                props=dict(
-                                    label="School classes",
-                                    name="school_classes",
-                                    description="School classes of the user",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
-                                    columns=[
-                                        ColumnConfig(
-                                            label="School class", attribute="class_name", order=0
-                                        )
-                                    ],
-                                    rows=[
-                                        SchoolClassRow(
-                                            id=school_class.id,
-                                            attributes=SchoolCLassRowAttributes(
-                                                class_name=Attribute(
-                                                    value=school_class.display_name,
-                                                    access=AttributeAccess.READ,
-                                                )
-                                            ),
-                                        )
-                                        for school_class in school_classes
-                                    ],
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UMultiSelect,
-                                props=dict(
-                                    label="Roles",
-                                    name="roles",
-                                    description="Roles of the user",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
-                                    columns=[ColumnConfig(label="Role", attribute="role_name", order=0)],
-                                    rows=[
-                                        RoleRow(
-                                            id="student",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Student",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                        RoleRow(
-                                            id="teacher",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Teacher",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UInputCheckbox,
-                                props=dict(
-                                    label="Active",
-                                    name="active",
-                                    description="Active",
-                                    required=False,
-                                    access=AttributeAccess.WRITE,
-                                ),
-                            ),
-                        ],
-                    )
-                ],
-            )
-        ]
+    return await business_logic.get_user_add_config(
+        schools_get_adapter, school_classes_persistence_port, representation_adapter, school
     )
 
 
@@ -348,222 +200,35 @@ async def get_user_edit_config(
     request: Request,
     id: str,
     school: str,
+    users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    user_representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
+        port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
+    ),
+    schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
     school_classes_persistence_port: SchoolClassesPersistencePort = Depends(
         port_dep(SchoolClassesPersistencePort)
     ),
-    users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
-    representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
-        port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
+    representation_adapter: FastAPIEditConfigRepresentationAdapter = Depends(
+        port_dep(EditConfigRepresentationPort, adapter_cls=FastAPIEditConfigRepresentationAdapter)
     ),
     authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
     permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
 ) -> EditUsersConfig:
     actor_id = await authentication_port.get_authenticated_id(request)
-    user = await business_logic.get_user(
-        users_get_adapter,
-        representation_adapter,
-        permissions_port,
-        actor_id,
-        id,
-    )
-    if not user.user.attributes.schools.value or school not in user.user.attributes.schools.value:
+    try:
+        return await business_logic.get_user_edit_config(
+            users_get_adapter,
+            user_representation_adapter,
+            schools_get_adapter,
+            school_classes_persistence_port,
+            representation_adapter,
+            permissions_port,
+            actor_id,
+            id,
+            school,
+        )
+    except ObjectNotFoundError:
         raise HTTPException(status_code=404, detail="User not found in school")
-
-    # TODO: get school data, and put in 'school' FieldsetRow
-    schoolobj = {
-        "id": school,
-        "name": school.title(),
-    }
-
-    userobj = {key: value.value for key, value in dict(user.user.attributes).items()}
-    userobj["school"] = schoolobj["id"]
-    userobj["school_classes"] = [
-        c.split(":")[1] for c in userobj["classes"] if c.split(":")[0] == schoolobj["id"]
-    ]
-    del userobj["classes"]
-    userobj["roles"] = [
-        role.split(":")[0] for role in userobj["roles"] if role.split(":")[2] == schoolobj["id"]
-    ]
-
-    school_classes = await business_logic.get_user_add_config_data(
-        school_classes_persistence_port, permissions_port, actor_id, school
-    )
-
-    return EditUsersConfig(
-        # Be sure to send complete data,
-        # otherwise it confuses the frontend,
-        # unless the AttributeAccess is NONE,
-        # in which case don't send it or send None.
-        # user=dict(user.user.attributes),
-        # user from the user attributes dict with the key value
-        user=userobj,
-        id=user.user.id,
-        pages=[
-            PageConfig(
-                label="Edit user",
-                name="useredit",
-                fieldsets=[
-                    Fieldset(
-                        name="userinfo",
-                        label="User Info",
-                        rows=[
-                            FieldsetRow(
-                                type=WidgetType.UComboBox,
-                                props=dict(
-                                    label="School",
-                                    name="school",
-                                    description="School of the user",
-                                    required=True,
-                                    access=AttributeAccess.READ,
-                                    options=[
-                                        {"label": schoolobj["name"], "value": schoolobj["id"]},
-                                    ],
-                                ),
-                            ),
-                            [
-                                FieldsetRow(
-                                    type=WidgetType.UInputText,
-                                    props=dict(
-                                        label="Last name",
-                                        name="last_name",
-                                        description="Last name of the user",
-                                        required=True,
-                                        access=user.user.attributes.last_name.access,
-                                    ),
-                                ),
-                                FieldsetRow(
-                                    type=WidgetType.UInputText,
-                                    props=dict(
-                                        label="First name",
-                                        name="first_name",
-                                        description="First name of the user",
-                                        required=True,
-                                        access=user.user.attributes.first_name.access,
-                                    ),
-                                ),
-                            ],
-                            FieldsetRow(
-                                type=WidgetType.UInputText,
-                                props=dict(
-                                    label="Username",
-                                    name="username",
-                                    description="Username of the user",
-                                    required=False,
-                                    access=user.user.attributes.username.access,
-                                ),
-                            ),
-                            # The frontend can technically handle this,
-                            # and we'll keep it here for now.
-                            # But you might want to consider just omitting NONE fields,
-                            # so the user isn't aware of what they shouldn't know about.
-                            # It also makes for a better Detail view,
-                            # when it's not cluttered with disabled fields.
-                            FieldsetRow(
-                                type=WidgetType.UInputPassword,
-                                props=dict(
-                                    label="Password",
-                                    name="password",
-                                    description="Password of the user",
-                                    required=False,
-                                    access=AttributeAccess.WRITE,  # TODO
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UMultiSelect,
-                                props=dict(
-                                    label="School classes",
-                                    name="school_classes",
-                                    description="School classes of the user",
-                                    required=False,
-                                    access=user.user.attributes.classes.access,
-                                    columns=[
-                                        ColumnConfig(
-                                            label="school class", attribute="class_name", order=0
-                                        )
-                                    ],
-                                    rows=[
-                                        SchoolClassRow(
-                                            id=school_class.id,
-                                            attributes=SchoolCLassRowAttributes(
-                                                class_name=Attribute(
-                                                    value=school_class.display_name,
-                                                    access=AttributeAccess.READ,
-                                                )
-                                            ),
-                                        )
-                                        for school_class in school_classes
-                                    ],
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UMultiSelect,
-                                props=dict(
-                                    label="Roles",
-                                    name="roles",
-                                    description="Roles of the user",
-                                    required=True,
-                                    access=user.user.attributes.roles.access,
-                                    columns=[ColumnConfig(label="Role", attribute="role_name", order=0)],
-                                    # We need to include all roles here
-                                    # in order for it to display properly.
-                                    # If you don't want to show certain roles,
-                                    # set AttributeAccess.NONE
-                                    rows=[
-                                        RoleRow(
-                                            id="student",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Student",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                        RoleRow(
-                                            id="teacher",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Teacher",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                        RoleRow(
-                                            id="staff",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Staff",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                        RoleRow(
-                                            id="administrator",
-                                            attributes=RoleRowAttributes(
-                                                role_name=Attribute(
-                                                    value="Administrator",
-                                                    access=AttributeAccess.READ,
-                                                ),
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                            ),
-                            FieldsetRow(
-                                type=WidgetType.UInputCheckbox,
-                                props=dict(
-                                    label="Active",
-                                    name="active",
-                                    description="User is active",
-                                    required=False,
-                                    access=user.user.attributes.active.access,
-                                ),
-                            ),
-                        ],
-                    )
-                ],
-            )
-        ],
-    )
 
 
 @router.delete("/users/{identifier}", status_code=204)

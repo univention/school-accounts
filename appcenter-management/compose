@@ -22,6 +22,8 @@ services:
       USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION: "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "user_management_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
+      USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
+      USER_MANAGEMENT__ADAPTER__EDIT_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIEditConfigRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:GuardianPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /etc/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /etc/machine.secret

@@ -72,6 +72,12 @@ def patch_env():
     os.environ["FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
+    )
+    os.environ["USER_MANAGEMENT__ADAPTER__EDIT_CONFIG_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPIEditConfigRepresentationAdapter"
+    )
     yield
     os.environ.clear()
     os.environ.update(_environ)

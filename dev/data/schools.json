@@ -10,5 +10,9 @@
   {
     "display_name": "School 3",
     "id": "school3"
+  },
+  {
+    "display_name": "Test School 1",
+    "id": "test_school1"
   }
 ]
