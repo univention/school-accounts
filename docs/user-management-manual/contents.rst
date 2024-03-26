@@ -19,5 +19,4 @@ User Management Module
 
 .. toctree::
 
-   glossary
    changelog
