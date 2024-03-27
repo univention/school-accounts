@@ -90,6 +90,10 @@ class ListUserFixedAttributes(BaseModel):
     roles: ListUserAttribute[list[str]]
 
 
+class CompleteUserFixedAttributes(ListUserFixedAttributes):
+    password: ListUserAttribute[str]
+
+
 class ListUser(APIBaseModel):
     id: str
     allowed_actions: list[ListUserPermissions]
@@ -183,7 +187,7 @@ class AddUsersConfig(BaseModel):
 
 class EditUserResponseUser(BaseModel):
     id: str
-    attributes: ListUserFixedAttributes
+    attributes: CompleteUserFixedAttributes
 
 
 class EditUsersConfig(BaseModel):

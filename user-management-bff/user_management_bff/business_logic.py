@@ -258,7 +258,9 @@ async def get_user_edit_config(
         [
             Target(
                 old_target=TargetObject(
-                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
+                    id=user.id,
+                    attributes={**user.attributes.model_dump(), "password": ""},
+                    type=TargetObjectType.USER,
                 ),
                 new_target=None,
             )

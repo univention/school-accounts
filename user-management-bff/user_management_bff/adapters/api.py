@@ -8,6 +8,7 @@ from ..api_models import (
     Attribute,
     AttributeAccess,
     ColumnConfig,
+    CompleteUserFixedAttributes,
     CreateUserResponse,
     CreateUserResponseUser,
     EditUserResponseUser,
@@ -40,7 +41,6 @@ from ..ports import (
 
 
 class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersResponse, CreateUserResponse]):
-
     @staticmethod
     def _get_attribute_dict(
         attribute_name: str, value: Any, permissions: set[Permission]
@@ -111,6 +111,22 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
             ),
         )
 
+    @staticmethod
+    def _get_edit_user_attributes_from_user(
+        user: User, permissions: set[Permission]
+    ) -> CompleteUserFixedAttributes:
+        list_user_atributes = FastAPIUsersRepresentationAdapter._get_list_user_attributes_from_user(
+            user, permissions
+        )
+        return CompleteUserFixedAttributes(
+            **list_user_atributes.model_dump(),
+            password=ListUserAttribute[str](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "password", user.attributes.password, permissions
+                )
+            ),
+        )
+
     def create_users_representation(
         self, users: list[User], permissions: dict[str, list[Permission]]
     ) -> ListUsersResponse:
@@ -138,7 +154,7 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
     def edit_user_representation(self, user: User, permissions: set[Permission]) -> EditUserResponseUser:
         return EditUserResponseUser(
             id=user.id,
-            attributes=self._get_list_user_attributes_from_user(user, permissions),
+            attributes=self._get_edit_user_attributes_from_user(user, permissions),
         )
 
 
@@ -406,7 +422,7 @@ class FastAPIEditConfigRepresentationAdapter(
                                         name="password",
                                         description="Password of the user",
                                         required=False,
-                                        access=AttributeAccess.WRITE,  # TODO
+                                        access=user_data.attributes.password.access,
                                     ),
                                 ),
                                 FieldsetRow(

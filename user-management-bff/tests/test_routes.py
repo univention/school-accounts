@@ -856,6 +856,7 @@ def test_get_user_edit_config(test_client, api_prefix):
             "active": True,
             "first_name": "Kim",
             "last_name": "Klein",
+            "password": None,
             "roles": ["teacher"],
             "school": "school1",
             "school_classes": ["1a", "2b"],

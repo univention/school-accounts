@@ -294,6 +294,7 @@ async def test_get_user_edit_config(
         "roles": ["teacher"],
         "school_classes": [],
         "last_name": user.lastname,
+        "password": None,
     }
 
     school_options = next(
