@@ -8,7 +8,24 @@
 Configuration
 *************
 
-This section is a reference for all app settings of the UCS\@school User Management.
+Portal tile for the |UASUMM|
+==============================
+
+You can adjust the portal tile visibility of the |UASUMM|
+by following the UCS manual section about the :external+uv-ucs-manual:ref:`Portal <central-portal>`.
+
+As a quick example for the command line, to add all domain users of the school ``DEMOSCHOOL``, you can run:
+
+.. code:: bash
+
+   udm portals/entry modify --dn "cn=ucsschool-user-management,cn=entry,cn=portals,cn=univention,$(ucr get ldap/base)"\
+   --append allowedGroups="cn=Domain Users DEMOSCHOOL,cn=groups,ou=DEMOSCHOOL,$(ucr get ldap/base)"
+
+
+App Settings
+============
+
+This section is a reference for all app settings of the |UASUMM|.
 Administrators can configure the settings using
 either the :command:`univention-app` command
 or the app settings dialog in the
@@ -17,14 +34,14 @@ or the app settings dialog in the
 The App Center automatically restarts the application after changing any setting.
 
 Kelvin
-======
+------
 
 .. envvar:: ucsschool-user-management/kelvin/url
 
-   Defines the URL of the Kelvin REST API for data queries.
+   Defines the URL of the Kelvin REST API for data queries. If not set, the URL is generated from hostname and domain name.
 
 Authentication
-==============
+--------------
 
 .. envvar:: ucsschool-user-management/oauth/keycloak-uri
 
@@ -34,7 +51,7 @@ Authentication
    or falls back to the domain name of the UCS system where you installed the application.
 
 Guardian
-========
+--------
 
 .. envvar:: ucsschool-user-management/guardian/url
 

@@ -48,7 +48,7 @@ def read_version_from_ci() -> str:
 release = read_version_from_ci()
 version = release
 
-project = "UCS@School User Management Module {}".format(release)
+project = "UCS@school User Management Module {}".format(release)
 copyright = "{}, Univention GmbH".format(date.today().year)
 author = "Univention GmbH"
 language = "en"
@@ -191,6 +191,10 @@ intersphinx_mapping = {
         "https://docs.software-univention.de/manual/latest/en/",
         None,
     ),
+    "uv-guardian-manual": (
+        "https://docs.software-univention.de/guardian-manual/latest/",
+        None,
+    ),
 }
 
 
@@ -232,6 +236,10 @@ html_static_path = ["_static"]
 
 numfig = True
 
+rst_epilog = """
+.. |UCSUAS| replace:: UCS\@school
+.. |UASUMM| replace:: UCS\@school User Management Module
+"""
 
 suppress_warnings = ["git.too_shallow"]
 git_last_updated_timezone = "Europe/Berlin"

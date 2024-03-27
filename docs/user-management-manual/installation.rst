@@ -9,48 +9,47 @@ Installation
 ************
 
 This section is for administrators
-and covers the installation of the UCS\@school User Management module on UCS systems.
-If you're upgrading the UCS\@school User Management module to a new version, refer to the upgrade guide :ref:`upgrade`.
+and covers the installation of the |UASUMM| on UCS systems.
+If you're upgrading the |UASUMM| to a new version, refer to the upgrade guide :ref:`upgrade`.
 
 .. _installation_instructions:
 
 Installation instructions
 =========================
 
-This section describes the installation of the UCS\@school User Management module on a
+The |UASUMM| can be installed on a
+:external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` or on a
 :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`.
 
-A prerequisite for using the UCS\@school User Management module is a working
-Guardian and UCS\@school installation on the backup server.
-For information about how to install and configure the Guardian in a UCS,
-refer to
-`Guardian Manual <https://docs.software-univention.de/guardian-manual/latest/installation.html>`_.
+Before installing the User Management module, the following prerequisites are needed:
 
-UCS\@school User Management module administrators
-install the UCS\@school User Management module from the Univention App Center.
+* :external+uv-school-manual:ref:`UCS@school <introduction>` is installed and configured in the domain.
+* The Guardian is installed and configured in the domain.
+  The minimum version is 2.0.2 for the authorization API and 2.0.1 for the management API.
+  See the :external+uv-guardian-manual:ref:`Guardian Manual <installation>` for further instructions.
+* The :external+uv-school-kelvin:doc:`Kelvin Rest API <index>` is installed and configured on the same node.
 
-To install all required components from the command line,
+To install the |UASUMM| from the command line,
 run the following command on the backup server:
 
 .. code-block:: bash
-   :caption: Install UCS\@school User Management module apps from command line
+   :caption: Install |UASUMM| apps from command line
 
    $ univention-app install \
        ucsschool-user-management
 
-You have completed the UCS\@school User Management module setup.
+You have completed the |UASUMM| setup.
 You can reach the module from the
 :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`.
 
 .. _upgrade:
 
-Upgrading the UCS\@school User Management module
+Upgrading the |UASUMM|
 ================================================
 
 For minor and patch level version changes, use the command ``univention-app upgrade``:
 
 .. code-block:: bash
-   :caption: Install UCS\@school User Management module apps from command line
+   :caption: Install |UASUMM| apps from command line
 
-   $ univention-app upgrade \
-       ucsschool-user-management
+   $ univention-app upgrade ucsschool-user-management
