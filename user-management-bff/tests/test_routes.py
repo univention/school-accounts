@@ -671,3 +671,196 @@ def test_get_user_add_config(test_client, api_prefix):
             }
         ]
     }
+
+
+def test_get_user_edit_config(test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/config/users/edit?school=school1&id=user3")
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "id": "user3",
+        "pages": [
+            {
+                "fieldsets": [
+                    {
+                        "label": "User Info",
+                        "name": "userinfo",
+                        "rows": [
+                            {
+                                "props": {
+                                    "access": "read",
+                                    "description": "School of the user",
+                                    "label": "School",
+                                    "name": "school",
+                                    "options": [{"label": "School1", "value": "school1"}],
+                                    "required": True,
+                                },
+                                "type": "UComboBox",
+                                "watches": [],
+                            },
+                            [
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": "Last name of the user",
+                                        "label": "Last name",
+                                        "name": "last_name",
+                                        "required": True,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
+                                },
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": "First name of the user",
+                                        "label": "First name",
+                                        "name": "first_name",
+                                        "required": True,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
+                                },
+                            ],
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Username of the user",
+                                    "label": "Username",
+                                    "name": "username",
+                                    "required": False,
+                                },
+                                "type": "UInputText",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "Password of the user",
+                                    "label": "Password",
+                                    "name": "password",
+                                    "required": False,
+                                },
+                                "type": "UInputPassword",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "columns": [
+                                        {
+                                            "attribute": "class_name",
+                                            "formatter": None,
+                                            "label": "school class",
+                                            "order": 0,
+                                            "sorting": None,
+                                        }
+                                    ],
+                                    "description": "School classes of the user",
+                                    "label": "School classes",
+                                    "name": "school_classes",
+                                    "required": False,
+                                    "rows": [
+                                        {
+                                            "attributes": {
+                                                "class_name": {"access": "read", "value": "1a"}
+                                            },
+                                            "id": "1a",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "class_name": {"access": "read", "value": "2b"}
+                                            },
+                                            "id": "2b",
+                                        },
+                                    ],
+                                },
+                                "type": "UMultiSelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "columns": [
+                                        {
+                                            "attribute": "role_name",
+                                            "formatter": None,
+                                            "label": "Role",
+                                            "order": 0,
+                                            "sorting": None,
+                                        }
+                                    ],
+                                    "description": "Roles of the user",
+                                    "label": "Roles",
+                                    "name": "roles",
+                                    "required": True,
+                                    "rows": [
+                                        {
+                                            "attributes": {
+                                                "role_name": {"access": "read", "value": "Student"}
+                                            },
+                                            "id": "student",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "role_name": {"access": "read", "value": "Teacher"}
+                                            },
+                                            "id": "teacher",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "role_name": {"access": "read", "value": "Staff"}
+                                            },
+                                            "id": "staff",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "role_name": {"access": "read", "value": "Administrator"}
+                                            },
+                                            "id": "administrator",
+                                        },
+                                    ],
+                                },
+                                "type": "UMultiSelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "description": "User is active",
+                                    "label": "Active",
+                                    "name": "active",
+                                    "required": False,
+                                },
+                                "type": "UInputCheckbox",
+                                "watches": [],
+                            },
+                        ],
+                    }
+                ],
+                "label": "Edit user",
+                "name": "useredit",
+            }
+        ],
+        "user": {
+            "active": True,
+            "first_name": "Kim",
+            "last_name": "Klein",
+            "roles": ["teacher"],
+            "school": "school1",
+            "school_classes": ["1a", "2b"],
+            "schools": ["school2", "school1"],
+            "username": "kim.klein",
+        },
+    }
+
+
+def test_get_user_edit_config_non_existing_user(test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/config/users/edit?school=test_school1&id=NON_EXISTING")
+    assert response.status_code == 404, response.json()
+    assert response.json() == {"detail": "Object not found: NON_EXISTING"}
+
+
+def test_get_user_edit_config_wrong_school(test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/config/users/edit?school=NON_EXISTING&id=test_user1")
+    assert response.status_code == 404, response.json()
+    assert response.json() == {"detail": "User not found in school"}

@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from . import business_logic
 from .adapter_registry import port_dep
@@ -155,11 +155,10 @@ async def create_user(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-# Currently a mock. Response model should be renamed with proper implementation
 @router.patch("/users/{id}")
 async def patch_user(
     request: Request,
-    user_id: Annotated[str, Path(alias="id")],
+    id: str,
     school: str,
     user_patch_data: APIUserPatchRequest,
     users_patch_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
@@ -171,7 +170,7 @@ async def patch_user(
 ) -> CreateUserResponse:
     actor_id = await authentication_port.get_authenticated_id(request)
     patch_data = UserPatchRequest(
-        identifier=user_id,
+        identifier=id,
         school=school,
         attributes=UserPatchAttributes(**user_patch_data.model_dump(exclude_unset=True)),
     )
@@ -344,31 +343,61 @@ async def get_user_add_config(
     )
 
 
-# currently a mock
 @router.get("/config/users/edit")
-def get_user_edit_config(
-    user_id: Annotated[str, Query(alias="id")], school: str
-) -> EditUsersConfig:  # pragma: no cover
+async def get_user_edit_config(
+    request: Request,
+    id: str,
+    school: str,
+    school_classes_persistence_port: SchoolClassesPersistencePort = Depends(
+        port_dep(SchoolClassesPersistencePort)
+    ),
+    users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
+        port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
+    ),
+    authentication_port: FastAPIAuthenticationPort = Depends(port_dep(FastAPIAuthenticationPort)),
+    permissions_port: PermissionsPort = Depends(port_dep(PermissionsPort)),
+) -> EditUsersConfig:
+    actor_id = await authentication_port.get_authenticated_id(request)
+    user = await business_logic.get_user(
+        users_get_adapter,
+        representation_adapter,
+        permissions_port,
+        actor_id,
+        id,
+    )
+    if not user.user.attributes.schools.value or school not in user.user.attributes.schools.value:
+        raise HTTPException(status_code=404, detail="User not found in school")
+
     # TODO: get school data, and put in 'school' FieldsetRow
     schoolobj = {
         "id": school,
         "name": school.title(),
     }
+
+    userobj = {key: value.value for key, value in dict(user.user.attributes).items()}
+    userobj["school"] = schoolobj["id"]
+    userobj["school_classes"] = [
+        c.split(":")[1] for c in userobj["classes"] if c.split(":")[0] == schoolobj["id"]
+    ]
+    del userobj["classes"]
+    userobj["roles"] = [
+        role.split(":")[0] for role in userobj["roles"] if role.split(":")[2] == schoolobj["id"]
+    ]
+
+    school_classes = await business_logic.get_user_add_config_data(
+        school_classes_persistence_port, permissions_port, actor_id, school
+    )
+
     return EditUsersConfig(
-        id="user1",
         # Be sure to send complete data,
         # otherwise it confuses the frontend,
         # unless the AttributeAccess is NONE,
         # in which case don't send it or send None.
-        user={
-            "username": "user1",  # username should match id
-            "first_name": "Max",
-            "last_name": "Mustermann",
-            "school": school,
-            "school_classes": ["school_class1"],
-            "roles": ["student"],
-            "active": True,
-        },
+        # user=dict(user.user.attributes),
+        # user from the user attributes dict with the key value
+        user=userobj,
+        id=user.user.id,
         pages=[
             PageConfig(
                 label="Edit user",
@@ -399,7 +428,7 @@ def get_user_edit_config(
                                         name="last_name",
                                         description="Last name of the user",
                                         required=True,
-                                        access=AttributeAccess.WRITE,
+                                        access=user.user.attributes.last_name.access,
                                     ),
                                 ),
                                 FieldsetRow(
@@ -409,7 +438,7 @@ def get_user_edit_config(
                                         name="first_name",
                                         description="First name of the user",
                                         required=True,
-                                        access=AttributeAccess.WRITE,
+                                        access=user.user.attributes.first_name.access,
                                     ),
                                 ),
                             ],
@@ -420,7 +449,7 @@ def get_user_edit_config(
                                     name="username",
                                     description="Username of the user",
                                     required=False,
-                                    access=AttributeAccess.WRITE,
+                                    access=user.user.attributes.username.access,
                                 ),
                             ),
                             # The frontend can technically handle this,
@@ -436,7 +465,7 @@ def get_user_edit_config(
                                     name="password",
                                     description="Password of the user",
                                     required=False,
-                                    access=AttributeAccess.NONE,
+                                    access=AttributeAccess.WRITE,  # TODO
                                 ),
                             ),
                             FieldsetRow(
@@ -445,8 +474,8 @@ def get_user_edit_config(
                                     label="School classes",
                                     name="school_classes",
                                     description="School classes of the user",
-                                    required=True,
-                                    access=AttributeAccess.WRITE,
+                                    required=False,
+                                    access=user.user.attributes.classes.access,
                                     columns=[
                                         ColumnConfig(
                                             label="school class", attribute="class_name", order=0
@@ -454,21 +483,15 @@ def get_user_edit_config(
                                     ],
                                     rows=[
                                         SchoolClassRow(
-                                            id="school_class1",
+                                            id=school_class.id,
                                             attributes=SchoolCLassRowAttributes(
                                                 class_name=Attribute(
-                                                    value="Class 1", access=AttributeAccess.READ
+                                                    value=school_class.display_name,
+                                                    access=AttributeAccess.READ,
                                                 )
                                             ),
-                                        ),
-                                        SchoolClassRow(
-                                            id="school_class2",
-                                            attributes=SchoolCLassRowAttributes(
-                                                class_name=Attribute(
-                                                    value="Class 2", access=AttributeAccess.READ
-                                                )
-                                            ),
-                                        ),
+                                        )
+                                        for school_class in school_classes
                                     ],
                                 ),
                             ),
@@ -479,7 +502,7 @@ def get_user_edit_config(
                                     name="roles",
                                     description="Roles of the user",
                                     required=True,
-                                    access=AttributeAccess.READ,
+                                    access=user.user.attributes.roles.access,
                                     columns=[ColumnConfig(label="Role", attribute="role_name", order=0)],
                                     # We need to include all roles here
                                     # in order for it to display properly.
@@ -532,7 +555,7 @@ def get_user_edit_config(
                                     name="active",
                                     description="User is active",
                                     required=False,
-                                    access=AttributeAccess.READ,
+                                    access=user.user.attributes.active.access,
                                 ),
                             ),
                         ],

@@ -93,6 +93,29 @@ async def get_users(
     return representation_port.create_users_representation(users, permissions)
 
 
+async def get_user(
+    users_get_adapter: UsersPersistencePort,
+    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    user_id: str,
+) -> UserCreateRepresentation:
+    actor = await get_actor(actor_id, users_get_adapter)
+    user = await users_get_adapter.get_user(user_id)
+    permissions = await permissions_port.get_permissions(
+        actor,
+        [
+            Target(
+                old_target=TargetObject(
+                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
+                ),
+                new_target=None,
+            )
+        ],
+    )
+    return representation_port.create_user_representation(user, set(permissions[user.id]))
+
+
 async def get_schools(
     schools_get_adapter: SchoolsPersistencePort,
     representation_port: SchoolsRepresentationPort[SchoolsGetRepresentation],

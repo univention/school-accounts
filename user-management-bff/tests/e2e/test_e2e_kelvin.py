@@ -256,3 +256,44 @@ async def test_get_user_add_config(access_token, base_url, kelvin_school_class_f
     ][
         "rows"
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_get_user_edit_config(
+    access_token, base_url, kelvin_user_factory, kelvin_school_class_factory
+):
+    token = access_token("alex.admin", "univention")
+    school_class = await kelvin_school_class_factory(school="school1", name="test_school_class_1")
+    user = await kelvin_user_factory(school="school1", schools=["school1"], roles=["teacher"])
+    response = requests.get(
+        f"{base_url}/bff/config/users/edit",
+        params={"school": "school1", "id": user.name},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.json()
+
+    assert response.json()["id"] == user.name
+    assert response.json()["user"] == {
+        "username": user.name,
+        "schools": ["school1"],
+        "school": "school1",
+        "first_name": user.firstname,
+        "active": True,
+        "roles": ["teacher"],
+        "school_classes": [],
+        "last_name": user.lastname,
+    }
+    assert {
+        "attributes": {"class_name": {"access": "read", "value": school_class.name}},
+        "id": school_class.name,
+    } in next(
+        filter(
+            lambda x: isinstance(x, dict) and x["props"]["name"] == "school_classes",
+            response.json()["pages"][0]["fieldsets"][0]["rows"],
+        )
+    )[
+        "props"
+    ][
+        "rows"
+    ]
