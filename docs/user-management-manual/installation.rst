@@ -52,4 +52,27 @@ For minor and patch level version changes, use the command ``univention-app upgr
 .. code-block:: bash
    :caption: Install |UASUMM| apps from command line
 
-   $ univention-app upgrade ucsschool-user-management
+   $ univention-app upgrade \
+       ucsschool-user-management
+
+
+Removing the UCS\@school User Management module
+===============================================
+
+To remove the UCS\@school User Management module from the server, use the command ``univention-app remove``:
+
+.. code-block:: bash
+   :caption: Remove UCS\@school User Management module apps from command line
+
+   $ univention-app remove \
+       ucsschool-user-management
+
+Keycloak clients
+----------------
+
+The Keycloak clients won't be removed automatically. If you want to remove them, you can do it manually in the Keycloak admin interface. The interface is reachable via ``https://ucs-sso-ng.<FQDN>/admin/master/console/``, where `FQDN` is the fully qualified domain name of the system the `user-management` module is installed on.
+
+The client names are:
+
+- ``ucsschool-user-management-bff``
+- ``ucsschool-user-management-ui``
