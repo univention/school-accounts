@@ -221,7 +221,7 @@ class TestKelvinUsersPersistenceAdapter:
                 disabled=False,
                 schools=["school1"],
                 school_classes={"school1": ["1a", "2b"]},
-                roles=["teacher"],
+                roles=["teacher:school:school1"],
                 password=None,
             ),
         )
@@ -382,7 +382,7 @@ class TestKelvinUsersPersistenceAdapterIntegration:
                 disabled=True,
                 schools=["school1"],
                 school_classes={},
-                roles=["teacher"],
+                roles=["teacher:school:school1"],
             ),
         )
         await delete_user_kelvin("test_user1", adapter.kelvin_session)

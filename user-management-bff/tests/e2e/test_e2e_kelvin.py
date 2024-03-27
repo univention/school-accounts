@@ -35,7 +35,7 @@ async def test_create_user_allowed(access_token, base_url, kelvin_user_deletion,
                 "active": {"value": True, "access": "write"},
                 "schools": {"value": ["school1"], "access": "write"},
                 "classes": {"value": [], "access": "write"},
-                "roles": {"value": ["teacher"], "access": "write"},
+                "roles": {"value": ["teacher:school:school1"], "access": "write"},
             },
         }
     }

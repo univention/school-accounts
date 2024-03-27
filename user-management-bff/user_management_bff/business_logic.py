@@ -186,6 +186,7 @@ async def patch_user(
     if patch_data.attributes.active is not None:
         patch_attributes["disabled"] = not patch_data.attributes.active
         patch_attributes.pop("active")
+
     for key, value in patch_attributes.items():
         setattr(user.attributes, key, value)
     if (
@@ -193,6 +194,7 @@ async def patch_user(
         and patch_data.attributes.school_classes is not None
     ):
         user.attributes.school_classes[patch_data.school] = patch_data.attributes.school_classes
+
     permissions = await permissions_port.get_permissions(
         actor,
         [

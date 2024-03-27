@@ -112,6 +112,7 @@ class UserPatchAttributes(BaseModel):
     password: str | None = None
     school_classes: Optional[list[str]] = None
     active: Optional[bool] = None
+    roles: Optional[list[str]] = None
 
 
 class UserPatchRequest(BaseModel):

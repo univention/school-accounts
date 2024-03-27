@@ -321,7 +321,10 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
             "schools": {"value": [user["school"]], "access": "write"},
             "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "write"},
             "active": {"value": not user["disabled"], "access": "write"},
-            "roles": {"value": user["roles"], "access": "write"},
+            "roles": {
+                "value": [f"{role}:school:{user['school']}" for role in user["roles"]],
+                "access": "write",
+            },
         },
     }
     assert response.json() == {"user": expected_user}
@@ -878,3 +881,41 @@ def test_get_user_edit_config_school_doesnt_exist(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?school={fake_school}&id=test_user1")
     assert response.status_code == 404, response.json()
     assert response.json() == {"detail": "User not found in school"}
+
+
+@pytest.mark.parametrize(
+    "patch_dict",
+    [
+        {
+            "roles": [
+                "student",
+            ]
+        },
+        {
+            "roles": [
+                "student",
+                "teacher",
+            ]
+        },
+        {
+            "roles": [
+                "student",
+                "teacher",
+                "administrator",
+                "staff",
+            ]
+        },
+        {
+            "roles": [
+                "teacher",
+            ]
+        },
+    ],
+)
+def test_patch_user_change_roles(test_client, api_prefix, patch_dict):
+    response = test_client.patch(f"{api_prefix}/users/{'dev'}?school={'school1'}", json=patch_dict)
+    assert response.status_code == 200, response.json()
+    roles = response.json()["user"]["attributes"]["roles"]["value"]
+    # We currently block the roles from being updated
+    expected_roles = ["teacher:school:school1"]
+    assert roles == expected_roles

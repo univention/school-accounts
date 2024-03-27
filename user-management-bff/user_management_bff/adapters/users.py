@@ -85,7 +85,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 disabled=user.disabled,
                 schools=user.schools,
                 school_classes=user.school_classes,
-                roles=user.roles,
+                roles=[
+                    f"{role}:school:{user_create_request.school}" for role in user_create_request.roles
+                ],
             ),
         )
 
@@ -103,6 +105,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 kelvin_user = await UserResource(session=session).get(name=user.id)
             except NoObject as exc:
                 raise ObjectNotFoundError(identifier=user.id) from exc
+            # The File adapter also excludes roles,
+            # in order to mimic the behavior of the Kelvin adapter.
+            # If this is updated, please also update the behavior in the File adapter.
             for key, value in user.attributes.model_dump(exclude={"roles"}).items():
                 setattr(kelvin_user, self._user_attribute_to_kelvin_attribute(key), value)
             try:
@@ -155,6 +160,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
             raise ObjectNotFoundError(identifier=identifier)
 
     async def create_user(self, user_create_request: UserCreateRequest):
+        new_roles = [f"{role}:school:{user_create_request.school}" for role in user_create_request.roles]
         self._data.append(
             {
                 "id": user_create_request.username,
@@ -162,7 +168,8 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                     "last_name": user_create_request.last_name,
                     "first_name": user_create_request.first_name,
                     "username": user_create_request.username,
-                    "roles": user_create_request.roles,
+                    "password": user_create_request.password or None,
+                    "roles": new_roles,
                     "schools": [user_create_request.school],
                     "school_classes": {user_create_request.school: user_create_request.school_classes},
                     "disabled": not user_create_request.active,
@@ -178,7 +185,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 last_name=user_create_request.last_name,
                 first_name=user_create_request.first_name,
                 username=user_create_request.username,
-                roles=user_create_request.roles,
+                roles=new_roles,
                 schools=[user_create_request.school],
                 school_classes={user_create_request.school: user_create_request.school_classes},
                 disabled=not user_create_request.active,
@@ -198,7 +205,11 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
     async def save_user(self, user: User) -> User:
         for user_data in self._data:
             if user_data["id"] == user.id:
-                user_data["attributes"].update(user.attributes.model_dump())
+                # The Kelvin adapter currently does not update roles.
+                # We'll mimic this behavior in the File adapter.
+                updated_user = user.attributes.model_dump()
+                del updated_user["roles"]
+                user_data["attributes"].update(updated_user)
                 with open(self.settings.source, "w") as fd:
                     json.dump(self._data, fd)
                 return User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))

@@ -117,7 +117,7 @@ class UserCreateRequest(BaseModel):
     password: str | None = None
     school: str
     school_classes: list[str]
-    roles: list[Role]
+    roles: list[str]
     active: bool = True
 
     @model_validator(mode="after")
@@ -134,6 +134,7 @@ class APIUserPatchRequest(BaseModel):
     password: str | None = None
     school_classes: Optional[list[str]] = None
     active: Optional[bool] = None
+    roles: Optional[list[str]] = None
 
 
 class CreateUserResponseUser(BaseModel):
