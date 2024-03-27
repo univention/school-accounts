@@ -7,6 +7,7 @@
 import base64
 import json
 from pathlib import Path
+from time import sleep
 
 import requests
 import sys
@@ -39,7 +40,19 @@ def get_token():
     }
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    response = requests.post(KEYCLOAK_URL, data=data, headers=headers, timeout=TIMEOUT)
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            response = requests.post(KEYCLOAK_URL, data=data, headers=headers, timeout=TIMEOUT)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            if attempt > 5:
+                raise
+            else:
+                sleep(2)
+                continue
+        break
     token = response.json()["access_token"]
     print("Token received")
     return token

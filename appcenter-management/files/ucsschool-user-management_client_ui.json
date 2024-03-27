@@ -135,5 +135,8 @@
   "publicClient": true,
   "serviceAccountsEnabled": false,
   "standardFlowEnabled": true,
-  "surrogateAuthRequired": false
+  "surrogateAuthRequired": false,
+  "webOrigins": [
+    "+"
+  ]
 }

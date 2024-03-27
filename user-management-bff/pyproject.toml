@@ -30,6 +30,7 @@ python-keycloak = "^3.9.0"
 pyjwt = "^2.8.0"
 cryptography = "^42.0.4"
 guardian-authz-client = "^0.1.0"
+w3lib = "^2.1.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -88,6 +89,10 @@ omit = [
     "main.py",
     "constants.py",
     "logging.py"
+    ]
+source_pkgs = [
+    "user_management_bff",
+    "keycloak_provisioning"
     ]
 
 [tool.pytest.ini_options]

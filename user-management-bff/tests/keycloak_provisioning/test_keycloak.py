@@ -1,8 +1,17 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+from copy import copy
+
 import pytest
-from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection, KeycloakPostError
+from keycloak import (
+    KeycloakAdmin,
+    KeycloakError,
+    KeycloakGetError,
+    KeycloakOpenIDConnection,
+    KeycloakPostError,
+    KeycloakPutError,
+)
 
 import keycloak_provisioning.keycloak
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError, get_keycloak_client
@@ -58,20 +67,6 @@ class TestKeycloakClient:
             skip_exists=False,
         )
 
-    @pytest.mark.parametrize(
-        "error,match",
-        [
-            (KeycloakPostError("invalid_json"), "Error creating realm."),
-            (KeycloakPostError("{}"), "Error creating realm."),
-            (KeycloakPostError('{"errorMessage": "THIS IS THE MESSAGE!"}'), "THIS IS THE MESSAGE!"),
-            (KeycloakError("THIS IS THE MESSAGE!"), "THIS IS THE MESSAGE!"),
-        ],
-    )
-    def test_create_realm_keycloak_error(self, client_instance, mocker, error, match):
-        client_instance.keycloak_admin.create_realm = mocker.Mock(side_effect=error)
-        with pytest.raises(KeycloakClientError, match=match):
-            client_instance.create_realm("REALM")
-
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_user(self, client_instance, ignore_exists):
         client_instance.create_user("username", "password", ignore_exists)
@@ -85,20 +80,6 @@ class TestKeycloakClient:
             exist_ok=ignore_exists,
         )
 
-    @pytest.mark.parametrize(
-        "error,match",
-        [
-            (KeycloakPostError("invalid_json"), "Error creating user."),
-            (KeycloakPostError("{}"), "Error creating user."),
-            (KeycloakPostError('{"errorMessage": "THIS IS THE MESSAGE!"}'), "THIS IS THE MESSAGE!"),
-            (KeycloakError("THIS IS THE MESSAGE!"), "THIS IS THE MESSAGE!"),
-        ],
-    )
-    def test_create_user_keycloak_error(self, client_instance, mocker, error, match):
-        client_instance.keycloak_admin.create_user = mocker.Mock(side_effect=error)
-        with pytest.raises(KeycloakClientError, match=match):
-            client_instance.create_user("username", "password")
-
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_client(self, client_instance, ignore_exists):
         client_instance.create_client({}, ignore_exists)
@@ -106,19 +87,51 @@ class TestKeycloakClient:
             payload={}, skip_exists=ignore_exists
         )
 
+    def test_get_client_secret(self, client_instance, mocker):
+        client_instance.keycloak_admin.get_client_secrets = mocker.Mock(
+            return_value={"type": "test", "value": "SECRET"}
+        )
+        assert client_instance.get_client_secret("test_id") == "SECRET"
+
     @pytest.mark.parametrize(
-        "error,match",
-        [
-            (KeycloakPostError("invalid_json"), "Error creating client."),
-            (KeycloakPostError("{}"), "Error creating client."),
-            (KeycloakPostError('{"errorMessage": "THIS IS THE MESSAGE!"}'), "THIS IS THE MESSAGE!"),
-            (KeycloakError("THIS IS THE MESSAGE!"), "THIS IS THE MESSAGE!"),
-        ],
+        "append_redirect_urls",
+        [None, [], ["new_r"], ["duplicate_r"], ["duplicate_r", "new_r"], ["new_r1", "new_r2"]],
     )
-    def test_create_client_keycloak_error(self, client_instance, mocker, error, match):
-        client_instance.keycloak_admin.create_client = mocker.Mock(side_effect=error)
-        with pytest.raises(KeycloakClientError, match=match):
-            client_instance.create_client({})
+    @pytest.mark.parametrize(
+        "remove_redirect_urls",
+        [None, [], ["old_r"], ["unknown_r"], ["unknown_r", "old_r"], ["old_r1", "old_r2"]],
+    )
+    def test_modify_client(
+        self,
+        mocker,
+        client_instance,
+        append_redirect_urls,
+        remove_redirect_urls,
+    ):
+        client_test_data = {
+            "a": 1,
+            "redirectUris": ["duplicate_r", "server_r", "old_r", "old_r1", "old_r2"],
+        }
+        client_instance.keycloak_admin.get_client = mocker.Mock(return_value=client_test_data)
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="test_id")
+        client_instance.modify_client(
+            "test_id",
+            append_redirect_urls=append_redirect_urls,
+            remove_redirect_urls=remove_redirect_urls,
+        )
+        updated_client_test_data = copy(client_test_data)
+        if append_redirect_urls:
+            updated_client_test_data["redirectUris"] = sorted(
+                list(set(client_test_data["redirectUris"]).union(append_redirect_urls))
+            )
+        if remove_redirect_urls:
+            updated_client_test_data["redirectUris"] = sorted(
+                list(set(client_test_data["redirectUris"]).difference(remove_redirect_urls))
+            )
+        client_instance.keycloak_admin.update_client.assert_called_once_with(
+            "test_id",
+            payload=updated_client_test_data,
+        )
 
 
 def test_get_keycloak_client(mocker, monkeypatch):
@@ -130,3 +143,32 @@ def test_get_keycloak_client(mocker, monkeypatch):
         LoginCredentials(username="user", password="password", url="url", realm="realm")
     )
     assert isinstance(result, KeycloakClient)
+
+
+@pytest.mark.parametrize(
+    "error,new_error,match",
+    [
+        (KeycloakPostError("invalid_json"), KeycloakPostError, "invalid_json"),
+        (KeycloakPostError("{}"), KeycloakPostError, "{}"),
+        (
+            KeycloakPostError('{"error": "THIS IS THE MESSAGE!"}'),
+            KeycloakClientError,
+            "THIS IS THE MESSAGE!",
+        ),
+        (
+            KeycloakGetError('{"error": "THIS IS THE MESSAGE!"}'),
+            KeycloakClientError,
+            "THIS IS THE MESSAGE!",
+        ),
+        (
+            KeycloakPutError('{"error": "THIS IS THE MESSAGE!"}'),
+            KeycloakClientError,
+            "THIS IS THE MESSAGE!",
+        ),
+        (KeycloakError("THIS IS THE MESSAGE!"), KeycloakError, "THIS IS THE MESSAGE!"),
+    ],
+)
+def test_convert_keycloak_error(error, new_error, match):
+    with pytest.raises(new_error, match=match):
+        with keycloak_provisioning.keycloak.convert_keycloak_error():
+            raise error

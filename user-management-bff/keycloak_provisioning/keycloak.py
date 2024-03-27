@@ -3,9 +3,16 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
 import warnings
+from contextlib import contextmanager
 from json import JSONDecodeError
+from typing import Optional
 
-from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection, KeycloakPostError
+from keycloak import (
+    KeycloakAdmin,
+    KeycloakError,
+    KeycloakOpenIDConnection,
+)
+from w3lib.url import canonicalize_url
 
 from .models import LoginCredentials
 
@@ -14,6 +21,17 @@ class KeycloakClientError(Exception):
     def __init__(self, error_message=""):
         Exception.__init__(self, error_message)
         self.error_message = error_message
+
+
+@contextmanager
+def convert_keycloak_error():
+    try:
+        yield
+    except KeycloakError as exc:
+        try:
+            raise KeycloakClientError(json.loads(exc.error_message)["error"])
+        except (JSONDecodeError, KeyError):
+            raise exc
 
 
 class KeycloakClient:
@@ -38,22 +56,13 @@ class KeycloakClient:
 
     def create_realm(self, realm_name: str, ignore_exists: bool = False, realm_data=None):
         realm_data = realm_data or {}
-        try:
+        with convert_keycloak_error():
             self.keycloak_admin.create_realm(
                 payload={"realm": realm_name, "enabled": True, **realm_data}, skip_exists=ignore_exists
             )
-        except KeycloakPostError as exc:
-            try:
-                raise KeycloakClientError(
-                    json.loads(exc.error_message).get("errorMessage", "Error creating realm.")
-                )
-            except JSONDecodeError:
-                raise KeycloakClientError("Error creating realm.")
-        except KeycloakError as exc:
-            raise KeycloakClientError(exc.error_message)
 
     def create_user(self, username: str, password: str, ignore_exists: bool = False):
-        try:
+        with convert_keycloak_error():
             self.keycloak_admin.create_user(
                 payload={
                     "username": username,
@@ -62,28 +71,41 @@ class KeycloakClient:
                 },
                 exist_ok=ignore_exists,
             )
-        except KeycloakPostError as exc:
-            try:
-                raise KeycloakClientError(
-                    json.loads(exc.error_message).get("errorMessage", "Error creating user.")
-                )
-            except JSONDecodeError:
-                raise KeycloakClientError("Error creating user.")
-        except KeycloakError as exc:
-            raise KeycloakClientError(exc.error_message)
 
     def create_client(self, client_data: dict, ignore_exists: bool = False):
-        try:
+        with convert_keycloak_error():
             self.keycloak_admin.create_client(payload=client_data, skip_exists=ignore_exists)
-        except KeycloakPostError as exc:
-            try:
-                raise KeycloakClientError(
-                    json.loads(exc.error_message).get("errorMessage", "Error creating client.")
-                )
-            except JSONDecodeError:
-                raise KeycloakClientError("Error creating client.")
-        except KeycloakError as exc:
-            raise KeycloakClientError(exc.error_message)
+
+    def __sorted_union_urls(self, urls: list[str], urls_append: list[str]):
+        return sorted(list(set(urls).union(canonicalize_url(u) for u in urls_append)))
+
+    def __sorted_difference_urls(self, urls: list[str], urls_remove: list[str]):
+        return sorted(list(set(urls).difference(canonicalize_url(u) for u in urls_remove)))
+
+    def modify_client(
+        self,
+        client_id: str,
+        append_redirect_urls: Optional[list[str]] = None,
+        remove_redirect_urls: Optional[list[str]] = None,
+    ):
+        with convert_keycloak_error():
+            internal_id = self.keycloak_admin.get_client_id(client_id)
+            oidc_client = self.keycloak_admin.get_client(internal_id)
+        if append_redirect_urls:
+            oidc_client["redirectUris"] = self.__sorted_union_urls(
+                oidc_client["redirectUris"], append_redirect_urls
+            )
+        if remove_redirect_urls:
+            oidc_client["redirectUris"] = self.__sorted_difference_urls(
+                oidc_client["redirectUris"], remove_redirect_urls
+            )
+        with convert_keycloak_error():
+            oidc_client = self.keycloak_admin.update_client(internal_id, payload=oidc_client)
+
+    def get_client_secret(self, client_id: str):
+        with convert_keycloak_error():
+            internal_id = self.keycloak_admin.get_client_id(client_id)
+            return self.keycloak_admin.get_client_secrets(internal_id)["value"]
 
 
 def get_keycloak_client(login_credentials: LoginCredentials) -> KeycloakClient:

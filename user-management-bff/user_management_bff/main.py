@@ -56,13 +56,13 @@ app = FastAPI(
 # so unfortunately we can't put this in the lifespan to make use of the
 # settings_port.
 if CORS_ALLOWED_ORIGINS:
-    origins = CORS_ALLOWED_ORIGINS.split(",")
+    origins = CORS_ALLOWED_ORIGINS.split(",")  # pragma: no cover
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_methods=["*"],
         allow_headers=["Authorization"],
-    )
+    )  # pragma: no cover
 
 
 # statically serve the frontend
@@ -77,7 +77,9 @@ class StaticFilesSPA(StaticFiles):
 
 
 if os.path.exists(FRONTEND_DIR):
-    app.mount(FRONTEND_PREFIX, StaticFilesSPA(directory=FRONTEND_DIR, html=True), name="frontend")
+    app.mount(
+        FRONTEND_PREFIX, StaticFilesSPA(directory=FRONTEND_DIR, html=True), name="frontend"
+    )  # pragma: no cover
 
 
 @app.exception_handler(PermissionsError)

@@ -10,9 +10,9 @@ import pytest
 from user_management_bff.adapter_registry import port_dep
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
-from user_management_bff.errors import CreationError, ObjectNotFoundError
+from user_management_bff.errors import CreationError, NotAuthenticatedError, ObjectNotFoundError
 from user_management_bff.lang import _
-from user_management_bff.main import app
+from user_management_bff.main import StaticFilesSPA, app
 from user_management_bff.ports import PermissionsPort
 
 
@@ -485,6 +485,17 @@ def test_delete_user_race_condition(_delete_mock, test_client, api_prefix):
     identifier = "test_user1"
     response = test_client.delete(f"{api_prefix}/users/{identifier}")
     assert response.status_code == 204
+
+
+@patch.object(
+    FileUsersPersistenceAdapter,
+    "delete_user",
+    side_effect=NotAuthenticatedError(message="Not authenticated"),
+)
+def test_delete_user_not_authenticated(_delete_mock, test_client, api_prefix):
+    identifier = "test_user1"
+    response = test_client.delete(f"{api_prefix}/users/{identifier}")
+    assert response.status_code == 401
 
 
 @pytest.mark.usefixtures("restore_users_json")
@@ -1048,3 +1059,16 @@ def test_admin_backend_to_frontend_conversion(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?id=test_user4&school=test_school1")
     assert response.status_code == 200, response.json()
     assert response.json()["user"]["roles"] == ["administrator"]
+
+
+@pytest.mark.asyncio
+async def test_StaticFilesSPA_get_response(tmp_path, test_client):
+    test_index = tmp_path / "index.html"
+    test_index.write_text("index")
+    test_page = tmp_path / "page.html"
+    test_page.write_text("page")
+    app.mount("/static_test", StaticFilesSPA(directory=tmp_path, html=True), name="static_test")
+    resp = test_client.get("/static_test/foo.html")
+    assert resp.text == "index"
+    resp = test_client.get("/static_test/page.html")
+    assert resp.text == "page"

@@ -1,7 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+
+APP_ID="ucsschool-user-management"
 
 action=$1
 
@@ -9,3 +11,25 @@ if [ "$action" = "settings" ]; then
   univention-app reinitialize ucsschool-user-management
 fi
 
+if [ "$action" = "remove" ]; then
+    eval "$(ucr shell hostname domainname)"
+    machine_username="${hostname:?}$"
+    machine_pw="$(cat /etc/machine.secret)"
+    keycloak_url=$(ucr get keycloak/server/sso/fqdn)
+
+    if [ -z "$keycloak_url" ]
+        then
+        keycloak_url="https://ucs-sso-ng.${domainname:?}"
+    elif ! [[ $keycloak_url == http* ]]
+        then
+        keycloak_url="https://$keycloak_url"
+    fi
+    univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+          --username "$machine_username" \
+          --password "$machine_pw" \
+          --url "$keycloak_url" \
+          --realm ucs \
+          --user-realm master \
+          clients modify ucsschool-user-management-ui \
+          --remove-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*"
+fi

@@ -71,10 +71,10 @@ bff-test:
   stage: test
   needs: [build_dev_image]
   image: $DEV_IMAGE_TAG
-  script:
+  before_script:
     - ./user-management-bff/scripts/test_setup.sh
-    - cd user-management-bff
-    - pytest -vv -m "not e2e" .
+  script:
+    - poetry run --directory user-management-bff/ pytest -vv -m "not e2e" --junitxml=report.xml user-management-bff/
   rules:
     - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
       when: never
@@ -82,6 +82,9 @@ bff-test:
     - changes:
         - user-management-bff/**/*
         - user-management-ui/**/*
+  artifacts:
+    reports:
+      junit: report.xml
 
 integration-tests:
   stage: integration_test
@@ -124,27 +127,29 @@ integration-tests:
   artifacts:
     when: always
     paths:
-      - dev/tests/junit.xml
-      - dev/tests/join.log
+      - dev/tests/primary_join.log
+      - dev/tests/backup1_join.log
     reports:
-      junit: dev/tests/junit.xml
+      junit: dev/tests/*junit.xml
 
 
 bff-coverage:
   extends: bff-test
   variables:
     BFF_COVERAGE_LIMIT: "100"
-  script:
+  before_script:
     - ./user-management-bff/scripts/test_setup.sh
-    - cd user-management-bff
-    - pytest -vv -m "not e2e" --cov="user_management_bff" --cov="keycloak_provisioning" --cov-report=term --cov-report=xml:coverage.xml .
-    - coverage report --fail-under="$BFF_COVERAGE_LIMIT"
+    - pip install poetry=="$POETRY_VERSION"
+    - poetry config --directory user-management-bff/ --local virtualenvs.create false
+    - poetry install --directory user-management-bff/
+  script:
+    - poetry run --directory user-management-bff/ pytest -vv -m "not e2e" --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: user_management_bff/coverage.xml
+        path: coverage.xml
 
 build_docker_image_user_management:
   stage: prepare
