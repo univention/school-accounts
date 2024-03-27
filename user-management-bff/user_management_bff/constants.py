@@ -12,3 +12,6 @@ FRONTEND_PREFIX = os.environ.get(
 FRONTEND_DIR = os.environ.get("USER_MANAGEMENT__FRONTEND_DIR", "/app/frontend")
 APP_NAME = "ucsschool-user-management"
 NAMESPACE_NAME = "user-management"
+
+LANGUAGES = ["en", "de"]
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))

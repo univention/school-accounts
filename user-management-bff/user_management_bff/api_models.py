@@ -8,6 +8,7 @@ from typing import Any, Generic, Optional, TypeVar
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
+from .lang import _
 from .models import Role
 
 
@@ -127,7 +128,7 @@ class UserCreateRequest(BaseModel):
     @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
         if Role.STUDENT in self.roles and len(self.school_classes) == 0:
-            raise ValueError("A student must have at least one school class.")
+            raise ValueError(_("A student must be member of at least one school class."))
         return self
 
 

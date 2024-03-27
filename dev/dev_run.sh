@@ -22,6 +22,7 @@ sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
 pytest: Runs the pytests for the BFF.
 pytest-e2e: Runs pytest end to end tests.
+translate: Generates translations for the BFF.
 EOF
 }
 
@@ -87,6 +88,9 @@ run_task() {
     --kelvin_url "$E2E_KELVIN_URL" \
     .
     exit $?
+  fi
+  if [ "$TASK" = "translate" ]; then
+    run_command env ./user-management-bff/scripts/check_translations.sh
   fi
   echo "Task '$TASK' does not exist."
   exit 1

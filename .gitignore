@@ -8,6 +8,7 @@ _build/
 .coverage
 .cache/
 **/.env
+*.mo
 dev/local
 
 # App Center files

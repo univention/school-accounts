@@ -69,13 +69,11 @@ run_pre-commit:
 
 bff-test:
   stage: test
-  needs: []
-  image: docker-registry.knut.univention.de/python:3.11-slim
+  needs: [build_dev_image]
+  image: $DEV_IMAGE_TAG
   script:
+    - ./user-management-bff/scripts/test_setup.sh
     - cd user-management-bff
-    - pip install poetry=="$POETRY_VERSION"
-    - poetry config --local virtualenvs.create false
-    - poetry install
     - pytest -vv -m "not e2e" .
   rules:
     - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
@@ -137,10 +135,8 @@ bff-coverage:
   variables:
     BFF_COVERAGE_LIMIT: "100"
   script:
+    - ./user-management-bff/scripts/test_setup.sh
     - cd user-management-bff
-    - pip install poetry=="$POETRY_VERSION"
-    - poetry config --local virtualenvs.create false
-    - poetry install
     - pytest -vv -m "not e2e" --cov="user_management_bff" --cov="keycloak_provisioning" --cov-report=term --cov-report=xml:coverage.xml .
     - coverage report --fail-under="$BFF_COVERAGE_LIMIT"
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'

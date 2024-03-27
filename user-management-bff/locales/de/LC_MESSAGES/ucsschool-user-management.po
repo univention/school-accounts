@@ -1,0 +1,135 @@
+# Copyright (C) 2024 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+# German translations for ucsschool-user-management-bff package.
+# UCS@school Maintainers <ucsschool-maintainers@univention.de>.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ucsschool-user-management-bff\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-04-03 10:58+0000\n"
+"PO-Revision-Date: 2024-03-28 16:54+0100\n"
+"Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
+"de>\n"
+"Language-Team: UCS@school Maintainers <ucsschool-maintainers@univention.de>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "A student must be member of at least one school class."
+msgstr "Ein Schüler muss Mitglied mindestens einer Schulklasse sein."
+
+msgid "Active"
+msgstr "Aktiv"
+
+msgid "Add user"
+msgstr "Benutzer hinzufügen"
+
+msgid "Administrator"
+msgstr "Administrator"
+
+#, python-brace-format
+msgid "Cannot update user '{user}' in school '{school}'."
+msgstr ""
+"Der Benutzer '{user}' in der Schule '{school}' kann nicht aktualisiert "
+"werden."
+
+msgid "Classes"
+msgstr "Klassen"
+
+msgid "First name"
+msgstr "Vorname"
+
+msgid "First name of the user"
+msgstr "Vorname des Benutzers"
+
+msgid "Last name"
+msgstr "Nachname"
+
+msgid "Last name of the user"
+msgstr "Nachname des Benutzers"
+
+msgid "Never authenticated."
+msgstr "Nie authentifiziert."
+
+msgid "Not authenticated"
+msgstr "Nicht authentifiziert."
+
+msgid "Object not found"
+msgstr "Objekt nicht gefunden"
+
+msgid "Password"
+msgstr "Passwort"
+
+msgid "Password of the user"
+msgstr "Benutzerpasswort"
+
+msgid "Role"
+msgstr "Rolle"
+
+msgid "Roles"
+msgstr "Rollen"
+
+msgid "Roles of the user"
+msgstr "Rollen des Benutzers"
+
+msgid "School"
+msgstr "Schule"
+
+msgid "School class"
+msgstr "Schulklasse"
+
+msgid "School classes"
+msgstr "Schulklassen"
+
+msgid "School classes of the user"
+msgstr "Schulklassen des Benutzers"
+
+msgid "School of the user"
+msgstr "Schule des Benutzers"
+
+msgid "Schools"
+msgstr "Schulen"
+
+msgid "Staff"
+msgstr "Mitarbeiter"
+
+msgid "Student"
+msgstr "Schüler"
+
+msgid "Teacher"
+msgstr "Lehrer"
+
+#, python-brace-format
+msgid "The logged in user '{user}' is not a valid UCS@school user."
+msgstr ""
+"Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer"
+
+msgid "The user was not found in the school."
+msgstr "Der Benutzer wurde nicht in der Schule gefunden."
+
+msgid "User detail"
+msgstr "Benutzerdetails"
+
+msgid "User info"
+msgstr "Benutzerinformation"
+
+msgid "User is active"
+msgstr "Benutzer ist aktiv"
+
+msgid "Username"
+msgstr "Benutzername"
+
+msgid "Username of the user"
+msgstr "Benutzername des Benutzer"
+
+msgid "You do not have the permission to create this user."
+msgstr "Sie sind nicht berechtigt, diesen Benutzer anzulegen."
+
+msgid "You do not have the permission to edit this user."
+msgstr "Sie sind nicht berechtigt, diesen Benutzer zu bearbeiten."
+
+msgid "general"
+msgstr "allgemein"

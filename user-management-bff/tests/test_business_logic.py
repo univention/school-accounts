@@ -7,6 +7,7 @@ import pytest
 from user_management_bff.api_models import UserCreateRequest
 from user_management_bff.business_logic import create_user, get_schools, user_create_request_to_target
 from user_management_bff.errors import NoSchoolUserError, ObjectNotFoundError
+from user_management_bff.lang import _
 from user_management_bff.models import Role, Target, TargetObject, TargetObjectType
 
 
@@ -18,20 +19,31 @@ def users_get_not_found_mock(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_schools_actor_not_found(mocker, users_get_not_found_mock):
+@pytest.mark.parametrize("lang", ["en", "de"])
+async def test_get_schools_actor_not_found(mocker, users_get_not_found_mock, lang):
+    user = "USER"
     with pytest.raises(
-        NoSchoolUserError, match="The logged in user 'USER' is not a valid UCS@school user."
+        NoSchoolUserError,
+        match=_(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
     ) as exc_info:
         await get_schools(
-            mocker.AsyncMock(), mocker.AsyncMock(), mocker.AsyncMock(), users_get_not_found_mock, "USER"
+            mocker.AsyncMock(),
+            mocker.AsyncMock(),
+            mocker.AsyncMock(),
+            users_get_not_found_mock,
+            "USER",
+            lang,
         )
     assert exc_info.value.identifier == "USER"
 
 
 @pytest.mark.asyncio
-async def test_create_user_actor_not_found(mocker, users_get_not_found_mock):
+@pytest.mark.parametrize("lang", ["en", "de"])
+async def test_create_user_actor_not_found(mocker, users_get_not_found_mock, lang):
+    user = "USER"
     with pytest.raises(
-        NoSchoolUserError, match="The logged in user 'USER' is not a valid UCS@school user."
+        NoSchoolUserError,
+        match=_(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
     ) as exc_info:
         await create_user(
             mocker.MagicMock(),
@@ -40,6 +52,7 @@ async def test_create_user_actor_not_found(mocker, users_get_not_found_mock):
             mocker.MagicMock(),
             "USER",
             mocker.MagicMock(),
+            lang,
         )
     assert exc_info.value.identifier == "USER"
 
@@ -73,6 +86,3 @@ def test_user_create_request_to_target():
         ),
     )
     assert user_create_request_to_target(user) == expected
-
-
-# todo test?

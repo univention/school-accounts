@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 from typing import Optional
 
+from user_management_bff.lang import _
 from user_management_bff.models import Permission
 
 
 class BaseError(Exception):
-    def __init__(self, message: str):  # pragma: no cover
+    def __init__(self, message: str):
         super().__init__(message)
         self.message = message
 
@@ -19,13 +20,13 @@ class PersistenceError(BaseError): ...
 
 
 class ObjectNotFoundError(PersistenceError):
-    def __init__(self, identifier: str):  # pragma: no cover
-        super().__init__("Object not found: {}".format(identifier))
+    def __init__(self, identifier: str):
+        super().__init__(_("Object not found"))
         self.identifier = identifier
 
 
 class CreationError(PersistenceError):
-    def __init__(self, message: str):  # pragma: no cover
+    def __init__(self, message: str):
         super().__init__(message)
 
 
@@ -39,3 +40,6 @@ class NoSchoolUserError(PermissionsError):
     def __init__(self, message: str, identifier: str):
         super().__init__(message)
         self.identifier = identifier
+
+
+class NotAuthenticatedError(BaseError): ...

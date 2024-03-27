@@ -5,14 +5,15 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine, Type
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from jwt import PyJWKClient
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
-from starlette import status
 from starlette.requests import Request
 
+from user_management_bff.errors import NotAuthenticatedError
+from user_management_bff.lang import _
 from user_management_bff.ports import FastAPIAuthenticationPort
 from user_management_bff.utils import get_oauth2_settings
 
@@ -92,10 +93,7 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
                     options={"require": ["exp", "iss", "aud", "sub", "iat", "jti"]},
                 )
             except jwt.exceptions.InvalidTokenError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated",
-                ) from exc
+                raise NotAuthenticatedError(_("Not authenticated")) from exc
             if self.settings.identifier_claim not in decoded_token:
                 raise RuntimeError(
                     f"The token does not contain the identifier claim {self.settings.identifier_claim}. "
@@ -138,9 +136,9 @@ class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
 
     async def get_authentication_dependency(self) -> Callable:
         def _dep():
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Never authenticated.")
+            raise NotAuthenticatedError(_("Never authenticated."))
 
         return _dep
 
     async def get_authenticated_id(self, request: Request) -> str:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Never authenticated.")
+        raise NotAuthenticatedError(_("Never authenticated."))

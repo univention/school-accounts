@@ -6,6 +6,7 @@ from loguru import logger
 
 from .api_models import AddUsersConfig, EditUsersConfig, UserCreateRequest
 from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError, PermissionsError
+from .lang import _
 from .models import (
     Permission,
     School,
@@ -35,12 +36,17 @@ from .utils import (
 )
 
 
-async def get_actor(actor_id: str, users_persistence_adapter: UsersPersistencePort) -> User:
+async def get_actor(
+    actor_id: str,
+    users_persistence_adapter: UsersPersistencePort,
+    lang: str,
+) -> User:
     try:
         return await users_persistence_adapter.get_user(actor_id)
     except ObjectNotFoundError as exc:
+        user = exc.identifier
         raise NoSchoolUserError(
-            f"The logged in user '{exc.identifier}' is not a valid UCS@school user.",
+            _(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
             identifier=exc.identifier,
         ) from exc
 
@@ -76,8 +82,9 @@ async def get_users(
     permissions_port: PermissionsPort,
     actor_id: str,
     request_data: UsersGetRequest,
+    lang: str,
 ) -> UsersGetRepresentation:
-    actor = await get_actor(actor_id, users_get_adapter)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
     users = await users_get_adapter.get_users(request_data.school)
     permissions = await permissions_port.get_permissions(
         actor,
@@ -100,8 +107,9 @@ async def get_schools(
     permissions_port: PermissionsPort,
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
+    lang: str,
 ) -> SchoolsGetRepresentation:
-    actor = await get_actor(actor_id, users_get_adapter)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
     schools = await schools_get_adapter.get_schools()
     permissions = await permissions_port.get_permissions(
         actor, [school_to_target(school) for school in schools]
@@ -116,8 +124,9 @@ async def create_user(
     permissions_port: PermissionsPort,
     actor_id: str,
     request_data: UserCreateRequest,
+    lang: str,
 ) -> UserCreateRepresentation:
-    actor = await get_actor(actor_id, users_get_adapter)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
     permissions = await permissions_port.get_permissions(
         actor, [user_create_request_to_target(request_data)]
     )
@@ -125,7 +134,7 @@ async def create_user(
     missing_permissions = get_required_permissions_for_create_request(request_data) - target_permissions
     if len(missing_permissions) > 0:
         raise PermissionsError(
-            "You do not have the permission to create this user.",
+            _("You do not have the permission to create this user.", lang=lang),
             missing_permissions=list(missing_permissions),
         )
 
@@ -138,8 +147,9 @@ async def delete_user(
     permissions_port: PermissionsPort,
     actor_id: str,
     identifier: str,
+    lang: str,
 ) -> None:
-    actor = await get_actor(actor_id, users_delete_adapter)
+    actor = await get_actor(actor_id, users_delete_adapter, lang)
     try:
         user = await users_delete_adapter.get_user(identifier)
     except ObjectNotFoundError:
@@ -158,7 +168,7 @@ async def delete_user(
     target_permissions = set(list(permissions.values())[0]) if permissions else set()
     if Permission.delete_user not in target_permissions:
         raise PermissionsError(
-            "You do not have the permission to edit this user.",
+            _("You do not have the permission to edit this user.", lang=lang),
             missing_permissions=[Permission.delete_user],
         )
     try:
@@ -174,13 +184,19 @@ async def patch_user(
     permissions_port: PermissionsPort,
     actor_id: str,
     patch_data: UserPatchRequest,
+    lang: str,
 ) -> UserCreateRepresentation:
-    actor = await get_actor(actor_id, users_patch_adapter)
+    actor = await get_actor(actor_id, users_patch_adapter, lang)
     old_user = await users_patch_adapter.get_user(patch_data.identifier)
-    user = old_user.model_copy(deep=True)
-    if patch_data.school not in user.attributes.schools:
+    new_user = old_user.model_copy(deep=True)
+    if patch_data.school not in new_user.attributes.schools:
+        user = patch_data.identifier
+        school = patch_data.school
         raise OperationNotSupportedError(
-            f"Cannot patch user '{patch_data.identifier}' in school '{patch_data.school}'."
+            _(
+                f"Cannot update user '{user}' in school '{school}'.",
+                lang=lang,
+            )
         )
     patch_attributes = patch_data.attributes.model_dump(exclude_unset=True, exclude={"school_classes"})
     if patch_data.attributes.active is not None:
@@ -188,12 +204,12 @@ async def patch_user(
         patch_attributes.pop("active")
 
     for key, value in patch_attributes.items():
-        setattr(user.attributes, key, value)
+        setattr(new_user.attributes, key, value)
     if (
         "school_classes" in patch_data.attributes.model_fields_set
         and patch_data.attributes.school_classes is not None
     ):
-        user.attributes.school_classes[patch_data.school] = patch_data.attributes.school_classes
+        new_user.attributes.school_classes[patch_data.school] = patch_data.attributes.school_classes
 
     permissions = await permissions_port.get_permissions(
         actor,
@@ -205,7 +221,9 @@ async def patch_user(
                     type=TargetObjectType.USER,
                 ),
                 new_target=TargetObject(
-                    id=user.id, attributes=user.attributes.model_dump(), type=TargetObjectType.USER
+                    id=new_user.id,
+                    attributes=new_user.attributes.model_dump(),
+                    type=TargetObjectType.USER,
                 ),
             )
         ],
@@ -214,11 +232,11 @@ async def patch_user(
     missing_permissions = get_required_permissions_for_patch_request(patch_data) - target_permissions
     if len(missing_permissions) > 0:
         raise PermissionsError(
-            "You do not have the permission to edit this user.",
+            _("You do not have the permission to edit this user.", lang=lang),
             missing_permissions=list(missing_permissions),
         )
-    user = await users_patch_adapter.save_user(user)
-    return representation_port.create_user_representation(user, target_permissions)
+    new_user = await users_patch_adapter.save_user(new_user)
+    return representation_port.create_user_representation(new_user, target_permissions)
 
 
 async def get_user_add_config(
@@ -226,13 +244,14 @@ async def get_user_add_config(
     school_classes_persistence_port: SchoolClassesPersistencePort,
     representation_port: AddConfigRepresentationPort,
     school: str,
+    lang: str,
 ) -> AddUsersConfig:
     try:
         school_obj = (await schools_get_port.get_schools(name=school))[0]
     except IndexError:
         raise ObjectNotFoundError(school)
     school_classes = await school_classes_persistence_port.get_school_classes(school)
-    return representation_port.add_config_representation(school_obj, school_classes)
+    return representation_port.add_config_representation(school_obj, school_classes, lang)
 
 
 async def get_user_edit_config(
@@ -245,13 +264,14 @@ async def get_user_edit_config(
     actor_id: str,
     user_id: str,
     school: str,
+    lang: str,
 ) -> EditUsersConfig:
     try:
         school_obj = (await schools_get_port.get_schools(name=school))[0]
     except IndexError:
         raise ObjectNotFoundError(school)
 
-    actor = await get_actor(actor_id, users_get_port)
+    actor = await get_actor(actor_id, users_get_port, lang)
     user = await users_get_port.get_user(user_id)
     permissions = await permissions_port.get_permissions(
         actor,
@@ -272,4 +292,4 @@ async def get_user_edit_config(
 
     school_classes = await school_classes_persistence_port.get_school_classes(school)
 
-    return representation_port.edit_config_representation(user_data, school_obj, school_classes)
+    return representation_port.edit_config_representation(user_data, school_obj, school_classes, lang)

@@ -17,6 +17,7 @@ RUN chmod 755 /usr/bin/opa
 RUN apt-get update && \
     apt-get install -y sudo \
     curl \
+    gettext \
     git \
     python3-pip \
     nodejs \

@@ -11,59 +11,64 @@ from user_management_bff.adapter_registry import port_dep
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.errors import CreationError, ObjectNotFoundError
+from user_management_bff.lang import _
 from user_management_bff.main import app
 from user_management_bff.ports import PermissionsPort
 
 
-def test_get_users_config(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config/users/list")
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_get_users_config(test_client, api_prefix, lang):
+    response = test_client.get(
+        f"{api_prefix}/config/users/list",
+        headers={"Accept-Language": lang},
+    )
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "columns": [
             {
-                "label": "Last name",
+                "label": _("Last name", lang=lang),
                 "attribute": "last_name",
                 "formatter": None,
                 "sorting": "asc",
                 "order": 0,
             },
             {
-                "label": "First name",
+                "label": _("First name", lang=lang),
                 "attribute": "first_name",
                 "formatter": None,
                 "sorting": "asc",
                 "order": 1,
             },
             {
-                "label": "Username",
+                "label": _("Username", lang=lang),
                 "attribute": "username",
                 "formatter": None,
                 "sorting": None,
                 "order": 2,
             },
             {
-                "label": "Roles",
+                "label": _("Roles", lang=lang),
                 "attribute": "roles",
                 "formatter": {"type": "list"},
                 "sorting": None,
                 "order": 3,
             },
             {
-                "label": "Classes",
+                "label": _("Classes", lang=lang),
                 "attribute": "classes",
                 "formatter": {"type": "list"},
                 "sorting": None,
                 "order": 4,
             },
             {
-                "label": "Schools",
+                "label": _("Schools", lang=lang),
                 "attribute": "schools",
                 "formatter": {"type": "list"},
                 "sorting": None,
                 "order": 5,
             },
             {
-                "label": "Active",
+                "label": _("Active", lang=lang),
                 "attribute": "active",
                 "formatter": {"type": "boolean"},
                 "sorting": None,
@@ -358,8 +363,9 @@ def test_create_user_creation_error(mock_save, test_client, api_prefix):
 
 
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+@pytest.mark.parametrize("lang", ["en", "de"])
 def test_create_user_permissions_error(
-    mock_create_user, test_client, api_prefix, transform_user_dict_to_api_users_dict
+    mock_create_user, test_client, api_prefix, transform_user_dict_to_api_users_dict, lang
 ):
     user = {
         "first_name": "firstname",
@@ -373,8 +379,16 @@ def test_create_user_permissions_error(
         "disabled": False,
         "password": "password",
     }
-    response = test_client.post(f"{api_prefix}/users", json=user)
-    assert response.status_code == 403, response.json()
+    response = test_client.post(
+        f"{api_prefix}/users",
+        json=user,
+        headers={"Accept-Language": lang},
+    )
+    response_json = response.json()
+    assert response.status_code == 403, response_json
+    assert response_json["detail"] == _(
+        "You do not have the permission to create this user.", lang=lang
+    ), response_json
 
     mock_create_user.called_once()
 
@@ -383,6 +397,35 @@ def test_create_user_permissions_error(
         users = json.load(file)
 
     assert users[-1]["id"] != user["username"]
+
+
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_create_user_classes_validation_error(test_client, api_prefix, lang):
+    user = {
+        "first_name": "firstname",
+        "last_name": "lastname",
+        "username": "bad_username",
+        "roles": [
+            "student",
+        ],
+        "school": "test_school1",
+        "school_classes": [],
+        "disabled": False,
+        "password": "password",
+    }
+    response = test_client.post(
+        f"{api_prefix}/users",
+        json=user,
+        headers={"Accept-Language": lang},
+    )
+    response_json = response.json()
+    response_detail = response_json["detail"]
+    assert response.status_code == 422, response_json
+    assert len(response_detail) == 1, response_json
+    assert response_detail[0]["loc"] == [_("general", lang=lang)]
+    assert response_detail[0]["msg"] == _(
+        "A student must be member of at least one school class.", lang=lang
+    )
 
 
 def test_delete_user_non_existent(test_client, api_prefix):
@@ -399,10 +442,16 @@ def test_delete_user(test_client, api_prefix):
 
 
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
-def test_delete_user_not_allowed(_permission_mock, test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_delete_user_not_allowed(_permission_mock, test_client, api_prefix, lang):
     identifier = "test_user1"
-    response = test_client.delete(f"{api_prefix}/users/{identifier}")
-    assert response.status_code == 403
+    response = test_client.delete(
+        f"{api_prefix}/users/{identifier}",
+        headers={"Accept-Language": lang},
+    )
+    response_json = response.json()
+    assert response.status_code == 403, response_json
+    assert response_json["detail"] == _("You do not have the permission to edit this user.", lang=lang)
 
 
 @patch.object(FileUsersPersistenceAdapter, "delete_user", side_effect=ObjectNotFoundError("ID"))
@@ -413,32 +462,49 @@ def test_delete_user_race_condition(_delete_mock, test_client, api_prefix):
 
 
 @pytest.mark.usefixtures("restore_users_json")
-def test_patch_user_wrong_school(test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_patch_user_wrong_school(test_client, api_prefix, lang):
+    user = "test_user1"
+    school = "NON_EXISTENT"
     response = test_client.patch(
-        f"{api_prefix}/users/test_user1", params={"school": "NON_EXISTENT"}, json={}
+        f"{api_prefix}/users/{user}",
+        params={"school": school},
+        json={},
+        headers={"Accept-Language": lang},
     )
     assert response.status_code == 400, response.json()
-    assert response.json() == {"detail": "Cannot patch user 'test_user1' in school 'NON_EXISTENT'."}
+    assert response.json() == {
+        "detail": _(f"Cannot update user '{user}' in school '{school}'.", lang=lang)
+    }
 
 
 @pytest.mark.usefixtures("restore_users_json")
-def test_patch_user_not_found(test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_patch_user_not_found(test_client, api_prefix, lang):
     response = test_client.patch(
-        f"{api_prefix}/users/NON_EXISTENT", params={"school": "NON_EXISTENT"}, json={}
+        f"{api_prefix}/users/NON_EXISTENT",
+        params={"school": "school1"},
+        json={},
+        headers={"Accept-Language": lang},
     )
-    assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": "Object not found: NON_EXISTENT"}
+    response_json = response.json()
+    assert response.status_code == 404, response_json
+    assert response_json == {"detail": f"{_('Object not found', lang=lang)}: NON_EXISTENT"}
 
 
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
-def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefix, lang):
     response = test_client.patch(
-        f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json={"first_name": "John"}
+        f"{api_prefix}/users/test_user1",
+        params={"school": "test_school1"},
+        json={"first_name": "John"},
+        headers={"Accept-Language": lang},
     )
-    print(response)
-    assert response.status_code == 403, response.json()
-    assert response.json()["detail"] == "You do not have the permission to edit this user."
-    assert response.json()["missingPermissions"] == ["write-first_name"]
+    response_json = response.json()
+    assert response.status_code == 403, response_json
+    assert response_json["detail"] == _("You do not have the permission to edit this user.", lang=lang)
+    assert response_json["missingPermissions"] == ["write-first_name"]
 
 
 @pytest.mark.parametrize(
@@ -511,22 +577,26 @@ def test_patch_user_school_classes(test_client, api_prefix):
     ]
 
 
-def test_get_user_add_config(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config/users/add?school=school1")
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_get_user_add_config(test_client, api_prefix, lang):
+    response = test_client.get(
+        f"{api_prefix}/config/users/add?school=school1",
+        headers={"Accept-Language": lang},
+    )
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "pages": [
             {
                 "fieldsets": [
                     {
-                        "label": "User Info",
+                        "label": _("User info", lang=lang),
                         "name": "userinfo",
                         "rows": [
                             {
                                 "props": {
                                     "access": "read",
-                                    "description": "School of the user",
-                                    "label": "School",
+                                    "description": _("School of the user", lang=lang),
+                                    "label": _("School", lang=lang),
                                     "name": "school",
                                     "required": True,
                                     "options": [
@@ -540,8 +610,8 @@ def test_get_user_add_config(test_client, api_prefix):
                                 {
                                     "props": {
                                         "access": "write",
-                                        "description": "Last name of the user",
-                                        "label": "Last name",
+                                        "description": _("Last name of the user", lang=lang),
+                                        "label": _("Last name", lang=lang),
                                         "name": "last_name",
                                         "required": True,
                                     },
@@ -551,8 +621,8 @@ def test_get_user_add_config(test_client, api_prefix):
                                 {
                                     "props": {
                                         "access": "write",
-                                        "description": "First name of the user",
-                                        "label": "First name",
+                                        "description": _("First name of the user", lang=lang),
+                                        "label": _("First name", lang=lang),
                                         "name": "first_name",
                                         "required": True,
                                     },
@@ -563,8 +633,8 @@ def test_get_user_add_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Username of the user",
-                                    "label": "Username",
+                                    "description": _("Username of the user", lang=lang),
+                                    "label": _("Username", lang=lang),
                                     "name": "username",
                                     "required": True,
                                 },
@@ -574,8 +644,8 @@ def test_get_user_add_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Password of the user",
-                                    "label": "Password",
+                                    "description": _("Password of the user", lang=lang),
+                                    "label": _("Password", lang=lang),
                                     "name": "password",
                                     "required": False,
                                 },
@@ -589,15 +659,15 @@ def test_get_user_add_config(test_client, api_prefix):
                                         {
                                             "attribute": "class_name",
                                             "formatter": None,
-                                            "label": "School class",
+                                            "label": _("School class", lang=lang),
                                             "order": 0,
                                             "sorting": None,
                                         }
                                     ],
-                                    "description": "School classes of the user",
-                                    "label": "School classes",
+                                    "description": _("School classes of the user", lang=lang),
+                                    "label": _("School classes", lang=lang),
                                     "name": "school_classes",
-                                    "required": True,
+                                    "required": False,
                                     "rows": [
                                         {
                                             "attributes": {
@@ -619,13 +689,13 @@ def test_get_user_add_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Roles of the user",
-                                    "label": "Roles",
+                                    "description": _("Roles of the user", lang=lang),
+                                    "label": _("Roles", lang=lang),
                                     "name": "roles",
                                     "required": True,
                                     "columns": [
                                         {
-                                            "label": "Role",
+                                            "label": _("Role", lang=lang),
                                             "attribute": "role_name",
                                             "sorting": None,
                                             "order": 0,
@@ -637,7 +707,7 @@ def test_get_user_add_config(test_client, api_prefix):
                                             "id": "student",
                                             "attributes": {
                                                 "role_name": {
-                                                    "value": "Student",
+                                                    "value": _("Student", lang=lang),
                                                     "access": "read",
                                                 },
                                             },
@@ -646,7 +716,7 @@ def test_get_user_add_config(test_client, api_prefix):
                                             "id": "teacher",
                                             "attributes": {
                                                 "role_name": {
-                                                    "value": "Teacher",
+                                                    "value": _("Teacher", lang=lang),
                                                     "access": "read",
                                                 },
                                             },
@@ -659,8 +729,8 @@ def test_get_user_add_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Active",
-                                    "label": "Active",
+                                    "description": _("User is active", lang=lang),
+                                    "label": _("Active", lang=lang),
                                     "name": "active",
                                     "required": False,
                                 },
@@ -670,22 +740,31 @@ def test_get_user_add_config(test_client, api_prefix):
                         ],
                     }
                 ],
-                "label": "Add user",
+                "label": _("Add user", lang=lang),
                 "name": "useradd",
             }
         ]
     }
 
 
-def test_get_user_add_config_school_doesnt_exist(test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_get_user_add_config_school_doesnt_exist(test_client, api_prefix, lang):
     fake_school = "fake_school"
-    response = test_client.get(f"{api_prefix}/config/users/add?school={fake_school}")
-    assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": f"Object not found: {fake_school}"}
+    response = test_client.get(
+        f"{api_prefix}/config/users/add?school={fake_school}",
+        headers={"Accept-Language": lang},
+    )
+    response_json = response.json()
+    assert response.status_code == 404, response_json
+    assert response_json == {"detail": f"{_('Object not found', lang=lang)}: {fake_school}"}
 
 
-def test_get_user_edit_config(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config/users/edit?school=school1&id=user3")
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_get_user_edit_config(test_client, api_prefix, lang):
+    response = test_client.get(
+        f"{api_prefix}/config/users/edit?school=school1&id=user3",
+        headers={"Accept-Language": lang},
+    )
     assert response.status_code == 200, response.json()
     assert response.json() == {
         "id": "user3",
@@ -693,14 +772,14 @@ def test_get_user_edit_config(test_client, api_prefix):
             {
                 "fieldsets": [
                     {
-                        "label": "User Info",
+                        "label": _("User info", lang=lang),
                         "name": "userinfo",
                         "rows": [
                             {
                                 "props": {
                                     "access": "read",
-                                    "description": "School of the user",
-                                    "label": "School",
+                                    "description": _("School of the user", lang=lang),
+                                    "label": _("School", lang=lang),
                                     "name": "school",
                                     "options": [{"label": "School 1", "value": "school1"}],
                                     "required": True,
@@ -712,8 +791,8 @@ def test_get_user_edit_config(test_client, api_prefix):
                                 {
                                     "props": {
                                         "access": "write",
-                                        "description": "Last name of the user",
-                                        "label": "Last name",
+                                        "description": _("Last name of the user", lang=lang),
+                                        "label": _("Last name", lang=lang),
                                         "name": "last_name",
                                         "required": True,
                                     },
@@ -723,8 +802,8 @@ def test_get_user_edit_config(test_client, api_prefix):
                                 {
                                     "props": {
                                         "access": "write",
-                                        "description": "First name of the user",
-                                        "label": "First name",
+                                        "description": _("First name of the user", lang=lang),
+                                        "label": _("First name", lang=lang),
                                         "name": "first_name",
                                         "required": True,
                                     },
@@ -735,8 +814,8 @@ def test_get_user_edit_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Username of the user",
-                                    "label": "Username",
+                                    "description": _("Username of the user", lang=lang),
+                                    "label": _("Username", lang=lang),
                                     "name": "username",
                                     "required": False,
                                 },
@@ -746,8 +825,8 @@ def test_get_user_edit_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "Password of the user",
-                                    "label": "Password",
+                                    "description": _("Password of the user", lang=lang),
+                                    "label": _("Password", lang=lang),
                                     "name": "password",
                                     "required": False,
                                 },
@@ -761,13 +840,13 @@ def test_get_user_edit_config(test_client, api_prefix):
                                         {
                                             "attribute": "class_name",
                                             "formatter": None,
-                                            "label": "school class",
+                                            "label": _("School class", lang=lang),
                                             "order": 0,
                                             "sorting": None,
                                         }
                                     ],
-                                    "description": "School classes of the user",
-                                    "label": "School classes",
+                                    "description": _("School classes of the user", lang=lang),
+                                    "label": _("School classes", lang=lang),
                                     "name": "school_classes",
                                     "required": False,
                                     "rows": [
@@ -795,37 +874,49 @@ def test_get_user_edit_config(test_client, api_prefix):
                                         {
                                             "attribute": "role_name",
                                             "formatter": None,
-                                            "label": "Role",
+                                            "label": _("Role", lang=lang),
                                             "order": 0,
                                             "sorting": None,
                                         }
                                     ],
-                                    "description": "Roles of the user",
-                                    "label": "Roles",
+                                    "description": _("Roles of the user", lang=lang),
+                                    "label": _("Roles", lang=lang),
                                     "name": "roles",
                                     "required": True,
                                     "rows": [
                                         {
                                             "attributes": {
-                                                "role_name": {"access": "read", "value": "Student"}
+                                                "role_name": {
+                                                    "access": "read",
+                                                    "value": _("Student", lang=lang),
+                                                }
                                             },
                                             "id": "student",
                                         },
                                         {
                                             "attributes": {
-                                                "role_name": {"access": "read", "value": "Teacher"}
+                                                "role_name": {
+                                                    "access": "read",
+                                                    "value": _("Teacher", lang=lang),
+                                                }
                                             },
                                             "id": "teacher",
                                         },
                                         {
                                             "attributes": {
-                                                "role_name": {"access": "read", "value": "Staff"}
+                                                "role_name": {
+                                                    "access": "read",
+                                                    "value": _("Staff", lang=lang),
+                                                }
                                             },
                                             "id": "staff",
                                         },
                                         {
                                             "attributes": {
-                                                "role_name": {"access": "read", "value": "Administrator"}
+                                                "role_name": {
+                                                    "access": "read",
+                                                    "value": _("Administrator", lang=lang),
+                                                }
                                             },
                                             "id": "administrator",
                                         },
@@ -837,8 +928,8 @@ def test_get_user_edit_config(test_client, api_prefix):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": "User is active",
-                                    "label": "Active",
+                                    "description": _("User is active", lang=lang),
+                                    "label": _("Active", lang=lang),
                                     "name": "active",
                                     "required": False,
                                 },
@@ -848,7 +939,7 @@ def test_get_user_edit_config(test_client, api_prefix):
                         ],
                     }
                 ],
-                "label": "Edit user",
+                "label": _("User detail", lang=lang),
                 "name": "useredit",
             }
         ],
@@ -868,20 +959,25 @@ def test_get_user_edit_config(test_client, api_prefix):
 def test_get_user_edit_config_non_existing_user(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?school=test_school1&id=NON_EXISTING")
     assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": "User not found in school"}
+    assert response.json() == {"detail": "The user was not found in the school."}
 
 
 def test_get_user_edit_config_wrong_school(test_client, api_prefix):
     response = test_client.get(f"{api_prefix}/config/users/edit?school=school1&id=test_user1")
     assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": "User not found in school"}
+    assert response.json() == {"detail": "The user was not found in the school."}
 
 
-def test_get_user_edit_config_school_doesnt_exist(test_client, api_prefix):
+@pytest.mark.parametrize("lang", ["en", "de"])
+def test_get_user_edit_config_school_doesnt_exist(test_client, api_prefix, lang):
     fake_school = "fake_school"
-    response = test_client.get(f"{api_prefix}/config/users/edit?school={fake_school}&id=test_user1")
-    assert response.status_code == 404, response.json()
-    assert response.json() == {"detail": "User not found in school"}
+    response = test_client.get(
+        f"{api_prefix}/config/users/edit?school={fake_school}&id=test_user1",
+        headers={"Accept-Language": lang},
+    )
+    response_json = response.json()
+    assert response.status_code == 404, response_json
+    assert response_json == {"detail": _("The user was not found in the school.", lang=lang)}
 
 
 @pytest.mark.parametrize(

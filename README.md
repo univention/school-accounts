@@ -122,6 +122,37 @@ Both UI and API react to code changes without the need to restart the environmen
 
 Keycloak can be accessed with "admin:admin" at http://user-management-proxy/keycloak/admin/
 
+#### Generating Backend Translations
+
+When adding a new string that will be returned to the frontend,
+you need to mark it as translatable:
+
+```python
+from user_management_bff.lang import _
+
+some_string = _("This needs to be translated")
+```
+
+You can check existing translations and generate the compiled translations
+either by running `pre-commit`, or via a separate task:
+
+```shell
+dev/dev_run.sh task translate
+```
+
+The script will tell you to fill in any translation strings it finds that are incomplete.
+You can find the translation file in `user-management-bff/locales/de/LC_MESSAGES/ucsschool-user-mangement.po`.
+
+Once all translation strings are resolved, you will receive a "Success!" message,
+and it will compile the `.mo` translation files.
+
+If you want to generate the files manually outside of docker,
+you need to install gettext:
+
+```shell
+sudo apt-get install -y gettext
+```
+
 #### Start live server for the manual
 
 ```shell

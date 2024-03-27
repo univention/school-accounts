@@ -16,6 +16,7 @@ from .ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
     FastAPIAuthenticationPort,
+    ListConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
     SchoolsPersistencePort,
@@ -28,6 +29,7 @@ ADAPTER_REGISTRY: AsyncAdapterRegistry = lazy_object_proxy.Proxy(AsyncAdapterReg
 PORT_CLASSES = (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
+    ListConfigRepresentationPort,
     UsersPersistencePort,
     UsersRepresentationPort,
     SchoolsPersistencePort,
@@ -40,6 +42,7 @@ PORT_CLASSES = (
 class AdapterSelection(BaseSettings):
     add_config_representation: ImportString
     edit_config_representation: ImportString
+    list_config_representation: ImportString
     users_persistence: ImportString
     users_representation: ImportString
     schools_persistence: ImportString
@@ -57,6 +60,7 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
     for port_cls, adapter_cls in [
         (AddConfigRepresentationPort, adapter_selection.add_config_representation),
         (EditConfigRepresentationPort, adapter_selection.edit_config_representation),
+        (ListConfigRepresentationPort, adapter_selection.list_config_representation),
         (UsersPersistencePort, adapter_selection.users_persistence),
         (UsersRepresentationPort, adapter_selection.users_representation),
         (SchoolsPersistencePort, adapter_selection.schools_persistence),

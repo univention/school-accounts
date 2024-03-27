@@ -6,13 +6,20 @@ from contextlib import asynccontextmanager
 from importlib import metadata
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
-from .errors import ObjectNotFoundError, OperationNotSupportedError, PermissionsError
+from .errors import (
+    NotAuthenticatedError,
+    ObjectNotFoundError,
+    OperationNotSupportedError,
+    PermissionsError,
+)
+from .lang import _, get_lang
 from .logging import configure_logger
 from .ports import FastAPIAuthenticationPort
 from .routes import router
@@ -62,20 +69,48 @@ if os.path.exists(FRONTEND_DIR):
 
 
 @app.exception_handler(PermissionsError)
-async def permissions_exception_handler(_request: Request, exc: PermissionsError):
+async def permissions_exception_handler(request: Request, exc: PermissionsError):
+    lang = get_lang(request)
     return ORJSONResponse(
-        status_code=403, content={"detail": exc.message, "missingPermissions": exc.missing_permissions}
+        status_code=403,
+        content={"detail": _(exc.message, lang=lang), "missingPermissions": exc.missing_permissions},
     )
 
 
 @app.exception_handler(OperationNotSupportedError)
-async def operation_not_supported_exception_handler(_request: Request, exc: OperationNotSupportedError):
-    return ORJSONResponse(status_code=400, content={"detail": exc.message})
+async def operation_not_supported_exception_handler(request: Request, exc: OperationNotSupportedError):
+    lang = get_lang(request)
+    return ORJSONResponse(status_code=400, content={"detail": _(exc.message, lang=lang)})
 
 
 @app.exception_handler(ObjectNotFoundError)
-async def object_not_found_exception_handler(_request: Request, exc: ObjectNotFoundError):
-    return ORJSONResponse(status_code=404, content={"detail": exc.message})
+async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError):
+    lang = get_lang(request)
+    detail = f"{_(exc.message, lang=lang)}: {exc.identifier}"
+    return ORJSONResponse(status_code=404, content={"detail": detail})
+
+
+@app.exception_handler(NotAuthenticatedError)
+async def not_authenticated_exception_handler(request: Request, exc: NotAuthenticatedError):
+    lang = get_lang(request)
+    return ORJSONResponse(status_code=401, content={"detail": _(exc.message, lang=lang)})
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    lang = get_lang(request)
+    errors = []
+    for err in exc.errors():
+        loc = err["loc"]
+        if loc == ("body",):
+            loc = (_("general", lang=lang),)
+        errors.append(
+            {
+                "loc": loc,
+                "msg": _(str(err.get("ctx", {}).get("error", None) or err["msg"]), lang=lang),
+            }
+        )
+    return ORJSONResponse(status_code=422, content={"detail": errors})
 
 
 @app.get(f"{API_PREFIX}/config/app")

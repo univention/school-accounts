@@ -31,4 +31,4 @@ class TestUserCreateRequest:
                 school_classes=[],
                 school="school1",
             )
-        e.match("Value error, A student must have at least one school class.")
+        e.match("Value error, A student must be member of at least one school class.")

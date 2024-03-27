@@ -182,10 +182,12 @@ async def test_patch_user_wrong_school(access_token, base_url, kelvin_user_facto
         f"{base_url}/bff/users/{kelvin_user.name}",
         params={"school": "school5"},
         json={"first_name": "John"},
-        headers={"Authorization": f"Bearer {token}"},
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
     )
     assert response.status_code == 400, response.json()
-    assert response.json() == {"detail": f"Cannot patch user '{kelvin_user.name}' in school 'school5'."}
+    assert response.json() == {"detail": f"Cannot update user '{kelvin_user.name}' in school 'school5'."}
 
 
 @pytest.mark.asyncio

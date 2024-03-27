@@ -34,6 +34,13 @@ repos:
       args: ["--config-file=user-management-bff/pyproject.toml"]
       exclude: "docs/|tests/"
       additional_dependencies: [fastapi, loguru, pytest, types-requests]
+- repo: local
+  hooks:
+    - id: bff-translation-check
+      name: bff-translation-check
+      entry: user-management-bff/scripts/check_translations.sh
+      language: script
+      pass_filenames: false
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:

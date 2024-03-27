@@ -8,7 +8,6 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from fastapi import HTTPException
 from httpx import RequestError
 
 import user_management_bff
@@ -18,6 +17,7 @@ from user_management_bff.adapters.authentication import (
     Oauth2FastAPIAuthenticationAdapter,
     Oauth2FastAPIAuthenticationAdapterSettings,
 )
+from user_management_bff.errors import NotAuthenticatedError
 
 
 class TestOauth2FastAPIAuthenticationAdapter:
@@ -197,9 +197,8 @@ class TestOauth2FastAPIAuthenticationAdapter:
         }
         payload.update(overrides)
         token = jwt.encode(payload, private_key, algorithm="RS256")
-        with pytest.raises(HTTPException, match="401: Not authenticated") as exc_info:
+        with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
             await dep(token=token)
-        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_authentication_dependency_wrong_key(
@@ -218,9 +217,8 @@ class TestOauth2FastAPIAuthenticationAdapter:
             "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
         }
         token = jwt.encode(payload, private_key2, algorithm="RS256")
-        with pytest.raises(HTTPException, match="401: Not authenticated") as exc_info:
+        with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
             await dep(token=token)
-        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_authenticated_id(self, mocked_adapter, gen_rsa_key, mock_pyjwt_client, mocker):
@@ -267,14 +265,10 @@ class TestNeverAuthenticatedAdapter:
 
     @pytest.mark.asyncio
     async def test_get_authentication_dependency(self, adapter):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
             await (await adapter.get_authentication_dependency())()
-        assert exc_info.value.status_code == 401
-        assert exc_info.value.detail == "Never authenticated."
 
     @pytest.mark.asyncio
     async def test_get_authenticated_id(self, adapter, mocker):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
             await adapter.get_authenticated_id(mocker.Mock())
-        assert exc_info.value.status_code == 401
-        assert exc_info.value.detail == "Never authenticated."

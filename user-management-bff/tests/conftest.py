@@ -78,6 +78,9 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__EDIT_CONFIG_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPIEditConfigRepresentationAdapter"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__LIST_CONFIG_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPIListConfigRepresentationAdapter"
+    )
     yield
     os.environ.clear()
     os.environ.update(_environ)

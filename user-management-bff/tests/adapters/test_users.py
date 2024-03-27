@@ -191,7 +191,7 @@ class TestKelvinUsersPersistenceAdapter:
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
-        with pytest.raises(ObjectNotFoundError, match="Object not found: test_user1") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
 
@@ -270,7 +270,7 @@ class TestKelvinUsersPersistenceAdapter:
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
-        with pytest.raises(ObjectNotFoundError, match="Object not found: test_user1") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.delete_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
 
@@ -330,7 +330,7 @@ class TestKelvinUsersPersistenceAdapter:
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         user = generate_user()
         await adapter.configure(dummy_settings)
-        with pytest.raises(ObjectNotFoundError, match="Object not found: ") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.save_user(user)
         assert exc_info.value.identifier == user.id
 
@@ -500,7 +500,7 @@ class TestFileUsersPersistenceAdapter:
     @pytest.mark.asyncio
     async def test_get_user_not_found(self, adapter, users_json):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
-        with pytest.raises(ObjectNotFoundError, match="Object not found: NON_EXISTENT") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("NON_EXISTENT")
         assert exc_info.value.identifier == "NON_EXISTENT"
 
@@ -510,7 +510,7 @@ class TestFileUsersPersistenceAdapter:
         # TODO should we check here first that the user exists?
         # It works out now since delete_user raises ObjectNotFoundError
         await adapter.delete_user("user1")
-        with pytest.raises(ObjectNotFoundError, match="Object not found: user1") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.delete_user("user1")
         assert exc_info.value.identifier == "user1"
 
@@ -518,7 +518,7 @@ class TestFileUsersPersistenceAdapter:
     async def test_save_user_not_found(self, adapter, users_json_path, generate_user):
         user = generate_user()
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json_path))
-        with pytest.raises(ObjectNotFoundError, match="Object not found: ") as exc_info:
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.save_user(user)
         assert exc_info.value.identifier == user.id
 

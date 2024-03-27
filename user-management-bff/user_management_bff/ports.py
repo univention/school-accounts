@@ -124,13 +124,21 @@ class PermissionsPort(ABC):
         """
 
 
+ListUsersConfigRepresentation = TypeVar("ListUsersConfigRepresentation")
+
+
+class ListConfigRepresentationPort(ABC, Generic[ListUsersConfigRepresentation]):
+    @abstractmethod
+    def list_config_representation(self, lang: str = "en") -> ListUsersConfigRepresentation: ...
+
+
 AddUserConfigRepresentation = TypeVar("AddUserConfigRepresentation")
 
 
 class AddConfigRepresentationPort(ABC, Generic[AddUserConfigRepresentation]):
     @abstractmethod
     def add_config_representation(
-        self, school: School, school_classes: list[SchoolClass]
+        self, school: School, school_classes: list[SchoolClass], lang: str
     ) -> AddUserConfigRepresentation: ...
 
 
@@ -144,4 +152,5 @@ class EditConfigRepresentationPort(ABC, Generic[EditUserConfigRepresentation, Us
         user_data: UserCreateRepresentation,
         school: School,
         school_classes: list[SchoolClass],
+        lang: str,
     ) -> EditUserConfigRepresentation: ...

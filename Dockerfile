@@ -36,7 +36,8 @@ WORKDIR /app/user-management-api
 
 RUN apt-get update \
     && apt-get --assume-yes --verbose-versions --no-install-recommends install \
-    python3-pip \
+        gettext \
+        python3-pip \
     && rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* \
 RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 
@@ -44,9 +45,10 @@ RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 COPY --from=requirements_builder /build/requirements.txt .
 RUN pip install --no-cache-dir -U pip wheel && pip install --no-cache-dir -r requirements.txt
 
-# Install project
+# Install backend
 COPY user-management-bff .
 RUN pip install --no-cache-dir . && pip list
+RUN ./scripts/translate.sh
 
 # Install frontend
 COPY --from=frontend_builder /user-management-ui/dist /app/frontend

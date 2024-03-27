@@ -6,6 +6,8 @@ from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel, model_validator
 
+from .lang import _
+
 AttributeType = TypeVar("AttributeType")
 
 
@@ -101,7 +103,7 @@ class UserCreateRequest(BaseModel):
     @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
         if Role.STUDENT in self.roles and not self.school_classes:
-            raise ValueError("A student must have at least one school class.")
+            raise ValueError(_("A student must be member of at least one school class."))
         return self
 
 

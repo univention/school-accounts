@@ -15,6 +15,8 @@ from ..api_models import (
     EditUsersConfig,
     Fieldset,
     FieldsetRow,
+    Formatter,
+    FormatterChoice,
     LabeledValue,
     ListSchool,
     ListSchoolsResponse,
@@ -22,6 +24,7 @@ from ..api_models import (
     ListUserAttribute,
     ListUserFixedAttributes,
     ListUserPermissions,
+    ListUsersConfig,
     ListUsersResponse,
     PageConfig,
     RoleRow,
@@ -31,10 +34,12 @@ from ..api_models import (
     SchoolContextPermission,
     WidgetType,
 )
+from ..lang import _
 from ..models import Permission, School, SchoolClass, User
 from ..ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
+    ListConfigRepresentationPort,
     SchoolsRepresentationPort,
     UsersRepresentationPort,
 )
@@ -178,26 +183,83 @@ class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsR
         return ListSchoolsResponse(schools=list_schools)
 
 
+class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUsersConfig]):
+    def list_config_representation(self, lang: str = "en"):
+        return ListUsersConfig(
+            columns=[
+                ColumnConfig(
+                    label=_("Last name", lang=lang),
+                    attribute="last_name",
+                    sorting="asc",
+                    order=0,
+                ),
+                ColumnConfig(
+                    label=_("First name", lang=lang),
+                    attribute="first_name",
+                    sorting="asc",
+                    order=1,
+                ),
+                ColumnConfig(
+                    label=_("Username", lang=lang),
+                    attribute="username",
+                    order=2,
+                ),
+                ColumnConfig(
+                    label=_("Roles", lang=lang),
+                    attribute="roles",
+                    formatter=Formatter(
+                        type=FormatterChoice.LIST,
+                    ),
+                    order=3,
+                ),
+                ColumnConfig(
+                    label=_("Classes", lang=lang),
+                    attribute="classes",
+                    formatter=Formatter(
+                        type=FormatterChoice.LIST,
+                    ),
+                    order=4,
+                ),
+                ColumnConfig(
+                    label=_("Schools", lang=lang),
+                    attribute="schools",
+                    formatter=Formatter(
+                        type=FormatterChoice.LIST,
+                    ),
+                    order=5,
+                ),
+                ColumnConfig(
+                    label=_("Active", lang=lang),
+                    attribute="active",
+                    formatter=Formatter(
+                        type=FormatterChoice.BOOLEAN,
+                    ),
+                    order=6,
+                ),
+            ],
+        )
+
+
 class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsersConfig]):
     def add_config_representation(
-        self, school: School, school_classes: list[SchoolClass]
+        self, school: School, school_classes: list[SchoolClass], lang: str
     ) -> AddUsersConfig:
         return AddUsersConfig(
             pages=[
                 PageConfig(
-                    label="Add user",
+                    label=_("Add user", lang=lang),
                     name="useradd",
                     fieldsets=[
                         Fieldset(
                             name="userinfo",
-                            label="User Info",
+                            label=_("User info", lang=lang),
                             rows=[
                                 FieldsetRow(
                                     type=WidgetType.UComboBox,
                                     props=dict(
-                                        label="School",
+                                        label=_("School", lang=lang),
                                         name="school",
-                                        description="School of the user",
+                                        description=_("School of the user", lang=lang),
                                         required=True,
                                         access=AttributeAccess.READ,
                                         options=[
@@ -212,9 +274,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                     FieldsetRow(
                                         type=WidgetType.UInputText,
                                         props=dict(
-                                            label="Last name",
+                                            label=_("Last name", lang=lang),
                                             name="last_name",
-                                            description="Last name of the user",
+                                            description=_("Last name of the user", lang=lang),
                                             required=True,
                                             access=AttributeAccess.WRITE,
                                         ),
@@ -222,9 +284,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                     FieldsetRow(
                                         type=WidgetType.UInputText,
                                         props=dict(
-                                            label="First name",
+                                            label=_("First name", lang=lang),
                                             name="first_name",
-                                            description="First name of the user",
+                                            description=_("First name of the user", lang=lang),
                                             required=True,
                                             access=AttributeAccess.WRITE,
                                         ),
@@ -233,9 +295,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UInputText,
                                     props=dict(
-                                        label="Username",
+                                        label=_("Username", lang=lang),
                                         name="username",
-                                        description="Username of the user",
+                                        description=_("Username of the user", lang=lang),
                                         required=True,
                                         access=AttributeAccess.WRITE,
                                     ),
@@ -243,9 +305,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UInputPassword,
                                     props=dict(
-                                        label="Password",
+                                        label=_("Password", lang=lang),
                                         name="password",
-                                        description="Password of the user",
+                                        description=_("Password of the user", lang=lang),
                                         required=False,
                                         access=AttributeAccess.WRITE,
                                     ),
@@ -253,14 +315,16 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(
-                                        label="School classes",
+                                        label=_("School classes", lang=lang),
                                         name="school_classes",
-                                        description="School classes of the user",
-                                        required=True,
+                                        description=_("School classes of the user", lang=lang),
+                                        required=False,
                                         access=AttributeAccess.WRITE,
                                         columns=[
                                             ColumnConfig(
-                                                label="School class", attribute="class_name", order=0
+                                                label=_("School class", lang=lang),
+                                                attribute="class_name",
+                                                order=0,
                                             )
                                         ],
                                         rows=[
@@ -280,20 +344,24 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(
-                                        label="Roles",
+                                        label=_("Roles", lang=lang),
                                         name="roles",
-                                        description="Roles of the user",
+                                        description=_("Roles of the user", lang=lang),
                                         required=True,
                                         access=AttributeAccess.WRITE,
                                         columns=[
-                                            ColumnConfig(label="Role", attribute="role_name", order=0)
+                                            ColumnConfig(
+                                                label=_("Role", lang=lang),
+                                                attribute="role_name",
+                                                order=0,
+                                            )
                                         ],
                                         rows=[
                                             RoleRow(
                                                 id="student",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Student",
+                                                        value=_("Student", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -302,7 +370,7 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                                 id="teacher",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Teacher",
+                                                        value=_("Teacher", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -313,9 +381,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UInputCheckbox,
                                     props=dict(
-                                        label="Active",
+                                        label=_("Active", lang=lang),
                                         name="active",
-                                        description="Active",
+                                        description=_("User is active", lang=lang),
                                         required=False,
                                         access=AttributeAccess.WRITE,
                                     ),
@@ -336,6 +404,7 @@ class FastAPIEditConfigRepresentationAdapter(
         user_data: EditUserResponseUser,
         school: School,
         school_classes: list[SchoolClass],
+        lang: str,
     ) -> EditUsersConfig:
         user = {key: value.value for key, value in dict(user_data.attributes).items()}
         user["school"] = school.id
@@ -357,19 +426,19 @@ class FastAPIEditConfigRepresentationAdapter(
             id=user_data.id,
             pages=[
                 PageConfig(
-                    label="Edit user",
+                    label=_("User detail", lang=lang),
                     name="useredit",
                     fieldsets=[
                         Fieldset(
                             name="userinfo",
-                            label="User Info",
+                            label=_("User info", lang=lang),
                             rows=[
                                 FieldsetRow(
                                     type=WidgetType.UComboBox,
                                     props=dict(
-                                        label="School",
+                                        label=_("School", lang=lang),
                                         name="school",
-                                        description="School of the user",
+                                        description=_("School of the user", lang=lang),
                                         required=True,
                                         access=AttributeAccess.READ,
                                         options=[
@@ -381,9 +450,9 @@ class FastAPIEditConfigRepresentationAdapter(
                                     FieldsetRow(
                                         type=WidgetType.UInputText,
                                         props=dict(
-                                            label="Last name",
+                                            label=_("Last name", lang=lang),
                                             name="last_name",
-                                            description="Last name of the user",
+                                            description=_("Last name of the user", lang=lang),
                                             required=True,
                                             access=user_data.attributes.last_name.access,
                                         ),
@@ -391,9 +460,9 @@ class FastAPIEditConfigRepresentationAdapter(
                                     FieldsetRow(
                                         type=WidgetType.UInputText,
                                         props=dict(
-                                            label="First name",
+                                            label=_("First name", lang=lang),
                                             name="first_name",
-                                            description="First name of the user",
+                                            description=_("First name of the user", lang=lang),
                                             required=True,
                                             access=user_data.attributes.first_name.access,
                                         ),
@@ -402,9 +471,9 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UInputText,
                                     props=dict(
-                                        label="Username",
+                                        label=_("Username", lang=lang),
                                         name="username",
-                                        description="Username of the user",
+                                        description=_("Username of the user", lang=lang),
                                         required=False,
                                         access=user_data.attributes.username.access,
                                     ),
@@ -418,9 +487,9 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UInputPassword,
                                     props=dict(
-                                        label="Password",
+                                        label=_("Password", lang=lang),
                                         name="password",
-                                        description="Password of the user",
+                                        description=_("Password of the user", lang=lang),
                                         required=False,
                                         access=user_data.attributes.password.access,
                                     ),
@@ -428,14 +497,16 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(
-                                        label="School classes",
+                                        label=_("School classes", lang=lang),
                                         name="school_classes",
-                                        description="School classes of the user",
+                                        description=_("School classes of the user", lang=lang),
                                         required=False,
                                         access=user_data.attributes.classes.access,
                                         columns=[
                                             ColumnConfig(
-                                                label="school class", attribute="class_name", order=0
+                                                label=_("School class", lang=lang),
+                                                attribute="class_name",
+                                                order=0,
                                             )
                                         ],
                                         rows=[
@@ -455,13 +526,17 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(
-                                        label="Roles",
+                                        label=_("Roles", lang=lang),
                                         name="roles",
-                                        description="Roles of the user",
+                                        description=_("Roles of the user", lang=lang),
                                         required=True,
                                         access=user_data.attributes.roles.access,
                                         columns=[
-                                            ColumnConfig(label="Role", attribute="role_name", order=0)
+                                            ColumnConfig(
+                                                label=_("Role", lang=lang),
+                                                attribute="role_name",
+                                                order=0,
+                                            )
                                         ],
                                         # We need to include all roles here
                                         # in order for it to display properly.
@@ -472,7 +547,7 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 id="student",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Student",
+                                                        value=_("Student", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -481,7 +556,7 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 id="teacher",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Teacher",
+                                                        value=_("Teacher", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -490,7 +565,7 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 id="staff",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Staff",
+                                                        value=_("Staff", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -499,7 +574,7 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 id="administrator",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value="Administrator",
+                                                        value=_("Administrator", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),
@@ -510,9 +585,9 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UInputCheckbox,
                                     props=dict(
-                                        label="Active",
+                                        label=_("Active", lang=lang),
                                         name="active",
-                                        description="User is active",
+                                        description=_("User is active", lang=lang),
                                         required=False,
                                         access=user_data.attributes.active.access,
                                     ),
