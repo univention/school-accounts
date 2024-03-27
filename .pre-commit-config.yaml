@@ -49,7 +49,7 @@ repos:
         # MD034: Allow bare URLs
         # MD041: First line in file should be a top level heading
 - repo: https://github.com/charliermarsh/ruff-pre-commit
-  rev: 'v0.1.13'
+  rev: 'v0.3.4'
   hooks:
     - id: ruff
       args: [--fix]

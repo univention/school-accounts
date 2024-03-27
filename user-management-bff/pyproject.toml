@@ -72,9 +72,12 @@ plugins = ["pydantic.mypy"]
 
 [tool.ruff]
 line-length = 105
-select = ["E", "F", "I"]
 indent-width = 4
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["B008", "B904"]
 
 [tool.coverage.report]
 show_missing = true
