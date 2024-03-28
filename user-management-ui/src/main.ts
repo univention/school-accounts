@@ -17,7 +17,7 @@ import router from '@/router';
 const pinia = createPinia();
 
 initializeI18next().then(() => {
-  document.documentElement.setAttribute('lang', i18next.language);
+  document.documentElement.setAttribute('lang', i18next.language.slice(0, 2));
   const app = createApp(App).use(router).use(I18NextVue, {i18next}).use(UniventionVebPlugin, {i18next}).use(pinia);
 
   app.mount('#app');

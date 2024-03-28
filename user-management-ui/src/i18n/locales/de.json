@@ -7,7 +7,8 @@
     "error": {
       "config": "Es ist ein Konfigurationsfehler aufgetreten. Bitte wenden Sie sich an einen Systemadministrator.",
       "loginFailed": "Login fehlgeschlagen."
-    }
+    },
+    "languageSelect": "Sprache"
   },
   "ConfirmBackModal": {
     "button": {
@@ -70,6 +71,14 @@
     },
     "heading": "Fehler"
   },
+  "Header.confirmReload": {
+    "button": {
+      "cancel": "Abbrechen",
+      "confirm": "Neu laden"
+    },
+    "heading": "Best\u00e4tigung",
+    "text": "Die Seite muss neu geladen werden um die Sprache zu \u00e4ndern. Wollen Sie fortfahren?"
+  },
   "ListView": {
     "contextActions": {
       "deleteLabel": "L\u00f6schen",
@@ -89,6 +98,11 @@
       "searchButton.label": "Suchen"
     },
     "subheader": "Verwaltung von Schulbenutzern"
+  },
+  "NotFoundView": {
+    "body.text": "Wir konnten die von Ihnen gesuchte Seite nicht finden.",
+    "button.home": "Startseite",
+    "header": "Seite nicht gefunden"
   },
   "errors": {
     "invalidAuthenticationPort": "Ung\u00fcltiger AuthenticationPort: {{adapter}}",

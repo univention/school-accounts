@@ -36,6 +36,7 @@ import {useErrorStore} from '@/stores/error';
 import type {EditViewConfig} from '@/helpers/models/config';
 import type {FormValues} from '@/helpers/models/interface';
 import type {SaveError} from '@/helpers/models/http';
+import SiteHeader from '@/components/SiteHeader.vue';
 
 const props = defineProps<{
   action: 'edit' | 'add';
@@ -473,197 +474,198 @@ const getRow = (row: Field | Field[]): Field[] => {
   }
   return [row];
 };
+
+const confirmLanguageSwitchReload = computed(() => hasChangedValues.value);
 </script>
 
 <template>
-  <div>
-    <main class="editView">
-      <div
-        class="editView__stickyHeader"
-        :class="{'editView__stickyHeader--bordered': windowScroll > 0}"
-      >
-        <div class="listView__header">
-          <h1 class="listView__header__heading">
-            {{ heading }}
-          </h1>
-          <div class="listView__header__buttons">
-            <UButton
-              v-if="action === 'add' && addViewConfigLoaded"
-              :label="t('EditView.button.add')"
-              icon="save"
-              primary
-              :disabled="disableActionButton"
-              @click="add"
-            />
-            <UButton
-              v-if="action === 'edit' && fetchedObject !== null"
-              :label="t('EditView.button.save')"
-              icon="save"
-              primary
-              :disabled="disableActionButton"
-              @click="save"
-            />
-            <UButton
-              :label="t('EditView.button.back')"
-              @click="tryBack(false)"
-            />
-          </div>
+  <SiteHeader :confirmReload="confirmLanguageSwitchReload" />
+  <main class="editView">
+    <div
+      class="editView__stickyHeader"
+      :class="{'editView__stickyHeader--bordered': windowScroll > 0}"
+    >
+      <div class="listView__header">
+        <h1 class="listView__header__heading">
+          {{ heading }}
+        </h1>
+        <div class="listView__header__buttons">
+          <UButton
+            v-if="action === 'add' && addViewConfigLoaded"
+            :label="t('EditView.button.add')"
+            icon="save"
+            primary
+            :disabled="disableActionButton"
+            @click="add"
+          />
+          <UButton
+            v-if="action === 'edit' && fetchedObject !== null"
+            :label="t('EditView.button.save')"
+            icon="save"
+            primary
+            :disabled="disableActionButton"
+            @click="save"
+          />
+          <UButton
+            :label="t('EditView.button.back')"
+            @click="tryBack(false)"
+          />
         </div>
       </div>
-      <div
-        v-if="nonModalError !== ''"
-        class="editView__notFoundError"
+    </div>
+    <div
+      v-if="nonModalError !== ''"
+      class="editView__notFoundError"
+    >
+      <UIcon icon="alert-circle" />
+      <h1>{{ nonModalError }}</h1>
+    </div>
+    <div v-else>
+      <form
+        novalidate
+        class="editView__form editView__form editView__form--navlessIfSinglePage"
+        @submit.prevent="action === 'add' ? add() : save()"
       >
-        <UIcon icon="alert-circle" />
-        <h1>{{ nonModalError }}</h1>
-      </div>
-      <div v-else>
-        <form
-          novalidate
-          class="editView__form editView__form editView__form--navlessIfSinglePage"
-          @submit.prevent="action === 'add' ? add() : save()"
+        <div
+          ref="formNav"
+          class="uContainer uCard editView__form__nav"
+          :class="{
+            'editView__form__nav--hidden': pageLinks.length === 0,
+            'editView__form__nav--singlePage': pageLinks.length === 1,
+          }"
+          :style="`--local-top: ${formNavStickyTop}px`"
         >
-          <div
-            ref="formNav"
-            class="uContainer uCard editView__form__nav"
-            :class="{
-              'editView__form__nav--hidden': pageLinks.length === 0,
-              'editView__form__nav--singlePage': pageLinks.length === 1,
-            }"
-            :style="`--local-top: ${formNavStickyTop}px`"
+          <RouterLink
+            v-for="link in pageLinks"
+            :key="link.name"
+            :to="link.to"
+            :aria-current="currentPage === link.name.toLowerCase() ? 'page' : undefined"
+            class="editView__form__nav__link"
+            :class="{'editView__form__nav__link--invalid': link.isInvalid}"
           >
-            <RouterLink
-              v-for="link in pageLinks"
-              :key="link.name"
-              :to="link.to"
-              :aria-current="currentPage === link.name.toLowerCase() ? 'page' : undefined"
-              class="editView__form__nav__link"
-              :class="{'editView__form__nav__link--invalid': link.isInvalid}"
-            >
-              {{ link.label }}
-            </RouterLink>
+            {{ link.label }}
+          </RouterLink>
+        </div>
+        <div
+          v-for="page in pages"
+          v-show="page.name === currentPage"
+          :key="page.name"
+          class="editView__form__content uContainer"
+        >
+          <div class="editView__form__pageHeading">
+            {{ page.label }}
           </div>
           <div
-            v-for="page in pages"
-            v-show="page.name === currentPage"
-            :key="page.name"
-            class="editView__form__content uContainer"
+            v-for="fieldset in page.fieldsets"
+            :key="fieldset.label"
           >
-            <div class="editView__form__pageHeading">
-              {{ page.label }}
-            </div>
             <div
-              v-for="fieldset in page.fieldsets"
-              :key="fieldset.label"
+              class="editView__accordion"
+              @click="updateAccordionState(fieldset.name)"
             >
-              <div
-                class="editView__accordion"
-                @click="updateAccordionState(fieldset.name)"
-              >
-                <div class="editView__accordion__label">
-                  {{ fieldset.label }}
-                </div>
-                <UIcon :icon="accordionOpen(fieldset.name) ? 'chevron-up' : 'chevron-down'" />
+              <div class="editView__accordion__label">
+                {{ fieldset.label }}
               </div>
-              <UTransitionHeight>
-                <div
-                  v-show="accordionOpen(fieldset.name)"
-                  class="editView__accordion__contentWrapper"
-                >
-                  <div class="editView__accordion__content">
-                    <div
-                      v-for="(row, index) in fieldset.rows"
-                      :key="index"
-                      class="editView__form__row"
-                    >
-                      <component
-                        :is="components[field.type]"
-                        v-for="field in getRow(row)"
-                        :key="field.props.name"
-                        :ref="(el) => refFormElem(page.name, fieldset.name, field.props.name, el as unknown as FormElem)"
-                        v-bind="field.props"
-                        v-model:modelValue="currentValues[field.props.name]"
-                      />
-                    </div>
+              <UIcon :icon="accordionOpen(fieldset.name) ? 'chevron-up' : 'chevron-down'" />
+            </div>
+            <UTransitionHeight>
+              <div
+                v-show="accordionOpen(fieldset.name)"
+                class="editView__accordion__contentWrapper"
+              >
+                <div class="editView__accordion__content">
+                  <div
+                    v-for="(row, index) in fieldset.rows"
+                    :key="index"
+                    class="editView__form__row"
+                  >
+                    <component
+                      :is="components[field.type]"
+                      v-for="field in getRow(row)"
+                      :key="field.props.name"
+                      :ref="(el) => refFormElem(page.name, fieldset.name, field.props.name, el as unknown as FormElem)"
+                      v-bind="field.props"
+                      v-model:modelValue="currentValues[field.props.name]"
+                    />
                   </div>
                 </div>
-              </UTransitionHeight>
-            </div>
+              </div>
+            </UTransitionHeight>
           </div>
-          <button
-            class="sr-only"
-            type="submit"
-            tabindex="-1"
-          >
-            {{ t('EditView.button.save') }}
-          </button>
-        </form>
-      </div>
-      <UConfirmDialog
-        v-model:active="backModal.active"
-        :title="t('ConfirmBackModal.heading')"
-        :confirmLabel="t('ConfirmBackModal.button.discard', {context: props.action})"
-        :cancelLabel="t('ConfirmBackModal.button.continue', {context: props.action})"
-        @confirm="forceBack(false)"
-      >
-        <template #description>
-          <div>
-            <p>
-              {{ t('ConfirmBackModal.description', {context: props.action}) }}
-            </p>
-          </div>
+        </div>
+        <button
+          class="sr-only"
+          type="submit"
+          tabindex="-1"
+        >
+          {{ t('EditView.button.save') }}
+        </button>
+      </form>
+    </div>
+    <UConfirmDialog
+      v-model:active="backModal.active"
+      :title="t('ConfirmBackModal.heading')"
+      :confirmLabel="t('ConfirmBackModal.button.discard', {context: props.action})"
+      :cancelLabel="t('ConfirmBackModal.button.continue', {context: props.action})"
+      @confirm="forceBack(false)"
+    >
+      <template #description>
+        <div>
+          <p>
+            {{ t('ConfirmBackModal.description', {context: props.action}) }}
+          </p>
+        </div>
+      </template>
+    </UConfirmDialog>
+    <UConfirmDialog
+      v-model:active="saveFailedModal.active"
+      :title="t('EditViewSaveFailedModal.heading', {context: props.action})"
+      :confirmLabel="t('EditViewSaveFailedModal.button.confirmation')"
+      hideCancel
+    >
+      <template #description>
+        <template v-if="saveFailedModal.error === null">
+          <p>
+            {{ t('EditViewSaveFailedModal.baseDescription', {context: props.action}) }}
+          </p>
         </template>
-      </UConfirmDialog>
-      <UConfirmDialog
-        v-model:active="saveFailedModal.active"
-        :title="t('EditViewSaveFailedModal.heading', {context: props.action})"
-        :confirmLabel="t('EditViewSaveFailedModal.button.confirmation')"
-        hideCancel
-      >
-        <template #description>
-          <template v-if="saveFailedModal.error === null">
-            <p>
-              {{ t('EditViewSaveFailedModal.baseDescription', {context: props.action}) }}
-            </p>
-          </template>
-          <template v-else-if="saveFailedModal.error.type === 'generic'">
-            <p>
-              {{ saveFailedModal.error.message }}
-            </p>
-          </template>
-          <template v-else-if="saveFailedModal.error.type === 'objectNotFound'">
-            <p>
-              {{ t('EditViewSaveFailedModal.objectNotFound') }}
-            </p>
-          </template>
-          <template v-else-if="saveFailedModal.error.type === 'permissionsError'">
-            <p>
-              {{ saveFailedModal.error.message }}
-            </p>
-          </template>
-          <template v-else>
-            <p>{{ t('EditViewSaveFailedModal.fieldErrors.description') }}</p>
-            <ul>
-              <li
-                v-for="err in saveFailedModal.error.errors"
-                :key="err.field"
-              >
-                {{ getLabel(err.field) }}: {{ err.message }}
-              </li>
-            </ul>
-          </template>
+        <template v-else-if="saveFailedModal.error.type === 'generic'">
+          <p>
+            {{ saveFailedModal.error.message }}
+          </p>
         </template>
-      </UConfirmDialog>
-      <UConfirmDialog
-        v-model:active="saveSuccessModal.active"
-        :title="t('EditViewSaveSuccessModal.heading', {name: saveSuccessModal.name})"
-        :confirmLabel="t('EditViewSaveSuccessModal.button.confirmation')"
-        hideCancel
-        @confirm="forceBack(true)"
-      />
-    </main>
-    <UStandbyFullScreen :active="standby.active" />
-  </div>
+        <template v-else-if="saveFailedModal.error.type === 'objectNotFound'">
+          <p>
+            {{ t('EditViewSaveFailedModal.objectNotFound') }}
+          </p>
+        </template>
+        <template v-else-if="saveFailedModal.error.type === 'permissionsError'">
+          <p>
+            {{ saveFailedModal.error.message }}
+          </p>
+        </template>
+        <template v-else>
+          <p>{{ t('EditViewSaveFailedModal.fieldErrors.description') }}</p>
+          <ul>
+            <li
+              v-for="err in saveFailedModal.error.errors"
+              :key="err.field"
+            >
+              {{ getLabel(err.field) }}: {{ err.message }}
+            </li>
+          </ul>
+        </template>
+      </template>
+    </UConfirmDialog>
+    <UConfirmDialog
+      v-model:active="saveSuccessModal.active"
+      :title="t('EditViewSaveSuccessModal.heading', {name: saveSuccessModal.name})"
+      :confirmLabel="t('EditViewSaveSuccessModal.button.confirmation')"
+      hideCancel
+      @confirm="forceBack(true)"
+    />
+  </main>
+  <UStandbyFullScreen :active="standby.active" />
 </template>
 
 <style lang="stylus">
@@ -833,4 +835,9 @@ const getRow = (row: Field | Field[]): Field[] => {
 
 .uFormElement--hidden
   display: none !important
+
+#header ~ .editView
+  padding-top: var(--layout-height-header)
+  .editView__stickyHeader
+    top: var(--layout-height-header)
 </style>

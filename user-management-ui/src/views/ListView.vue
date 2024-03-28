@@ -21,6 +21,7 @@ import {
 import {getListViewConfig, getUsers, deleteUsers} from '@/helpers/dataAccess';
 import type {GridRow, ListViewConfig, ListViewState} from '@/helpers/models/interface';
 import {useErrorStore} from '@/stores/error';
+import SiteHeader from '@/components/SiteHeader.vue';
 
 const {t} = useTranslation();
 
@@ -227,6 +228,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <SiteHeader />
   <main
     v-if="!loading"
     class="listView"
@@ -360,4 +362,7 @@ main.listView
 
   .listView__uGrid
     margin-top: calc(4 * var(--layout-spacing-unit))
+
+#header ~ .listView
+  padding-top: calc(var(--layout-height-header) + (2 * var(--layout-spacing-unit)))
 </style>

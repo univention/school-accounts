@@ -7,7 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup lang="ts">
 import {useRouter} from 'vue-router';
 import {UButton} from '@univention/univention-veb';
+import {useTranslation} from 'i18next-vue';
+import SiteHeader from '@/components/SiteHeader.vue';
 
+const {t} = useTranslation();
 const router = useRouter();
 
 const goHome = () => {
@@ -16,13 +19,14 @@ const goHome = () => {
 </script>
 
 <template>
+  <SiteHeader />
   <main class="notFoundView">
-    <h1>404: {{ $t('NotFoundView.header') }}</h1>
+    <h1>404: {{ t('NotFoundView.header') }}</h1>
 
-    <p>{{ $t('NotFoundView.body.text') }}</p>
+    <p>{{ t('NotFoundView.body.text') }}</p>
     <UButton
       type="button"
-      :label="$t('NotFoundView.button.home')"
+      :label="t('NotFoundView.button.home')"
       @click="goHome"
     />
   </main>

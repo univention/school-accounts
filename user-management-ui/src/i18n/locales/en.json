@@ -7,7 +7,8 @@
     "error": {
       "config": "A configuration error occurred. Please contact your system administrator.",
       "loginFailed": "Login failed."
-    }
+    },
+    "languageSelect": "Language"
   },
   "ConfirmBackModal": {
     "button": {
@@ -69,6 +70,14 @@
       "confirmation": "OK"
     },
     "heading": "Error"
+  },
+  "Header.confirmReload": {
+    "button": {
+      "cancel": "Cancel",
+      "confirm": "Reload"
+    },
+    "heading": "Confirmation",
+    "text": "The page must be reloaded to change the language. Do you want to continue?"
   },
   "ListView": {
     "contextActions": {
