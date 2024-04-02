@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
@@ -63,9 +64,20 @@ if CORS_ALLOWED_ORIGINS:
         allow_headers=["Authorization"],
     )
 
+
 # statically serve the frontend
+class StaticFilesSPA(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException:
+            # serve the index.html for files not found
+            return await super().get_response("index.html", scope)
+        return response
+
+
 if os.path.exists(FRONTEND_DIR):
-    app.mount(FRONTEND_PREFIX, StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    app.mount(FRONTEND_PREFIX, StaticFilesSPA(directory=FRONTEND_DIR, html=True), name="frontend")
 
 
 @app.exception_handler(PermissionsError)
