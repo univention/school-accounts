@@ -192,6 +192,27 @@ async def test_patch_user_wrong_school(access_token, base_url, kelvin_user_facto
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
+async def test_patch_user_student_remove_school_classes(
+    access_token, base_url, kelvin_user_factory, get_kelvin_user
+):
+    token = access_token("alex.admin", "univention")
+    kelvin_user = await kelvin_user_factory(
+        schools=["school1"], school="school1", roles=["student"], school_classes={"school1": ["1a"]}
+    )
+    response = requests.patch(
+        f"{base_url}/bff/users/{kelvin_user.name}",
+        params={"school": "school1"},
+        json={"school_classes": []},
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    assert response.status_code == 400, response.json()
+    assert response.json() == {"detail": "The user has to be in a school class."}
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_patch_user_not_found(access_token, base_url, kelvin_user_factory, get_kelvin_user):
     token = access_token("mina.teacher", "univention")
     response = requests.patch(

@@ -12,6 +12,7 @@ from ucsschool.kelvin.client import User as KelvinUser
 
 from ..api_models import UserCreateRequest
 from ..errors import CreationError, ObjectNotFoundError, OperationNotSupportedError
+from ..lang import _
 from ..models import User, UserAttributes
 from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter
@@ -27,6 +28,13 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             "username": "name",
         }
         return MAPPING.get(attribute_name, attribute_name)
+
+    @staticmethod
+    def _ensure_students_have_school_classes(user: User) -> None:
+        if any((role for role in user.attributes.roles if role.startswith("student"))):
+            for school in user.attributes.schools:
+                if not user.attributes.school_classes.get(school, []):
+                    raise OperationNotSupportedError(_("The user has to be in a school class."))
 
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
         return User(
@@ -100,6 +108,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 raise ObjectNotFoundError(identifier=identifier) from exc
 
     async def save_user(self, user: User) -> User:
+        self._ensure_students_have_school_classes(user)
         async with self.kelvin_session as session:
             try:
                 kelvin_user = await UserResource(session=session).get(name=user.id)

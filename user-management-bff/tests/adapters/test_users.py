@@ -334,6 +334,40 @@ class TestKelvinUsersPersistenceAdapter:
             await adapter.save_user(user)
         assert exc_info.value.identifier == user.id
 
+    @pytest.mark.parametrize(
+        "schools,school_classes",
+        [
+            ([], {}),
+            (["school1"], {"school1": ["1a"]}),
+            (["school1", "school2"], {"school1": ["1a"], "school2": ["1a", "2b"]}),
+        ],
+    )
+    def test__ensure_students_have_school_classes(self, adapter, generate_user, schools, school_classes):
+        user = generate_user()
+        user.attributes.schools = schools
+        user.attributes.school_classes = school_classes
+        user.attributes.roles = [f"student:school:{school}" for school in schools]
+        user.attributes.roles.extend([f"teacher:school:{school}" for school in schools])
+        adapter._ensure_students_have_school_classes(user)
+
+    @pytest.mark.parametrize(
+        "schools,school_classes",
+        [
+            (["school1"], {}),
+            (["school1"], {"school1": []}),
+            (["school1", "school2"], {"school2": ["1a", "2b"]}),
+        ],
+    )
+    def test__ensure_students_have_school_classes_error(
+        self, adapter, generate_user, schools, school_classes
+    ):
+        user = generate_user()
+        user.attributes.schools = schools
+        user.attributes.school_classes = school_classes
+        user.attributes.roles = [f"student:school:{school}" for school in schools]
+        with pytest.raises(OperationNotSupportedError, match="The user has to be in a school class."):
+            adapter._ensure_students_have_school_classes(user)
+
 
 @pytest.mark.e2e
 class TestKelvinUsersPersistenceAdapterIntegration:
