@@ -44,3 +44,16 @@ Like with any other UCS application, you can look them up with:
 
 These logs might not be always helpful to the administrator,
 but adding an excerpt of these logs to a bug report is very helpful for error resolution.
+
+
+User roles can't be modified after creation
+==========================================================
+
+Even with the permission to write roles,
+you can't modify a user's roles after the user has been created.
+
+This is expected behavior.
+Due to restrictions with the Kelvin API,
+there are inconsistencies when editing the roles of a user that has multiple roles.
+Until this restriction is resolved,
+the User Management Module ignores modifications to user roles.

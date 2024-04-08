@@ -117,6 +117,8 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             # The File adapter also excludes roles,
             # in order to mimic the behavior of the Kelvin adapter.
             # If this is updated, please also update the behavior in the File adapter.
+            # Roles are excluded due to the fact that Kelvin is not able to properly handle
+            # users with multiple roles.
             for key, value in user.attributes.model_dump(exclude={"roles"}).items():
                 setattr(kelvin_user, self._user_attribute_to_kelvin_attribute(key), value)
             try:

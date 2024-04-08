@@ -36,12 +36,12 @@ workflow:
 stages:
   - prepare
   - test
-  - integration_test
   - lint
   - publish
   - build
   - merge
   - production
+  - integration_test
 
 build_dev_image:
   stage: prepare
