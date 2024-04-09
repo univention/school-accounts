@@ -2,11 +2,11 @@
 ..
 .. SPDX-License-Identifier: AGPL-3.0-only
 
-.. _roles-and-conditions:
+.. _roles-permissions-and-conditions:
 
-********************
-Roles and conditions
-********************
+*********************************
+Roles, permissions and conditions
+*********************************
 
 This section is for administrators and covers the default roles and new conditions
 introduced with the |UASUMM|.
@@ -78,6 +78,84 @@ By default, a user with the role ``student`` has the following capabilities:
 .. envvar:: student-read-self
 
    Read their own fields.
+
+.. _permissions:
+
+Permissions
+===========
+
+The |UASUMM| provides :external+uv-guardian-manual:ref:`permissions <terminology-guardian-permission>`
+which can be used within the :external+uv-guardian-manual:ref:`Guardian Application <what-is-the-guardian>`
+to define what a user with a certain role is permitted to do in the |UASUMM|.
+
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 30 70
+
+  * - Permission Name
+    - Description
+  * - ``Create User Action``
+    - Use the :guilabel:`ADD` button in the |UASUMM| to create a user.
+  * - ``Delete User Action``
+    - Use the :guilabel:`DELETE` button in the |UASUMM| to delete a user.
+  * - ``Read Activated``
+    - Read the ``Activated`` attribute.
+  * - ``Read First Name``
+    - Read the ``First Name`` attribute.
+  * - ``Read Last Name``
+    - Read the ``Last Name`` attribute.
+  * - ``Read Roles``
+    - Read the ``Roles`` attribute.
+  * - ``Read School Classes``
+    - Read the ``School Classes`` attribute.
+  * - ``Read Schools``
+    - Read the ``Schools`` attribute.
+  * - ``Write Activated``
+    - Write the ``Activated`` attribute.
+  * - ``Write First Name``
+    - Write the ``First Name`` attribute.
+  * - ``Write Last Name``
+    - Write the ``Last Name`` attribute.
+  * - ``Write Password``
+    - Write the ``Password`` attribute.
+  * - ``Write Roles``
+    - Write the ``Roles`` attribute.
+  * - ``Write School Classes``
+    - Write the ``School Classes`` attribute.
+  * - ``Write Schools``
+    - Write the ``Schools`` attribute.
+  * - ``Write Username``
+    - Write the ``Username`` attribute.
+
+Many permissions follow the form ``Read <attribute>`` or ``Write <attribute>``.
+These permissions refer to an attribute of a target user object and
+correspond, with some exceptions, to a
+:external+uv-school-kelvin:doc:`Kelvin <index>` attribute:
+
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 40 60
+
+  * - |UASUMM| attribute
+    - Kelvin attribute
+  * - ``Activated``
+    - negated ``disabled``
+  * - ``First Name``
+    - ``firstname``
+  * - ``Last Name``
+    - ``lastname``
+  * - ``Roles``
+    - not applicable
+  * - ``School Classes``
+    - ``school_classes``
+  * - ``Schools``
+    - ``schools``
+  * - ``Password``
+    - ``password``
+  * - ``Username``
+    - ``name``
 
 .. _conditions:
 
