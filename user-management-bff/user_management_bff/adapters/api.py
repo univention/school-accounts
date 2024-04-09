@@ -88,9 +88,9 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                     "first_name", user.attributes.first_name, permissions
                 )
             ),
-            active=ListUserAttribute[bool](
+            activated=ListUserAttribute[bool](
                 **FastAPIUsersRepresentationAdapter._get_attribute_dict(
-                    "active", not user.attributes.disabled, permissions
+                    "activated", not user.attributes.disabled, permissions
                 )
             ),
             classes=ListUserAttribute[list[str]](
@@ -229,8 +229,8 @@ class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUs
                     order=5,
                 ),
                 ColumnConfig(
-                    label=_("Active", lang=lang),
-                    attribute="active",
+                    label=_("Activated", lang=lang),
+                    attribute="activated",
                     formatter=Formatter(
                         type=FormatterChoice.BOOLEAN,
                     ),
@@ -381,9 +381,9 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UInputCheckbox,
                                     props=dict(
-                                        label=_("Active", lang=lang),
-                                        name="active",
-                                        description=_("User is active", lang=lang),
+                                        label=_("Activated", lang=lang),
+                                        name="activated",
+                                        description=_("User is activated", lang=lang),
                                         required=False,
                                         access=AttributeAccess.WRITE,
                                     ),
@@ -585,11 +585,11 @@ class FastAPIEditConfigRepresentationAdapter(
                                 FieldsetRow(
                                     type=WidgetType.UInputCheckbox,
                                     props=dict(
-                                        label=_("Active", lang=lang),
-                                        name="active",
-                                        description=_("User is active", lang=lang),
+                                        label=_("Activated", lang=lang),
+                                        name="activated",
+                                        description=_("User is activated", lang=lang),
                                         required=False,
-                                        access=user_data.attributes.active.access,
+                                        access=user_data.attributes.activated.access,
                                     ),
                                 ),
                             ],

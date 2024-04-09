@@ -73,7 +73,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 schools=[user_create_request.school],
                 school_classes={user_create_request.school: user_create_request.school_classes},
                 roles=user_create_request.roles,
-                disabled=not user_create_request.active,
+                disabled=not user_create_request.activated,
                 password=user_create_request.password,
                 source_uid="ucsschool-user-management",
                 record_uid=user_create_request.username,
@@ -183,7 +183,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                     "roles": new_roles,
                     "schools": [user_create_request.school],
                     "school_classes": {user_create_request.school: user_create_request.school_classes},
-                    "disabled": not user_create_request.active,
+                    "disabled": not user_create_request.activated,
                 },
             }
         )
@@ -199,7 +199,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 roles=new_roles,
                 schools=[user_create_request.school],
                 school_classes={user_create_request.school: user_create_request.school_classes},
-                disabled=not user_create_request.active,
+                disabled=not user_create_request.activated,
             ),
         )
 

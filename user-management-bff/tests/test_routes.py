@@ -68,8 +68,8 @@ def test_get_users_config(test_client, api_prefix, lang):
                 "order": 5,
             },
             {
-                "label": _("Active", lang=lang),
-                "attribute": "active",
+                "label": _("Activated", lang=lang),
+                "attribute": "activated",
                 "formatter": {"type": "boolean"},
                 "sorting": None,
                 "order": 6,
@@ -126,7 +126,7 @@ def test_get_app_config(
             [
                 {
                     "attributes": {
-                        "active": True,
+                        "activated": True,
                         "first_name": "firstname",
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
@@ -144,7 +144,7 @@ def test_get_app_config(
             [
                 {
                     "attributes": {
-                        "active": True,
+                        "activated": True,
                         "first_name": "firstname2",
                         "last_name": "lastname2",
                         "roles": ["teacher:school:test_school2"],
@@ -157,7 +157,7 @@ def test_get_app_config(
                 },
                 {
                     "attributes": {
-                        "active": True,
+                        "activated": True,
                         "first_name": "firstname3",
                         "last_name": "lastname3",
                         "roles": [
@@ -325,7 +325,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
             "username": {"value": user["username"], "access": "write"},
             "schools": {"value": [user["school"]], "access": "write"},
             "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "write"},
-            "active": {"value": not user["disabled"], "access": "write"},
+            "activated": {"value": not user["disabled"], "access": "write"},
             "roles": {
                 "value": [f"{role}:school:{user['school']}" for role in user["roles"]],
                 "access": "write",
@@ -509,7 +509,7 @@ def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefi
 
 @pytest.mark.parametrize(
     "patch_dict",
-    [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}, {"active": False}],
+    [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}, {"activated": False}],
 )
 @pytest.mark.usefixtures("restore_users_json")
 def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
@@ -518,7 +518,7 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
     )
     original_user = {
         "attributes": {
-            "active": {"access": "write", "value": True},
+            "activated": {"access": "write", "value": True},
             "classes": {"access": "write", "value": ["test_school1:1a", "test_school1:2b"]},
             "first_name": {"access": "write", "value": "firstname"},
             "last_name": {"access": "write", "value": "lastname"},
@@ -536,16 +536,16 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
 
 @pytest.mark.parametrize(
     "patch_dict",
-    [{}, {"active": False}],
+    [{}, {"activated": False}],
 )
 @pytest.mark.usefixtures("restore_users_json")
-def test_patch_user_active(test_client, api_prefix, patch_dict, users_json_path):
+def test_patch_user_activated(test_client, api_prefix, patch_dict, users_json_path):
     response = test_client.patch(
         f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json=patch_dict
     )
     original_user = {
         "attributes": {
-            "active": {"access": "write", "value": True},
+            "activated": {"access": "write", "value": True},
             "classes": {"access": "write", "value": ["test_school1:1a", "test_school1:2b"]},
             "first_name": {"access": "write", "value": "firstname"},
             "last_name": {"access": "write", "value": "lastname"},
@@ -729,9 +729,9 @@ def test_get_user_add_config(test_client, api_prefix, lang):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": _("User is active", lang=lang),
-                                    "label": _("Active", lang=lang),
-                                    "name": "active",
+                                    "description": _("User is activated", lang=lang),
+                                    "label": _("Activated", lang=lang),
+                                    "name": "activated",
                                     "required": False,
                                 },
                                 "type": "UInputCheckbox",
@@ -928,9 +928,9 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
                             {
                                 "props": {
                                     "access": "write",
-                                    "description": _("User is active", lang=lang),
-                                    "label": _("Active", lang=lang),
-                                    "name": "active",
+                                    "description": _("User is activated", lang=lang),
+                                    "label": _("Activated", lang=lang),
+                                    "name": "activated",
                                     "required": False,
                                 },
                                 "type": "UInputCheckbox",
@@ -944,7 +944,7 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
             }
         ],
         "user": {
-            "active": True,
+            "activated": True,
             "first_name": "Kim",
             "last_name": "Klein",
             "password": None,

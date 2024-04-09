@@ -199,9 +199,9 @@ async def patch_user(
             )
         )
     patch_attributes = patch_data.attributes.model_dump(exclude_unset=True, exclude={"school_classes"})
-    if patch_data.attributes.active is not None:
-        patch_attributes["disabled"] = not patch_data.attributes.active
-        patch_attributes.pop("active")
+    if patch_data.attributes.activated is not None:
+        patch_attributes["disabled"] = not patch_data.attributes.activated
+        patch_attributes.pop("activated")
 
     for key, value in patch_attributes.items():
         setattr(new_user.attributes, key, value)

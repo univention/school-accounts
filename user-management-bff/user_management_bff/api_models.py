@@ -85,7 +85,7 @@ class ListUserFixedAttributes(BaseModel):
     last_name: ListUserAttribute[str]
     first_name: ListUserAttribute[str]
     username: ListUserAttribute[str]
-    active: ListUserAttribute[bool]
+    activated: ListUserAttribute[bool]
     schools: ListUserAttribute[list[str]]
     classes: ListUserAttribute[list[str]]
     roles: ListUserAttribute[list[str]]
@@ -123,7 +123,7 @@ class UserCreateRequest(BaseModel):
     school: str
     school_classes: list[str]
     roles: list[str]
-    active: bool = True
+    activated: bool = True
 
     @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
@@ -138,7 +138,7 @@ class APIUserPatchRequest(BaseModel):
     username: Optional[str] = None
     password: str | None = None
     school_classes: Optional[list[str]] = None
-    active: Optional[bool] = None
+    activated: Optional[bool] = None
     roles: Optional[list[str]] = None
 
 

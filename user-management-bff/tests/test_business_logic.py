@@ -81,7 +81,7 @@ def test_user_create_request_to_target():
                 schools=["school1"],
                 school_classes={"school1": ["1a"]},
                 roles=["teacher:school:school1"],
-                active=True,
+                activated=True,
             ),
         ),
     )

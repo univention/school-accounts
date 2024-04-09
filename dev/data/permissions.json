@@ -10,7 +10,7 @@
       "write-schools",
       "write-roles",
       "write-username",
-      "write-active",
+      "write-activated",
       "write-school_classes",
       "write-password",
       "write-last_name"
