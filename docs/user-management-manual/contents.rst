@@ -14,6 +14,7 @@ User Management Module
    index
    installation
    configuration
+   roles-and-conditions
    troubleshooting
 
 .. toctree::
