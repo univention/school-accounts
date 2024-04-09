@@ -31,43 +31,55 @@ School administrator
 
 By default, a user with the school administrator role ``school_admin`` has the following capabilities:
 
-.. envvar:: administrate-users-in-same-school
 
-   Edit and delete users with the role ``teacher``, ``student`` or ``staff`` in the same school.
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 30 70
 
-.. envvar:: create-users-general
-
-   Click on the add user button in the |UASUMM| interface, provided their school is selected.
-
-.. envvar:: create-users-in-same-school
-
-   Can create users within the same school.
-
-.. envvar:: school_admin-read-self
-
-   Read their own fields.
+  * - Capability Name
+    - Description
+  * - ``administrate-users-in-same-school``
+    - Edit and delete users with the role ``teacher``, ``student`` or ``staff`` in the same school.
+  * - ``create-users-general``
+    - Click on the add user button in the |UASUMM| interface, provided their school is selected.
+  * - ``create-users-in-same-school``
+    - Can create users within the same school.
+  * - ``school_admin-read-self``
+    - Read their own fields.
 
 Teacher
 -------
 
 By default, a user with the role ``teacher`` has the following capabilities:
 
-.. envvar:: teacher-read-self
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 30 70
 
-   Read their own fields.
-
-.. envvar:: teacher-read-student
-
-   Read fields of students.
+  * - Capability Name
+    - Description
+  * - ``teacher-read-self``
+    - Read their own fields.
+  * - ``teacher-read-student``
+    - Read fields of students.
 
 Staff
 -----
 
 By default, a user with the role ``staff`` has the following capabilities:
 
-.. envvar:: staff-read-self
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 30 70
 
-   Read their own fields.
+
+  * - Capability Name
+    - Description
+  * - ``staff-read-self``
+    - Read their own fields.
 
 
 Student
@@ -75,9 +87,15 @@ Student
 
 By default, a user with the role ``student`` has the following capabilities:
 
-.. envvar:: student-read-self
+.. list-table::
+  :header-rows: 1
+  :align: left
+  :widths: 30 70
 
-   Read their own fields.
+  * - Capability Name
+    - Description
+  * - ``student-read-self``
+    - Read their own fields.
 
 .. _permissions:
 
