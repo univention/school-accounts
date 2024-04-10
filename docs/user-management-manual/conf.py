@@ -73,91 +73,10 @@ extensions = [
     "sphinx_last_updated_by_git",
     "sphinx.ext.intersphinx",
 ]
-# TODO : You must manually remove the references to documents that you don't need for reference.
 # TODO : Also specify the desired document versions where needed.
 #        You may not refer to the latest document version in all cases and replace it with the version.
 intersphinx_mapping = {
-    # "uv-app-center": ("https://docs.software-univention.de/app-center/latest/en", None),
-    # "uv-architecture": (
-    #     "https://docs.software-univention.de/architecture/latest/en",
-    #     None,
-    # ),
-    # "uv-changelog": ("https://docs.software-univention.de/changelog/latest/en", None),
-    # "uv-debian-admins": (
-    #     "https://docs.software-univention.de/debian-admins/latest/en",
-    #     None,
-    # ),
-    # "uv-dev-ref": (
-    #     "https://docs.software-univention.de/developer-reference/latest/en",
-    #     None,
-    # ),
-    # "uv-ext-domain": ("https://docs.software-univention.de/ext-domain/latest/en", None),
-    # "uv-ext-inst": (
-    #     "https://docs.software-univention.de/ext-installation/latest/en",
-    #     None,
-    # ),
-    # "uv-ext-nets": ("https://docs.software-univention.de/ext-networks/latest/en", None),
-    # "uv-ext-perf": (
-    #     "https://docs.software-univention.de/ext-performance/latest/en",
-    #     None,
-    # ),
-    # "uv-ext-windows": (
-    #     "https://docs.software-univention.de/ext-windows/latest/en",
-    #     None,
-    # ),
-    # "uv-idbroker-architecture": (
-    #     "https://docs.software-univention.de/idbroker-architecture-documentation",
-    #     None,
-    # ),
-    # "uv-idbroker-operations": (
-    #     "https://docs.software-univention.de/idbroker-operations-manual",
-    #     None,
-    # ),
-    # "uv-idbroker-school-authority": (
-    #     "https://docs.software-univention.de/idbroker-school-authority-manual",
-    #     None,
-    # ),
-    # "uv-idbroker-self-disclosure-api": (
-    #     "https://docs.software-univention.de/idbroker-self-disclosure-api-manual",
-    #     None,
-    # ),
-    # "uv-idbroker-service-provider": (
-    #     "https://docs.software-univention.de/idbroker-service-provider-manual",
-    #     None,
-    # ),
-    # "uv-intercom-service": (
-    #     "https://docs.software-univention.de/intercom-service/latest",
-    #     None,
-    # ),
     "uv-keycloak": ("https://docs.software-univention.de/keycloak-app/latest", None),
-    # "uv-keycloak-migration": (
-    #     "https://docs.software-univention.de/keycloak-migration",
-    #     None,
-    # ),
-    # "uv-manual": ("https://docs.software-univention.de/manual/latest/en", None),
-    # "uv-navigation": ("https://docs.software-univention.de/n/en", None),
-    # "uv-ox-connector": (
-    #     "https://docs.software-univention.de/ox-connector-app/latest",
-    #     None,
-    # ),
-    # "uv-quickstart": ("https://docs.software-univention.de/quickstart/latest/en", None),
-    # "uv-release-notes": (
-    #     "https://docs.software-univention.de/release-notes/latest/en",
-    #     None,
-    # ),
-    # "uv-scenarios": ("https://docs.software-univention.de/scenarios/latest/en", None),
-    # "uv-school-changelog": (
-    #     "https://docs.software-univention.de/ucsschool-changelog/latest/en",
-    #     None,
-    # ),
-    # "uv-school-id-connector": (
-    #     "https://docs.software-univention.de/ucsschool-id-connector",
-    #     None,
-    # ),
-    # "uv-school-import": (
-    #     "https://docs.software-univention.de/ucsschool-import/latest/de",
-    #     None,
-    # ),
     "uv-school-kelvin": (
         "https://docs.software-univention.de/ucsschool-kelvin-rest-api",
         None,
@@ -166,27 +85,6 @@ intersphinx_mapping = {
         "https://docs.software-univention.de/ucsschool-manual/latest/de",
         None,
     ),
-    # "uv-school-quickstart": (
-    #     "https://docs.software-univention.de/ucsschool-quickstart/latest/en",
-    #     None,
-    # ),
-    # "uv-school-scenarios": (
-    #     "https://docs.software-univention.de/ucsschool-scenarios/latest/de",
-    #     None,
-    # ),
-    # "uv-school-teachers": (
-    #     "https://docs.software-univention.de/ucsschool-teachers/latest/de",
-    #     None,
-    # ),
-    # "uv-school-user-import": (
-    #     "https://docs.software-univention.de/ucsschool-umc-user-import/latest/de",
-    #     None,
-    # ),
-    # "uv-ucs-python-api": ("https://docs.software-univention.de/ucs-python-api", None),
-    # "uv-ucsschool-import": (
-    #     "https://docs.software-univention.de/ucsschool-import/latest/de",
-    #     None,
-    # ),
     "uv-ucs-manual": (
         "https://docs.software-univention.de/manual/latest/en/",
         None,
