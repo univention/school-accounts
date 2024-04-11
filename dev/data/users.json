@@ -140,6 +140,7 @@
       "disabled": false,
       "first_name": "Dev",
       "last_name": "User",
+      "password": null,
       "roles": [
         "teacher:school:school1"
       ],
@@ -155,5 +156,25 @@
       "username": "dev"
     },
     "id": "dev"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname4",
+      "last_name": "lastname4",
+      "roles": [
+        "school_admin:school:test_school1"
+      ],
+      "school_classes": {
+        "test_school1": [
+          "1a"
+        ]
+      },
+      "schools": [
+        "test_school1"
+      ],
+      "username": "firstname4.lastname4"
+    },
+    "id": "test_user4"
   }
 ]

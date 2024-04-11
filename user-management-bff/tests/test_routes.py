@@ -136,7 +136,20 @@ def test_get_app_config(
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user1",
-                }
+                },
+                {
+                    "attributes": {
+                        "activated": True,
+                        "first_name": "firstname4",
+                        "last_name": "lastname4",
+                        "roles": ["school_admin:school:test_school1"],
+                        "school_classes": {"test_school1": ["1a"]},
+                        "schools": ["test_school1"],
+                        "username": "firstname4.lastname4",
+                    },
+                    "allowedActions": ["delete"],
+                    "id": "test_user4",
+                },
             ],
         ),
         (
@@ -204,7 +217,7 @@ def test_get_users(
             [
                 {
                     "attributes": {
-                        "disabled": False,
+                        "activated": True,
                         "first_name": "firstname",
                         "last_name": "lastname",
                         "roles": ["teacher:school:test_school1"],
@@ -214,7 +227,20 @@ def test_get_users(
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user1",
-                }
+                },
+                {
+                    "attributes": {
+                        "activated": True,
+                        "first_name": "firstname4",
+                        "last_name": "lastname4",
+                        "roles": ["school_admin:school:test_school1"],
+                        "school_classes": {"test_school1": ["1a"]},
+                        "schools": ["test_school1"],
+                        "username": "firstname4.lastname4",
+                    },
+                    "allowedActions": ["delete"],
+                    "id": "test_user4",
+                },
             ],
         ),
         (
@@ -222,7 +248,7 @@ def test_get_users(
             [
                 {
                     "attributes": {
-                        "disabled": False,
+                        "activated": True,
                         "first_name": "firstname2",
                         "last_name": "lastname2",
                         "roles": ["teacher:school:test_school2"],
@@ -235,7 +261,7 @@ def test_get_users(
                 },
                 {
                     "attributes": {
-                        "disabled": False,
+                        "activated": True,
                         "first_name": "firstname3",
                         "last_name": "lastname3",
                         "roles": [
@@ -1016,3 +1042,9 @@ def test_patch_user_change_roles(test_client, api_prefix, patch_dict):
     # We currently block the roles from being updated
     expected_roles = ["teacher:school:school1"]
     assert roles == expected_roles
+
+
+def test_admin_backend_to_frontend_conversion(test_client, api_prefix):
+    response = test_client.get(f"{api_prefix}/config/users/edit?id=test_user4&school=test_school1")
+    assert response.status_code == 200, response.json()
+    assert response.json()["user"]["roles"] == ["administrator"]

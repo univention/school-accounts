@@ -415,6 +415,10 @@ class FastAPIEditConfigRepresentationAdapter(
         del user["classes"]
         user["roles"] = [role.split(":")[0] for role in user["roles"] if role.split(":")[2] == school.id]
 
+        if "school_admin" in user["roles"]:
+            user["roles"].remove("school_admin")
+            user["roles"].append("administrator")
+
         return EditUsersConfig(
             # Be sure to send complete data,
             # otherwise it confuses the frontend,

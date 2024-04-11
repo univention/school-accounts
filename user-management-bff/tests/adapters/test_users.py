@@ -468,7 +468,19 @@ class TestFileUsersPersistenceAdapter:
                             "username": "firstname.lastname",
                         },
                         "id": "test_user1",
-                    }
+                    },
+                    {
+                        "attributes": {
+                            "disabled": False,
+                            "first_name": "firstname4",
+                            "last_name": "lastname4",
+                            "roles": ["school_admin:school:test_school1"],
+                            "school_classes": {"test_school1": ["1a"]},
+                            "schools": ["test_school1"],
+                            "username": "firstname4.lastname4",
+                        },
+                        "id": "test_user4",
+                    },
                 ],
             ),
             (
