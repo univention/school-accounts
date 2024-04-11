@@ -7,6 +7,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 # UCS@school User Management
 
 This is the repository for the new UCS@school User Management Module.
+**Table of content**
+
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Gitlab Pipeline](#gitlab-pipeline)
+    - [Integration Tests](#integration-tests)
+  - [Development Container Commands](#running-commands-in-the-development-container)
+  - [Pre-Commit Usage](#use-pre-commit)
+  - [Special Tasks](#special-tasks)
+    - [Development Server](#start-development-server)
+    - [Reachable URLs](#reachable-urls)
+    - [Generating Translations](#generating-backend-translations)
+    - [Manual Live Server](#start-live-server-for-the-manual)
+    - [Developer Environment Cleanup](#cleanup-the-environment)
+    - [Generate licenses](#generating-license-annotations)
+    - [Backend E2E tests](#running-e2e-tests-for-the-backend)
+- [App Center](#app-center-app)
+  - [Generate/Update Files from Templates](#generating-or-updating-files-from-templates)
+    - [Inst script](#inst)
+- [Known Limitations and Issues](#known-limitations-and-issues)
+  - [Limitations](#limitations)
+  - [Issue](#issues)
 
 ## Development
 
@@ -114,6 +136,8 @@ One way to achieve this, would be adapting your `/etc/hosts`:
 echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
 ```
 
+#### Reachable URLS
+
 The UI can be accessed with "dev:univention" at http://user-management-proxy/univention/ucsschool/user-management/ui/
 
 The API can be accessed at http://user-management-proxy/univention/ucsschool/user-management/bff/docs
@@ -142,6 +166,8 @@ dev/dev_run.sh task translate
 
 The script will tell you to fill in any translation strings it finds that are incomplete.
 You can find the translation file in `user-management-bff/locales/de/LC_MESSAGES/ucsschool-user-mangement.po`.
+
+**Note: Per default there is no `.mo` file present in the repository, therefore it is required to run the aforementioned task once, if localization is needed for development.**
 
 Once all translation strings are resolved, you will receive a "Success!" message,
 and it will compile the `.mo` translation files.
@@ -268,3 +294,18 @@ the scripts have changed, you can run the following command:
 cd appcenter-management
 ./scripts/generate-preinst
 ```
+
+## Known Limitations and Issues
+
+### Limitations
+
+- roles can not be changed via front end at the moment
+- `school_admin` is not properly supported by Kelvin
+- Kelvin is currently not set up support multiple roles at different schools and will therefore produce false negatives when testing
+- `FileAdapters` are not behaving identical to Kelvin (this is wanted)
+
+### Issues
+
+- if the `user-management` is used **locally**, it can happen that `keycloak` crashes after inactivitiy --> the `docker-containers` need to be restarted afterwards
+- error messages coming from Kelvin are currently not displayed properly `[{"loc":["body","name"],"msg":"Username must only contain numbers, letters and dots!","type":"value_error"}]`
+- the `FileAdapters` are currently not setup to check the validity of user input e.g. escape-characters, special characters and username-collision
