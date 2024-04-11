@@ -29,6 +29,10 @@ The UCS\@school User Management manual addresses the following audiences:
 
 * Administrators
 
+.. caution::
+
+   The current state of the project is a technical preview. It is not supported yet.
+
 .. _guardian-administrators-audience:
 
 Administrators
