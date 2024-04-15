@@ -144,7 +144,13 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                 attributes=self._get_list_user_attributes_from_user(user, set(user_permissions)),
             )
             for user in users
-            if (user_permissions := permissions.get(user.id, [])) is not None
+            # Here we ignore all users the actor has no permissions for
+            # (except the assumed read_username).
+            # Since read_username is no explicit permission at the moment, this means
+            # we cannot have a situation
+            # where we actually have target users listed the actor can genuinely
+            # only read the username.
+            if (user_permissions := permissions.get(user.id, []))
         ]
         return ListUsersResponse(users=list_users)
 

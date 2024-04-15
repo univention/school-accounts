@@ -38,8 +38,14 @@ def test_teacher_read_test(access_token, base_url, username, read_access):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
-    student = next(user for user in response.json()["users"] if user["id"] == username)
-    for attribute_name, attribute_value in student["attributes"].items():
+    try:
+        user = next(user for user in response.json()["users"] if user["id"] == username)
+    except StopIteration:
+        if read_access:
+            raise AssertionError("The user should be present, but is not!")
+        else:
+            return  # No permissions whatsoever means the user will not be present in the returned data.
+    for attribute_name, attribute_value in user["attributes"].items():
         assert (attribute_value["value"] is not None) == (
             read_access or attribute_name == "username"
         ), attribute_name
