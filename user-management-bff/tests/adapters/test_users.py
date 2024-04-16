@@ -592,3 +592,38 @@ class TestFileUsersPersistenceAdapter:
                 },
             }
         )
+
+    @pytest.mark.usefixtures("restore_users_json")
+    @pytest.mark.asyncio
+    async def test_create_user(self, adapter, tmpdir):
+        data_file = tmpdir / "test_data.json"
+        data = []
+        with open(data_file, "w") as fd:
+            json.dump(data, fd)
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=str(data_file)))
+        request = UserCreateRequest(
+            first_name="firstname",
+            last_name="lastname",
+            username="test_user1",
+            activated=False,
+            school="school1",
+            school_classes=[],
+            roles=["teacher"],
+            password="univention1234567890",
+        )
+        result = await adapter.create_user(request)
+        assert result
+        assert result == User(
+            id="test_user1",
+            attributes=UserAttributes(
+                last_name="lastname",
+                first_name="firstname",
+                username="test_user1",
+                disabled=True,
+                schools=["school1"],
+                school_classes={"school1": []},
+                roles=["teacher:school:school1"],
+            ),
+        )
+        with pytest.raises(CreationError):
+            await adapter.create_user(request)

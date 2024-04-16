@@ -172,21 +172,24 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
 
     async def create_user(self, user_create_request: UserCreateRequest):
         new_roles = [f"{role}:school:{user_create_request.school}" for role in user_create_request.roles]
-        self._data.append(
-            {
-                "id": user_create_request.username,
-                "attributes": {
-                    "last_name": user_create_request.last_name,
-                    "first_name": user_create_request.first_name,
-                    "username": user_create_request.username,
-                    "password": user_create_request.password or None,
-                    "roles": new_roles,
-                    "schools": [user_create_request.school],
-                    "school_classes": {user_create_request.school: user_create_request.school_classes},
-                    "disabled": not user_create_request.activated,
-                },
-            }
-        )
+        _school_classes = {user_create_request.school: user_create_request.school_classes}
+        _new_user = {
+            "id": user_create_request.username,
+            "attributes": {
+                "last_name": user_create_request.last_name,
+                "first_name": user_create_request.first_name,
+                "username": user_create_request.username,
+                "password": user_create_request.password or None,
+                "roles": new_roles,
+                "schools": [user_create_request.school],
+                "school_classes": _school_classes,
+                "disabled": not user_create_request.activated,
+            },
+        }
+        if any(user["id"] == user_create_request.username for user in self._data):
+            raise CreationError("Conflict: User already exists.")
+        self._data.append(_new_user)
+
         with open(self.settings.source, "w") as fd:
             json.dump(self._data, fd)
 
@@ -198,7 +201,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 username=user_create_request.username,
                 roles=new_roles,
                 schools=[user_create_request.school],
-                school_classes={user_create_request.school: user_create_request.school_classes},
+                school_classes=_school_classes,
                 disabled=not user_create_request.activated,
             ),
         )
