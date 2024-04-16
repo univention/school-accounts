@@ -229,11 +229,5 @@ that it will be recognized by the |UASUMM|.
 But you can modify the existing default roles with the Guardian
 and the change of permissions will be respected by the |UASUMM|.
 
-For example, if teachers should be able to write the
-passwords of students, you can achieve this by extending the capability ``teacher-read-student``
-by adding ``Write Password`` to the list of permissions.
-Alternatively, you can create a new capability for the teacher role
-that adds the ``Write Password`` permission under different conditions.
-
 For a detailed explanation on how to modify roles, refer to the section about
 :external+uv-guardian-manual:ref:`editing existing roles<editing-existing-roles>` in the Guardian manual.
