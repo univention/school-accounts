@@ -66,7 +66,12 @@ UserCreateRepresentation = TypeVar("UserCreateRepresentation")
 class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRepresentation]):
     @abstractmethod
     def create_users_representation(
-        self, users: list[User], permissions: dict[str, list[Permission]]
+        self,
+        users: list[User],
+        schools: list[School],
+        school_classes: dict[str, list[SchoolClass]],
+        permissions: dict[str, list[Permission]],
+        lang: str,
     ) -> UsersGetRepresentation:  # pragma: no cover
         ...
 

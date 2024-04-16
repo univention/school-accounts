@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+from collections import defaultdict
 
 from loguru import logger
 
@@ -78,6 +79,8 @@ def user_create_request_to_target(user_create_request: UserCreateRequest) -> Tar
 
 async def get_users(
     users_get_adapter: UsersPersistencePort,
+    schools_get_adapter: SchoolsPersistencePort,
+    school_classes_get_adapter: SchoolClassesPersistencePort,
     representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
     permissions_port: PermissionsPort,
     actor_id: str,
@@ -86,6 +89,10 @@ async def get_users(
 ) -> UsersGetRepresentation:
     actor = await get_actor(actor_id, users_get_adapter, lang)
     users = await users_get_adapter.get_users(request_data.school)
+    schools = await schools_get_adapter.get_schools()
+    school_classes = defaultdict(list)
+    for school in schools:
+        school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
     permissions = await permissions_port.get_permissions(
         actor,
         [
@@ -98,7 +105,9 @@ async def get_users(
             )
         ],
     )
-    return representation_port.create_users_representation(users, permissions)
+    return representation_port.create_users_representation(
+        users, schools, school_classes, permissions, lang
+    )
 
 
 async def get_schools(

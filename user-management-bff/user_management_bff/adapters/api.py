@@ -117,6 +117,82 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         )
 
     @staticmethod
+    def _format_list_view_user_attributes(
+        list_user_attributes: ListUserFixedAttributes,
+        user: User,
+        permissions: set[Permission],
+        schools: list[School],
+        school_classes: dict[str, list[SchoolClass]],
+        lang: str,
+    ) -> ListUserFixedAttributes:
+        def _find_item_by_id(items: list[Any], item_id: str):
+            item_ids = [item for item in items if item.id == item_id]
+            if item_ids:
+                return item_ids[0]
+
+        def _ui_formatted_school(school_objects: list[School], school_id: str) -> str:
+            return _find_item_by_id(school_objects, school_id).display_name
+
+        def _ui_formatted_school_class(
+            school_objects: list[School],
+            school_class_objects: list[SchoolClass],
+            school_id: str,
+            school_class_id: str,
+        ) -> str:
+            school = _find_item_by_id(school_objects, school_id)
+            school_class = _find_item_by_id(school_class_objects, school_class_id)
+            return f"{school_class.display_name} ({school.display_name})"
+
+        def _ui_formatted_role(school_objects: list[School], role: str) -> str:
+            school_id = role.rsplit(":", 1)[1]
+            school = _find_item_by_id(school_objects, school_id)
+            role_str = role.replace("_", " ").split(":", 1)[0].title()
+            return f"{_(role_str,lang=lang)} ({school.display_name})"
+
+        list_user_attributes.classes = ListUserAttribute[list[str]](
+            **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                "school_classes",
+                [
+                    _ui_formatted_school_class(
+                        school_objects=schools,
+                        school_class_objects=school_classes[school],
+                        school_id=school,
+                        school_class_id=school_class,
+                    )
+                    for school, sclasses in user.attributes.school_classes.items()
+                    for school_class in sclasses
+                ],
+                permissions,
+            )
+        )
+
+        list_user_attributes.schools = ListUserAttribute[list[str]](
+            **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                "schools",
+                [
+                    _ui_formatted_school(school_objects=schools, school_id=school)
+                    for school in user.attributes.schools
+                ],
+                permissions,
+            )
+        )
+        list_user_attributes.roles = ListUserAttribute[list[str]](
+            **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                "roles",
+                [
+                    _ui_formatted_role(
+                        school_objects=schools,
+                        role=role,
+                    )
+                    for role in user.attributes.roles
+                ],
+                permissions,
+            )
+        )
+
+        return list_user_attributes
+
+    @staticmethod
     def _get_edit_user_attributes_from_user(
         user: User, permissions: set[Permission]
     ) -> CompleteUserFixedAttributes:
@@ -133,25 +209,42 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         )
 
     def create_users_representation(
-        self, users: list[User], permissions: dict[str, list[Permission]]
+        self,
+        users: list[User],
+        schools: list[School],
+        school_classes: dict[str, list[SchoolClass]],
+        permissions: dict[str, list[Permission]],
+        lang: str,
     ) -> ListUsersResponse:
-        list_users = [
-            ListUser(
-                id=user.id,
-                allowed_actions=(
-                    [ListUserPermissions.DELETE] if Permission.delete_user in user_permissions else []
-                ),
-                attributes=self._get_list_user_attributes_from_user(user, set(user_permissions)),
-            )
-            for user in users
-            # Here we ignore all users the actor has no permissions for
-            # (except the assumed read_username).
-            # Since read_username is no explicit permission at the moment, this means
-            # we cannot have a situation
-            # where we actually have target users listed the actor can genuinely
-            # only read the username.
-            if (user_permissions := permissions.get(user.id, []))
-        ]
+        list_users = []
+        for user in users:
+            # If the user has no permissions for the user,
+            # we ignore them.
+            # The `read_username` permission is currently implicit,
+            # so we cannot have a situation where an actor can see a target user
+            # with only `read_username` permissions.
+            user_permissions = permissions.get(user.id, [])
+            if user_permissions := permissions.get(user.id, []):
+                list_user = ListUser(
+                    id=user.id,
+                    allowed_actions=(
+                        [ListUserPermissions.DELETE]
+                        if Permission.delete_user in user_permissions
+                        else []
+                    ),
+                    attributes=self._get_list_user_attributes_from_user(user, set(user_permissions)),
+                )
+
+                list_user.attributes = self._format_list_view_user_attributes(
+                    list_user_attributes=list_user.attributes,
+                    user=user,
+                    permissions=set(user_permissions),
+                    schools=schools,
+                    school_classes=school_classes,
+                    lang=lang,
+                )
+                list_users.append(list_user)
+
         return ListUsersResponse(users=list_users)
 
     def create_user_representation(self, user: User, permissions: set[Permission]) -> CreateUserResponse:
@@ -421,10 +514,6 @@ class FastAPIEditConfigRepresentationAdapter(
         del user["classes"]
         user["roles"] = [role.split(":")[0] for role in user["roles"] if role.split(":")[2] == school.id]
 
-        if "school_admin" in user["roles"]:
-            user["roles"].remove("school_admin")
-            user["roles"].append("administrator")
-
         return EditUsersConfig(
             # Be sure to send complete data,
             # otherwise it confuses the frontend,
@@ -581,10 +670,10 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 ),
                                             ),
                                             RoleRow(
-                                                id="administrator",
+                                                id="school_admin",
                                                 attributes=RoleRowAttributes(
                                                     role_name=Attribute(
-                                                        value=_("Administrator", lang=lang),
+                                                        value=_("School Admin", lang=lang),
                                                         access=AttributeAccess.READ,
                                                     ),
                                                 ),

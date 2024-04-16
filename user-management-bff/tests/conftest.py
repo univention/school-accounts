@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import os
 import random
+import re
 from typing import Any, Optional
 
 import nest_asyncio
@@ -99,16 +100,33 @@ def patch_test_env(monkeypatch):
 
 @pytest.fixture
 def transform_user_dict_to_api_users_dict():
+    def _school_id_to_display_name(school_id):
+        return " ".join(re.split(r"(\d)", school_id.replace("_", " ").title())[:-1])
+
     def _transform_user_dict_to_api_users_dict(user_dict: dict[str, Any]) -> dict[str, Any]:
         transformed = {**user_dict}
         transformed["attributes"]["activated"] = (
             user_dict["attributes"].get("activated", None) or not user_dict["attributes"]["disabled"]
         )
-        transformed["attributes"]["classes"] = [
-            f"{school}:{school_class}"
-            for school, school_classes in user_dict["attributes"]["school_classes"].items()
-            for school_class in school_classes
-        ]
+        sclasses = []
+        for school, school_classes in user_dict["attributes"]["school_classes"].items():
+            school_display_name = _school_id_to_display_name(school)
+            for school_class in school_classes:
+                sclasses.append(f"{school_class} ({school_display_name})")
+        transformed["attributes"]["classes"] = sclasses
+
+        roles = []
+        for role in transformed["attributes"]["roles"]:
+            school_display_name = _school_id_to_display_name(role.rsplit(":", 1)[1])
+            role_str = role.replace("_", " ").split(":", 1)[0].title()
+            roles.append(f"{role_str} ({school_display_name})")
+        transformed["attributes"]["roles"] = roles
+
+        schools = []
+        for school_id in transformed["attributes"]["schools"]:
+            schools.append(_school_id_to_display_name(school_id))
+        transformed["attributes"]["schools"] = schools
+
         del transformed["attributes"]["school_classes"]
         if "disabled" in transformed["attributes"]:
             del transformed["attributes"]["disabled"]

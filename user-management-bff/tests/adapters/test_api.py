@@ -1,6 +1,8 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+from collections import defaultdict
+
 import pytest
 
 from user_management_bff.adapters.api import (
@@ -17,7 +19,7 @@ from user_management_bff.api_models import (
     ListUsersResponse,
     SchoolContextPermission,
 )
-from user_management_bff.models import Permission, School, User, UserAttributes
+from user_management_bff.models import Permission, School, SchoolClass, User, UserAttributes
 
 
 class TestFastAPIUsersRepresentationAdapter:
@@ -97,6 +99,7 @@ class TestFastAPIUsersRepresentationAdapter:
             )
             for user_values in values
         ]
+
         expected = ListUsersResponse(
             users=[
                 ListUser(
@@ -114,12 +117,25 @@ class TestFastAPIUsersRepresentationAdapter:
                 for user_values in values
             ]
         )
+        schools = [
+            School(id=school, display_name=f"{school[0:6].capitalize()} {school[-1]}")
+            for user in users
+            for school in user.attributes.schools
+        ]
+        school_classes = defaultdict(list)
+        for user in users:
+            for school, classes in user.attributes.school_classes.items():
+                school_classes[school].extend(SchoolClass(id=sc, display_name=sc) for sc in classes)
+
         result = adapter.create_users_representation(
-            users,
-            {
+            users=users,
+            permissions={
                 user_values["id"]: [Permission(permission) for permission in Permission]
                 for user_values in values
             },
+            school_classes=school_classes,
+            schools=schools,
+            lang=None,
         )
         assert result == expected
 

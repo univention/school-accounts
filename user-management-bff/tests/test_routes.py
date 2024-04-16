@@ -254,11 +254,13 @@ def test_get_users_no_permissions(
 
 
 def test_config_schools(test_client, api_prefix):
-    input_data = [
+    expected_data = [
         {"display_name": "School 1", "id": "school1"},
         {"display_name": "School 2", "id": "school2"},
         {"display_name": "School 3", "id": "school3"},
         {"display_name": "Test School 1", "id": "test_school1"},
+        {"display_name": "Test School 2", "id": "test_school2"},
+        {"display_name": "Test School 3", "id": "test_school3"},
     ]
 
     response = test_client.get(f"{api_prefix}/config/schools")
@@ -266,7 +268,7 @@ def test_config_schools(test_client, api_prefix):
     assert response.json() == {
         "schools": [
             {"value": school["id"], "label": school["display_name"], "permissions": ["add"]}
-            for school in input_data
+            for school in expected_data
         ]
     }
 
@@ -896,10 +898,10 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
                                             "attributes": {
                                                 "role_name": {
                                                     "access": "read",
-                                                    "value": _("Administrator", lang=lang),
+                                                    "value": _("School Admin", lang=lang),
                                                 }
                                             },
-                                            "id": "administrator",
+                                            "id": "school_admin",
                                         },
                                     ],
                                 },
@@ -997,12 +999,6 @@ def test_patch_user_change_roles(test_client, api_prefix, patch_dict):
     # We currently block the roles from being updated
     expected_roles = ["teacher:school:school1"]
     assert roles == expected_roles
-
-
-def test_admin_backend_to_frontend_conversion(test_client, api_prefix):
-    response = test_client.get(f"{api_prefix}/config/users/edit?id=test_user4&school=test_school1")
-    assert response.status_code == 200, response.json()
-    assert response.json()["user"]["roles"] == ["administrator"]
 
 
 @pytest.mark.asyncio

@@ -8,12 +8,15 @@
     "2b",
     "3c"
   ],
+  "school3": [],
   "test_school1": [
     "1a",
     "2b"
   ],
   "test_school2": [
     "1a",
-    "2b"
-  ]
+    "2b",
+    "3c"
+  ],
+  "test_school3": []
 }

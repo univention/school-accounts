@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-09 11:41+0000\n"
+"POT-Creation-Date: 2024-04-18 14:41+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -26,9 +26,6 @@ msgstr "Aktiviert"
 
 msgid "Add user"
 msgstr "Benutzer hinzufügen"
-
-msgid "Administrator"
-msgstr "Administrator"
 
 #, python-brace-format
 msgid "Cannot update user '{user}' in school '{school}'."
@@ -77,6 +74,9 @@ msgstr "Rollen des Benutzers"
 
 msgid "School"
 msgstr "Schule"
+
+msgid "School Admin"
+msgstr "Schuladmin"
 
 msgid "School class"
 msgstr "Schulklasse"

@@ -59,6 +59,10 @@ async def get_users(
     request: Request,
     school: str,
     users_get_adapter: UsersPersistencePort = Depends(port_dep(UsersPersistencePort)),
+    schools_get_adapter: SchoolsPersistencePort = Depends(port_dep(SchoolsPersistencePort)),
+    school_classes_get_adapter: SchoolClassesPersistencePort = Depends(
+        port_dep(SchoolClassesPersistencePort)
+    ),
     representation_adapter: FastAPIUsersRepresentationAdapter = Depends(
         port_dep(UsersRepresentationPort, adapter_cls=FastAPIUsersRepresentationAdapter)
     ),
@@ -69,6 +73,8 @@ async def get_users(
     actor_id = await authentication_port.get_authenticated_id(request)
     return await business_logic.get_users(
         users_get_adapter,
+        schools_get_adapter,
+        school_classes_get_adapter,
         representation_adapter,
         permissions_port,
         actor_id,
