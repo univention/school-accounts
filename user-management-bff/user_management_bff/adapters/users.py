@@ -47,6 +47,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 schools=kelvin_user.schools,
                 school_classes=kelvin_user.school_classes,
                 roles=kelvin_user.ucsschool_roles,
+                email=kelvin_user.email,
+                birthday=kelvin_user.birthday,
+                expiration_date=kelvin_user.expiration_date,
             ),
         )
 
@@ -223,6 +226,12 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 # We'll mimic this behavior in the File adapter.
                 updated_user = user.attributes.model_dump()
                 del updated_user["roles"]
+                updated_user["birthday"] = (
+                    str(updated_user["birthday"]) if updated_user["birthday"] else None
+                )
+                updated_user["expiration_date"] = (
+                    str(updated_user["expiration_date"]) if updated_user["expiration_date"] else None
+                )
                 user_data["attributes"].update(updated_user)
                 with open(self.settings.source, "w") as fd:
                     json.dump(self._data, fd)

@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import datetime
 from typing import Any
 
 from ..api_models import (
@@ -196,14 +197,29 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
     def _get_edit_user_attributes_from_user(
         user: User, permissions: set[Permission]
     ) -> CompleteUserFixedAttributes:
-        list_user_atributes = FastAPIUsersRepresentationAdapter._get_list_user_attributes_from_user(
+        list_user_attributes = FastAPIUsersRepresentationAdapter._get_list_user_attributes_from_user(
             user, permissions
         )
         return CompleteUserFixedAttributes(
-            **list_user_atributes.model_dump(),
+            **list_user_attributes.model_dump(),
             password=ListUserAttribute[str](
                 **FastAPIUsersRepresentationAdapter._get_attribute_dict(
                     "password", user.attributes.password, permissions
+                )
+            ),
+            email=ListUserAttribute[str](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "email", user.attributes.email, permissions
+                )
+            ),
+            birthday=ListUserAttribute[datetime.date](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "birthday", user.attributes.birthday, permissions
+                )
+            ),
+            expiration_date=ListUserAttribute[datetime.date](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "expiration_date", user.attributes.expiration_date, permissions
                 )
             ),
         )
@@ -567,16 +583,28 @@ class FastAPIEditConfigRepresentationAdapter(
                                         ),
                                     ),
                                 ],
-                                FieldsetRow(
-                                    type=WidgetType.UInputText,
-                                    props=dict(
-                                        label=_("Username", lang=lang),
-                                        name="username",
-                                        description=_("Username of the user", lang=lang),
-                                        required=False,
-                                        access=user_data.attributes.username.access,
+                                [
+                                    FieldsetRow(
+                                        type=WidgetType.UInputText,
+                                        props=dict(
+                                            label=_("Username", lang=lang),
+                                            name="username",
+                                            description=_("Username of the user", lang=lang),
+                                            required=False,
+                                            access=user_data.attributes.username.access,
+                                        ),
                                     ),
-                                ),
+                                    FieldsetRow(
+                                        type=WidgetType.UInputText,
+                                        props=dict(
+                                            label=_("Email", lang=lang),
+                                            name="email",
+                                            description=_("Email of the user", lang=lang),
+                                            required=False,
+                                            access=user_data.attributes.email.access,
+                                        ),
+                                    ),
+                                ],
                                 # The frontend can technically handle this,
                                 # and we'll keep it here for now.
                                 # But you might want to consider just omitting NONE fields,
@@ -593,6 +621,28 @@ class FastAPIEditConfigRepresentationAdapter(
                                         access=user_data.attributes.password.access,
                                     ),
                                 ),
+                                [
+                                    FieldsetRow(
+                                        type=WidgetType.UInputDate,
+                                        props=dict(
+                                            label=_("Birthday", lang=lang),
+                                            name="birthday",
+                                            description=_("Birthday of the user", lang=lang),
+                                            required=False,
+                                            access=user_data.attributes.birthday.access,
+                                        ),
+                                    ),
+                                    FieldsetRow(
+                                        type=WidgetType.UInputDate,
+                                        props=dict(
+                                            label=_("Expiration date", lang=lang),
+                                            name="expiration_date",
+                                            description=_("Expiration date of the user", lang=lang),
+                                            required=False,
+                                            access=user_data.attributes.expiration_date.access,
+                                        ),
+                                    ),
+                                ],
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(

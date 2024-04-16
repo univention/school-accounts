@@ -794,17 +794,30 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
                                     "watches": [],
                                 },
                             ],
-                            {
-                                "props": {
-                                    "access": "write",
-                                    "description": _("Username of the user", lang=lang),
-                                    "label": _("Username", lang=lang),
-                                    "name": "username",
-                                    "required": False,
+                            [
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": _("Username of the user", lang=lang),
+                                        "label": _("Username", lang=lang),
+                                        "name": "username",
+                                        "required": False,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
                                 },
-                                "type": "UInputText",
-                                "watches": [],
-                            },
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": _("Email of the user", lang=lang),
+                                        "label": _("Email", lang=lang),
+                                        "name": "email",
+                                        "required": False,
+                                    },
+                                    "type": "UInputText",
+                                    "watches": [],
+                                },
+                            ],
                             {
                                 "props": {
                                     "access": "write",
@@ -816,6 +829,30 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
                                 "type": "UInputPassword",
                                 "watches": [],
                             },
+                            [
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": _("Birthday of the user", lang=lang),
+                                        "label": _("Birthday", lang=lang),
+                                        "name": "birthday",
+                                        "required": False,
+                                    },
+                                    "type": "UInputDate",
+                                    "watches": [],
+                                },
+                                {
+                                    "props": {
+                                        "access": "write",
+                                        "description": _("Expiration date of the user", lang=lang),
+                                        "label": _("Expiration date", lang=lang),
+                                        "name": "expiration_date",
+                                        "required": False,
+                                    },
+                                    "type": "UInputDate",
+                                    "watches": [],
+                                },
+                            ],
                             {
                                 "props": {
                                     "access": "write",
@@ -928,6 +965,9 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
         ],
         "user": {
             "activated": True,
+            "birthday": None,
+            "email": None,
+            "expiration_date": None,
             "first_name": "Kim",
             "last_name": "Klein",
             "password": None,

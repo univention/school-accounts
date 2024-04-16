@@ -1,9 +1,10 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import datetime
 import json
 from dataclasses import dataclass, field
-from typing import Optional, Type
+from typing import Any, Optional, Type
 
 from guardian_authz_client.client import GuardianAuthzClient
 from guardian_authz_client.errors import GuardianAuthzClientError
@@ -69,11 +70,20 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
         self._client = None
 
     @staticmethod
+    def _sanitize_attr(attr: Any) -> Any:
+        if isinstance(attr, datetime.datetime) or isinstance(attr, datetime.date):
+            return str(attr)
+        return attr
+
+    @staticmethod
     def _user_to_actor(user: User) -> Actor:
         return Actor(
             id=user.id,
             roles=ucsschool_roles_to_guardian_roles(user.attributes.roles),
-            attributes=user.attributes.model_dump(),
+            attributes={
+                key: GuardianPermissionsAdapter._sanitize_attr(value)
+                for key, value in user.attributes.model_dump().items()
+            },
         )
 
     @staticmethod
@@ -91,7 +101,10 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
         return GuardianObject(
             id=target_object.id,
             roles=ucsschool_roles_to_guardian_roles(role_strings),
-            attributes=target_object.attributes,
+            attributes={
+                key: GuardianPermissionsAdapter._sanitize_attr(value)
+                for key, value in target_object.attributes.items()
+            },
         )
 
     @staticmethod

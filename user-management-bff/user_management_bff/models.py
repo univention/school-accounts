@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
+import datetime
 from enum import StrEnum, auto
 from typing import Any, Optional, TypeVar
 
@@ -27,6 +28,9 @@ class UserAttributes(BaseModel):
     school_classes: dict[str, list[str]]
     roles: list[str]
     password: str | None = None
+    email: str | None = None
+    birthday: datetime.date | None = None
+    expiration_date: datetime.date | None = None
 
 
 class User(BaseModel):
@@ -74,6 +78,9 @@ class Permission(StrEnum):
     read_schools = "read-schools"
     read_school_classes = "read-school_classes"
     read_roles = "read-roles"
+    read_email = "read-email"
+    read_birthday = "read-birthday"
+    read_expiration_date = "read-expiration_date"
     write_last_name = "write-last_name"
     write_first_name = "write-first_name"
     write_username = "write-username"
@@ -82,6 +89,9 @@ class Permission(StrEnum):
     write_school_classes = "write-school_classes"
     write_roles = "write-roles"
     write_password = "write-password"  # nosec B105
+    write_email = "write-email"
+    write_birthday = "write-birthday"
+    write_expiration_date = "write-expiration_date"
 
 
 class Role(StrEnum):
@@ -115,6 +125,9 @@ class UserPatchAttributes(BaseModel):
     school_classes: Optional[list[str]] = None
     activated: Optional[bool] = None
     roles: Optional[list[str]] = None
+    email: Optional[str] = None
+    birthday: Optional[datetime.date] = None
+    expiration_date: Optional[datetime.date] = None
 
 
 class UserPatchRequest(BaseModel):

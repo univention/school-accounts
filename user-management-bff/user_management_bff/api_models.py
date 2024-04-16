@@ -1,7 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-
+import datetime
 from enum import StrEnum, auto
 from typing import Any, Generic, Optional, TypeVar
 
@@ -93,6 +93,9 @@ class ListUserFixedAttributes(BaseModel):
 
 class CompleteUserFixedAttributes(ListUserFixedAttributes):
     password: ListUserAttribute[str]
+    email: ListUserAttribute[str]
+    birthday: ListUserAttribute[datetime.date]
+    expiration_date: ListUserAttribute[datetime.date]
 
 
 class ListUser(APIBaseModel):
@@ -140,6 +143,9 @@ class APIUserPatchRequest(BaseModel):
     school_classes: Optional[list[str]] = None
     activated: Optional[bool] = None
     roles: Optional[list[str]] = None
+    email: Optional[str] = None
+    birthday: Optional[datetime.date] = None
+    expiration_date: Optional[datetime.date] = None
 
 
 class CreateUserResponseUser(BaseModel):
@@ -162,6 +168,7 @@ class WidgetType(StrEnum):
     UComboBox = "UComboBox"
     UMultiSelect = "UMultiSelect"
     UInputCheckbox = "UInputCheckbox"
+    UInputDate = "UInputDate"
 
 
 class FieldsetRow(BaseModel):

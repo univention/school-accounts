@@ -43,6 +43,9 @@ class TestKelvinUsersPersistenceAdapter:
             kelvin_user.school_classes = user_data["attributes"]["school_classes"]
             kelvin_user.ucsschool_roles = user_data["attributes"]["roles"]
             kelvin_user.disabled = user_data["attributes"]["disabled"]
+            kelvin_user.email = user_data["attributes"].get("email", None)
+            kelvin_user.birthday = user_data["attributes"].get("birthday", None)
+            kelvin_user.expiration_date = user_data["attributes"].get("expiration_date", None)
             return kelvin_user
 
         return _make_kelvin_user_from_data

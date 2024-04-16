@@ -27,6 +27,12 @@ msgstr "Aktiviert"
 msgid "Add user"
 msgstr "Benutzer hinzufügen"
 
+msgid "Birthday"
+msgstr "Geburtstag"
+
+msgid "Birthday of the user"
+msgstr "Geburtstag des Benutzers"
+
 #, python-brace-format
 msgid "Cannot update user '{user}' in school '{school}'."
 msgstr ""
@@ -35,6 +41,18 @@ msgstr ""
 
 msgid "Classes"
 msgstr "Klassen"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Email of the user"
+msgstr "E-Mail des Benutzers"
+
+msgid "Expiration date"
+msgstr "Konto-Ablaufdatum"
+
+msgid "Expiration date of the user"
+msgstr "Konto-Ablaufdatum des Benutzers"
 
 msgid "First name"
 msgstr "Vorname"

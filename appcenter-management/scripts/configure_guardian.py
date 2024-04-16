@@ -191,6 +191,9 @@ def main():
         ("read-schools", "Read Schools"),
         ("read-school_classes", "Read School Classes"),
         ("read-roles", "Read Roles"),
+        ("read-email", "Read Email"),
+        ("read-birthday", "Read Birthday"),
+        ("read-expiration_date", "Read Expiration date"),
         ("write-last_name", "Write Last Name"),
         ("write-first_name", "Write First Name"),
         ("write-username", "Write Username"),
@@ -199,6 +202,9 @@ def main():
         ("write-school_classes", "Write School Classes"),
         ("write-roles", "Write Roles"),
         ("write-password", "Write Password"),  # nosec B105
+        ("write-email", "Write Email"),
+        ("write-birthday", "Write Birthday"),
+        ("write-expiration_date", "Write Expiration date"),
     ]
 
     print("Creating Guardian objects for UCS@school User Management")
@@ -261,6 +267,9 @@ def main():
                     "schools",
                     "school_classes",
                     "roles",
+                    "birthday",
+                    "email",
+                    "expiration_date",
                 )
             ],
             conditions=[
@@ -287,6 +296,7 @@ def main():
                 "schools",
                 "school_classes",
                 "roles",
+                "email",
             )
         ],
         conditions=[
@@ -430,6 +440,7 @@ def main():
                     "activated",
                     "school_classes",
                     "password",
+                    "email",
                 )
             ],
             *[
@@ -437,6 +448,8 @@ def main():
                 for attr_name in (
                     "schools",
                     "roles",
+                    "birthday",
+                    "expiration_date",
                 )
             ],
             "delete-user",

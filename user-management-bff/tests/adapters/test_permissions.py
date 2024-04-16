@@ -1,7 +1,7 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-
+import datetime
 import json
 
 import pytest
@@ -116,6 +116,19 @@ class TestGuardianPermissionsAdapter:
         assert adapter._oauth2_settings == {}
 
     @pytest.mark.parametrize(
+        "attr,expected",
+        [
+            (1, 1),
+            (True, True),
+            ("a", "a"),
+            (1.1, 1.1),
+            (datetime.datetime(2000, 1, 1), "2000-01-01 00:00:00"),
+        ],
+    )
+    def test__sanitize_attr(self, adapter, attr, expected):
+        assert adapter._sanitize_attr(attr) == expected
+
+    @pytest.mark.parametrize(
         "user_data",
         [
             {
@@ -128,6 +141,9 @@ class TestGuardianPermissionsAdapter:
                     "schools": ["school1"],
                     "username": "dev",
                     "password": None,
+                    "email": None,
+                    "birthday": None,
+                    "expiration_date": None,
                 },
                 "id": "dev",
             },
@@ -141,6 +157,9 @@ class TestGuardianPermissionsAdapter:
                     "schools": ["test_school2", "test_school3"],
                     "username": "firstname3.lastname3",
                     "password": None,
+                    "email": None,
+                    "birthday": None,
+                    "expiration_date": None,
                 },
                 "id": "test_user3",
             },
