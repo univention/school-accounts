@@ -1,0 +1,5 @@
+{
+  "display_name": "Only if actor and target share school class",
+  "documentation": "True if actor and target share a school class in the school specified by actor role context",
+  "parameters": []
+}

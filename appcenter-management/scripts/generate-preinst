@@ -25,3 +25,5 @@ sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%/r $CONDITIONS_DIR/target_w
 sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/r $CONDITIONS_DIR/target_will_be_in_same_school_only.rego" -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/d" preinst
 sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.json" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/d" preinst
 sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.rego" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/d" preinst
+sed -i -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_INFO%/r $CONDITIONS_DIR/target_shares_school_class_in_school_context.json" -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_INFO%/d" preinst
+sed -i -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_REGO%/r $CONDITIONS_DIR/target_shares_school_class_in_school_context.rego" -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_REGO%/d" preinst

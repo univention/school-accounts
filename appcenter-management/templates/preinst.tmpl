@@ -62,6 +62,18 @@ cat <<%EOF >"$target_will_have_allowed_roles_only_rego_path"
 %EOF
 chmod 644 $target_will_have_allowed_roles_only_rego_path
 
+target_shares_school_class_in_school_context_info_path=$CONDITIONS_DIR/target_shares_school_class_in_school_context.json
+cat <<%EOF >"$target_shares_school_class_in_school_context_info_path"
+%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_INFO%
+%EOF
+chmod 644 $target_shares_school_class_in_school_context_info_path
+
+target_shares_school_class_in_school_context_rego_path=$CONDITIONS_DIR/target_shares_school_class_in_school_context.rego
+cat <<%EOF >"$target_shares_school_class_in_school_context_rego_path"
+%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_REGO%
+%EOF
+chmod 644 $target_shares_school_class_in_school_context_rego_path
+
 # ucsschool-user-management-ui keycloak client config
 ucsschool_user_management_ui_client_path="$CONF_DIR/ucsschool-user-management_client_ui.json"
 echo "Installing Keycloak client config for the UI"

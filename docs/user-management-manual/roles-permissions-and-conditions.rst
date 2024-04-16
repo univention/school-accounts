@@ -211,6 +211,13 @@ Conditions
 
    This condition is satisfied when the actor and the target user are in the same school.
 
+.. _condition-target-shares-school-class-in-school-context:
+
+.. envvar:: target_shares_school_class_in_school_context
+
+   This condition is satisfied when the actor and the target user share a school class
+   in the school defined by the context of the actors role currently being evaluated.
+
 .. _creating-a-new-role:
 
 Creating or modifying a role
