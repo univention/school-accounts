@@ -21,6 +21,12 @@ As a quick example for the command line, to add all domain users of the school `
    udm portals/entry modify --dn "cn=ucsschool-user-management,cn=entry,cn=portals,cn=univention,$(ucr get ldap/base)"\
    --append allowedGroups="cn=Domain Users DEMOSCHOOL,cn=groups,ou=DEMOSCHOOL,$(ucr get ldap/base)"
 
+User visibility
+===============
+
+User visibility in the list view can only be changed implicitly:
+The user of the |UASUMM| can see other users in the list view for which the Guardian
+has granted at least one permission.
 
 App Settings
 ============
