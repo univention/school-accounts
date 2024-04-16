@@ -305,6 +305,34 @@ def main():
         ],
     )
     create_role_capability_mapping(
+        "teacher-set-password-students-in-same-class",
+        "Teachers can write students passwords that are in the same class",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
+        ["write-password"],
+        conditions=[
+            {
+                "app_name": "guardian",
+                "namespace_name": "builtin",
+                "name": "target_has_role_in_same_context",
+                "parameters": [
+                    {
+                        "name": "role",
+                        "value": "ucsschool-user-management:user-management:student",
+                        "value_type": "ROLE",
+                    }
+                ],
+            },
+            {
+                "app_name": app_name,
+                "namespace_name": conditions_namespace_name,
+                "name": "target_shares_school_class_in_school_context",
+                "parameters": [],
+            },
+        ],
+    )
+    create_role_capability_mapping(
         "create-users-general",
         "Create Users (school level permission)",
         app_name,

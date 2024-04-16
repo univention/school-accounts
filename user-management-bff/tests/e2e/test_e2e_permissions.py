@@ -55,6 +55,45 @@ def test_teacher_read_test(access_token, base_url, username, read_access):
 
 
 @pytest.mark.parametrize(
+    "role,expected", [("teacher", 403), ("student", 200), ("school_admin", 403), ("staff", 403)]
+)
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_teacher_set_password_on_role(
+    access_token, base_url, kelvin_user_factory, faker, role, expected
+):
+    token = access_token("mina.teacher", "univention")
+    user = await kelvin_user_factory(
+        school="school1", schools=["school1"], roles=[role], school_classes={"school1": ["1a"]}
+    )
+    response = requests.patch(
+        f"{base_url}/bff/users/{user.name}",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"school": "school1"},
+        json={"password": faker.password(length=10)},
+    )
+    assert response.status_code == expected
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_teacher_set_password_fail_in_other_school(
+    access_token, base_url, kelvin_user_factory, faker
+):
+    token = access_token("mina.teacher", "univention")
+    user = await kelvin_user_factory(
+        school="school2", schools=["school2"], roles=["student"], school_classes={"school2": ["1a"]}
+    )
+    response = requests.patch(
+        f"{base_url}/bff/users/{user.name}",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"school": "school2"},
+        json={"password": faker.password(length=10)},
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
     "username,allowed_student,allowed_teacher,allowed_school_admin",
     [
         ("mina.teacher", False, False, False),
