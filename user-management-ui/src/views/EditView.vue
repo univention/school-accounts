@@ -665,7 +665,7 @@ const confirmLanguageSwitchReload = computed(() => hasChangedValues.value);
       @confirm="forceBack(true)"
     />
   </main>
-  <UStandbyFullScreen :active="standby.active" />
+  <UStandbyFullScreen :active="!!standby.active" />
 </template>
 
 <style lang="stylus">

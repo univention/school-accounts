@@ -328,7 +328,7 @@ onMounted(async () => {
       </template>
     </UConfirmDialog>
   </main>
-  <UStandbyFullScreen :active="standby.active" />
+  <UStandbyFullScreen :active="!!standby.active" />
 </template>
 
 <style lang="stylus">
