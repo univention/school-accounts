@@ -14,7 +14,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 import sys
 
 # sys.path.insert(0, os.path.abspath('.'))
@@ -58,7 +58,7 @@ html_title = project
 # The doc_basename must match the documents root directory name on the public
 # target location. Otherwise the PDF link on the overview page will point to
 # the wrong file.
-doc_basename = "user-management-module-manual"
+doc_basename = os.path.basename(os.path.dirname(__file__))
 
 # -- General configuration ---------------------------------------------------
 
@@ -171,5 +171,5 @@ html_baseurl = "https://docs.software-univention.de/manual/5.0/en"
 univention_feedback = True
 
 
-univention_doc_basename = "user-management"
+univention_doc_basename = doc_basename
 univention_pdf_show_source_license = True
