@@ -124,6 +124,7 @@ html_theme_options = {
     "typesense_document": doc_basename,
     "typesense_document_version": version,  # or "latest"
     "univention_matomo_tracking": True,
+    "univention_docs_deployment": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
