@@ -13,10 +13,10 @@ variables:
   APPCENTER_CONTROL_IMAGE: "docker-registry.knut.univention.de/knut/univention-appcenter-control"
   IMAGE_UCS_EC2_TOOLS: "docker-registry.knut.univention.de/ucs-ec2-tools"
   POETRY_VERSION: "1.7.1"
-  DOCS_DIR: "docs/user-management-manual"
   DOC_TARGET_VERSION: "0.1.0"
-  DOC_TARGET_NAME: "user-management-module-manual"
+  DOC_TARGET_NAME: "ucsschool-user-management-module"
   DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
+  DOCS_DIR: "docs/$DOC_TARGET_NAME"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
