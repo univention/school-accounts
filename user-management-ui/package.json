@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@univention/univention-veb": "0.0.65",
+    "@univention/univention-veb": "0.0.67",
     "i18next": "^23.2.11",
     "i18next-vue": "^2.2.1",
     "pinia": "^2.1.3",
