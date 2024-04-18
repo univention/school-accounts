@@ -64,6 +64,8 @@ By default, a user with the role ``teacher`` has the following capabilities:
     - Read their own fields.
   * - ``teacher-read-student``
     - Read fields of students.
+  * - ``teacher-set-password-students-in-same-class``
+    - Teachers can write students passwords that are in the same class.
 
 Staff
 -----
