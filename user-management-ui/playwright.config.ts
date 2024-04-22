@@ -5,11 +5,6 @@
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -38,13 +33,14 @@ const config: PlaywrightTestConfig = {
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:5173',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 
     /* Only on CI systems run the tests headless */
-    headless: !!process.env.CI
+    headless: !!process.env.CI,
+    ignoreHTTPSErrors: true,
   },
 
   /* Configure projects for major browsers */
@@ -107,10 +103,16 @@ const config: PlaywrightTestConfig = {
      * Use the preview server on CI for more realistic testing.
     Playwright will re-use the local server if there is already a dev-server running.
      */
-    command: process.env.CI ? 'vite preview --port 5173' : 'vite dev',
+    command: process.env.CI ? 'yarn preview --port 5173' : 'yarn dev',
     port: 5173,
+    stdout: 'pipe',
+    stderr: 'pipe',
     reuseExistingServer: !process.env.CI
   }
+}
+
+if (process.env.CI_INTEGRATION) {
+    config.webServer = [];
 }
 
 export default config

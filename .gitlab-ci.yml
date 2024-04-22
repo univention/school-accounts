@@ -86,6 +86,42 @@ bff-test:
     reports:
       junit: report.xml
 
+
+ui-test:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.41.1-jammy
+  cache:
+    key:
+      files:
+        - yarn.lock
+    paths:
+      - node_modules
+  before_script:
+    - cd user-management-ui
+    - corepack enable
+    - yarn config set cache-folder .yarn
+    - yarn install --prefer-offline --cache-folder .yarn
+  script:
+    - cp .env.example .env.production.local
+    - yarn test:e2e:setup
+    - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml yarn test:e2e --reporter=junit,html
+    - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml ../dev/tests/playwright2gitlab_junit.py
+  rules:
+    - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
+      when: never
+    - if: "$CI_COMMIT_MESSAGE =~ /force-build/ || $pipeline =~ /force-build/"
+    - changes:
+        - user-management-bff/**/*
+        - user-management-ui/**/*
+  artifacts:
+    reports:
+      junit: report.xml
+    paths:
+      - user-management-ui/playwright-report/
+    expose_as: "Playwright report"
+    when: always
+
+
 integration-tests:
   stage: integration_test
   needs:
@@ -108,7 +144,10 @@ integration-tests:
     KVM_SERVER: "soft-test03.knut.univention.de"
     UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
   before_script:
-    - apt-get update && apt-get install -y curl || echo "Curl installed."
+    - mkdir -p /var/log/
+    - touch /var/log/alternatives.log
+    - apt-get update && apt-get install -y curl git
+    - git archive --format=tar --prefix user-management/ --output user-management.tar HEAD
     - cd dev/tests/
     - mkdir utils
     - curl -o utils/utils.sh "$UCS_UTILS_URL/utils.sh"
@@ -129,6 +168,7 @@ integration-tests:
     paths:
       - dev/tests/primary_join.log
       - dev/tests/backup1_join.log
+      - dev/tests/*playwright-report
     reports:
       junit: dev/tests/*junit.xml
 
