@@ -108,6 +108,12 @@ The |UASUMM| provides :external+uv-guardian-manual:ref:`permissions <terminology
 which can be used within the :external+uv-guardian-manual:ref:`Guardian Application <what-is-the-guardian>`
 to define what a user with a certain role is permitted to do in the |UASUMM|.
 
+.. note::
+    In the current state of the implementation, users with the permission to edit attributes,
+    e.g. school class memberships,
+    must also be able to read the school attribute of the object to open the edit page.
+
+
 .. list-table::
   :header-rows: 1
   :align: left
