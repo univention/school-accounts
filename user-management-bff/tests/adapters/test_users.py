@@ -91,6 +91,31 @@ class TestKelvinUsersPersistenceAdapter:
     @pytest.mark.parametrize(
         "input_data",
         [
+            {
+                "attributes": {
+                    "disabled": False,
+                    "first_name": "firstname",
+                    "last_name": "lastname",
+                    "roles": ["staff:school:test_school1"],
+                    "schools": ["test_school1"],
+                    "school_classes": None,
+                    "username": "test_user1",
+                },
+                "id": "test_user1",
+            }
+        ],
+    )
+    def test_user_from_kelvin_user_staff_without_classes(
+        self, input_data, adapter, make_kelvin_user_from_data
+    ):
+        kelvin_user = make_kelvin_user_from_data(input_data)
+        result = adapter._user_from_kelvin_user(kelvin_user)
+        input_data["attributes"]["school_classes"] = {}
+        assert result == User(id=input_data["id"], attributes=UserAttributes(**input_data["attributes"]))
+
+    @pytest.mark.parametrize(
+        "input_data",
+        [
             [],
             [
                 {

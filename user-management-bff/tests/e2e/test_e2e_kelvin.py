@@ -348,3 +348,35 @@ async def test_get_user_edit_config(
     ][
         "rows"
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_get_user_edit_config_empty_classes(access_token, base_url, kelvin_user_factory):
+    token = access_token("alex.admin", "univention")
+    user = await kelvin_user_factory(
+        school="school1",
+        schools=["school1"],
+        roles=["staff"],
+        school_classes={},
+    )
+    response = requests.get(
+        f"{base_url}/bff/config/users/edit",
+        params={"school": "school1", "id": user.name},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.json()
+    assert response.json()["id"] == user.name
+    assert response.json()["user"] == {
+        "username": user.name,
+        "school": "school1",
+        "first_name": user.firstname,
+        "activated": True,
+        "birthday": None,
+        "email": None,
+        "expiration_date": None,
+        "roles": ["staff"],
+        "school_classes": [],
+        "last_name": user.lastname,
+        "password": None,
+    }
