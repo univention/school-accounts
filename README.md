@@ -261,25 +261,6 @@ SSL_CERT_FILE=/src/dev/local/ucs-root-ca.crt
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
 
-Playwright traces and screenshots for failing tests of the latest test run are stored in `./cache/test-results`.
-
-To inspect the trace of a test run you can run:
-
-```shell
-PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright show-trace .cache/test-results/$TEST_CASE_DIR/trace.zip
-```
-
-Please note that this only works if the `pytest-e2e` task was run at least once. Otherwise, necessary files
-to run the trace might be missing.
-
-You can interactively generate python code for playwright tests with the following command:
-
-```shell
-PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright codegen http://user-management-proxy/univention/ucsschool/user-management/bff/docs/
-```
-
-More information can be found [here](https://playwright.dev/python/docs/codegen-intro).
-
 ## App Center App
 
 ### Generating or updating files from templates

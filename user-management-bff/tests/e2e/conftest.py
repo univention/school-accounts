@@ -27,11 +27,6 @@ def kelvin_url(pytestconfig):
     return pytestconfig.getoption("kelvin_url")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def browser_context_args(browser_context_args):
-    return {**browser_context_args, "ignore_https_errors": True}
-
-
 @pytest.fixture
 def access_token() -> Callable[[str, str], str]:
     def wrapper(username: str, password: str) -> str:
