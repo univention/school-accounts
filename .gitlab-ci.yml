@@ -167,31 +167,25 @@ docs-linkcheck:
   extends: .sphinx-linkcheck-template
   rules:
     - changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
 
 docs-spelling:
   extends: .sphinx-spelling-template
   rules:
     - changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
 
 docs-html:
   extends: .sphinx-html-template
   rules:
     - changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
 
 docs-pdf:
   extends: .sphinx-pdf-template
   rules:
     - changes:
-      - $DOCS_DIR/**/*
-
-docs-warnings:
-  extends: .sphinx-warnings-template
-  rules:
-    - changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
 
 docs-merge-to-one-artifact:
   extends: .sphinx-merge-template
@@ -205,10 +199,10 @@ docs-merge-to-one-artifact:
   rules:
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
-      - $DOCS_DIR/**/*
+      - docs/ucsschool-user-management-module/**/*
       when: manual
 
 # The template has inherit:variables:false to prevent the passing of pipeline
