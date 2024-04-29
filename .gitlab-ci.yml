@@ -13,7 +13,7 @@ variables:
   APPCENTER_CONTROL_IMAGE: "docker-registry.knut.univention.de/knut/univention-appcenter-control"
   IMAGE_UCS_EC2_TOOLS: "docker-registry.knut.univention.de/ucs-ec2-tools"
   POETRY_VERSION: "1.7.1"
-  DOC_TARGET_VERSION: "0.1.0"
+  DOC_TARGET_VERSION: "0.1.1"
   DOC_TARGET_NAME: "ucsschool-user-management-module"
   DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
   DOCS_DIR: "docs/$DOC_TARGET_NAME"

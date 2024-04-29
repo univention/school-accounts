@@ -5,7 +5,7 @@
 [Application]
 ID = ucsschool-user-management
 Code = 4G
-Version = 0.1
+Version = 0.0.0
 Name = UCS@school User Management
 Vendor = Univention GmbH
 DockerScriptRestoreDataAfterSetup =

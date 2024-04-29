@@ -10,6 +10,13 @@ Changelog
 
 This section lists the changes to the User Management Module.
 
+.. _release-0-1-1
+
+0.1.1 (2024-04-29)
+==================
+
+* Fix a bug, where users without school classes could cause errors in the backend.
+
 .. _release-0-1-0:
 
 0.1.0 (2024-04-17)
