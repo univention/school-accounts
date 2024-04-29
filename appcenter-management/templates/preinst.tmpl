@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
@@ -17,8 +17,10 @@ mkdir -p $SCRIPTS_DIR
 mkdir -p $CONF_DIR
 mkdir -p $CONDITIONS_DIR
 
-echo "CHANGE ME" > "$CONF_DIR/client.secret"
-chmod 600 "$CONF_DIR/client.secret"
+if [ ! -f "$CONF_DIR/client.secret" ]; then
+    echo "CHANGE ME" > "$CONF_DIR/client.secret"
+    chmod 600 "$CONF_DIR/client.secret"
+fi
 
 configure_guardian_script_path=$SCRIPTS_DIR/configure_guardian.py
 cat <<%EOF >"$configure_guardian_script_path"
