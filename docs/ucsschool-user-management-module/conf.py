@@ -17,7 +17,6 @@
 import os
 import sys
 
-# sys.path.insert(0, os.path.abspath('.'))
 from datetime import date
 
 # -- Project information -----------------------------------------------------
@@ -73,8 +72,7 @@ extensions = [
     "sphinx_last_updated_by_git",
     "sphinx.ext.intersphinx",
 ]
-# TODO : Also specify the desired document versions where needed.
-#        You may not refer to the latest document version in all cases and replace it with the version.
+
 intersphinx_mapping = {
     "uv-keycloak": ("https://docs.software-univention.de/keycloak-app/latest", None),
     "uv-school-kelvin": (
@@ -132,7 +130,6 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-
 numfig = True
 
 rst_epilog = """
@@ -159,18 +156,14 @@ latex_elements = {
     "babel": "\\usepackage{babel}",
 }
 
-# Sitemap, see https://github.com/jdillard/sphinx-sitemap
-sitemap_url_scheme = "{version}{lang}{link}"
-html_baseurl = "https://docs.software-univention.de/manual/5.0/en"
-
-
 # Configure Univention feedback link
 # See https://git.knut.univention.de/univention/documentation/univention_sphinx_extension#univention_feedback
 
 # Deactivated per default. To activate, set it to True.
-
 univention_feedback = True
 
-
+# See https://git.knut.univention.de/univention/documentation/univention_sphinx_extension
 univention_doc_basename = doc_basename
 univention_pdf_show_source_license = True
+univention_use_doc_base = True
+univention_release_language_scheme = "{release}"
