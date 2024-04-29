@@ -1,4 +1,9 @@
 <h1>Changelog</h1>
+<h2>v0.1.1 (2024-04-29)</h2>
+<ul>
+    <li>Fix a bug, where users without school classes could cause errors in the backend.</li>
+</ul>
+
 <h2>v0.1.0 (2024-04-17)</h2>
 <ul>
     <li>Technical preview.</li>

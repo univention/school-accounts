@@ -10,7 +10,7 @@ Changelog
 
 This section lists the changes to the User Management Module.
 
-.. _release-0-1-1
+.. _release-0-1-1:
 
 0.1.1 (2024-04-29)
 ==================
