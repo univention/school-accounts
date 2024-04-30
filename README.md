@@ -222,7 +222,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #### Running e2e tests for the Backend
 
-THe e2e tests are designed to run against the environment that is created by the integration-test pipeline job.
+The e2e tests are designed to run against the environment that is created by the integration-test pipeline job.
 
 If you want to manually run the tests, make sure to start the job with the `NO_HALT` variable set.
 This way you have access to the setup after the job is done.
@@ -260,6 +260,18 @@ SSL_CERT_FILE=/src/dev/local/ucs-root-ca.crt
 
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
+
+#### Running product tests
+
+The product tests are using playwrigth. Run them as follows:
+
+```shell
+cd dev/tests/product-tests
+poetry install
+CI_INTEGRATION=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE"
+# Or for debugging
+#CI_INTEGRATION=1 PWDEBUG=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE" --headed --browser firefox
+```
 
 ## App Center App
 
