@@ -94,16 +94,23 @@ async def test_teacher_set_password_fail_in_other_school(
 
 
 @pytest.mark.parametrize(
-    "username,allowed_student,allowed_teacher,allowed_school_admin",
+    "username,allowed_student,allowed_teacher,allowed_school_admin,allowed_staff",
     [
-        ("mina.teacher", False, False, False),
-        ("max.student", False, False, False),
-        ("alex.admin", True, True, False),
+        ("mina.teacher", False, False, False, False),
+        ("max.student", False, False, False, False),
+        ("alex.admin", True, True, False, True),
+        ("armin.staff", False, False, False, False),
     ],
 )
 @pytest.mark.e2e
 def test_delete_allowed_permission(
-    access_token, base_url, username, allowed_student, allowed_teacher, allowed_school_admin
+    access_token,
+    base_url,
+    username,
+    allowed_student,
+    allowed_teacher,
+    allowed_school_admin,
+    allowed_staff,
 ):
     token = access_token(username, "univention")
     response = requests.get(
@@ -116,8 +123,9 @@ def test_delete_allowed_permission(
         "mina.teacher": allowed_teacher,
         "max.student": allowed_student,
         "alex.admin": allowed_school_admin,
+        "armin.staff": allowed_staff,
     }
-    for user in response.json()["users"]:
+    for user in (user for user in response.json()["users"] if user["id"] in test_mapping):
         assert ("delete" in user["allowedActions"]) == test_mapping[user["id"]]
 
 
