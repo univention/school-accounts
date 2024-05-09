@@ -265,6 +265,8 @@ integration test environment.
 
 The product tests are using playwrigth. Run them as follows:
 
+If you test against a fresh installation you need to add he same users as in `dev/tests/integration_tests.cfg`
+
 ```shell
 cd dev/tests/product-tests
 poetry install

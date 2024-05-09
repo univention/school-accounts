@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 import pytest
-from playwright.sync_api import expect
+from playwright.sync_api import expect, Page
 
 
-def test_add_button_enabled_status(page_login):
+def test_add_button_enabled_status(page_login, admin_login):
     """
     Tests U0001
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     expect(page.get_by_role("button", name="Add")).to_be_enabled()
@@ -18,11 +18,11 @@ def test_add_button_enabled_status(page_login):
     expect(page.get_by_role("button", name="Add")).to_be_disabled()
 
 
-def test_delete_button_enabled_status(page_login):
+def test_delete_button_enabled_status(page_login, admin_login):
     """
     Tests U0003
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Search").click()
@@ -32,22 +32,22 @@ def test_delete_button_enabled_status(page_login):
     expect(page.get_by_role("button", name="Delete")).to_be_enabled()
 
 
-def test_school_prefilled_on_creation(page_login):
+def test_school_prefilled_on_creation(page_login, admin_login):
     """
     Tests U0004
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()
     expect(page.get_by_label("School", exact=True)).to_have_value("school1")
 
 
-def test_values_prefilled_on_edit(page_login):
+def test_values_prefilled_on_edit(page_login, admin_login):
     """
     Tests U0005
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Search").click()
@@ -59,11 +59,11 @@ def test_values_prefilled_on_edit(page_login):
     expect(page.get_by_label("Email")).to_have_value("alex.admin@school1.school.test")
 
 
-def test_creation_abort_dialog_if_data_entered(page_login):
+def test_creation_abort_dialog_if_data_entered(page_login, admin_login):
     """
     Tests U0006
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()
@@ -75,11 +75,11 @@ def test_creation_abort_dialog_if_data_entered(page_login):
     )
 
 
-def test_edit_abort_dialog_if_data_changed(page_login):
+def test_edit_abort_dialog_if_data_changed(page_login, admin_login):
     """
     Tests U0006
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Search").click()
@@ -90,11 +90,11 @@ def test_edit_abort_dialog_if_data_changed(page_login):
     expect(page.get_by_text("There are unsaved changes.")).to_contain_text("There are unsaved changes.")
 
 
-def test_creation_dialog_abort_no_data_entered(page_login):
+def test_creation_dialog_abort_no_data_entered(page_login, admin_login):
     """
     Tests U0007
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()
@@ -102,11 +102,11 @@ def test_creation_dialog_abort_no_data_entered(page_login):
     expect(page.get_by_text("Do you want to cancel the creation dialog")).to_have_count(0)
 
 
-def test_edit_abort_dialog_if_no_data_changed(page_login):
+def test_edit_abort_dialog_if_no_data_changed(page_login, admin_login):
     """
     Tests U0007
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Search").click()
@@ -115,11 +115,11 @@ def test_edit_abort_dialog_if_no_data_changed(page_login):
     expect(page.get_by_text("There are unsaved changes.")).to_have_count(0)
 
 
-def test_frontend_validation_for_required_fields(page_login):
+def test_frontend_validation_for_required_fields(page_login, admin_login):
     """
     Tests U0008
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()
@@ -127,11 +127,11 @@ def test_frontend_validation_for_required_fields(page_login):
     expect(page.get_by_text("Error: This value is required")).to_have_count(4)
 
 
-def test_backend_validation(page_login):
+def test_backend_validation(page_login, admin_login):
     """
     Tests U0008, U0009
     """
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()
@@ -150,12 +150,12 @@ def test_backend_validation(page_login):
     ).to_be_visible()
 
 
-def test_creation_notification(page_login, kelvin_user_deletion):
+def test_creation_notification(page_login, admin_login, kelvin_user_deletion):
     """
     Tests U0011
     """
     kelvin_user_deletion("max.muster")
-    page = page_login("alex.admin", "univention")
+    page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
     page.get_by_role("button", name="Add").click()

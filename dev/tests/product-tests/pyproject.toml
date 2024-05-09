@@ -18,6 +18,8 @@ kelvin-rest-api-client = "^2.2.3"
 setuptools = "^69.5.1"
 nest-asyncio = "^1.6.0"
 faker = "^25.0.1"
+playwright = "^1.43.0"
+pytest-rerunfailures = "^14.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -124,6 +124,7 @@ ui-test:
 
 integration-tests:
   stage: integration_test
+  timeout: 2h
   needs:
     - job: build_docker_image_user_management
       optional: true
@@ -169,6 +170,8 @@ integration-tests:
       - dev/tests/primary_join.log
       - dev/tests/backup1_join.log
       - dev/tests/*playwright-report
+      - dev/tests/*_producttest_traces
+      - dev/tests/*_kelvin_http.log
     reports:
       junit: dev/tests/*junit.xml
 

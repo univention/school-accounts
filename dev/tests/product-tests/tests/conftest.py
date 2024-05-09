@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import time
 from typing import Callable, Optional
+from urllib.parse import urlparse
 
 import nest_asyncio
 import pytest
@@ -23,11 +24,11 @@ def browser_context_args(browser_context_args):
 @pytest.fixture
 def page_login(page: Page) -> Callable[[str, str], Page]:
     def wrapper(username: str, password: str) -> Page:
+        page.goto("/univention/ucsschool/user-management/ui/")
         if os.getenv("CI_INTEGRATION"):
-            page.goto("/univention/ucsschool/user-management/ui/")
-        page.get_by_label("Username or email").fill(username)
-        page.get_by_label("Password", exact=True).fill(password)
-        page.get_by_label("Password", exact=True).press("Enter")
+            page.get_by_label("Username or email").fill(username)
+            page.get_by_label("Password", exact=True).fill(password)
+            page.get_by_label("Password", exact=True).press("Enter")
         expect(page.get_by_role("heading", name="Users (schools)")).to_be_visible(timeout=10000)
 
         return page
@@ -35,9 +36,24 @@ def page_login(page: Page) -> Callable[[str, str], Page]:
     return wrapper
 
 
+@pytest.fixture
+def admin_login() -> dict:
+    return {"username": "alex.admin", "password": "univention"}
+
+
+@pytest.fixture
+def teacher_login() -> dict:
+    return {"username": "mina.teacher", "password": "univention"}
+
+
+def pytest_addoption(parser):
+    parser.addoption("--kelvin_url", action="store")
+
+
 @pytest.fixture(scope="session")
-def kelvin_url():
-    return "primary.school.test"
+def kelvin_url(base_url, pytestconfig):
+    kelvin_url = pytestconfig.getoption("kelvin_url", default=urlparse(base_url).hostname)
+    return kelvin_url
 
 
 @pytest.fixture(scope="session")
