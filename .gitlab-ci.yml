@@ -277,3 +277,5 @@ user_management_app_to_test_appcenter:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - $APP_DIR/**/*
+    - when: manual
+  allow_failure: true

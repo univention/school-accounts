@@ -69,6 +69,18 @@ elif ! [[ $keycloak_url == http* ]]
     keycloak_url="https://$keycloak_url"
 fi
 
+# Checking the status of keycloak to be up, since otherwise the installation will fail.
+echo "Checking Keycloak status..."
+
+keycloak_response=$(curl --location --retry 20 --retry-delay 3 --write-out '%{http_code}' --silent --fail --output /dev/null "$keycloak_url"/realms/ucs/.well-known/openid-configuration)
+
+if [ "$keycloak_response" -lt 200 ] || [ "$keycloak_response" -gt 299 ]; then
+    echo "Keycloak is not responding. Exiting join script. Plase check your Keycloak installation."
+    exit 2
+else
+    echo "Keycloak OK"
+fi
+
 # Create temporary user for guardian administration.
 SYS_USER_PW=$(openssl rand -base64 24)
 SYS_USER_NAME="ucsschool-user-management-sys-user-$(date +%s)"
