@@ -4,6 +4,9 @@ Copyright (C) 2024 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
+[![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen.svg)](../issues/?search=Dependency%20Dashboard)
+[![Renovate](https://img.shields.io/badge/renovate-pipeline-brightgreen.svg)](../pipelines/new?var[RUN_RENOVATE]=yes)
+
 # UCS@school User Management
 
 This is the repository for the new UCS@school User Management Module.
