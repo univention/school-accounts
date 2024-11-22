@@ -9,8 +9,11 @@ from enum import StrEnum
 import port_loader  # type: ignore[import-not-found]
 from loguru import logger
 
+from .correlation_id import correlation_id_ctx_var
+
 
 class LogLevel(StrEnum):
+    TRACE = "TRACE"
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -57,7 +60,11 @@ class InterceptHandler(logging.Handler):  # pragma: no cover
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        #extra = {}
+        #if correlation_id := correlation_id_ctx_var.get(None):
+        #    extra.update({"correlation_id": correlation_id})
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), correlation_id=correlation_id_ctx_var.get(None))
 
 
 async def configure_logger():
