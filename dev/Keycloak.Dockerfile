@@ -9,6 +9,9 @@ ENV KC_DB=dev-mem
 
 # relative path needs to be set in build stage
 ENV KC_HTTP_RELATIVE_PATH=/keycloak
+# Enable health and metrics support
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
 
 
 WORKDIR /opt/keycloak
@@ -23,9 +26,6 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 ENV KEYCLOAK_ADMIN=admin
 ENV KEYCLOAK_ADMIN_PASSWORD=admin
 
-# Enable health and metrics support
-ENV KC_HEALTH_ENABLED=true
-ENV KC_METRICS_ENABLED=true
 
 # configuring keycloak
 ENV KC_HOSTNAME=user-management-proxy
