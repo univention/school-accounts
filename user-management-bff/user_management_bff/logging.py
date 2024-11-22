@@ -60,11 +60,9 @@ class InterceptHandler(logging.Handler):  # pragma: no cover
             frame = frame.f_back
             depth += 1
 
-        #extra = {}
-        #if correlation_id := correlation_id_ctx_var.get(None):
-        #    extra.update({"correlation_id": correlation_id})
-
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage(), correlation_id=correlation_id_ctx_var.get(None))
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage(), correlation_id=correlation_id_ctx_var.get(None)
+        )
 
 
 async def configure_logger():

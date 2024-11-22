@@ -46,6 +46,7 @@ async def get_actor(
         return await users_persistence_adapter.get_user(actor_id)
     except ObjectNotFoundError as exc:
         user = exc.identifier
+        logger.error("Actor is not a valid UCS@school user.", actor_id=actor_id)
         raise NoSchoolUserError(
             _(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
             identifier=exc.identifier,
@@ -87,6 +88,7 @@ async def get_users(
     request_data: UsersGetRequest,
     lang: str,
 ) -> UsersGetRepresentation:
+    logger.debug("Retrieving all users of a school.", actor_id=actor_id, school=request_data.school)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     users = await users_get_adapter.get_users(request_data.school)
     schools = await schools_get_adapter.get_schools()
@@ -118,6 +120,7 @@ async def get_schools(
     actor_id: str,
     lang: str,
 ) -> SchoolsGetRepresentation:
+    logger.debug("Retrieving all schools.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     schools = await schools_get_adapter.get_schools()
     permissions = await permissions_port.get_permissions(
@@ -135,6 +138,10 @@ async def create_user(
     request_data: UserCreateRequest,
     lang: str,
 ) -> UserCreateRepresentation:
+    logger.debug(
+        "Received request from actor to create user.", actor_id=actor_id, username=request_data.username
+    )
+
     actor = await get_actor(actor_id, users_get_adapter, lang)
     permissions = await permissions_port.get_permissions(
         actor, [user_create_request_to_target(request_data)]
@@ -142,12 +149,16 @@ async def create_user(
     target_permissions = set(list(permissions.values())[0]) if permissions else set()
     missing_permissions = get_required_permissions_for_create_request(request_data) - target_permissions
     if len(missing_permissions) > 0:
+        logger.warning(
+            "Denied actor permission to create user.", actor_id=actor_id, username=request_data.username
+        )
         raise PermissionsError(
             _("You do not have the permission to create this user.", lang=lang),
             missing_permissions=list(missing_permissions),
         )
 
     user = await users_create_adapter.create_user(request_data)
+    logger.info("User created on behalf of actor.", actor_id=actor_id, username=user.id)
     return representation_port.create_user_representation(user, target_permissions)
 
 
@@ -158,10 +169,17 @@ async def delete_user(
     identifier: str,
     lang: str,
 ) -> None:
+    logger.debug("Received request from actor to delete user.", actor_id=actor_id, user_id=identifier)
+
     actor = await get_actor(actor_id, users_delete_adapter, lang)
     try:
         user = await users_delete_adapter.get_user(identifier)
     except ObjectNotFoundError:
+        logger.warning(
+            "Actor requested to delete user, but the user does not exist.",
+            actor_id=actor_id,
+            user_id=identifier,
+        )
         return  # We treat a not found user as a successful deletion
     permissions = await permissions_port.get_permissions(
         actor,
@@ -176,14 +194,18 @@ async def delete_user(
     )
     target_permissions = set(list(permissions.values())[0]) if permissions else set()
     if Permission.delete_user not in target_permissions:
+        logger.warning("Denied actor permission to delete user.", actor_id=actor_id, user_id=identifier)
         raise PermissionsError(
             _("You do not have the permission to edit this user.", lang=lang),
             missing_permissions=[Permission.delete_user],
         )
     try:
+        logger.info("User deleted on behalf of actor.", actor_id=actor_id, user_id=identifier)
         await users_delete_adapter.delete_user(identifier)
     except ObjectNotFoundError:
-        logger.warning("Deletion failed because user did not exist", identifier=identifier)
+        logger.warning(
+            "Deletion failed because user did not exist", actor_id=actor_id, identifier=identifier
+        )
         return None  # we treat non existing users as successful deletion in the frontend
 
 
@@ -195,12 +217,21 @@ async def patch_user(
     patch_data: UserPatchRequest,
     lang: str,
 ) -> UserCreateRepresentation:
+    logger.debug(
+        "Received request from actor to update user.", actor_id=actor_id, user_id=patch_data.identifier
+    )
     actor = await get_actor(actor_id, users_patch_adapter, lang)
     old_user = await users_patch_adapter.get_user(patch_data.identifier)
     new_user = old_user.model_copy(deep=True)
     if patch_data.school not in new_user.attributes.schools:
         user = patch_data.identifier
         school = patch_data.school
+        logger.error(
+            "Unable to update: User is not part of school {school}.",
+            actor_id=actor_id,
+            user_id=user,
+            school=patch_data.school,
+        )
         raise OperationNotSupportedError(
             _(
                 f"Cannot update user '{user}' in school '{school}'.",
@@ -240,11 +271,15 @@ async def patch_user(
     target_permissions = set(list(permissions.values())[0]) if permissions else set()
     missing_permissions = get_required_permissions_for_patch_request(patch_data) - target_permissions
     if len(missing_permissions) > 0:
+        logger.warning(
+            "Denied actor permission to update user.", actor_id=actor_id, user_id=patch_data.identifier
+        )
         raise PermissionsError(
             _("You do not have the permission to edit this user.", lang=lang),
             missing_permissions=list(missing_permissions),
         )
     new_user = await users_patch_adapter.save_user(new_user)
+    logger.info("Updated user on behalf of actor.", actor_id=actor_id, user_id=new_user.id)
     return representation_port.create_user_representation(new_user, target_permissions)
 
 
@@ -255,9 +290,11 @@ async def get_user_add_config(
     school: str,
     lang: str,
 ) -> AddUsersConfig:
+    logger.debug(f"Preparing user add config with school {school}.")
     try:
         school_obj = (await schools_get_port.get_schools(name=school))[0]
     except IndexError:
+        logger.error("School object does not exist", school=school)
         raise ObjectNotFoundError(school)
     school_classes = await school_classes_persistence_port.get_school_classes(school)
     return representation_port.add_config_representation(school_obj, school_classes, lang)
@@ -275,9 +312,15 @@ async def get_user_edit_config(
     school: str,
     lang: str,
 ) -> EditUsersConfig:
+
+    logger.debug(
+        "Preparing user edit config for user on behalf of actor", actor_id=actor_id, user_id=user_id
+    )
+
     try:
         school_obj = (await schools_get_port.get_schools(name=school))[0]
     except IndexError:
+        logger.error("School object does not exist.", actor_id=actor_id, school=school)
         raise ObjectNotFoundError(school)
 
     actor = await get_actor(actor_id, users_get_port, lang)
@@ -301,6 +344,7 @@ async def get_user_edit_config(
     )
     user_data = user_representation_port.edit_user_representation(user, set(permissions[user.id]))
     if not user_data.attributes.schools.value or school not in user_data.attributes.schools.value:
+        logger.error("User is not part of school.", actor_id=actor_id, user_id=user_id, school=school)
         raise ObjectNotFoundError(f"{user_id}:{school}")
 
     school_classes = await school_classes_persistence_port.get_school_classes(school)

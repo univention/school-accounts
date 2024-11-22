@@ -7,6 +7,7 @@
 _build/
 .coverage
 .cache/
+.envrc
 **/.env
 *.mo
 dev/local

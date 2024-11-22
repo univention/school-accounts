@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Type
 
+from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
@@ -34,6 +35,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         if any((role for role in user.attributes.roles if role.startswith("student"))):
             for school in user.attributes.schools:
                 if not user.attributes.school_classes.get(school, []):
+                    logger.error("User is not in a school class.", user_id=user.id)
                     raise OperationNotSupportedError(_("The user has to be in a school class."))
 
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
@@ -64,6 +66,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 kelvin_user = await UserResource(session=session).get(name=identifier)
                 return self._user_from_kelvin_user(kelvin_user)
             except NoObject as exc:
+                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
                 raise ObjectNotFoundError(identifier=identifier) from exc
 
     async def create_user(self, user_create_request: UserCreateRequest) -> User:
@@ -85,6 +88,11 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             try:
                 await user.save()
             except (NoObject, InvalidRequest) as exc:
+                logger.error(
+                    "Unable to create user with the Kelvin API.",
+                    username=user_create_request.username,
+                    error=str(exc),
+                )
                 raise CreationError(str(exc)) from exc
 
         return User(
@@ -108,6 +116,10 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 kelvin_user = await UserResource(session=session).get(name=identifier)
                 await kelvin_user.delete()
             except NoObject as exc:
+                logger.error(
+                    "Unable to delete user with the Kelvin API: Object does not exist.",
+                    user_id=identifier,
+                )
                 raise ObjectNotFoundError(identifier=identifier) from exc
 
     async def save_user(self, user: User) -> User:
@@ -116,6 +128,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             try:
                 kelvin_user = await UserResource(session=session).get(name=user.id)
             except NoObject as exc:
+                logger.error("Unable to find user with the Kelvin API.", user_id=user.id)
                 raise ObjectNotFoundError(identifier=user.id) from exc
             # The File adapter also excludes roles,
             # in order to mimic the behavior of the Kelvin adapter.
@@ -127,6 +140,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             try:
                 return self._user_from_kelvin_user(await kelvin_user.save())
             except InvalidRequest as exc:
+                logger.error(
+                    "Unable to update user with the Kelvin API.", user_id=user.id, error=exc.reason
+                )
                 raise OperationNotSupportedError(exc.reason) from exc
 
 

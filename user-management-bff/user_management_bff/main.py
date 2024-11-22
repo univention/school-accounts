@@ -4,17 +4,19 @@
 import os
 from contextlib import asynccontextmanager
 from importlib import metadata
-
 from uuid import uuid4
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 from starlette.exceptions import HTTPException
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
+from .correlation_id import correlation_id_ctx_var
 from .errors import (
     NotAuthenticatedError,
     ObjectNotFoundError,
@@ -25,10 +27,6 @@ from .lang import _, get_lang
 from .logging import configure_logger
 from .ports import FastAPIAuthenticationPort
 from .routes import router
-from loguru import logger
-import loguru
-
-from .correlation_id import correlation_id_ctx_var
 
 
 @asynccontextmanager
@@ -41,7 +39,6 @@ async def lifespan(fastapi_app: FastAPI):
         router, dependencies=[Depends(await auth_adapter.get_authentication_dependency())]
     )
     yield
-
 
 
 app = FastAPI(
@@ -61,13 +58,14 @@ app = FastAPI(
 
 CORRELATION_ID_HEADER_NAME = "X-Request-ID"
 
+
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     """Add correlation id to request object and contextualize logger
-    
+
     The contextualize method uses Python `contextvars` so the are unique to each thread/task.
     """
-    
+
     correlation_id = request.headers.get(CORRELATION_ID_HEADER_NAME, str(uuid4()))
     correlation_id_ctx_var.set(correlation_id)
 
@@ -76,6 +74,7 @@ async def add_correlation_id(request: Request, call_next):
         response = await call_next(request)
         response.headers[CORRELATION_ID_HEADER_NAME] = correlation_id
         return response
+
 
 # FastAPI doesn't allow adding middleware after the app has been started,
 # so unfortunately we can't put this in the lifespan to make use of the
@@ -88,7 +87,6 @@ if CORS_ALLOWED_ORIGINS:
         allow_methods=["*"],
         allow_headers=["Authorization", CORRELATION_ID_HEADER_NAME],
     )  # pragma: no cover
-
 
 
 # statically serve the frontend

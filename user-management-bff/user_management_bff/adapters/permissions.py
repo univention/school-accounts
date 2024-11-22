@@ -17,6 +17,7 @@ from guardian_authz_client.models import (
     Role,
 )
 from guardian_authz_client.models import Target as ClientTarget
+from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 
@@ -125,9 +126,9 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
     @property
     def settings(self) -> GuardianPermissionsAdapterSettings:
         if self._settings is None:
-            raise RuntimeError(
-                "The settings should never be accessed before the adapter was configured!"
-            )
+            error_msg = "The settings should never be accessed before the adapter was configured!"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         return self._settings
 
     @property
@@ -165,6 +166,9 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
                 namespaces=[Namespace(app_name=APP_NAME, name=NAMESPACE_NAME)],
             )
         except GuardianAuthzClientError as exc:
+            logger.error(
+                "Error fetching permissions for actor", actor_id=actor.id, error_message=exc.message
+            )
             raise PermissionsError(exc.message) from exc
         return self._permissions_result_to_permissions_dict(result)
 
@@ -191,6 +195,7 @@ class FilePermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
             self._data = json.load(fd)
 
     async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
+        logger.debug("Fetching actor permissions from the Guardian", actor_id=actor.id)
         permission_data = {}
         for target in targets:
             if target.old_target:

@@ -8,6 +8,7 @@ import jwt
 from fastapi import Depends
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from jwt import PyJWKClient
+from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from starlette.requests import Request
@@ -54,9 +55,9 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
     @property
     def settings(self) -> Oauth2FastAPIAuthenticationAdapterSettings:
         if self._settings is None:
-            raise RuntimeError(
-                "The settings should never be accessed before the adapter was configured!"
-            )
+            error_msg = "The settings should never be accessed before the adapter was configured!"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         return self._settings
 
     async def _get_oauth2_settings(self) -> dict[str, Any]:
@@ -93,12 +94,15 @@ class Oauth2FastAPIAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
                     options={"require": ["exp", "iss", "aud", "sub", "iat", "jti"]},
                 )
             except jwt.exceptions.InvalidTokenError as exc:
+                logger.error("Error while decoding JWT token: Invalid Token.")
                 raise NotAuthenticatedError(_("Not authenticated")) from exc
             if self.settings.identifier_claim not in decoded_token:
-                raise RuntimeError(
+                error_msg = (
                     f"The token does not contain the identifier claim {self.settings.identifier_claim}. "
                     f"Please check the settings of the oauth provider."
                 )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return decoded_token[self.settings.identifier_claim]
 
         return _oauth2_authentication

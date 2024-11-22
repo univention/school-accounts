@@ -5,7 +5,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from loguru import logger
 from . import business_logic
 from .adapter_registry import port_dep
 from .adapters.api import (

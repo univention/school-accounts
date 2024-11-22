@@ -5,6 +5,7 @@
 from typing import Any
 
 from httpx import AsyncClient, RequestError
+from loguru import logger
 
 from user_management_bff.api_models import UserCreateRequest
 from user_management_bff.models import Permission, UserPatchRequest
@@ -15,11 +16,13 @@ async def get_oauth2_settings(well_known_url: str, timeout: int) -> dict[str, An
         try:
             response = await client.get(well_known_url, timeout=timeout)
         except RequestError as exc:
-            raise RuntimeError(f"Could not load oauth2 settings from {well_known_url}: '{exc}'")
+            error_msg = f"Could not load oauth2 settings from {well_known_url}: '{exc}'"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Could not load oauth2 settings from {well_known_url}:" f" '{response.json()}'"
-            )
+            error_msg = f"Could not load oauth2 settings from {well_known_url}:" f" '{response.json()}'"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         return response.json()
 
 
