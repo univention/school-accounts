@@ -47,7 +47,8 @@
     "acr",
     "profile",
     "roles",
-    "email"
+    "email",
+    "basic"
   ],
   "description": "",
   "directAccessGrantsEnabled": false,
