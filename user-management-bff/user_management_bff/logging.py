@@ -5,9 +5,11 @@ import logging
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Final, Optional
 
 import port_loader  # type: ignore[import-not-found]
 from loguru import logger
+from port_loader import AsyncAdapterSettingsProvider
 
 from .correlation_id import correlation_id_ctx_var
 
@@ -19,6 +21,15 @@ class LogLevel(StrEnum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+SETTING_NAMES: Final = {
+    "LOG_FORMAT_SETTING_NAME": "user_management.logging.format",
+    "STRUCTURED_SETTING_NAME": "user_management.logging.structured",
+    "LOG_LEVEL_SETTING_NAME": "user_management.logging.level",
+    "BACKTRACE_SETTING_NAME": "user_management.logging.backtrace",
+    "DIAGNOSE_SETTING_NAME": "user_management.logging.diagnose",
+}
 
 
 @dataclass
@@ -65,12 +76,30 @@ class InterceptHandler(logging.Handler):  # pragma: no cover
         )
 
 
-async def configure_logger():
+async def configure_logger(settings_port: Optional[AsyncAdapterSettingsProvider] = None):
     for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         _logger = logging.getLogger(logger_name)
         _logger.handlers = [InterceptHandler()]
     logger.enable(port_loader.__name__)
     settings = LoggingDefaultSettings()
+    if (
+        settings_port
+    ):  # pragma: no cover  here we just read from the settings port, which is tested elsewhere
+        settings.format = await settings_port.get_setting(
+            SETTING_NAMES["LOG_FORMAT_SETTING_NAME"], str, settings.format
+        )
+        settings.level = await settings_port.get_setting(
+            SETTING_NAMES["LOG_LEVEL_SETTING_NAME"], str, settings.level
+        )
+        settings.structured = await settings_port.get_setting(
+            SETTING_NAMES["STRUCTURED_SETTING_NAME"], bool, settings.structured
+        )
+        settings.backtrace = await settings_port.get_setting(
+            SETTING_NAMES["BACKTRACE_SETTING_NAME"], bool, settings.backtrace
+        )
+        settings.diagnose = await settings_port.get_setting(
+            SETTING_NAMES["DIAGNOSE_SETTING_NAME"], bool, settings.diagnose
+        )
     level = LogLevel(settings.level)
     logger.remove()
     logger.add(

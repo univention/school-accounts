@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from port_loader import AsyncAdapterSettingsProvider
 from starlette.exceptions import HTTPException
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
@@ -33,6 +34,12 @@ from .routes import router
 async def lifespan(fastapi_app: FastAPI):
     await configure_logger()
     configure_registry(ADAPTER_REGISTRY)
+
+    settings_port: AsyncAdapterSettingsProvider = await ADAPTER_REGISTRY.request_port(
+        AsyncAdapterSettingsProvider
+    )
+    await configure_logger(settings_port)
+
     await initialize_adapters(ADAPTER_REGISTRY)
     auth_adapter = await ADAPTER_REGISTRY.request_port(FastAPIAuthenticationPort)
     fastapi_app.include_router(

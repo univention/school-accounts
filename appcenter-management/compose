@@ -58,6 +58,10 @@ api_url = ucr.get(
     f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/guardian/authorization",
 )
 print(api_url, end='')@!@
+      USER_MANAGEMENT__LOGGING__FORMAT: @%@ucsschool-user-management/logging/format@%@
+      USER_MANAGEMENT__LOGGING__LEVEL: @%@ucsschool-user-management/logging/level@%@
+      USER_MANAGEMENT__LOGGING__STRUCTURED: @%@ucsschool-user-management/logging/level@%@
+
       VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT: keycloak
       VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT: api
       VITE__API_DATA_ADAPTER__URI: /univention/ucsschool/user-management/bff

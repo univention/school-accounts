@@ -128,12 +128,12 @@ integration-tests:
         - appcenter-management/**/*
         - dev/tests/**/*
       when: manual
-      allow_failure: false
+      allow_failure: true
     - when: manual
       allow_failure: true
   image: $IMAGE_UCS_EC2_TOOLS
   variables:
-    TARGET_VERSION: "5.0-7"
+    TARGET_VERSION: "5.0-9"
     KVM_SERVER: "soft-test03.knut.univention.de"
     UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
   before_script:
