@@ -387,10 +387,10 @@
     "@typescript-eslint/types" "5.62.0"
     eslint-visitor-keys "^3.3.0"
 
-"@univention/univention-veb@0.0.68":
+"@univention/univention-veb@^0.0.68":
   version "0.0.68"
-  resolved "https://git.knut.univention.de/api/v4/projects/666/packages/npm/@univention/univention-veb/-/@univention/univention-veb-0.0.68.tgz#556b72bc4bb3debdf03608f5f7d143822f5c03af"
-  integrity sha1-VWtyvEuz3r3wNgj199FDgi9cA68=
+  resolved "https://git.knut.univention.de/api/v4/projects/666/packages/npm/@univention/univention-veb/-/@univention/univention-veb-0.0.68.tgz#24ebd8740fd933c90e1a27ee5fb85cb831631256"
+  integrity sha1-JOvYdA/ZM8kOGifuX7hcuDFjElY=
   dependencies:
     focus-trap "^7.0.0"
     i18next "^23.2.11"
@@ -1841,11 +1841,6 @@ keycloak-js@^25.0.6:
   dependencies:
     js-sha256 "^0.11.0"
     jwt-decode "^4.0.0"
-
-keycloak-js@^26.0.6:
-  version "26.0.7"
-  resolved "https://registry.yarnpkg.com/keycloak-js/-/keycloak-js-26.0.7.tgz#2025256f7c519df654240648052ea06344e2377e"
-  integrity sha512-vKCk1ISMiouYRLjMzi5fKp58RnYxKEBS29BoDgVfYwVW94IXchj9jLqBvIet31VD1v79l3WaWT+WMX7fH8O4wA==
 
 levn@^0.4.1:
   version "0.4.1"
