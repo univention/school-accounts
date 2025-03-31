@@ -86,7 +86,7 @@ SYS_USER_PW=$(openssl rand -base64 24)
 SYS_USER_NAME="ucsschool-user-management-sys-user-$(date +%s)"
 udm users/user create "$@" \
   --position "cn=users,$ldap_base" \
-  --set guardianRole="guardian:builtin:super-admin" \
+  --set guardianRoles="guardian:builtin:super-admin" \
   --set username="$SYS_USER_NAME" \
   --set lastname="Sysuser" \
   --set password="$SYS_USER_PW" || die
