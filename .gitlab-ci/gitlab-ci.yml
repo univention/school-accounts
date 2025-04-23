@@ -6,7 +6,7 @@ include:
   - project: univention/dist/docker-services
     file:
       - kaniko.yml
-  - project: 'univention/documentation/sphinx-docker'
+  - project: 'univention/dev/docs/sphinx-docker'
     file: 'pipeline/sphinx.yml'
 
 variables:
