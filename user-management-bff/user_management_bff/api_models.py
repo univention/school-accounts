@@ -88,6 +88,7 @@ class ListUserFixedAttributes(BaseModel):
     activated: ListUserAttribute[bool]
     schools: ListUserAttribute[list[str]]
     classes: ListUserAttribute[list[str]]
+    work_groups: ListUserAttribute[list[str]]
     roles: ListUserAttribute[list[str]]
 
 
@@ -118,6 +119,28 @@ class ListSchoolsResponse(BaseModel):
     schools: list[ListSchool]
 
 
+class ListSchoolClass(BaseModel):
+    label: str
+    value: str
+
+
+class ListWorkGroup(BaseModel):
+    label: str
+    value: str
+
+
+class ListSchoolClassesResponse(BaseModel):
+    school_classes: list[ListSchoolClass]
+
+
+class ListWorkGroupsResponse(BaseModel):
+    work_groups: list[ListWorkGroup]
+
+
+class SchoolClassesGetRequest(BaseModel):
+    school: str
+
+
 class UserCreateRequest(BaseModel):
     last_name: str
     first_name: str
@@ -127,6 +150,7 @@ class UserCreateRequest(BaseModel):
     school_classes: list[str]
     roles: list[str]
     activated: bool = True
+    work_groups: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_school_classes_for_student(self) -> "UserCreateRequest":
@@ -217,6 +241,15 @@ class SchoolClassRowAttributes(BaseModel):
     class_name: Attribute
 
 
+class WorkGroupRowAttributes(BaseModel):
+    work_group_name: Attribute
+
+
 class SchoolClassRow(BaseModel):
     id: str
     attributes: SchoolClassRowAttributes
+
+
+class WorkGroupRow(BaseModel):
+    id: str
+    attributes: WorkGroupRowAttributes

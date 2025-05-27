@@ -18,6 +18,7 @@ class TestUserCreateRequest:
             roles=[Role.TEACHER],
             disabled=False,
             school_classes=[],
+            work_groups=[],
             school="school1",
         )
         with pytest.raises(ValidationError) as e:
@@ -29,6 +30,7 @@ class TestUserCreateRequest:
                 roles=[Role.STUDENT],
                 disabled=False,
                 school_classes=[],
+                work_groups=[],
                 school="school1",
             )
         e.match("Value error, A student must be member of at least one school class.")

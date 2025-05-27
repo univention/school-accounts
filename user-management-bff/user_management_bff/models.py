@@ -26,6 +26,7 @@ class UserAttributes(BaseModel):
     disabled: bool
     schools: list[str]
     school_classes: dict[str, list[str]]
+    work_groups: dict[str, list[str]]
     roles: list[str]
     password: str | None = None
     email: str | None = None
@@ -46,15 +47,24 @@ class School(BaseModel):
 class SchoolClass(BaseModel):
     id: str
     display_name: str
+    school: str
+
+
+class WorkGroup(SchoolClass):
+    pass
 
 
 class UsersGetRequest(BaseModel):
     school: str
+    school_classes: list[str]
+    work_groups: list[str]
 
 
 class TargetObjectType(StrEnum):
     SCHOOL = auto()
     USER = auto()
+    SCHOOL_CLASS = auto()
+    WORK_GROUP = auto()
 
 
 class TargetObject(BaseModel):
@@ -71,12 +81,14 @@ class Target(BaseModel):
 class Permission(StrEnum):
     create_user = "create-user"
     delete_user = "delete-user"
+    use_as_filter = "use-as-filter"  # Target can be used as a filter by actor when searching for users
     read_last_name = "read-last_name"
     read_first_name = "read-first_name"
     read_disabled = "read-disabled"
     read_activated = "read-activated"
     read_schools = "read-schools"
     read_school_classes = "read-school_classes"
+    read_work_groups = "read-work_groups"
     read_roles = "read-roles"
     read_email = "read-email"
     read_birthday = "read-birthday"
@@ -87,6 +99,7 @@ class Permission(StrEnum):
     write_activated = "write-activated"
     write_schools = "write-schools"
     write_school_classes = "write-school_classes"
+    write_work_groups = "write-work_groups"
     write_roles = "write-roles"
     write_password = "write-password"  # nosec B105
     write_email = "write-email"
@@ -107,6 +120,7 @@ class UserCreateRequest(BaseModel):
     password: str | None = None
     school: str
     school_classes: list[str]
+    work_groups: list[str]
     roles: list[Role]
     activated: bool = True
 

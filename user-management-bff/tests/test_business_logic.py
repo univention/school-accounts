@@ -65,6 +65,7 @@ def test_user_create_request_to_target():
         password="univention",
         school="school1",
         school_classes=["1a"],
+        work_groups=["w1a"],
         roles=[Role.TEACHER],
         disabled=False,
     )
@@ -80,6 +81,7 @@ def test_user_create_request_to_target():
                 password="univention",
                 schools=["school1"],
                 school_classes={"school1": ["1a"]},
+                work_groups={"school1": ["w1a"]},
                 roles=["teacher:school:school1"],
                 activated=True,
             ),

@@ -8,6 +8,8 @@ import {makeMockAddConfig, makeMockColumnsConfig, makeMockEditConfig} from '@/he
 export const mockDbData: Record<string, InMemoryDB> = {
   emptyData: {
     schoolsConfig: [],
+    schoolClassesConfig: [],
+    workGroupsConfig: [],
     columnsConfig: [],
     addFormConfig: {pages: []},
     editFormConfig: {pages: []},
@@ -25,6 +27,18 @@ export const mockDbData: Record<string, InMemoryDB> = {
         label: 'School 2',
         value: 'school2',
         permissions: [],
+      },
+    ],
+    schoolClassesConfig: [
+      {
+        label: '1a',
+        value: '1a',
+      },
+    ],
+    workGroupsConfig: [
+      {
+        label: 'Soccer Team',
+        value: 'Soccer Team',
       },
     ],
     columnsConfig: makeMockColumnsConfig(),
@@ -285,6 +299,18 @@ export const mockDbData: Record<string, InMemoryDB> = {
         label: 'School 1',
         value: 'school1',
         permissions: [],
+      },
+    ],
+    schoolClassesConfig: [
+      {
+        label: '1a',
+        value: '1a',
+      },
+    ],
+    workGroupsConfig: [
+      {
+        label: 'Soccer Team',
+        value: 'Soccer Team',
       },
     ],
     columnsConfig: makeMockColumnsConfig(),

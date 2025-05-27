@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM gitregistry.knut.univention.de/univention/components/ucs-base-image/ucs-base-520:latest
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
 LABEL description="Development image for ucsschool-users-management"
 
 # The current version used in the Guardian as of 2024-03-06
@@ -46,11 +46,11 @@ RUN apt-get update && \
     npm install --global yarn && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
     pip install poetry==1.7.1 pre-commit==3.6.0 reuse==2.1.0 python-keycloak
-ENV PROJECT_DIR "/src"
-ENV PYTHONPYCACHEPREFIX $PROJECT_DIR/.cache/cpython
-ENV POETRY_CACHE_DIR $PROJECT_DIR/.cache/pypoetry
-ENV PRE_COMMIT_HOME $PROJECT_DIR/.cache/pre-commit-home
-ENV YARN_CACHE_FOLDER $PROJECT_DIR/.cache/yarn
-ENV npm_config_cache $PROJECT_DIR/.cache/npm
-ENV PLAYWRIGHT_BROWSERS_PATH $PROJECT_DIR/.cache/ms-playwright
+ENV PROJECT_DIR="/src"
+ENV PYTHONPYCACHEPREFIX=$PROJECT_DIR/.cache/cpython
+ENV POETRY_CACHE_DIR=$PROJECT_DIR/.cache/pypoetry
+ENV PRE_COMMIT_HOME=$PROJECT_DIR/.cache/pre-commit-home
+ENV YARN_CACHE_FOLDER=$PROJECT_DIR/.cache/yarn
+ENV npm_config_cache=$PROJECT_DIR/.cache/npm
+ENV PLAYWRIGHT_BROWSERS_PATH=$PROJECT_DIR/.cache/ms-playwright
 WORKDIR $PROJECT_DIR

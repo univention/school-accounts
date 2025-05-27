@@ -17,9 +17,13 @@ export const getDataAdapter = async (): Promise<DataPort> => {
   return adapterStore.dataAdapter;
 };
 
-export const getUsers = async (school: string): Promise<Result<WrappedUsersList, string>> => {
+export const getUsers = async (
+  school: string,
+  schoolClasses: string[],
+  workGroups: string[]
+): Promise<Result<WrappedUsersList, string>> => {
   const dataAdapter = await getDataAdapter();
-  const usersResult = await dataAdapter.fetchUsers(school);
+  const usersResult = await dataAdapter.fetchUsers(school, schoolClasses, workGroups);
   return usersResult;
 };
 
@@ -35,10 +39,34 @@ export const getListViewConfig = async (): Promise<Result<ListViewConfig, string
     return columnsConfigResult;
   }
 
+  const school = schoolsConfigResult.value.schools[0].value;
+
+  const [schoolClassesConfigResult, workGroupConfigResult] = await Promise.all([
+    dataAdapter.fetchSchoolClassConfig(school),
+    dataAdapter.fetchWorkGroupConfig(school),
+  ]);
+
+  if (!schoolClassesConfigResult.ok) {
+    return schoolClassesConfigResult;
+  }
+  if (!workGroupConfigResult.ok) {
+    return workGroupConfigResult;
+  }
+
   return {
     ok: true,
     value: {
       schools: schoolsConfigResult.value.schools,
+      groups: {
+        schoolClasses: {
+          columns: schoolClassesConfigResult.value.columns,
+          rows: schoolClassesConfigResult.value.rows,
+        },
+        workGroups: {
+          columns: workGroupConfigResult.value.columns,
+          rows: workGroupConfigResult.value.rows,
+        },
+      },
       users: {
         columns: columnsConfigResult.value.columns,
       },

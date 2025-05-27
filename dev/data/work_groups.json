@@ -1,0 +1,37 @@
+{
+  "school1": [
+    "w1a",
+    "w2b"
+  ],
+  "school2": [
+    "w1a",
+    "w2b",
+    "w3c"
+  ],
+  "school3": [],
+  "school4": [
+    "w1a",
+    "w1b",
+    "w1c",
+    "w2a",
+    "w2b",
+    "w2c",
+    "w3c",
+    "w4a",
+    "w5b",
+    "w6c",
+    "w7a",
+    "w8b",
+    "w9c"
+  ],
+  "test_school1": [
+    "w1a",
+    "w2b"
+  ],
+  "test_school2": [
+    "w1a",
+    "w2b",
+    "w3c"
+  ],
+  "test_school3": []
+}

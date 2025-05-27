@@ -11,18 +11,22 @@ from .lang import _
 from .models import (
     Permission,
     School,
+    SchoolClass,
     Target,
     TargetObject,
     TargetObjectType,
     User,
     UserPatchRequest,
     UsersGetRequest,
+    WorkGroup,
 )
 from .ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
     PermissionsPort,
+    SchoolClassesGetRepresentation,
     SchoolClassesPersistencePort,
+    SchoolClassesRepresentationPort,
     SchoolsGetRepresentation,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
@@ -30,6 +34,9 @@ from .ports import (
     UsersGetRepresentation,
     UsersPersistencePort,
     UsersRepresentationPort,
+    WorkGroupsGetRepresentation,
+    WorkGroupsPersistencePort,
+    WorkGroupsRepresentationPort,
 )
 from .utils import (
     get_required_permissions_for_create_request,
@@ -48,7 +55,10 @@ async def get_actor(
         user = exc.identifier
         logger.error("Actor is not a valid UCS@school user.", actor_id=actor_id)
         raise NoSchoolUserError(
-            _(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
+            _(
+                "The logged in user '{user}' is not a valid UCS@school user.".format(user=user),
+                lang=lang,
+            ),
             identifier=exc.identifier,
         ) from exc
 
@@ -62,6 +72,24 @@ def school_to_target(school: School) -> Target:
     )
 
 
+def school_class_to_target(school_class: SchoolClass) -> Target:
+    return Target(
+        old_target=TargetObject(
+            id=school_class.id, type=TargetObjectType.SCHOOL_CLASS, attributes=school_class.model_dump()
+        ),
+        new_target=None,
+    )
+
+
+def work_group_to_target(work_group: WorkGroup) -> Target:
+    return Target(
+        old_target=TargetObject(
+            id=work_group.id, type=TargetObjectType.WORK_GROUP, attributes=work_group.model_dump()
+        ),
+        new_target=None,
+    )
+
+
 def user_create_request_to_target(user_create_request: UserCreateRequest) -> Target:
     user_attributes = user_create_request.model_dump(exclude={"school", "roles", "school_classes"})
     user_attributes["schools"] = [user_create_request.school]
@@ -69,6 +97,7 @@ def user_create_request_to_target(user_create_request: UserCreateRequest) -> Tar
         f"{role}:school:{user_create_request.school}" for role in user_create_request.roles
     ]
     user_attributes["school_classes"] = {user_create_request.school: user_create_request.school_classes}
+    user_attributes["work_groups"] = {user_create_request.school: user_create_request.work_groups}
     target = Target(
         old_target=None,
         new_target=TargetObject(
@@ -82,6 +111,7 @@ async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
     school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
     representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
     permissions_port: PermissionsPort,
     actor_id: str,
@@ -90,11 +120,15 @@ async def get_users(
 ) -> UsersGetRepresentation:
     logger.debug("Retrieving all users of a school.", actor_id=actor_id, school=request_data.school)
     actor = await get_actor(actor_id, users_get_adapter, lang)
-    users = await users_get_adapter.get_users(request_data.school)
+    users = await users_get_adapter.get_users(
+        request_data.school, request_data.school_classes, request_data.work_groups
+    )
     schools = await schools_get_adapter.get_schools()
     school_classes = defaultdict(list)
+    work_groups = defaultdict(list)
     for school in schools:
         school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
+        work_groups[school.id].extend(await work_groups_get_adapter.get_work_groups(school.id))
     permissions = await permissions_port.get_permissions(
         actor,
         [
@@ -108,7 +142,7 @@ async def get_users(
         ],
     )
     return representation_port.create_users_representation(
-        users, schools, school_classes, permissions, lang
+        users, schools, school_classes, work_groups, permissions, lang
     )
 
 
@@ -127,6 +161,52 @@ async def get_schools(
         actor, [school_to_target(school) for school in schools]
     )
     return representation_port.create_schools_representation(schools, permissions)
+
+
+async def get_school_classes(
+    schools_get_adapter: SchoolClassesPersistencePort,
+    representation_port: SchoolClassesRepresentationPort[SchoolClassesGetRepresentation],
+    permissions_port: PermissionsPort,
+    users_get_adapter: UsersPersistencePort,
+    actor_id: str,
+    school_id: str,
+    lang: str,
+) -> SchoolClassesGetRepresentation:
+    logger.debug("Retrieving all school classes.", actor_id=actor_id)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
+    school_classes = await schools_get_adapter.get_school_classes(school_id)
+    permissions = await permissions_port.get_permissions(
+        actor, [school_class_to_target(school_class) for school_class in school_classes]
+    )
+    school_classes = [
+        school_class
+        for school_class in school_classes
+        if Permission.use_as_filter in permissions[school_class.id]
+    ]
+    return representation_port.create_school_classes_representation(school_classes)
+
+
+async def get_work_groups(
+    schools_get_adapter: WorkGroupsPersistencePort,
+    representation_port: WorkGroupsRepresentationPort[WorkGroupsGetRepresentation],
+    permissions_port: PermissionsPort,
+    users_get_adapter: UsersPersistencePort,
+    actor_id: str,
+    school_id: str,
+    lang: str,
+) -> WorkGroupsGetRepresentation:
+    logger.debug("Retrieving all work groups.", actor_id=actor_id)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
+    work_groups = await schools_get_adapter.get_work_groups(school_id)
+    permissions = await permissions_port.get_permissions(
+        actor, [work_group_to_target(work_group) for work_group in work_groups]
+    )
+    work_groups = [
+        work_group
+        for work_group in work_groups
+        if Permission.use_as_filter in permissions[work_group.id]
+    ]
+    return representation_port.create_work_groups_representation(work_groups)
 
 
 async def create_user(
@@ -234,7 +314,7 @@ async def patch_user(
         )
         raise OperationNotSupportedError(
             _(
-                f"Cannot update user '{user}' in school '{school}'.",
+                "Cannot update user '{user}' in school '{school}'.".format(user=user, school=school),
                 lang=lang,
             )
         )
@@ -286,6 +366,7 @@ async def patch_user(
 async def get_user_add_config(
     schools_get_port: SchoolsPersistencePort,
     school_classes_persistence_port: SchoolClassesPersistencePort,
+    work_groups_persistence_port: WorkGroupsPersistencePort,
     representation_port: AddConfigRepresentationPort,
     school: str,
     lang: str,
@@ -297,7 +378,8 @@ async def get_user_add_config(
         logger.error("School object does not exist", school=school)
         raise ObjectNotFoundError(school)
     school_classes = await school_classes_persistence_port.get_school_classes(school)
-    return representation_port.add_config_representation(school_obj, school_classes, lang)
+    work_groups = await work_groups_persistence_port.get_work_groups(school)
+    return representation_port.add_config_representation(school_obj, school_classes, work_groups, lang)
 
 
 async def get_user_edit_config(
@@ -305,6 +387,7 @@ async def get_user_edit_config(
     user_representation_port: UsersRepresentationPort,
     schools_get_port: SchoolsPersistencePort,
     school_classes_persistence_port: SchoolClassesPersistencePort,
+    work_groups_persistence_port: WorkGroupsPersistencePort,
     representation_port: EditConfigRepresentationPort,
     permissions_port: PermissionsPort,
     actor_id: str,
@@ -348,5 +431,8 @@ async def get_user_edit_config(
         raise ObjectNotFoundError(f"{user_id}:{school}")
 
     school_classes = await school_classes_persistence_port.get_school_classes(school)
+    work_groups = await work_groups_persistence_port.get_work_groups(school)
 
-    return representation_port.edit_config_representation(user_data, school_obj, school_classes, lang)
+    return representation_port.edit_config_representation(
+        user_data, school_obj, school_classes, work_groups, lang
+    )

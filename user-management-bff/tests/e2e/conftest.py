@@ -32,7 +32,7 @@ def access_token() -> Callable[[str, str], str]:
     def wrapper(username: str, password: str) -> str:
         client = OAuth2Session(client_id="ucsschool-user-management-test", client_secret="univention")
         token = client.fetch_token(
-            "https://ucs-sso-ng.school.test/realms/ucs/protocol/openid-connect/token",
+            "https://ucs-sso-ng.ucsschool.test/realms/ucs/protocol/openid-connect/token",
             username=username,
             password=password,
         )
@@ -71,6 +71,7 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
         schools: list[str],
         roles: list[str],
         school_classes: Optional[dict[str, list[str]]] = None,
+        work_groups: Optional[dict[str, list[str]]] = None,
     ):
         first_name = faker.first_name()
         last_name = faker.last_name()
@@ -84,6 +85,7 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
                 schools=schools,
                 roles=roles,
                 school_classes=school_classes if school_classes is not None else {},
+                work_groups=work_groups if work_groups is not None else {},
                 session=session,
             )
             result = await user.save()

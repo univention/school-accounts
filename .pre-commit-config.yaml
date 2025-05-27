@@ -68,7 +68,7 @@ repos:
     - id: poetry-lock
       args: ["-C", "user-management-bff", "--check"]
 - repo: https://github.com/fsfe/reuse-tool
-  rev: v3.0.1
+  rev: v5.0.2
   hooks:
     - id: reuse
 - repo: local

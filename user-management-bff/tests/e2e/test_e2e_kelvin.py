@@ -35,6 +35,7 @@ async def test_create_user_allowed(access_token, base_url, kelvin_user_deletion,
                 "activated": {"value": True, "access": "write"},
                 "schools": {"value": ["school1"], "access": "write"},
                 "classes": {"value": [], "access": "write"},
+                "work_groups": {"value": [], "access": "write"},
                 "roles": {"value": ["teacher:school:school1"], "access": "write"},
             },
         }
@@ -112,10 +113,12 @@ async def test_create_user_not_allowed_wrong_school(access_token, base_url, get_
 @pytest.mark.asyncio
 async def test_delete_user(access_token, base_url, kelvin_user_factory):
     token = access_token("alex.admin", "univention")
-    user = await kelvin_user_factory(school="school1", schools=["school1"], roles=["teacher"])
+    user = await kelvin_user_factory(
+        school="school1", schools=["school1"], roles=["teacher"], school_classes={"school1": ["1a"]}
+    )
 
     def search_and_assert_existence(identifier: str, should_exist: bool):
-        params = {"school": "school1"}
+        params = {"school": "school1", "school_classes": "1a"}
         response = requests.get(
             f"{base_url}/bff/users", headers={"Authorization": f"Bearer {token}"}, params=params
         )
@@ -319,6 +322,7 @@ async def test_get_user_edit_config(
         "expiration_date": None,
         "roles": ["teacher"],
         "school_classes": [],
+        "work_groups": [],
         "last_name": user.lastname,
         "password": None,
     }
@@ -377,6 +381,7 @@ async def test_get_user_edit_config_empty_classes(access_token, base_url, kelvin
         "expiration_date": None,
         "roles": ["staff"],
         "school_classes": [],
+        "work_groups": [],
         "last_name": user.lastname,
         "password": None,
     }

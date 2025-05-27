@@ -3,18 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type {FetchObjectError, Result, SaveError} from '@/helpers/models/http';
-import type {AddViewConfig, EditViewConfig, ColumnsConfig, SchoolsConfig} from '@/helpers/models/config';
+import type {AddViewConfig, EditViewConfig, ColumnsConfig, SchoolsConfig, GroupConfig} from '@/helpers/models/config';
 import type {UserData, WrappedUser, WrappedUsersList} from '@/helpers/models/user';
 
 export const dataPortSetting = 'userManagementUi.adapter.dataPort';
 
 export interface DataPort {
   fetchSchoolsConfig(): Promise<Result<SchoolsConfig, string>>;
+  fetchSchoolClassConfig(school: string): Promise<Result<GroupConfig, string>>;
+  fetchWorkGroupConfig(school: string): Promise<Result<GroupConfig, string>>;
   fetchListViewConfig(): Promise<Result<ColumnsConfig, string>>;
   fetchAddViewConfig(school: string): Promise<Result<AddViewConfig, string>>;
   fetchEditViewConfig(id: string, school: string): Promise<Result<EditViewConfig, FetchObjectError>>;
 
-  fetchUsers(school: string): Promise<Result<WrappedUsersList, string>>;
+  fetchUsers(school: string, schoolClasses: string[], workGroups: string[]): Promise<Result<WrappedUsersList, string>>;
 
   createUser(school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>>;
   updateUser(id: string, school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>>;

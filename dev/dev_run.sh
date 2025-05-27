@@ -71,7 +71,7 @@ run_task() {
     -vv \
     --cov=user_management_bff \
     --cov=keycloak_provisioning \
-    -m "not e2e" \
+    -m "not e2e" $3 $4 $5 $6 $7 $8 $9  \
     .
     exit $?
   fi

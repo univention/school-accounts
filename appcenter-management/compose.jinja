@@ -5,7 +5,7 @@
 version: '3.1'
 services:
   user-management:
-    image: gitregistry.knut.univention.de/univention/ucsschool-components/user-management/ucsschool-user-management:latest
+    image: {{ IMAGE_TAG }}
     security_opt:
       - seccomp:/etc/docker/seccomp-systemd.json
     restart: unless-stopped
@@ -22,6 +22,9 @@ services:
       USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION: "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "user_management_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
+      USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_REPRESENTATION: "user_management_bff.adapters.api:FastAPISchoolClassesRepresentationAdapter"
+      USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE: "user_management_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
+      USER_MANAGEMENT__ADAPTER__WORK_GROUPS_REPRESENTATION: "user_management_bff.adapters.api:FastAPIWorkGroupsRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__EDIT_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIEditConfigRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__LIST_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIListConfigRepresentationAdapter"

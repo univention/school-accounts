@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type {Formatter, Page} from '@univention/univention-veb';
+import type {Formatter, Page, UGridRow} from '@univention/univention-veb';
 import type {GlobalAction} from '@/helpers/models/interface';
 import type {UserData} from '@/helpers/models/user';
 
@@ -16,6 +16,19 @@ export interface SchoolsConfigResponse {
   schools: SchoolConfigResponseData[];
 }
 
+export interface SchoolClassesConfigResponse {
+  school_classes: GroupConfigResponseData[];
+}
+
+export interface WorkGroupsConfigResponse {
+  work_groups: GroupConfigResponseData[];
+}
+
+export interface GroupConfigResponseData {
+  label: string;
+  value: string;
+}
+
 export interface SchoolConfigData {
   label: string;
   value: string;
@@ -24,6 +37,16 @@ export interface SchoolConfigData {
 
 export interface SchoolsConfig {
   schools: SchoolConfigData[];
+}
+
+export interface GroupConfig {
+  columns: ColumnConfigData[];
+  rows: UGridRow[];
+}
+
+export interface SchoolWorkGroupConfig {
+  columns: ColumnConfigData[];
+  rows: UGridRow[];
 }
 
 export interface ColumnConfigResponseData {

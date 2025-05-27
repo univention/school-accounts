@@ -73,6 +73,18 @@ def patch_env():
     os.environ["FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPISchoolClassesRepresentationAdapter"
+    )
+    os.environ["USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE"] = (
+        "user_management_bff.adapters.work_groups:FileWorkGroupsPersistenceAdapter"
+    )
+    os.environ["FILE_WORK_GROUPS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/work_groups.json"
+    )
+    os.environ["USER_MANAGEMENT__ADAPTER__WORK_GROUPS_REPRESENTATION"] = (
+        "user_management_bff.adapters.api:FastAPIWorkGroupsRepresentationAdapter"
+    )
     os.environ["USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
     )
@@ -114,6 +126,13 @@ def transform_user_dict_to_api_users_dict():
             for school_class in school_classes:
                 sclasses.append(f"{school_class} ({school_display_name})")
         transformed["attributes"]["classes"] = sclasses
+
+        wgroups = []
+        for school, work_groups in user_dict["attributes"]["work_groups"].items():
+            school_display_name = _school_id_to_display_name(school)
+            for work_group in work_groups:
+                wgroups.append(f"{work_group} ({school_display_name})")
+        transformed["attributes"]["work_groups"] = wgroups
 
         roles = []
         for role in transformed["attributes"]["roles"]:
@@ -173,6 +192,9 @@ def generate_user(faker):
                 schools=schools,
                 school_classes={
                     school: [faker.word() for _ in range(random.randint(1, 3))] for school in schools
+                },
+                work_groups={
+                    school: [faker.word() for _ in range(random.randint(0, 2))] for school in schools
                 },
                 roles=[
                     f"{role}:school:{school}"

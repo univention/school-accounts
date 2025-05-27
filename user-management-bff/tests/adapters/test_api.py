@@ -19,7 +19,7 @@ from user_management_bff.api_models import (
     ListUsersResponse,
     SchoolContextPermission,
 )
-from user_management_bff.models import Permission, School, SchoolClass, User, UserAttributes
+from user_management_bff.models import Permission, School, SchoolClass, User, UserAttributes, WorkGroup
 
 
 class TestFastAPIUsersRepresentationAdapter:
@@ -57,6 +57,7 @@ class TestFastAPIUsersRepresentationAdapter:
                         "roles": ["teacher:school:school1", "student:school:school2"],
                         "schools": ["school2", "school1"],
                         "school_classes": {"school1": ["1a", "2b"], "school2": ["3c"]},
+                        "work_groups": {"school1": ["w1a"]},
                         "username": "kim.klein",
                     },
                 }
@@ -71,6 +72,7 @@ class TestFastAPIUsersRepresentationAdapter:
                         "roles": ["teacher:school:school1", "student:school:school2"],
                         "schools": ["school2", "school1"],
                         "school_classes": {"school1": ["1a", "2b"]},
+                        "work_groups": {"school1": ["w1a"]},
                         "username": "kim.klein",
                     },
                 },
@@ -83,6 +85,7 @@ class TestFastAPIUsersRepresentationAdapter:
                         "roles": ["staff:school:school3"],
                         "schools": ["school3"],
                         "school_classes": {"school2": ["1a", "2b"]},
+                        "work_groups": {"school2": ["w2b"]},
                         "username": "jon.doe",
                     },
                 },
@@ -125,7 +128,16 @@ class TestFastAPIUsersRepresentationAdapter:
         school_classes = defaultdict(list)
         for user in users:
             for school, classes in user.attributes.school_classes.items():
-                school_classes[school].extend(SchoolClass(id=sc, display_name=sc) for sc in classes)
+                school_classes[school].extend(
+                    SchoolClass(id=sc, display_name=sc, school=school) for sc in classes
+                )
+
+        work_groups = defaultdict(list)
+        for user in users:
+            for school, wgroups in user.attributes.work_groups.items():
+                work_groups[school].extend(
+                    WorkGroup(id=wg, display_name=wg, school=school) for wg in wgroups
+                )
 
         result = adapter.create_users_representation(
             users=users,
@@ -134,6 +146,7 @@ class TestFastAPIUsersRepresentationAdapter:
                 for user_values in values
             },
             school_classes=school_classes,
+            work_groups=work_groups,
             schools=schools,
             lang=None,
         )

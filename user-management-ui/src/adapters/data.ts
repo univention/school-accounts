@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import i18next from 'i18next';
-import type {AuthenticationPort, Field, Fieldset, Page} from '@univention/univention-veb';
+import type {AuthenticationPort, Field, Fieldset, Page, UGridRow} from '@univention/univention-veb';
 import type {DataPort} from '@/ports/data';
 import {errorToString} from '@/helpers/error';
 import type {InMemoryDB} from '@/helpers/models/db';
@@ -19,8 +19,13 @@ import type {
   EditViewResponse,
   SchoolConfigData,
   SchoolsConfig,
+  GroupConfig,
+  SchoolClassesConfigResponse,
+  WorkGroupsConfigResponse,
+  GroupConfigResponseData,
   SchoolsConfigResponse,
   SchoolConfigResponseData,
+  SchoolWorkGroupConfig,
 } from '@/helpers/models/config';
 import type {
   User,
@@ -38,6 +43,8 @@ import {
   makeMockColumnsConfigResponse,
   makeMockEditConfig,
   makeMockEditConfigResponse,
+  makeMockSchoolClassesConfigResponse,
+  makeMockWorkGroupsConfigResponse,
   makeMockSchoolsConfig,
   makeMockSchoolsConfigResponse,
 } from '@/helpers/mocks/config';
@@ -54,6 +61,50 @@ class GenericDataAdapter implements DataPort {
       ok: true,
       value: {
         schools: result.value.schools.map(school => this._schoolConfigFromApi(school)),
+      },
+    };
+  }
+
+  async fetchSchoolClassConfig(school: string): Promise<Result<GroupConfig, string>> {
+    const result = await this.fetchSchoolClassesConfigRequest(school);
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: {
+        columns: [
+          {
+            label: 'Name',
+            attribute: 'name',
+            sorting: 'asc',
+            formatter: undefined,
+          },
+        ],
+        rows: result.value.school_classes.map(school_class => this._groupConfigFromApi(school_class)),
+      },
+    };
+  }
+
+  async fetchWorkGroupConfig(school: string): Promise<Result<SchoolWorkGroupConfig, string>> {
+    const result = await this.fetchWorkGroupsConfigRequest(school);
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: {
+        columns: [
+          {
+            label: 'Name',
+            attribute: 'name',
+            sorting: 'asc',
+            formatter: undefined,
+          },
+        ],
+        rows: result.value.work_groups.map(work_group => this._groupConfigFromApi(work_group)),
       },
     };
   }
@@ -91,8 +142,12 @@ class GenericDataAdapter implements DataPort {
     };
   }
 
-  async fetchUsers(school: string): Promise<Result<WrappedUsersList, string>> {
-    const result = await this.fetchUsersRequest(school);
+  async fetchUsers(
+    school: string,
+    schoolClasses: string[],
+    workGroups: string[]
+  ): Promise<Result<WrappedUsersList, string>> {
+    const result = await this.fetchUsersRequest(school, schoolClasses, workGroups);
     if (!result.ok) {
       return result;
     }
@@ -210,6 +265,13 @@ class GenericDataAdapter implements DataPort {
     };
   }
 
+  _groupConfigFromApi(schoolData: GroupConfigResponseData): UGridRow {
+    return {
+      id: schoolData.value,
+      attributes: {name: {value: schoolData.label, access: 'read'}},
+    };
+  }
+
   _listViewConfigFromApi(columnsConfigResponse: ColumnsConfigResponse): ColumnsConfig {
     columnsConfigResponse.columns.sort((a, b) => {
       return a.order - b.order;
@@ -252,6 +314,14 @@ class GenericDataAdapter implements DataPort {
     throw new Error('Not Implemented');
   }
 
+  fetchSchoolClassesConfigRequest(school: string): Promise<Result<SchoolClassesConfigResponse, string>> {
+    throw new Error(`Not Implemented. school=${school}`);
+  }
+
+  fetchWorkGroupsConfigRequest(school: string): Promise<Result<WorkGroupsConfigResponse, string>> {
+    throw new Error(`Not Implemented. school=${school}`);
+  }
+
   fetchListViewConfigRequest(): Promise<Result<ColumnsConfigResponse, string>> {
     throw new Error('Not Implemented');
   }
@@ -264,8 +334,12 @@ class GenericDataAdapter implements DataPort {
     throw new Error(`Not Implemented. id=${id} school=${school}`);
   }
 
-  fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
-    throw new Error(`Not Implemented. school=${school}`);
+  fetchUsersRequest(
+    school: string,
+    schoolClasses: string[],
+    workGroups: string[]
+  ): Promise<Result<UsersResponse, string>> {
+    throw new Error(`Not Implemented. school=${school}, schoolClass=${schoolClasses}, workGroups=${workGroups}`);
   }
 
   createUserRequest(school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
@@ -290,6 +364,8 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
 
   private _db: InMemoryDB = {
     schoolsConfig: [],
+    schoolClassesConfig: [],
+    workGroupsConfig: [],
     columnsConfig: [],
     addFormConfig: {pages: []},
     editFormConfig: {pages: []},
@@ -313,6 +389,34 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
 
   async fetchSchoolsConfigRequest(): Promise<Result<SchoolsConfigResponse, string>> {
     const response = makeMockSchoolsConfigResponse(this._db.schoolsConfig);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async fetchSchoolClassesConfigRequest(_school: string): Promise<Result<SchoolClassesConfigResponse, string>> {
+    // TODO _school not used?
+    const response = makeMockSchoolClassesConfigResponse(this._db.schoolClassesConfig);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          value: response,
+        });
+      }, this._responseTimeout);
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async fetchWorkGroupsConfigRequest(_school: string): Promise<Result<WorkGroupsConfigResponse, string>> {
+    // TODO _school not used?
+    const response = makeMockWorkGroupsConfigResponse(this._db.workGroupsConfig);
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
@@ -381,7 +485,12 @@ export class InMemoryDataAdapter extends GenericDataAdapter {
     });
   }
 
-  async fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
+  async fetchUsersRequest(
+    school: string,
+    schoolClasses: string[], // eslint-disable-line @typescript-eslint/no-unused-vars
+    workGroups: string[] // eslint-disable-line @typescript-eslint/no-unused-vars
+  ): Promise<Result<UsersResponse, string>> {
+    // TODO: include schoolClasses/workGroups in filter
     const users = this._db.users.filter(user => {
       const userSchools = user.attributes.schools.value as string[];
       return userSchools.includes(school);
@@ -573,6 +682,16 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return await this._get<SchoolsConfigResponse>('/config/schools');
   }
 
+  async fetchSchoolClassesConfigRequest(school: string): Promise<Result<SchoolClassesConfigResponse, string>> {
+    const schoolParam = encodeURIComponent(school);
+    return await this._get<SchoolClassesConfigResponse>(`/config/school_classes?school=${schoolParam}`);
+  }
+
+  async fetchWorkGroupsConfigRequest(school: string): Promise<Result<WorkGroupsConfigResponse, string>> {
+    const schoolParam = encodeURIComponent(school);
+    return await this._get<WorkGroupsConfigResponse>(`/config/work_groups?school=${schoolParam}`);
+  }
+
   async fetchListViewConfigRequest(): Promise<Result<ColumnsConfigResponse, string>> {
     return await this._get<ColumnsConfigResponse>('/config/users/list');
   }
@@ -597,8 +716,23 @@ export class ApiDataAdapter extends GenericDataAdapter {
     return result;
   }
 
-  async fetchUsersRequest(school: string): Promise<Result<UsersResponse, string>> {
-    return await this._get<UsersResponse>(`/users?school=${school}`);
+  async fetchUsersRequest(
+    school: string,
+    schoolClasses: string[],
+    workGroups: string[]
+  ): Promise<Result<UsersResponse, string>> {
+    let queryParameters = '';
+    if (schoolClasses) {
+      schoolClasses.forEach(schoolClass => {
+        queryParameters += `&school_classes=${schoolClass}`;
+      });
+    }
+    if (workGroups) {
+      workGroups.forEach(workGroup => {
+        queryParameters += `&work_groups=${workGroup}`;
+      });
+    }
+    return await this._get<UsersResponse>(`/users?school=${school}${queryParameters}`);
   }
 
   async createUserRequest(school: string, userData: UserData): Promise<Result<UserResponse, SaveError>> {
@@ -869,6 +1003,36 @@ export class TestDataAdapter implements DataPort {
     return await this._adapter.fetchSchoolsConfig();
   }
 
+  async fetchSchoolClassConfig(school: string): Promise<Result<GroupConfig, string>> {
+    const errResponse = this._errorResponses.get('fetchSchoolsConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchSchoolClassConfig(school);
+  }
+
+  async fetchWorkGroupConfig(school: string): Promise<Result<GroupConfig, string>> {
+    const errResponse = this._errorResponses.get('fetchSchoolsConfig');
+    if (errResponse !== undefined) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            error: errResponse,
+          });
+        }, this._responseTimeout);
+      });
+    }
+    return await this._adapter.fetchWorkGroupConfig(school);
+  }
+
   async fetchListViewConfig(): Promise<Result<ColumnsConfig, string>> {
     const errResponse = this._errorResponses.get('fetchListViewConfig');
     if (errResponse !== undefined) {
@@ -917,7 +1081,11 @@ export class TestDataAdapter implements DataPort {
     return await this._adapter.fetchEditViewConfig(id, school);
   }
 
-  async fetchUsers(school: string): Promise<Result<WrappedUsersList, string>> {
+  async fetchUsers(
+    school: string,
+    schoolClasses: string[],
+    workGroups: string[]
+  ): Promise<Result<WrappedUsersList, string>> {
     const errResponse = this._errorResponses.get('fetchUsers');
     if (errResponse !== undefined) {
       return new Promise(resolve => {
@@ -929,7 +1097,7 @@ export class TestDataAdapter implements DataPort {
         }, this._responseTimeout);
       });
     }
-    return await this._adapter.fetchUsers(school);
+    return await this._adapter.fetchUsers(school, schoolClasses, workGroups);
   }
 
   async createUser(school: string, userData: UserData): Promise<Result<WrappedUser, SaveError>> {

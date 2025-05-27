@@ -10,6 +10,15 @@ Changelog
 
 This section lists the changes to the User Management Module.
 
+.. _release-0-2-0:
+
+0.2.0 (XXXX-XX-XX)
+==================
+
+* Add work groups as a new attribute to the list view.
+* Add school classes and work groups as filter options to the list view.
+* The capability ``teacher-set-password-students-in-same-class`` has been renamed to ``teacher-write_attribute-students-in-same-class``.
+
 .. _release-0-1-1:
 
 0.1.1 (2024-04-29)

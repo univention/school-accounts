@@ -8,12 +8,14 @@ from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
 from fastapi import Request
 
 from .api_models import EditUserResponseUser, UserCreateRequest
-from .models import Permission, School, SchoolClass, Target, User
+from .models import Permission, School, SchoolClass, Target, User, WorkGroup
 
 
 class UsersPersistencePort(ABC):
     @abstractmethod
-    async def get_users(self, school: str) -> list[User]:  # pragma: no cover
+    async def get_users(
+        self, school: str, school_classes: list[str], work_groups: list[str]
+    ) -> list[User]:  # pragma: no cover
         ...
 
     @abstractmethod
@@ -52,10 +54,20 @@ class SchoolsPersistencePort(ABC):
 
 
 class SchoolClassesPersistencePort(ABC):
+
     @abstractmethod
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         """
         This method returns all school classes of a given school.
+        """
+
+
+class WorkGroupsPersistencePort(ABC):
+
+    @abstractmethod
+    async def get_work_groups(self, school: str) -> list[WorkGroup]:
+        """
+        This method returns all work groups of a given school.
         """
 
 
@@ -70,6 +82,7 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRep
         users: list[User],
         schools: list[School],
         school_classes: dict[str, list[SchoolClass]],
+        work_groups: dict[str, list[WorkGroup]],
         permissions: dict[str, list[Permission]],
         lang: str,
     ) -> UsersGetRepresentation:  # pragma: no cover
@@ -95,6 +108,26 @@ class SchoolsRepresentationPort(ABC, Generic[SchoolsGetRepresentation]):
     def create_schools_representation(
         self, schools: list[School], permissions: dict[str, list[Permission]]
     ) -> SchoolsGetRepresentation:  # pragma: no cover
+        ...
+
+
+SchoolClassesGetRepresentation = TypeVar("SchoolClassesGetRepresentation")
+WorkGroupsGetRepresentation = TypeVar("WorkGroupsGetRepresentation")
+
+
+class SchoolClassesRepresentationPort(ABC, Generic[SchoolClassesGetRepresentation]):
+    @abstractmethod
+    def create_school_classes_representation(
+        self, school_classes: list[SchoolClass]
+    ) -> SchoolClassesGetRepresentation:  # pragma: no cover
+        ...
+
+
+class WorkGroupsRepresentationPort(ABC, Generic[WorkGroupsGetRepresentation]):
+    @abstractmethod
+    def create_work_groups_representation(
+        self, school_classes: list[WorkGroup]
+    ) -> WorkGroupsGetRepresentation:  # pragma: no cover
         ...
 
 
@@ -143,7 +176,7 @@ AddUserConfigRepresentation = TypeVar("AddUserConfigRepresentation")
 class AddConfigRepresentationPort(ABC, Generic[AddUserConfigRepresentation]):
     @abstractmethod
     def add_config_representation(
-        self, school: School, school_classes: list[SchoolClass], lang: str
+        self, school: School, school_classes: list[SchoolClass], work_groups: list[WorkGroup], lang: str
     ) -> AddUserConfigRepresentation: ...
 
 
@@ -157,5 +190,6 @@ class EditConfigRepresentationPort(ABC, Generic[EditUserConfigRepresentation, Us
         user_data: UserCreateRepresentation,
         school: School,
         school_classes: list[SchoolClass],
+        work_groups: list[WorkGroup],
         lang: str,
     ) -> EditUserConfigRepresentation: ...

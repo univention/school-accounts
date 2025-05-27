@@ -64,8 +64,8 @@ By default, a user with the role ``teacher`` has the following capabilities:
     - Read their own fields.
   * - ``teacher-read-student``
     - Read fields of students.
-  * - ``teacher-set-password-students-in-same-class``
-    - Teachers can write students passwords that are in the same class.
+  * - ``teacher-write_attribute-students-in-same-class``
+    - Teachers can write students passwords and work groups that are in the same class.
 
 Staff
 -----
@@ -135,6 +135,8 @@ to define what a user with a certain role is permitted to do in the |UASUMM|.
     - Read the ``Roles`` attribute.
   * - ``Read School Classes``
     - Read the ``School Classes`` attribute.
+  * - ``Read Work Groups``
+    - Read the ``Work Groups`` attribute.
   * - ``Read Schools``
     - Read the ``Schools`` attribute.
   * - ``Write Activated``
@@ -149,6 +151,8 @@ to define what a user with a certain role is permitted to do in the |UASUMM|.
     - Write the ``Roles`` attribute.
   * - ``Write School Classes``
     - Write the ``School Classes`` attribute.
+  * - ``Write Work Groups``
+    - Write the ``Work Groups`` attribute.
   * - ``Write Schools``
     - Write the ``Schools`` attribute.
   * - ``Write Username``
@@ -176,6 +180,8 @@ correspond, with some exceptions, to a
     - not applicable
   * - ``School Classes``
     - ``school_classes``
+  * - ``Work Groups``
+    - ``workgroups``
   * - ``Schools``
     - ``schools``
   * - ``Password``
@@ -188,7 +194,7 @@ correspond, with some exceptions, to a
 Conditions
 ==========
 
-|UASUMM| defines three new conditions:
+|UASUMM| defines four new conditions:
 
 .. _condition-action-is-creation:
 
@@ -225,6 +231,13 @@ Conditions
 
    This condition is satisfied when the actor and the target user share a school class
    in the school defined by the context of the actors role currently being evaluated.
+
+.. _condition-actor_is_in_group:
+
+.. envvar:: actor_is_in_group
+
+    This condition is satisfied if the actor is a member of the school classes or work groups
+    specified as the target object.
 
 .. _creating-a-new-role:
 

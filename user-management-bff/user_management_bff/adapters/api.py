@@ -20,6 +20,8 @@ from ..api_models import (
     FormatterChoice,
     LabeledValue,
     ListSchool,
+    ListSchoolClass,
+    ListSchoolClassesResponse,
     ListSchoolsResponse,
     ListUser,
     ListUserAttribute,
@@ -27,6 +29,8 @@ from ..api_models import (
     ListUserPermissions,
     ListUsersConfig,
     ListUsersResponse,
+    ListWorkGroup,
+    ListWorkGroupsResponse,
     PageConfig,
     RoleRow,
     RoleRowAttributes,
@@ -34,15 +38,19 @@ from ..api_models import (
     SchoolClassRowAttributes,
     SchoolContextPermission,
     WidgetType,
+    WorkGroupRow,
+    WorkGroupRowAttributes,
 )
 from ..lang import _
-from ..models import Permission, School, SchoolClass, User
+from ..models import Permission, School, SchoolClass, User, WorkGroup
 from ..ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
     ListConfigRepresentationPort,
+    SchoolClassesRepresentationPort,
     SchoolsRepresentationPort,
     UsersRepresentationPort,
+    WorkGroupsRepresentationPort,
 )
 
 
@@ -105,6 +113,17 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                     permissions,
                 )
             ),
+            work_groups=ListUserAttribute[list[str]](
+                **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                    "work_groups",
+                    [
+                        f"{school}:{work_group}"
+                        for school, wgroups in user.attributes.work_groups.items()
+                        for work_group in wgroups
+                    ],
+                    permissions,
+                )
+            ),
             schools=ListUserAttribute[list[str]](
                 **FastAPIUsersRepresentationAdapter._get_attribute_dict(
                     "schools", [school for school in user.attributes.schools], permissions
@@ -124,6 +143,7 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         permissions: set[Permission],
         schools: list[School],
         school_classes: dict[str, list[SchoolClass]],
+        work_groups: dict[str, list[WorkGroup]],
         lang: str,
     ) -> ListUserFixedAttributes:
         def _find_item_by_id(items: list[Any], item_id: str):
@@ -144,6 +164,16 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
             school_class = _find_item_by_id(school_class_objects, school_class_id)
             return f"{school_class.display_name} ({school.display_name})"
 
+        def _ui_formatted_work_groups(
+            school_objects: list[School],
+            work_group_objects: list[WorkGroup],
+            school_id: str,
+            work_group_id: str,
+        ) -> str:
+            school = _find_item_by_id(school_objects, school_id)
+            work_group = _find_item_by_id(work_group_objects, work_group_id)
+            return f"{work_group.display_name} ({school.display_name})"
+
         def _ui_formatted_role(school_objects: list[School], role: str) -> str:
             school_id = role.rsplit(":", 1)[1]
             school = _find_item_by_id(school_objects, school_id)
@@ -162,6 +192,23 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                     )
                     for school, sclasses in user.attributes.school_classes.items()
                     for school_class in sclasses
+                ],
+                permissions,
+            )
+        )
+
+        list_user_attributes.work_groups = ListUserAttribute[list[str]](
+            **FastAPIUsersRepresentationAdapter._get_attribute_dict(
+                "work_groups",
+                [
+                    _ui_formatted_work_groups(
+                        school_objects=schools,
+                        work_group_objects=work_groups[school],
+                        school_id=school,
+                        work_group_id=work_group,
+                    )
+                    for school, wgroups in user.attributes.work_groups.items()
+                    for work_group in wgroups
                 ],
                 permissions,
             )
@@ -229,6 +276,7 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
         users: list[User],
         schools: list[School],
         school_classes: dict[str, list[SchoolClass]],
+        work_groups: dict[str, list[WorkGroup]],
         permissions: dict[str, list[Permission]],
         lang: str,
     ) -> ListUsersResponse:
@@ -257,6 +305,7 @@ class FastAPIUsersRepresentationAdapter(UsersRepresentationPort[ListUsersRespons
                     permissions=set(user_permissions),
                     schools=schools,
                     school_classes=school_classes,
+                    work_groups=work_groups,
                     lang=lang,
                 )
                 list_users.append(list_user)
@@ -298,6 +347,30 @@ class FastAPISchoolsRepresentationAdapter(SchoolsRepresentationPort[ListSchoolsR
         return ListSchoolsResponse(schools=list_schools)
 
 
+class FastAPISchoolClassesRepresentationAdapter(
+    SchoolClassesRepresentationPort[ListSchoolClassesResponse]
+):
+    def create_school_classes_representation(
+        self, school_classes: list[SchoolClass]
+    ) -> ListSchoolClassesResponse:
+        sorted_school_classes = sorted(school_classes, key=lambda x: x.display_name)
+        list_school_classes = [
+            ListSchoolClass(label=school_class.display_name, value=school_class.id)
+            for school_class in sorted_school_classes
+        ]
+        return ListSchoolClassesResponse(school_classes=list_school_classes)
+
+
+class FastAPIWorkGroupsRepresentationAdapter(WorkGroupsRepresentationPort[ListWorkGroupsResponse]):
+    def create_work_groups_representation(self, work_groups: list[WorkGroup]) -> ListWorkGroupsResponse:
+        sorted_work_groups = sorted(work_groups, key=lambda x: x.display_name)
+        list_work_groups = [
+            ListWorkGroup(label=work_group.display_name, value=work_group.id)
+            for work_group in sorted_work_groups
+        ]
+        return ListWorkGroupsResponse(work_groups=list_work_groups)
+
+
 class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUsersConfig]):
     def list_config_representation(self, lang: str = "en"):
         return ListUsersConfig(
@@ -336,12 +409,20 @@ class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUs
                     order=4,
                 ),
                 ColumnConfig(
+                    label=_("Work Groups", lang=lang),
+                    attribute="work_groups",
+                    formatter=Formatter(
+                        type=FormatterChoice.LIST,
+                    ),
+                    order=5,
+                ),
+                ColumnConfig(
                     label=_("Schools", lang=lang),
                     attribute="schools",
                     formatter=Formatter(
                         type=FormatterChoice.LIST,
                     ),
-                    order=5,
+                    order=6,
                 ),
                 ColumnConfig(
                     label=_("Activated", lang=lang),
@@ -349,7 +430,7 @@ class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUs
                     formatter=Formatter(
                         type=FormatterChoice.BOOLEAN,
                     ),
-                    order=6,
+                    order=7,
                 ),
             ],
         )
@@ -357,7 +438,7 @@ class FastAPIListConfigRepresentationAdapter(ListConfigRepresentationPort[ListUs
 
 class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsersConfig]):
     def add_config_representation(
-        self, school: School, school_classes: list[SchoolClass], lang: str
+        self, school: School, school_classes: list[SchoolClass], work_groups: list[WorkGroup], lang: str
     ) -> AddUsersConfig:
         return AddUsersConfig(
             pages=[
@@ -459,6 +540,35 @@ class FastAPIAddConfigRepresentationAdapter(AddConfigRepresentationPort[AddUsers
                                 FieldsetRow(
                                     type=WidgetType.UMultiSelect,
                                     props=dict(
+                                        label=_("Work Groups", lang=lang),
+                                        name="work_groups",
+                                        description=_("Work groups of the user", lang=lang),
+                                        required=False,
+                                        access=AttributeAccess.WRITE,
+                                        columns=[
+                                            ColumnConfig(
+                                                label=_("Work group", lang=lang),
+                                                attribute="work_group_name",
+                                                order=0,
+                                            )
+                                        ],
+                                        rows=[
+                                            WorkGroupRow(
+                                                id=work_group.id,
+                                                attributes=WorkGroupRowAttributes(
+                                                    work_group_name=Attribute(
+                                                        value=work_group.display_name,
+                                                        access=AttributeAccess.READ,
+                                                    )
+                                                ),
+                                            )
+                                            for work_group in work_groups
+                                        ],
+                                    ),
+                                ),
+                                FieldsetRow(
+                                    type=WidgetType.UMultiSelect,
+                                    props=dict(
                                         label=_("Roles", lang=lang),
                                         name="roles",
                                         description=_("Roles of the user", lang=lang),
@@ -519,6 +629,7 @@ class FastAPIEditConfigRepresentationAdapter(
         user_data: EditUserResponseUser,
         school: School,
         school_classes: list[SchoolClass],
+        work_groups: list[WorkGroup],
         lang: str,
     ) -> EditUsersConfig:
         user = {key: value.value for key, value in dict(user_data.attributes).items()}
@@ -669,6 +780,35 @@ class FastAPIEditConfigRepresentationAdapter(
                                                 ),
                                             )
                                             for school_class in school_classes
+                                        ],
+                                    ),
+                                ),
+                                FieldsetRow(
+                                    type=WidgetType.UMultiSelect,
+                                    props=dict(
+                                        label=_("Work Groups", lang=lang),
+                                        name="work_groups",
+                                        description=_("Work groups of the user", lang=lang),
+                                        required=False,
+                                        access=AttributeAccess.WRITE,
+                                        columns=[
+                                            ColumnConfig(
+                                                label=_("Work group", lang=lang),
+                                                attribute="work_group_name",
+                                                order=0,
+                                            )
+                                        ],
+                                        rows=[
+                                            WorkGroupRow(
+                                                id=work_group.id,
+                                                attributes=WorkGroupRowAttributes(
+                                                    work_group_name=Attribute(
+                                                        value=work_group.display_name,
+                                                        access=AttributeAccess.READ,
+                                                    )
+                                                ),
+                                            )
+                                            for work_group in work_groups
                                         ],
                                     ),
                                 ),

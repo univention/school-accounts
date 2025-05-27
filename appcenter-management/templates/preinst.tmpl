@@ -40,6 +40,18 @@ cat <<%EOF >"$action_is_creation_rego_path"
 %EOF
 chmod 644 $action_is_creation_rego_path
 
+actor_is_in_group_info_path=$CONDITIONS_DIR/actor_is_in_group.json
+cat <<%EOF >"$actor_is_in_group_info_path"
+%ACTOR_IS_IN_GROUP_INFO%
+%EOF
+chmod 644 $actor_is_in_group_info_path
+
+actor_is_in_group_rego_path=$CONDITIONS_DIR/actor_is_in_group.rego
+cat <<%EOF >"$actor_is_in_group_rego_path"
+%ACTOR_IS_IN_GROUP_REGO%
+%EOF
+chmod 644 $actor_is_in_group_rego_path
+
 target_will_be_in_same_school_only_info_path=$CONDITIONS_DIR/target_will_be_in_same_school_only.json
 cat <<%EOF >"$target_will_be_in_same_school_only_info_path"
 %TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%

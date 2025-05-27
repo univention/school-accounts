@@ -223,6 +223,20 @@ Copyright (C) 2024 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 ```
 
+#### Running unit tests for the Backend
+
+You can run the unit tests for the backend with:
+
+```shell
+dev/dev_run.sh task pytest
+```
+
+It is also possible to pass additional arguments (limited to 7 arguments!) to pytest, e.g. to use the PDB on errors:
+
+```shell
+dev/dev_run.sh task pytest --pdb
+```
+
 #### Running e2e tests for the Backend
 
 The e2e tests are designed to run against the environment that is created by the integration-test pipeline job.
@@ -233,23 +247,23 @@ This way you have access to the setup after the job is done.
 You can run the e2e tests for the backend with:
 
 ```shell
-E2E_BASE_URL="https://primary.school.test/univention/ucsschool/user-management" \
-E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.school.test/guardian/management" \
-E2E_KELVIN_URL="primary.school.test" \
+E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
+E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.ucsschool.test/guardian/management" \
+E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
 ```
 
 Make sure that the domain names can be resolved. This can be achieved by entering the following into your `/etc/hosts`:
 
 ```text
-IP_PRIMARY ucs-sso-ng.school.test ucs-sso.school.test primary.school.test
-IP_BACKUP backup1.school.test
+IP_PRIMARY ucs-sso-ng.ucsschool.test ucs-sso.ucsschool.test primary.ucsschool.test
+IP_BACKUP backup1.ucsschool.test
 ```
 
 Make sure that the ssl certificate from the UCS domain is also downloaded and set in the .env file.
 
 ```shell
-curl -o dev/local/ucs-root-ca.crt http://primary.school.test/ucs-root-ca.crt
+curl -o dev/local/ucs-root-ca.crt http://primary.ucsschool.test/ucs-root-ca.crt
 ```
 
 Uncomment the following lines in the `.env` file:

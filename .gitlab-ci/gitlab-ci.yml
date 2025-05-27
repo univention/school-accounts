@@ -3,17 +3,31 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 include:
-  - project: univention/dist/docker-services
+  - project: univention/infrastructure/docker-services
     file:
       - kaniko.yml
   - project: 'univention/dev/docs/sphinx-docker'
     file: 'pipeline/sphinx.yml'
+  - project: univention/internal/ucsschool-ci-utils
+    file: fragments/openstack.yaml
+  - component: $CI_SERVER_FQDN/univention/internal/ucsschool-ci-utils/app-release@2
+    inputs:
+      app_id: "ucsschool-user-management"
+      mail_sender: "ucsschool-maintainers@univention.de"
+      author_alias: "UCS@school Team"
+      changelog_link: "https://docs.software-univention.de/ucsschool-user-management-module/${APP_VERSION}/changelog.html"
+      mail_recipient: "app-announcement@univention.de"
+      chat_destination: "#ucsschool"
+      ucs_base_version: "5.0"
+      additional_update_appcenter_needs:
+        - job: build_docker_image_user_management
+        - job: build_appcenter_files
+      appcenter_file_dir: "__appcenter/"
+      release_tag_prefix: "release-"
 
 variables:
-  APPCENTER_CONTROL_IMAGE: "docker-registry.knut.univention.de/knut/univention-appcenter-control"
-  IMAGE_UCS_EC2_TOOLS: "docker-registry.knut.univention.de/ucs-ec2-tools"
   POETRY_VERSION: "1.7.1"
-  DOC_TARGET_VERSION: "0.1.1"
+  DOC_TARGET_VERSION: "0.2.0"
   DOC_TARGET_NAME: "ucsschool-user-management-module"
   DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
   DOCS_DIR: "docs/$DOC_TARGET_NAME"
@@ -29,11 +43,12 @@ stages:
   - prepare
   - test
   - lint
-  - publish
   - build
+  - release
   - merge
   - production
   - integration_test
+  - cleanup
 
 build_dev_image:
   stage: prepare
@@ -44,6 +59,16 @@ build_dev_image:
     IMAGE_TAG: $DEV_IMAGE_TAG
     KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME/cache
 
+build_appcenter_files:
+  stage: prepare
+  script:
+    - cd appcenter-management
+    - ./scripts/generate-preinst
+    - mkdir ../__appcenter
+    - cp compose.jinja configure_host inst ini.jinja preinst README_UPDATE_DE README_UPDATE_EN settings uinst ../__appcenter
+  artifacts:
+    paths:
+      - __appcenter
 
 run_pre-commit:
   stage: lint
@@ -58,26 +83,32 @@ run_pre-commit:
   script:
     - pre-commit run -a
 
-
 bff-test:
   stage: test
   needs: [build_dev_image]
   image: $DEV_IMAGE_TAG
+  variables:
+    BFF_COVERAGE_LIMIT: "100"
   before_script:
     - ./user-management-bff/scripts/test_setup.sh
-  script:
-    - poetry run --directory user-management-bff/ pytest -vv -m "not e2e" --junitxml=report.xml user-management-bff/
+    - pip install poetry=="$POETRY_VERSION"
+    - poetry config --directory user-management-bff/ --local virtualenvs.create false
+    - poetry install --directory user-management-bff/
   rules:
-    - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
-      when: never
-    - if: "$CI_COMMIT_MESSAGE =~ /force-build/ || $pipeline =~ /force-build/"
+    - when: manual
+      allow_failure: true
     - changes:
         - user-management-bff/**/*
         - user-management-ui/**/*
+  script:
+    - poetry run --directory user-management-bff/ pytest -vv -m "not e2e" --junitxml=report.xml --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
       junit: report.xml
-
 
 ui-test:
   stage: test
@@ -113,14 +144,23 @@ ui-test:
     expose_as: "Playwright report"
     when: always
 
+repo_tar:
+  stage: prepare
+  image: $EC2_TOOLS_IMAGE
+  script:
+    - git archive --format=tar --prefix user-management/ --output user-management.tar HEAD
+  artifacts:
+    paths:
+      - user-management.tar
 
 integration-tests:
   stage: integration_test
+  extends: .run_openstack_cfg
   timeout: 2h
   needs:
-    - job: build_docker_image_user_management
-      optional: true
-      artifacts: true
+    - job: repo_tar
+    - job: create_app_version
+    - job: update_appcenter
   rules:
     - changes:
         - user-management-bff/**/*
@@ -131,42 +171,21 @@ integration-tests:
       allow_failure: true
     - when: manual
       allow_failure: true
-  image: $IMAGE_UCS_EC2_TOOLS
   variables:
-    TARGET_VERSION: "5.0-9"
-    KVM_SERVER: "soft-test03.knut.univention.de"
-    UCS_UTILS_URL: "https://git.knut.univention.de/univention/ucs/-/raw/5.2-0/test/utils/"
-  before_script:
-    - mkdir -p /var/log/
-    - touch /var/log/alternatives.log
-    - apt-get update && apt-get install -y curl git
-    - git archive --format=tar --prefix user-management/ --output user-management.tar HEAD
-    - cd dev/tests/
-    - mkdir utils
-    - curl -o utils/utils.sh "$UCS_UTILS_URL/utils.sh"
-    - curl -o utils/utils-local.sh "$UCS_UTILS_URL/utils-local.sh"
-    - chmod +x utils/utils-local.sh
-    - mkdir ~/.ssh/
-    - mkdir -p ~/ec2/keys
-    - cp "$SSH_PRIVATE_KEY_BUILD" ~/.ssh/id_rsa
-    - cp "$SSH_PRIVATE_KEY_TECH" ~/ec2/keys/tech.pem
-    - chmod 0600 ~/.ssh/id_rsa
-    - chmod 0600 ~/ec2/keys/tech.pem
-  script:
-    - env --chdir ../../appcenter-management/ ./scripts/generate-preinst
-    - if [ -z ${NO_HALT+x} ]; then ucs-kvm-create -t -c integration_tests.cfg; else ucs-kvm-create -c integration_tests.cfg; fi
-    - test -e COMMAND_SUCCESS
+    TARGET_VERSION: "5.2-1"
+    OPENSTACK_CFG_FILE: "dev/tests/integration_tests.cfg"
+    PACKAGES_TO_INSTALL: ""
+    UCSSCHOOL_USER_MANAGEMENT_VERSION: $APP_VERSION
+    SSH_KEY: $SSH_PRIVATE_KEY_TECH
   artifacts:
     when: always
     paths:
-      - dev/tests/primary_join.log
-      - dev/tests/backup1_join.log
-      - dev/tests/*playwright-report
-      - dev/tests/*_producttest_traces
-      - dev/tests/*_kelvin_http.log
+      - primary_join.log
+      - "*playwright-report"
+      - "*_producttest_traces"
+      - "*_kelvin_http.log"
     reports:
-      junit: dev/tests/*junit.xml
-
+      junit: "*junit.xml"
 
 bff-coverage:
   extends: bff-test
@@ -189,9 +208,12 @@ bff-coverage:
 build_docker_image_user_management:
   stage: prepare
   rules:
-    - changes:
-        - user-management-bff/**/*
-        - user-management-ui/**/*
+    - if: "$CI_COMMIT_TAG"
+      variables:
+        REGISTRY: "artifacts.software-univention.de"
+        REGISTRY_IMAGE: "$REGISTRY/ucsschool/ucsschool-user-management"
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   extends: .kaniko
   variables:
     KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/"
@@ -250,24 +272,3 @@ docs-create-production-merge-request:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       changes:
       - docs/**/*
-
-user_management_app_to_test_appcenter:
-  stage: publish
-  variables:
-    APP_ID: "ucsschool-user-management"
-    APP_DIR: "appcenter-management"
-    APP_NAME: "5.0/$APP_ID"
-  image: $APPCENTER_CONTROL_IMAGE
-  needs: []
-  script:
-    - cd "$APP_DIR"
-    - APP_VERSION="$(sed -n 's/^Version\s*=\s*//p' ini)"
-    - echo "updating $APP_NAME=$APP_VERSION"
-    - ./scripts/generate-preinst
-    - univention-appcenter-control upload "$APP_NAME=$APP_VERSION" compose configure_host inst ini preinst README_UPDATE_DE README_UPDATE_EN settings uinst
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-        - $APP_DIR/**/*
-    - when: manual
-  allow_failure: true

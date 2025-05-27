@@ -22,6 +22,11 @@ export interface UsersResponse {
   users: UserResponseData[];
 }
 
+export interface SchoolClass {
+  id: string;
+  attributes: Record<string, Attribute>;
+}
+
 export interface User {
   id: string;
   attributes: Record<string, Attribute>;

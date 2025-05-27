@@ -92,10 +92,22 @@
     "header": "Users (schools)",
     "searchForm": {
       "school": {
-        "description": "Choose a school to see available users.",
+        "description": "Choose a school to see available users. This is a required search setting.",
         "label": "School:"
       },
-      "searchButton.label": "Search"
+      "schoolClasses": {
+        "description": "Filter search results by one or more school classes.",
+        "label": "School classes:"
+      },
+      "school_classes": {
+        "description": "Filter search results by one or more school classes.",
+        "label": "School classes:"
+      },
+      "searchButton.label": "Filter",
+      "workGroups": {
+        "description": "Filter search results by one or more work groups.",
+        "label": "Work groups:"
+      }
     },
     "subheader": "Management of school users"
   },

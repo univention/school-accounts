@@ -32,19 +32,24 @@ from .routes import router
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
-    await configure_logger()
-    configure_registry(ADAPTER_REGISTRY)
+    try:
+        await configure_logger()
+        configure_registry(ADAPTER_REGISTRY)
 
-    settings_port: AsyncAdapterSettingsProvider = await ADAPTER_REGISTRY.request_port(
-        AsyncAdapterSettingsProvider
-    )
-    await configure_logger(settings_port)
+        settings_port: AsyncAdapterSettingsProvider = await ADAPTER_REGISTRY.request_port(
+            AsyncAdapterSettingsProvider
+        )
+        await configure_logger(settings_port)
 
-    await initialize_adapters(ADAPTER_REGISTRY)
-    auth_adapter = await ADAPTER_REGISTRY.request_port(FastAPIAuthenticationPort)
-    fastapi_app.include_router(
-        router, dependencies=[Depends(await auth_adapter.get_authentication_dependency())]
-    )
+        await initialize_adapters(ADAPTER_REGISTRY)
+        auth_adapter = await ADAPTER_REGISTRY.request_port(FastAPIAuthenticationPort)
+        fastapi_app.include_router(
+            router, dependencies=[Depends(await auth_adapter.get_authentication_dependency())]
+        )
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
     yield
 
 

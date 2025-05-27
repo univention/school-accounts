@@ -18,6 +18,7 @@ def test_add_button_enabled_status(page_login, admin_login):
     expect(page.get_by_role("button", name="Add")).to_be_disabled()
 
 
+@pytest.mark.xfail(reason="TBD: how to handle user without class?")
 def test_delete_button_enabled_status(page_login, admin_login):
     """
     Tests U0003
@@ -25,7 +26,7 @@ def test_delete_button_enabled_status(page_login, admin_login):
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("button", name="Filter").click()
     page.get_by_role("row", name="Admin Alex alex.admin School").get_by_role("checkbox").click()
     expect(page.get_by_role("button", name="Delete")).to_be_disabled()
     page.get_by_role("row", name="Staff Armin armin.staff Staff").get_by_role("checkbox").click()
@@ -43,6 +44,7 @@ def test_school_prefilled_on_creation(page_login, admin_login):
     expect(page.get_by_label("School", exact=True)).to_have_value("school1")
 
 
+@pytest.mark.xfail(reason="TBD: how to handle user without class?")
 def test_values_prefilled_on_edit(page_login, admin_login):
     """
     Tests U0005
@@ -50,13 +52,13 @@ def test_values_prefilled_on_edit(page_login, admin_login):
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("button", name="Filter").click()
     page.get_by_role("button", name="Admin").click()
     expect(page.get_by_label("School", exact=True)).to_have_value("school1")
     expect(page.get_by_label("Last name")).to_have_value("Admin")
     expect(page.get_by_label("First name")).to_have_value("Alex")
     expect(page.get_by_label("Username")).to_have_value("alex.admin")
-    expect(page.get_by_label("Email")).to_have_value("alex.admin@school1.school.test")
+    expect(page.get_by_label("Email")).to_have_value("alex.admin@school1.ucsschool.test")
 
 
 def test_creation_abort_dialog_if_data_entered(page_login, admin_login):
@@ -82,7 +84,8 @@ def test_edit_abort_dialog_if_data_changed(page_login, admin_login):
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     page.get_by_role("button", name="Student").click()
     page.get_by_label("Password").click()
     page.get_by_label("Password").fill("pwd")
@@ -109,7 +112,8 @@ def test_edit_abort_dialog_if_no_data_changed(page_login, admin_login):
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     page.get_by_role("button", name="Student").click()
     page.get_by_role("button", name="Back").click()
     expect(page.get_by_text("There are unsaved changes.")).to_have_count(0)

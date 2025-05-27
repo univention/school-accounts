@@ -95,7 +95,19 @@
         "description": "W\u00e4hle eine Schule aus, um verf\u00fcgbare Benutzer zu sehen.",
         "label": "Schule:"
       },
-      "searchButton.label": "Suchen"
+      "schoolClasses": {
+        "description": "Suchergebnisse nach einer oder mehreren Klassen filtern.",
+        "label": "Schulklassen:"
+      },
+      "school_classes": {
+        "description": "Suchergebnisse nach einer oder mehreren Klassen filtern.",
+        "label": "Schulklassen:"
+      },
+      "searchButton.label": "Filtern",
+      "workGroups": {
+        "description": "Suchergebnisse nach einer oder mehreren Arbeitsgruppen filtern.",
+        "label": "Arbeitsgruppen:"
+      }
     },
     "subheader": "Verwaltung von Schulbenutzern"
   },

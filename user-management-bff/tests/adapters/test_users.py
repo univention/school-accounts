@@ -41,6 +41,7 @@ class TestKelvinUsersPersistenceAdapter:
             kelvin_user.firstname = user_data["attributes"]["first_name"]
             kelvin_user.schools = user_data["attributes"]["schools"]
             kelvin_user.school_classes = user_data["attributes"]["school_classes"]
+            kelvin_user.workgroups = user_data["attributes"]["work_groups"]
             kelvin_user.ucsschool_roles = user_data["attributes"]["roles"]
             kelvin_user.disabled = user_data["attributes"]["disabled"]
             kelvin_user.email = user_data["attributes"].get("email", None)
@@ -78,6 +79,7 @@ class TestKelvinUsersPersistenceAdapter:
                     "schools": ["test_school1"],
                     "school_classes": {"test_school1": ["1a", "2b"]},
                     "username": "test_user1",
+                    "work_groups": {"test_school1": ["w1a"]},
                 },
                 "id": "test_user1",
             }
@@ -100,6 +102,7 @@ class TestKelvinUsersPersistenceAdapter:
                     "schools": ["test_school1"],
                     "school_classes": None,
                     "username": "test_user1",
+                    "work_groups": {},
                 },
                 "id": "test_user1",
             }
@@ -126,6 +129,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "roles": ["teacher:school:test_school1"],
                         "schools": ["test_school1"],
                         "school_classes": {"test_school1": ["1a", "2b"]},
+                        "work_groups": {},
                         "username": "test_user1",
                     },
                     "id": "test_user1",
@@ -140,6 +144,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "roles": ["teacher:school:test_school1"],
                         "schools": ["test_school1"],
                         "school_classes": {"test_school1": ["1a", "2b"]},
+                        "work_groups": {"test_school1": ["w1a"]},
                         "username": "test_user1",
                     },
                     "id": "test_user1",
@@ -152,6 +157,7 @@ class TestKelvinUsersPersistenceAdapter:
                         "roles": ["teacher:school:test_school2"],
                         "schools": ["test_school2"],
                         "school_classes": {"test_school2": ["1a", "2b"]},
+                        "work_groups": {"test_school2": ["w1a"]},
                         "username": "test_user2",
                     },
                     "id": "test_user2",
@@ -171,7 +177,7 @@ class TestKelvinUsersPersistenceAdapter:
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
-        result = await adapter.get_users("school1")
+        result = await adapter.get_users("school1", school_classes=None, work_groups=None)
         assert result == [
             User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
             for user_data in input_data
@@ -188,6 +194,7 @@ class TestKelvinUsersPersistenceAdapter:
                     "roles": ["teacher:school:test_school1"],
                     "schools": ["test_school1"],
                     "school_classes": {"test_school1": ["1a", "2b"]},
+                    "work_groups": {},
                     "username": "test_user1",
                 },
                 "id": "test_user1",
@@ -235,6 +242,7 @@ class TestKelvinUsersPersistenceAdapter:
                 activated=True,
                 school="school1",
                 school_classes=["1a", "2b"],
+                work_groups=["w1a"],
                 roles=["teacher"],
                 password="univention",
             )
@@ -249,6 +257,7 @@ class TestKelvinUsersPersistenceAdapter:
                 disabled=False,
                 schools=["school1"],
                 school_classes={"school1": ["1a", "2b"]},
+                work_groups={"school1": ["w1a"]},
                 roles=["teacher:school:school1"],
                 password=None,
             ),
@@ -267,6 +276,7 @@ class TestKelvinUsersPersistenceAdapter:
                     activated=True,
                     school="school1",
                     school_classes=["1a", "2b"],
+                    work_groups=["w1a"],
                     roles=["teacher"],
                     password="univention",
                 )
@@ -430,6 +440,7 @@ class TestKelvinUsersPersistenceAdapterIntegration:
                 activated=False,
                 school="school1",
                 school_classes=[],
+                work_groups=[],
                 roles=["teacher"],
                 password="univention1234567890",
             )
@@ -444,6 +455,7 @@ class TestKelvinUsersPersistenceAdapterIntegration:
                 disabled=True,
                 schools=["school1"],
                 school_classes={},
+                work_groups={},
                 roles=["teacher:school:school1"],
             ),
         )
@@ -479,11 +491,13 @@ class TestFileUsersPersistenceAdapter:
         assert adapter._data == data
 
     @pytest.mark.parametrize(
-        "school,expected_users",
+        "school,school_classes,work_groups,expected_users",
         [
-            ("NON_EXISTENT", []),
+            ("NON_EXISTENT", [], [], []),
             (
                 "test_school1",
+                [],
+                [],
                 [
                     {
                         "attributes": {
@@ -494,6 +508,7 @@ class TestFileUsersPersistenceAdapter:
                             "schools": ["test_school1"],
                             "school_classes": {"test_school1": ["1a", "2b"]},
                             "username": "firstname.lastname",
+                            "work_groups": {},
                         },
                         "id": "test_user1",
                     },
@@ -506,6 +521,7 @@ class TestFileUsersPersistenceAdapter:
                             "school_classes": {"test_school1": ["1a"]},
                             "schools": ["test_school1"],
                             "username": "firstname4.lastname4",
+                            "work_groups": {},
                         },
                         "id": "test_user4",
                     },
@@ -513,6 +529,8 @@ class TestFileUsersPersistenceAdapter:
             ),
             (
                 "test_school2",
+                [],
+                [],
                 [
                     {
                         "attributes": {
@@ -523,6 +541,7 @@ class TestFileUsersPersistenceAdapter:
                             "schools": ["test_school2"],
                             "school_classes": {"test_school2": ["1a", "2b"]},
                             "username": "firstname2.lastname2",
+                            "work_groups": {"test_school2": ["w1a"]},
                         },
                         "id": "test_user2",
                     },
@@ -538,17 +557,99 @@ class TestFileUsersPersistenceAdapter:
                             "schools": ["test_school2", "test_school3"],
                             "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
                             "username": "firstname3.lastname3",
+                            "work_groups": {},
                         },
                         "id": "test_user3",
+                    },
+                ],
+            ),
+            (
+                "test_school2",
+                None,
+                None,
+                [
+                    {
+                        "attributes": {
+                            "disabled": False,
+                            "first_name": "firstname2",
+                            "last_name": "lastname2",
+                            "roles": ["teacher:school:test_school2"],
+                            "schools": ["test_school2"],
+                            "school_classes": {"test_school2": ["1a", "2b"]},
+                            "username": "firstname2.lastname2",
+                            "work_groups": {"test_school2": ["w1a"]},
+                        },
+                        "id": "test_user2",
+                    },
+                    {
+                        "attributes": {
+                            "disabled": False,
+                            "first_name": "firstname3",
+                            "last_name": "lastname3",
+                            "roles": [
+                                "teacher:school:test_school2",
+                                "student:school:test_school3",
+                            ],
+                            "schools": ["test_school2", "test_school3"],
+                            "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
+                            "username": "firstname3.lastname3",
+                            "work_groups": {},
+                        },
+                        "id": "test_user3",
+                    },
+                ],
+            ),
+            (
+                "test_school2",
+                ["3c"],
+                None,
+                [
+                    {
+                        "attributes": {
+                            "disabled": False,
+                            "first_name": "firstname3",
+                            "last_name": "lastname3",
+                            "roles": [
+                                "teacher:school:test_school2",
+                                "student:school:test_school3",
+                            ],
+                            "schools": ["test_school2", "test_school3"],
+                            "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
+                            "username": "firstname3.lastname3",
+                            "work_groups": {},
+                        },
+                        "id": "test_user3",
+                    },
+                ],
+            ),
+            (
+                "test_school2",
+                None,
+                ["w1a"],
+                [
+                    {
+                        "attributes": {
+                            "disabled": False,
+                            "first_name": "firstname2",
+                            "last_name": "lastname2",
+                            "roles": ["teacher:school:test_school2"],
+                            "schools": ["test_school2"],
+                            "school_classes": {"test_school2": ["1a", "2b"]},
+                            "username": "firstname2.lastname2",
+                            "work_groups": {"test_school2": ["w1a"]},
+                        },
+                        "id": "test_user2",
                     },
                 ],
             ),
         ],
     )
     @pytest.mark.asyncio
-    async def test_get_users(self, adapter, school, expected_users, users_json):
+    async def test_get_users_with_search_filters(
+        self, adapter, school, school_classes, work_groups, expected_users, users_json
+    ):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
-        result = await adapter.get_users(school)
+        result = await adapter.get_users(school, school_classes=school_classes, work_groups=work_groups)
         assert result == [
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
             for user in expected_users
@@ -567,6 +668,7 @@ class TestFileUsersPersistenceAdapter:
                 disabled=False,
                 schools=["school1"],
                 school_classes={"school1": ["1a", "2b"]},
+                work_groups={},
                 roles=["teacher:school:school1"],
             ),
         )
@@ -636,6 +738,7 @@ class TestFileUsersPersistenceAdapter:
             activated=False,
             school="school1",
             school_classes=[],
+            work_groups=[],
             roles=["teacher"],
             password="univention1234567890",
         )
@@ -650,6 +753,7 @@ class TestFileUsersPersistenceAdapter:
                 disabled=True,
                 schools=["school1"],
                 school_classes={"school1": []},
+                work_groups={"school1": []},
                 roles=["teacher:school:school1"],
             ),
         )

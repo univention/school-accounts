@@ -107,6 +107,7 @@ class TestGuardianPermissionsAdapter:
                 schools=[],
                 roles=[],
                 school_classes={},
+                work_groups={},
             ),
         )
 
@@ -138,6 +139,7 @@ class TestGuardianPermissionsAdapter:
                     "last_name": "User",
                     "roles": ["teacher:school:school1"],
                     "school_classes": {"school1": ["1a", "2b"]},
+                    "work_groups": {},
                     "schools": ["school1"],
                     "username": "dev",
                     "password": None,
@@ -154,6 +156,7 @@ class TestGuardianPermissionsAdapter:
                     "last_name": "lastname3",
                     "roles": ["teacher:school:test_school2", "student:school:test_school3"],
                     "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
+                    "work_groups": {},
                     "schools": ["test_school2", "test_school3"],
                     "username": "firstname3.lastname3",
                     "password": None,
@@ -248,6 +251,44 @@ class TestGuardianPermissionsAdapter:
                                 app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="school2"
                             ),
                         ),
+                    ],
+                ),
+            ),
+            (
+                TargetObject(
+                    id="ID4", attributes={"school": "school1"}, type=TargetObjectType.SCHOOL_CLASS
+                ),
+                GuardianObject(
+                    id="ID4",
+                    attributes={"school": "school1"},
+                    roles=[
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="school_class",
+                            context=Context(
+                                app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="school1"
+                            ),
+                        )
+                    ],
+                ),
+            ),
+            (
+                TargetObject(
+                    id="ID5", attributes={"school": "school1"}, type=TargetObjectType.WORK_GROUP
+                ),
+                GuardianObject(
+                    id="ID5",
+                    attributes={"school": "school1"},
+                    roles=[
+                        Role(
+                            app_name=APP_NAME,
+                            namespace_name=NAMESPACE_NAME,
+                            name="workgroup",
+                            context=Context(
+                                app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="school1"
+                            ),
+                        )
                     ],
                 ),
             ),
@@ -443,6 +484,7 @@ class TestFilePermissionsAdapter:
                 schools=[],
                 school_classes={},
                 roles=[],
+                work_groups={},
             ),
         )
         target1 = Target(old_target=TargetObject(id="ID", type="school", attributes={}), new_target=None)

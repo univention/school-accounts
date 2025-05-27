@@ -16,7 +16,12 @@
       "schools": [
         "school1"
       ],
-      "username": "max.muster"
+      "username": "max.muster",
+      "work_groups": {
+        "school1": [
+          "w1a"
+        ]
+      }
     },
     "id": "user1"
   },
@@ -37,7 +42,12 @@
       "schools": [
         "school2"
       ],
-      "username": "maria.muster"
+      "username": "maria.muster",
+      "work_groups": {
+        "school2": [
+          "w2b"
+        ]
+      }
     },
     "id": "user2"
   },
@@ -63,7 +73,15 @@
         "school2",
         "school1"
       ],
-      "username": "kim.klein"
+      "username": "kim.klein",
+      "work_groups": {
+        "school1": [
+          "w2b"
+        ],
+        "school2": [
+          "w3c"
+        ]
+      }
     },
     "id": "user3"
   },
@@ -84,7 +102,8 @@
       "schools": [
         "test_school1"
       ],
-      "username": "firstname.lastname"
+      "username": "firstname.lastname",
+      "work_groups": {}
     },
     "id": "test_user1"
   },
@@ -105,7 +124,12 @@
       "schools": [
         "test_school2"
       ],
-      "username": "firstname2.lastname2"
+      "username": "firstname2.lastname2",
+      "work_groups": {
+        "test_school2": [
+          "w1a"
+        ]
+      }
     },
     "id": "test_user2"
   },
@@ -131,13 +155,17 @@
         "test_school2",
         "test_school3"
       ],
-      "username": "firstname3.lastname3"
+      "username": "firstname3.lastname3",
+      "work_groups": {}
     },
     "id": "test_user3"
   },
   {
     "attributes": {
+      "birthday": null,
       "disabled": false,
+      "email": null,
+      "expiration_date": null,
       "first_name": "Dev",
       "last_name": "User",
       "password": null,
@@ -153,7 +181,8 @@
       "schools": [
         "school1"
       ],
-      "username": "dev"
+      "username": "dev",
+      "work_groups": {}
     },
     "id": "dev"
   },
@@ -173,7 +202,8 @@
       "schools": [
         "test_school1"
       ],
-      "username": "firstname4.lastname4"
+      "username": "firstname4.lastname4",
+      "work_groups": {}
     },
     "id": "test_user4"
   }

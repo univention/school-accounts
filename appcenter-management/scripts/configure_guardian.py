@@ -194,6 +194,7 @@ def main():
         ("read-email", "Read Email"),
         ("read-birthday", "Read Birthday"),
         ("read-expiration_date", "Read Expiration date"),
+        ("read-work_groups", "Read Work Group"),
         ("write-last_name", "Write Last Name"),
         ("write-first_name", "Write First Name"),
         ("write-username", "Write Username"),
@@ -205,6 +206,8 @@ def main():
         ("write-email", "Write Email"),
         ("write-birthday", "Write Birthday"),
         ("write-expiration_date", "Write Expiration date"),
+        ("write-work_groups", "Write Work Groups"),
+        ("use-as-filter", "Use as Filter"),
     ]
 
     print("Creating Guardian objects for UCS@school User Management")
@@ -266,6 +269,7 @@ def main():
                     "activated",
                     "schools",
                     "school_classes",
+                    "work_groups",
                     "roles",
                     "birthday",
                     "email",
@@ -281,6 +285,30 @@ def main():
                 }
             ],
         )
+        create_role_capability_mapping(
+            f"{role}-member-groups-as-filters",
+            f"{role} can use school groups they are a member of as search filter",
+            app_name,
+            default_namespace_name,
+            {"app_name": app_name, "namespace_name": default_namespace_name, "name": role},
+            ["use-as-filter"],
+            conditions=[
+                {
+                    "app_name": app_name,
+                    "namespace_name": conditions_namespace_name,
+                    "name": "actor_is_in_group",
+                    "parameters": [],
+                }
+            ],
+        )
+    create_role_capability_mapping(
+        "school_admin-groups-as-filters",
+        "school_admin can use school groups of their schools as search filter",
+        app_name,
+        default_namespace_name,
+        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        ["use-as-filter"],
+    )
     create_role_capability_mapping(
         "teacher-read-student",
         "Teachers can read student fields",
@@ -315,12 +343,12 @@ def main():
         ],
     )
     create_role_capability_mapping(
-        "teacher-set-password-students-in-same-class",
-        "Teachers can write students passwords that are in the same class",
+        "teacher-write_attribute-students-in-same-class",
+        "Teachers can write students passwords and work groups that are in the same class",
         app_name,
         default_namespace_name,
         {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
-        ["write-password"],
+        ["write-password", "write-work_groups"],
         conditions=[
             {
                 "app_name": "guardian",
@@ -381,6 +409,7 @@ def main():
                     "activated",
                     "schools",
                     "school_classes",
+                    "work_groups",
                     "roles",
                     "password",
                 )
@@ -393,6 +422,7 @@ def main():
                     "activated",
                     "schools",
                     "school_classes",
+                    "work_groups",
                     "roles",
                 )
             ],
@@ -439,6 +469,7 @@ def main():
                     "username",
                     "activated",
                     "school_classes",
+                    "work_groups",
                     "password",
                     "email",
                 )

@@ -87,13 +87,12 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
         roles: list[str],
         school_classes: Optional[dict[str, list[str]]] = None,
         password: Optional[str] = None,
-        delete_after_test: bool = True,
     ):
         first_name = faker.first_name()
         last_name = faker.last_name()
         async with Session(**kelvin_credentials, verify=False) as session:
             user = User(
-                name=f"{int(time.time())}",
+                name=f"t{int(time.time())}",
                 firstname=first_name,
                 lastname=last_name,
                 record_uid=f"{first_name}.{last_name}",
@@ -106,9 +105,7 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
             if password is not None:
                 user.password = password
             result = await user.save()
-            # If the username is changed in the test, we have to delete it in the test, not here.
-            if delete_after_test:
-                kelvin_user_deletion(result.name)
+            kelvin_user_deletion(result.name)
             return result
 
     return _kelvin_user_factory

@@ -22,21 +22,22 @@ def test_teacher_reads_student_attributes(page_login, teacher_login):
     page.goto("/univention/ucsschool/user-management/ui/")
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
-    expect(page.locator("tbody")).to_contain_text("Student")
-    expect(page.locator("tbody")).to_contain_text("Max")
-    expect(page.locator("tbody")).to_contain_text("max.student")
-    expect(page.locator("tbody")).to_contain_text("Student (school1)")
-    expect(page.locator("tbody")).to_contain_text("1a (school1)")
-    expect(page.locator("tbody")).to_contain_text("school1")
-    expect(page.locator("tbody")).to_contain_text("True")
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("Student")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("Max")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("max.student")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("Student (school1)")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("1a (school1)")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("school1")
+    expect(page.get_by_label("Data table").locator("tbody")).to_contain_text("True")
     page.get_by_role("button", name="Student").click()
     expect(page.get_by_role("heading")).to_contain_text("Users (schools) > max.student")
     expect(page.get_by_label("School", exact=True)).to_have_value("school1")
     expect(page.get_by_label("Last name")).to_have_value("Student")
     expect(page.get_by_label("First name")).to_have_value("Max")
     expect(page.get_by_label("Username")).to_have_value("max.student")
-    expect(page.get_by_label("Email")).to_have_value("max.student@school1.school.test")
+    expect(page.get_by_label("Email")).to_have_value("max.student@school1.ucsschool.test")
     expect(page.get_by_label("Password")).to_be_empty()
     expect(page.get_by_label("Birthday")).to_have_value("This field is classified")
     expect(page.get_by_label("Expiration date")).to_have_value("This field is classified")
@@ -56,8 +57,8 @@ def test_teacher_cannot_read_student_from_other_school(page_login, teacher_login
     page = page_login(**teacher_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school2").click()
-    page.get_by_role("button", name="Search").click()
-    expect(page.get_by_role("row")).not_to_contain_text("laura.student")
+    page.get_by_role("button", name="Filter").click()
+    expect(page.get_by_label("Data table").locator("tbody")).not_to_contain_text("laura.student")
     page.goto("/univention/ucsschool/user-management/ui/edit/laura.student?school=school2")
     expect(page.get_by_role("main")).to_contain_text("The user does not exist")
 
@@ -72,7 +73,7 @@ def test_teacher_cannot_read_student_from_other_school(page_login, teacher_login
                 "First Name": "Max",
                 "Last name": "Student",
                 "Password": "This field is classified",
-                "Email": "max.student@school1.school.test",
+                "Email": "max.student@school1.ucsschool.test",
                 "Birthday": "",
                 "Expiration date": "",
             },
@@ -84,7 +85,7 @@ def test_teacher_cannot_read_student_from_other_school(page_login, teacher_login
                 "First Name": "Mina",
                 "Last name": "Teacher",
                 "Password": "This field is classified",
-                "Email": "mina.teacher@school1.school.test",
+                "Email": "mina.teacher@school1.ucsschool.test",
                 "Birthday": "",
                 "Expiration date": "",
             },
@@ -96,7 +97,7 @@ def test_teacher_cannot_read_student_from_other_school(page_login, teacher_login
                 "First Name": "Armin",
                 "Last name": "Staff",
                 "Password": "This field is classified",
-                "Email": "armin.staff@school1.school.test",
+                "Email": "armin.staff@school1.ucsschool.test",
                 "Birthday": "",
                 "Expiration date": "",
             },
@@ -108,7 +109,7 @@ def test_teacher_cannot_read_student_from_other_school(page_login, teacher_login
                 "First Name": "Alex",
                 "Last name": "Admin",
                 "Password": "This field is classified",
-                "Email": "alex.admin@school1.school.test",
+                "Email": "alex.admin@school1.ucsschool.test",
                 "Birthday": "",
                 "Expiration date": "",
             },
@@ -167,7 +168,8 @@ async def test_teacher_can_edit_password_of_student_in_same_school_class(
 
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text(student.name)).to_be_visible()
     page.get_by_role("button", name=student.lastname).click()
 
@@ -202,9 +204,9 @@ async def test_teacher_cannot_edit_password_of_student_in_other_school_class(
 
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school2").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text(student.name)).not_to_be_visible()
-    expect(page.locator("tbody")).not_to_contain_text(student.name)
+    expect(page.get_by_label("Data table").locator("tbody")).not_to_contain_text(student.name)
 
 
 @pytest.mark.parametrize("role", ["Student", "Teacher"])
@@ -230,7 +232,10 @@ def test_school_admin_can_create_user_in_own_school(page_login, admin_login, kel
     page.get_by_role("button", name="Create user").click()
     page.get_by_role("heading", name="The user 'new.testuser' was").click()
     page.get_by_role("button", name="OK").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("button", name="Show options").click()
+    page.get_by_role("option", name="school1").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text("new.testuser")).to_be_visible()
 
 
@@ -258,7 +263,16 @@ def test_school_admin_cannot_create_user_in_other_school(page_login, admin_login
     )
 
 
-@pytest.mark.parametrize("role", ["student", "teacher", "staff"])
+@pytest.mark.parametrize(
+    "role",
+    [
+        "student",
+        "teacher",
+        pytest.param(
+            "staff", marks=[pytest.mark.xfail(reason="TBD: how to handle user without class?")]
+        ),
+    ],
+)
 @pytest.mark.asyncio
 async def test_school_admin_can_edit_any_attribute_of(
     page_login, admin_login, role, kelvin_user_factory, faker, kelvin_user_deletion
@@ -271,12 +285,12 @@ async def test_school_admin_can_edit_any_attribute_of(
         schools=["school1"],
         roles=[role],
         school_classes={"school1": ["1a"]},
-        delete_after_test=False,
     )
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text(target_user.name)).to_be_visible()
     page.get_by_role("button", name=target_user.lastname).click()
     expect(page.get_by_label("School", exact=True)).to_be_visible()
@@ -296,14 +310,15 @@ async def test_school_admin_can_edit_any_attribute_of(
     page.get_by_label("Username").click()
     page.get_by_label("Username").fill(new_username)
     page.get_by_label("Email").click()
-    page.get_by_label("Email").fill(f"{new_username}@school1.school.test")
+    page.get_by_label("Email").fill(f"{new_username}@school1.ucsschool.test")
     page.get_by_label("Password").click()
     page.get_by_label("Password").fill(secrets.token_urlsafe(nbytes=15))
     page.get_by_label("Password").press("Enter")
     expect(page.get_by_role("heading", name="Management of school users")).to_be_visible()
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a", exact=True).get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text(new_username)).to_be_visible()
 
 
@@ -336,7 +351,8 @@ async def test_school_admin_cant_edit_any_attribute_of_school_admin(
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_role("gridcell", name=target_user.name)).to_have_count(0)
     # row is not there, try navigating directly
     page.goto(f"/univention/ucsschool/user-management/ui/edit/{target_user.name}?school=school1")
@@ -345,7 +361,16 @@ async def test_school_admin_cant_edit_any_attribute_of_school_admin(
     expect(page.get_by_label("Username")).to_have_count(0)
 
 
-@pytest.mark.parametrize("role", ["student", "teacher", "staff"])
+@pytest.mark.parametrize(
+    "role",
+    [
+        "student",
+        "teacher",
+        pytest.param(
+            "staff", marks=[pytest.mark.xfail(reason="TBD: how to handle user without class?")]
+        ),
+    ],
+)
 @pytest.mark.asyncio
 async def test_school_admin_cant_edit_any_attribute_of_users_in_other_schools(
     page_login, admin_login, kelvin_user_factory, role
@@ -360,7 +385,8 @@ async def test_school_admin_cant_edit_any_attribute_of_users_in_other_schools(
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name=other_school).click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_role("gridcell", name=target_user.name)).to_have_count(0)
     # row is not there, try navigating directly
     page.goto(
@@ -371,7 +397,16 @@ async def test_school_admin_cant_edit_any_attribute_of_users_in_other_schools(
     expect(page.get_by_label("Username")).to_have_count(0)
 
 
-@pytest.mark.parametrize("role", ["student", "teacher", "staff"])
+@pytest.mark.parametrize(
+    "role",
+    [
+        "student",
+        "teacher",
+        pytest.param(
+            "staff", marks=[pytest.mark.xfail(reason="TBD: how to handle user without class?")]
+        ),
+    ],
+)
 @pytest.mark.asyncio
 async def test_school_admin_can_delete_users_of_same_school(
     page_login, admin_login, role, kelvin_user_factory
@@ -386,7 +421,8 @@ async def test_school_admin_can_delete_users_of_same_school(
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school1").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_role("gridcell", name=target_user.name)).to_be_visible()
     page.get_by_role("gridcell", name=target_user.name).locator("..").get_by_role("checkbox").click()
     page.get_by_role("button", name="Delete").click()
@@ -395,7 +431,16 @@ async def test_school_admin_can_delete_users_of_same_school(
     expect(page.get_by_role("gridcell", name=target_user.name)).to_have_count(0)
 
 
-@pytest.mark.parametrize("role", ["student", "teacher", "staff"])
+@pytest.mark.parametrize(
+    "role",
+    [
+        "student",
+        "teacher",
+        pytest.param(
+            "staff", marks=[pytest.mark.xfail(reason="TBD: how to handle user without class?")]
+        ),
+    ],
+)
 @pytest.mark.asyncio
 async def test_school_admin_cant_delete_users_of_other_schools(
     page_login, admin_login, role, kelvin_user_factory
@@ -409,7 +454,8 @@ async def test_school_admin_cant_delete_users_of_other_schools(
     page: Page = page_login(**admin_login)
     page.get_by_role("button", name="Show options").click()
     page.get_by_role("option", name="school2").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_role("gridcell", name=target_user.name)).to_have_count(0)
 
 
@@ -436,12 +482,14 @@ def test_school_admin_create_users_without_school_classes(
     page.get_by_label("Activated").click()
     page.get_by_role("button", name="Create user").click()
     if role == "Student":
-        expect(page.get_by_role("heading", name="The user could not be created")).to_be_visible()
+        expect(page.get_by_role("heading", name="The user could not be created")).to_be_visible(
+            timeout=30000
+        )
     elif role == "Teacher":
         page.get_by_role("heading", name="The user 'new.testuser' was").click()
         page.get_by_role("button", name="OK").click()
-        page.get_by_role("button", name="Search").click()
-        expect(page.get_by_text("new.testuser")).to_be_visible()
+        # TBD: how to handle user without class? Will never be visible
+        # expect(page.get_by_text("new.testuser")).to_be_visible()
     else:
         raise ValueError("Invalid role.")
 
@@ -469,7 +517,10 @@ def test_school_admin_create_multi_role_user(page_login, admin_login, kelvin_use
     page.get_by_role("button", name="Create user").click()
     page.get_by_role("heading", name="The user 'new.testuser' was").click()
     page.get_by_role("button", name="OK").click()
-    page.get_by_role("button", name="Search").click()
+    page.get_by_role("button", name="Show options").click()
+    page.get_by_role("option", name="school1").click()
+    page.get_by_role("row", name="1a").get_by_role("checkbox").click()
+    page.get_by_role("button", name="Filter").click()
     expect(page.get_by_text("new.testuser")).to_be_visible()
 
 

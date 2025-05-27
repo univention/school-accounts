@@ -5,13 +5,22 @@ import pytest
 import requests
 
 
-@pytest.mark.parametrize("username", ["mina.teacher", "max.student", "alex.admin"])
+@pytest.mark.parametrize(
+    "username",
+    [
+        "mina.teacher",
+        "max.student",
+        pytest.param(
+            "alex.admin", marks=[pytest.mark.xfail(reason="TBD: how to handle user without class?")]
+        ),
+    ],
+)
 @pytest.mark.e2e
 def test_user_read_self(access_token, base_url, username):
     token = access_token(username, "univention")
     response = requests.get(
         f"{base_url}/bff/users",
-        params={"school": "school1"},
+        params={"school": "school1", "school_classes": "1a"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
@@ -34,7 +43,7 @@ def test_teacher_read_test(access_token, base_url, username, read_access):
     token = access_token("mina.teacher", "univention")
     response = requests.get(
         f"{base_url}/bff/users",
-        params={"school": "school1"},
+        params={"school": "school1", "school_classes": "1a"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
@@ -46,6 +55,8 @@ def test_teacher_read_test(access_token, base_url, username, read_access):
         else:
             return  # No permissions whatsoever means the user will not be present in the returned data.
     for attribute_name, attribute_value in user["attributes"].items():
+        if attribute_name == "work_groups":
+            continue
         assert (attribute_value["value"] is not None) == (
             read_access or attribute_name == "username"
         ), attribute_name

@@ -10,7 +10,7 @@ RUN yarn install
 RUN yarn build
 
 # Calculate Python dependencies
-FROM gitregistry.knut.univention.de/univention/components/ucs-base-image/ucs-base-520:latest as requirements_builder
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest as requirements_builder
 WORKDIR /build
 RUN apt-get update \
     && apt-get --assume-yes --verbose-versions --no-install-recommends install \
@@ -21,7 +21,7 @@ RUN pip install poetry==1.7.1
 COPY user-management-bff/pyproject.toml user-management-bff/poetry.lock ./
 RUN poetry export -f requirements.txt --output requirements.txt --dev --without-hashes
 
-FROM gitregistry.knut.univention.de/univention/components/ucs-base-image/ucs-base-520:latest
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
 
 EXPOSE 8000
 

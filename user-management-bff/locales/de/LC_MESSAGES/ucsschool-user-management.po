@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-18 14:41+0000\n"
+"POT-Creation-Date: 2025-05-16 11:28+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -145,6 +145,15 @@ msgstr "Benutzername"
 
 msgid "Username of the user"
 msgstr "Benutzername des Benutzer"
+
+msgid "Work Groups"
+msgstr "Arbeitsgruppen"
+
+msgid "Work group"
+msgstr "Arbeitsgruppe"
+
+msgid "Work groups of the user"
+msgstr "Arbeitsgruppen des Benutzers"
 
 msgid "You do not have the permission to create this user."
 msgstr "Sie sind nicht berechtigt, diesen Benutzer anzulegen."

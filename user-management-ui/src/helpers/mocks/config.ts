@@ -13,6 +13,9 @@ import type {
   SchoolConfigData,
   SchoolsConfigResponse,
   SchoolConfigResponseData,
+  SchoolClassesConfigResponse,
+  WorkGroupsConfigResponse,
+  GroupConfigResponseData,
 } from '@/helpers/models/config';
 import type {SchoolClass} from '@/helpers/models/class';
 import type {User, UserData} from '@/helpers/models/user';
@@ -34,6 +37,22 @@ export const makeMockSchoolsConfig = (): SchoolConfigResponseData[] => {
 export const makeMockSchoolsConfigResponse = (schoolsConfig: SchoolConfigResponseData[]): SchoolsConfigResponse => {
   return {
     schools: schoolsConfig,
+  };
+};
+
+export const makeMockSchoolClassesConfigResponse = (
+  schoolClassesConfig: GroupConfigResponseData[]
+): SchoolClassesConfigResponse => {
+  return {
+    school_classes: schoolClassesConfig,
+  };
+};
+
+export const makeMockWorkGroupsConfigResponse = (
+  workGroupsConfig: GroupConfigResponseData[]
+): WorkGroupsConfigResponse => {
+  return {
+    work_groups: workGroupsConfig,
   };
 };
 

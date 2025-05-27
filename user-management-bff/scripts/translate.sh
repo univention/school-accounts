@@ -8,4 +8,4 @@
 TRANSLATIONS_PATH="$(cd "$(dirname "$0")/.." && pwd)/locales/de/LC_MESSAGES"
 APP_ID="ucsschool-user-management"
 
-msgfmt -o $TRANSLATIONS_PATH/$APP_ID.mo $TRANSLATIONS_PATH/$APP_ID.po
+msgfmt -o "$TRANSLATIONS_PATH/$APP_ID.mo" "$TRANSLATIONS_PATH/$APP_ID.po"

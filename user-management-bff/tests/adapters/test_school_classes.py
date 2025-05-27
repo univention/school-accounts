@@ -70,7 +70,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
         await adapter.configure(dummy_settings)
         result = await adapter.get_school_classes("school1")
         assert result == [
-            SchoolClass(id=school_data["id"], display_name=school_data["display_name"])
+            SchoolClass(id=school_data["id"], display_name=school_data["display_name"], school="school1")
             for school_data in input_data
         ]
 
@@ -103,6 +103,6 @@ class TestFileSchoolClassesPersistenceAdapter:
         await adapter.configure(FileSchoolClassesPersistenceAdapterSettings(source=source_path))
         result = await adapter.get_school_classes("school1")
         assert result == [
-            SchoolClass(id=school_class, display_name=school_class)
+            SchoolClass(id=school_class, display_name=school_class, school="school1")
             for school_class in expected_school_classes
         ]

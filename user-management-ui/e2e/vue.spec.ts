@@ -11,8 +11,8 @@ test('visits the app root url', async ({ page }) => {
   await page.goto('/univention/ucsschool/user-management/ui/');
   if (process.env.CI_INTEGRATION) {
       await page.getByLabel('Username or email').fill('alex.admin');
-      await page.getByLabel('Password').fill('univention');
-      await page.getByLabel('Password').press('Enter');
+      await page.getByLabel('Password', { exact: true }).fill('univention');
+      await page.getByLabel('Password', { exact: true }).press('Enter');
   }
   await expect(page.getByRole('heading', { name: 'Users (schools)' })).toBeVisible();
 })

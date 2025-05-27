@@ -27,6 +27,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             "last_name": "lastname",
             "first_name": "firstname",
             "username": "name",
+            "work_groups": "workgroups",
         }
         return MAPPING.get(attribute_name, attribute_name)
 
@@ -48,6 +49,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 disabled=kelvin_user.disabled,
                 schools=kelvin_user.schools,
                 school_classes=kelvin_user.school_classes or {},
+                work_groups=kelvin_user.workgroups or {},
                 roles=kelvin_user.ucsschool_roles,
                 email=kelvin_user.email,
                 birthday=kelvin_user.birthday,
@@ -55,10 +57,37 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             ),
         )
 
-    async def get_users(self, school: str) -> list[User]:
+    async def get_users(
+        self, school: str, school_classes: list[str] | None, work_groups: list[str] | None
+    ) -> list[User]:
+        # TODO dont filter here, let Kelvin filter by passing classes and workgroups to `.search` method
         async with self.kelvin_session as session:
             kelvin_users = UserResource(session=session).search(school=school)
-            return [self._user_from_kelvin_user(kelvin_user) async for kelvin_user in kelvin_users]
+            return [
+                self._user_from_kelvin_user(kelvin_user)
+                async for kelvin_user in kelvin_users
+                if (
+                    # No filtering
+                    ((school_classes is None) and (work_groups is None))
+                    # user is in a school class
+                    or (
+                        (school in kelvin_user.school_classes and school_classes is not None)
+                        and any(
+                            [
+                                school_class in kelvin_user.school_classes[school]
+                                for school_class in school_classes
+                            ]
+                        )
+                    )
+                    # user is in a workgroup
+                    or (
+                        (school in kelvin_user.workgroups and work_groups is not None)
+                        and any(
+                            [work_group in kelvin_user.workgroups[school] for work_group in work_groups]
+                        )
+                    )
+                )
+            ]
 
     async def get_user(self, identifier: str) -> User:
         async with self.kelvin_session as session:
@@ -78,6 +107,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 school=user_create_request.school,
                 schools=[user_create_request.school],
                 school_classes={user_create_request.school: user_create_request.school_classes},
+                workgroups={user_create_request.school: user_create_request.work_groups},
                 roles=user_create_request.roles,
                 disabled=not user_create_request.activated,
                 password=user_create_request.password,
@@ -103,6 +133,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 username=user.name,
                 disabled=user.disabled,
                 schools=user.schools,
+                work_groups=user.workgroups,
                 school_classes=user.school_classes,
                 roles=[
                     f"{role}:school:{user_create_request.school}" for role in user_create_request.roles
@@ -173,13 +204,42 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
         self.settings = settings
         self._reload_data()
 
-    async def get_users(self, school: str) -> list[User]:
+    async def get_users(
+        self, school: str, school_classes: list[str] | None, work_groups: list[str] | None
+    ) -> list[User]:
         self._reload_data()
-        return [
+        if school_classes is None:
+            school_classes = []
+        if work_groups is None:
+            work_groups = []
+        data = [
             User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
             for user in self._data
-            if school in user["attributes"]["schools"]
+            if (
+                school in user["attributes"]["schools"]
+                and (
+                    (not school_classes and not work_groups)
+                    or (
+                        any(
+                            [
+                                school_class in user["attributes"]["school_classes"][school]
+                                for school_class in school_classes
+                            ]
+                        )
+                        or (
+                            school in user["attributes"]["work_groups"]
+                            and any(
+                                [
+                                    work_group in user["attributes"]["work_groups"][school]
+                                    for work_group in work_groups
+                                ]
+                            )
+                        )
+                    )
+                )
+            )
         ]
+        return data
 
     async def get_user(self, identifier: str) -> User:
         self._reload_data()
@@ -192,6 +252,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
     async def create_user(self, user_create_request: UserCreateRequest):
         new_roles = [f"{role}:school:{user_create_request.school}" for role in user_create_request.roles]
         _school_classes = {user_create_request.school: user_create_request.school_classes}
+        _work_groups = {user_create_request.school: user_create_request.work_groups}
         _new_user = {
             "id": user_create_request.username,
             "attributes": {
@@ -202,6 +263,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 "roles": new_roles,
                 "schools": [user_create_request.school],
                 "school_classes": _school_classes,
+                "work_groups": _work_groups,
                 "disabled": not user_create_request.activated,
             },
         }
@@ -221,6 +283,7 @@ class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMi
                 roles=new_roles,
                 schools=[user_create_request.school],
                 school_classes=_school_classes,
+                work_groups=_work_groups,
                 disabled=not user_create_request.activated,
             ),
         )

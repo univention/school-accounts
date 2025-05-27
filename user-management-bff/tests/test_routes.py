@@ -61,18 +61,25 @@ def test_get_users_config(test_client, api_prefix, lang):
                 "order": 4,
             },
             {
+                "label": _("Work Groups", lang=lang),
+                "attribute": "work_groups",
+                "formatter": {"type": "list"},
+                "sorting": None,
+                "order": 5,
+            },
+            {
                 "label": _("Schools", lang=lang),
                 "attribute": "schools",
                 "formatter": {"type": "list"},
                 "sorting": None,
-                "order": 5,
+                "order": 6,
             },
             {
                 "label": _("Activated", lang=lang),
                 "attribute": "activated",
                 "formatter": {"type": "boolean"},
                 "sorting": None,
-                "order": 6,
+                "order": 7,
             },
         ]
     }
@@ -133,6 +140,7 @@ def test_get_app_config(
                         "schools": ["test_school1"],
                         "school_classes": {"test_school1": ["1a", "2b"]},
                         "username": "firstname.lastname",
+                        "work_groups": {},
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user1",
@@ -146,6 +154,7 @@ def test_get_app_config(
                         "school_classes": {"test_school1": ["1a"]},
                         "schools": ["test_school1"],
                         "username": "firstname4.lastname4",
+                        "work_groups": {},
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user4",
@@ -164,6 +173,7 @@ def test_get_app_config(
                         "schools": ["test_school2"],
                         "school_classes": {"test_school2": ["1a", "2b"]},
                         "username": "firstname2.lastname2",
+                        "work_groups": {"test_school2": ["w1a"]},
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user2",
@@ -180,6 +190,7 @@ def test_get_app_config(
                         "schools": ["test_school2", "test_school3"],
                         "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
                         "username": "firstname3.lastname3",
+                        "work_groups": {},
                     },
                     "allowedActions": ["delete"],
                     "id": "test_user3",
@@ -258,6 +269,7 @@ def test_config_schools(test_client, api_prefix):
         {"display_name": "School 1", "id": "school1"},
         {"display_name": "School 2", "id": "school2"},
         {"display_name": "School 3", "id": "school3"},
+        {"display_name": "School 4", "id": "school4"},
         {"display_name": "Test School 1", "id": "test_school1"},
         {"display_name": "Test School 2", "id": "test_school2"},
         {"display_name": "Test School 3", "id": "test_school3"},
@@ -271,6 +283,33 @@ def test_config_schools(test_client, api_prefix):
             for school in expected_data
         ]
     }
+
+
+def test_config_school_classes(test_client, api_prefix):
+    expected_data = [
+        {"label": "1a", "value": "1a"},
+        {"label": "2b", "value": "2b"},
+    ]
+    response = test_client.get(f"{api_prefix}/config/school_classes?school=school1")
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "school_classes": [
+            {"value": school_class["value"], "label": school_class["label"]}
+            for school_class in expected_data
+        ]
+    }
+
+
+def test_config_work_groups(test_client, api_prefix):
+    expected_data = {
+        "work_groups": [
+            {"label": "w1a", "value": "w1a"},
+            {"label": "w2b", "value": "w2b"},
+        ]
+    }
+    response = test_client.get(f"{api_prefix}/config/work_groups?school=school1")
+    assert response.status_code == 200, response.json()
+    assert response.json() == expected_data
 
 
 @pytest.mark.usefixtures("restore_users_json")
@@ -297,6 +336,7 @@ def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_d
             "username": {"value": user["username"], "access": "write"},
             "schools": {"value": [user["school"]], "access": "write"},
             "classes": {"value": ["test_school1:1a", "test_school1:2b"], "access": "write"},
+            "work_groups": {"value": [], "access": "write"},
             "activated": {"value": not user["disabled"], "access": "write"},
             "roles": {
                 "value": [f"{role}:school:{user['school']}" for role in user["roles"]],
@@ -508,6 +548,7 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
             "roles": {"access": "write", "value": ["teacher:school:test_school1"]},
             "schools": {"access": "write", "value": ["test_school1"]},
             "username": {"access": "write", "value": "firstname.lastname"},
+            "work_groups": {"access": "write", "value": []},
         },
         "id": "test_user1",
     }
@@ -535,6 +576,7 @@ def test_patch_user_activated(test_client, api_prefix, patch_dict, users_json_pa
             "roles": {"access": "write", "value": ["teacher:school:test_school1"]},
             "schools": {"access": "write", "value": ["test_school1"]},
             "username": {"access": "write", "value": "firstname.lastname"},
+            "work_groups": {"access": "write", "value": []},
         },
         "id": "test_user1",
     }
@@ -663,6 +705,40 @@ def test_get_user_add_config(test_client, api_prefix, lang):
                                                 "class_name": {"access": "read", "value": "2b"}
                                             },
                                             "id": "2b",
+                                        },
+                                    ],
+                                },
+                                "type": "UMultiSelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "columns": [
+                                        {
+                                            "attribute": "work_group_name",
+                                            "formatter": None,
+                                            "label": _("Work group", lang=lang),
+                                            "order": 0,
+                                            "sorting": None,
+                                        }
+                                    ],
+                                    "description": _("Work groups of the user", lang=lang),
+                                    "label": _("Work Groups", lang=lang),
+                                    "name": "work_groups",
+                                    "required": False,
+                                    "rows": [
+                                        {
+                                            "attributes": {
+                                                "work_group_name": {"access": "read", "value": "w1a"}
+                                            },
+                                            "id": "w1a",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "work_group_name": {"access": "read", "value": "w2b"}
+                                            },
+                                            "id": "w2b",
                                         },
                                     ],
                                 },
@@ -892,6 +968,40 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
                                     "access": "write",
                                     "columns": [
                                         {
+                                            "attribute": "work_group_name",
+                                            "formatter": None,
+                                            "label": _("Work group", lang=lang),
+                                            "order": 0,
+                                            "sorting": None,
+                                        }
+                                    ],
+                                    "description": _("Work groups of the user", lang=lang),
+                                    "label": _("Work Groups", lang=lang),
+                                    "name": "work_groups",
+                                    "required": False,
+                                    "rows": [
+                                        {
+                                            "attributes": {
+                                                "work_group_name": {"access": "read", "value": "w1a"}
+                                            },
+                                            "id": "w1a",
+                                        },
+                                        {
+                                            "attributes": {
+                                                "work_group_name": {"access": "read", "value": "w2b"}
+                                            },
+                                            "id": "w2b",
+                                        },
+                                    ],
+                                },
+                                "type": "UMultiSelect",
+                                "watches": [],
+                            },
+                            {
+                                "props": {
+                                    "access": "write",
+                                    "columns": [
+                                        {
                                             "attribute": "role_name",
                                             "formatter": None,
                                             "label": _("Role", lang=lang),
@@ -975,6 +1085,7 @@ def test_get_user_edit_config(test_client, api_prefix, lang):
             "school": "school1",
             "school_classes": ["1a", "2b"],
             "username": "kim.klein",
+            "work_groups": ["school1:w2b", "school2:w3c"],
         },
     }
 

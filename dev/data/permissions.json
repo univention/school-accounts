@@ -3,6 +3,9 @@
     "school": [
       "create-user"
     ],
+    "school_class": [
+      "use-as-filter"
+    ],
     "user": [
       "create-user",
       "delete-user",
@@ -12,11 +15,15 @@
       "write-username",
       "write-activated",
       "write-school_classes",
+      "write-work_groups",
       "write-password",
       "write-last_name",
       "write-email",
       "write-birthday",
       "write-expiration_date"
+    ],
+    "work_group": [
+      "use-as-filter"
     ]
   },
   "not_allowed_user": {}

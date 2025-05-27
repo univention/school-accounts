@@ -11,6 +11,7 @@ import {useTranslation} from 'i18next-vue';
 import {
   useStandby,
   UButton,
+  UMultiSelect,
   UComboBox,
   UGrid,
   UStandbyFullScreen,
@@ -18,7 +19,7 @@ import {
   type UGridRow,
   UConfirmDialog,
 } from '@univention/univention-veb';
-import {getListViewConfig, getUsers, deleteUsers} from '@/helpers/dataAccess';
+import {getListViewConfig, getUsers, deleteUsers, getDataAdapter} from '@/helpers/dataAccess';
 import type {GridRow, ListViewConfig, ListViewState} from '@/helpers/models/interface';
 import {useErrorStore} from '@/stores/error';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -38,6 +39,16 @@ const standby = reactive(useStandby());
 
 const config = ref<ListViewConfig>({
   schools: [],
+  groups: {
+    schoolClasses: {
+      columns: [],
+      rows: [],
+    },
+    workGroups: {
+      columns: [],
+      rows: [],
+    },
+  },
   users: {
     columns: [],
   },
@@ -139,6 +150,8 @@ const loadConfig = async () => {
   }
   config.value = result.value;
   state.value.users.searchFormValues.school = result.value.schools[0]?.value || '';
+  state.value.users.searchFormValues.schoolClasses = result.value.groups.schoolClasses.rows.map(row => row.id);
+  state.value.users.searchFormValues.workGroups = result.value.groups.workGroups.rows.map(row => row.id);
 };
 
 const onAdd = (): void => {
@@ -175,12 +188,14 @@ const onDelete = async (ids: string[]): Promise<void> => {
 
 const onSearch = async (keepSelection = false) => {
   const school = state.value.users.searchFormValues.school;
+  const schoolClasses = state.value.users.searchFormValues.schoolClasses;
+  const workGroups = state.value.users.searchFormValues.workGroups;
   if (school === '' || school === undefined) {
     return;
   }
 
   await standby.wrap(async () => {
-    const result = await getUsers(school);
+    const result = await getUsers(school, schoolClasses, workGroups);
     if (!result.ok) {
       errorStore.push({
         message: t('ListView.fetchObjects.error', {msg: result.error}),
@@ -200,6 +215,28 @@ const onSearch = async (keepSelection = false) => {
 };
 
 /** Watches **/
+
+watch(
+  () => state.value.users.searchFormValues.school,
+  async school => {
+    // update config on school change
+    const dataAdapter = await getDataAdapter();
+
+    const [schoolClassesConfigResult, workGroupConfigResult] = await Promise.all([
+      dataAdapter.fetchSchoolClassConfig(school),
+      dataAdapter.fetchWorkGroupConfig(school),
+    ]);
+
+    if (!schoolClassesConfigResult.ok) {
+      return schoolClassesConfigResult;
+    }
+    if (!workGroupConfigResult.ok) {
+      return workGroupConfigResult;
+    }
+    config.value.groups.schoolClasses.rows = schoolClassesConfigResult.value.rows;
+    config.value.groups.workGroups.rows = workGroupConfigResult.value.rows;
+  }
+);
 
 watch(
   () => route.query['refetch'],
@@ -247,21 +284,47 @@ onMounted(async () => {
       @submit.prevent="onSearch()"
     >
       <div class="searchForm__elements">
-        <UComboBox
-          name="school"
-          :label="$t('ListView.searchForm.school.label')"
-          :description="$t('ListView.searchForm.school.description')"
-          :required="true"
-          :options="config.schools"
-          v-model:modelValue="state.users.searchFormValues.school"
-        />
+        <div>
+          <UComboBox
+            name="school"
+            :label="$t('ListView.searchForm.school.label')"
+            :description="$t('ListView.searchForm.school.description')"
+            :required="true"
+            :options="config.schools"
+            v-model:modelValue="state.users.searchFormValues.school"
+          />
+        </div>
+        <div>
+          <UMultiSelect
+            name="school_classes"
+            class="group_selection"
+            :label="$t('ListView.searchForm.school_classes.label')"
+            :description="$t('ListView.searchForm.school_classes.description')"
+            :required="false"
+            :columns="config.groups.schoolClasses.columns"
+            :rows="config.groups.schoolClasses.rows"
+            v-model:modelValue="state.users.searchFormValues.schoolClasses"
+          />
+        </div>
+        <div>
+          <UMultiSelect
+            name="work_groups"
+            class="group_selection"
+            :label="$t('ListView.searchForm.workGroups.label')"
+            :description="$t('ListView.searchForm.workGroups.description')"
+            :required="false"
+            :columns="config.groups.workGroups.columns"
+            :rows="config.groups.workGroups.rows"
+            v-model:modelValue="state.users.searchFormValues.workGroups"
+          />
+        </div>
       </div>
       <div class="searchForm__buttons">
         <UButton
           primary
           :disabled="searchDisabled"
           type="submit"
-          icon="search"
+          icon=""
           :label="$t('ListView.searchForm.searchButton.label')"
         />
       </div>
@@ -362,6 +425,9 @@ main.listView
 
   .listView__uGrid
     margin-top: calc(4 * var(--layout-spacing-unit))
+  .group_selection
+    .uTable
+      max-height: 6rem
 
 #header ~ .listView
   padding-top: calc(var(--layout-height-header) + (2 * var(--layout-spacing-unit)))

@@ -10,7 +10,7 @@
 #
 
 # shellcheck disable=SC2034
-VERSION=1
+VERSION=2
 
 APP_ID="ucsschool-user-management"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
