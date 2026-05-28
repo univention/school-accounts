@@ -4,8 +4,8 @@
 
 FROM docker.software-univention.de/keycloak-keycloak:25.0.6-ucs2
 
-# Configure a database vendor
-ENV KC_DB=dev-mem
+# Configure a database vendor. Problem with dev-mem, set to default dev-file
+ENV KC_DB=dev-file
 
 # relative path needs to be set in build stage
 ENV KC_HTTP_RELATIVE_PATH=/keycloak
