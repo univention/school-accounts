@@ -42,6 +42,34 @@ RUN apt-get update && \
     libgbm1 \
     libpango-1.0-0 \
     libcairo2 \
+    libx11-xcb1 \
+    libxcursor1 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    libpangocairo-1.0-0 \
+    libcairo-gobject2 \
+    libicu72 \
+    libatomic1 \
+    libxslt1.1 \
+    libwoff1 \
+    libevent-2.1-7 \
+    libopus0 \
+    libwebpdemux2 \
+    libharfbuzz0b \
+    libwebpmux3 \
+    libwebp7 \
+    libjson-glib-1.0-0 \
+    libenchant-2-2 \
+    libsecret-1-0 \
+    libegl1 \
+    libglx0 \
+    libgudev-1.0-0 \
+    libffi8 \
+    libevdev2 \
+    libgles2 \
+    libx264-164 \
+    libharfbuzz-icu0 \
+    libhyphen0 \
     libasound2 && \
     npm install --global yarn && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
