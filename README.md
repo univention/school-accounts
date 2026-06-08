@@ -52,9 +52,9 @@ The following variables are important:
 
 - TARGET_VERSION=5.0-7: The UCS version the tests should run under.
 - KVM_SERVER=soft-test03.knut.univention.de: The KVM host to use for the tests.
-- NO_HALT=UNSET: If the variable is set, the VMs are not automatically terminated.
+- TERMINATE_INSTANCE=true: If the variable is set, the VMs are not automatically terminated.
 
-If you abort the pipeline job or set the `NO_HALT` variable, make sure to clean up your VMs after.
+If you abort the pipeline job or set the `TERMINATE_INSTANCE` variable, make sure to clean up your VMs after.
 
 They are named `build_ucsschool-user-management_$JOB_ID-{primary,backup1}`.
 The IP addresses of the VMs can be extracted from the job log.
@@ -239,16 +239,18 @@ dev/dev_run.sh task pytest --pdb
 
 #### Running e2e tests for the Backend
 
-The e2e tests are designed to run against the environment that is created by the integration-test pipeline job.
+The e2e tests are designed to run against the environment that is created by the integration-test pipeline job. ??
 
-If you want to manually run the tests, make sure to start the job with the `NO_HALT` variable set.
+If you want to manually run the tests, make sure to start the job with the `TERMINATE_INSTANCE` variable set to anything but true.
 This way you have access to the setup after the job is done.
 
 You can run the e2e tests for the backend with:
+> The integration test pipeline currently only creates a primary.
+> `E2E_GUARDIAN_MANAGEMENT_URL="https://primary.ucsschool.test/guardian/management"`
 
 ```shell
 E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
-E2E_GUARDIAN_MANAGEMENT_URL="https://backup1.ucsschool.test/guardian/management" \
+E2E_GUARDIAN_MANAGEMENT_URL="https://primary.ucsschool.test/guardian/management" \
 E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
 ```
@@ -280,13 +282,15 @@ integration test environment.
 
 #### Running product tests
 
-The product tests are using playwrigth. Run them as follows:
+The product tests are using playwright. Run them as follows:
 
-If you test against a fresh installation you need to add the same users as in `dev/tests/integration_tests.cfg`
+If you test against a fresh installation you need to add the same users as in `dev/tests/integration_tests.cfg`.
 
 ```shell
 cd dev/tests/product-tests
 poetry install
+# is needed if playwright is freshly installed in the project
+# playwright install
 CI_INTEGRATION=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE"
 # Or for debugging
 #CI_INTEGRATION=1 PWDEBUG=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE" --headed --browser firefox
