@@ -12,14 +12,16 @@ RUN yarn build
 # Calculate Python dependencies
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest as requirements_builder
 WORKDIR /build
+ENV UV_SYSTEM_PYTHON=1
+ENV UV_PROJECT_ENVIRONMENT="/venv"
+ENV UV_VERSION=0.11.21
 RUN apt-get update \
-    && apt-get --assume-yes --verbose-versions --no-install-recommends install \
-    python3-pip \
+    && apt-get --assume-yes --verbose-versions --no-install-recommends install pip \
     && rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* \
 RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
-RUN pip install poetry==1.7.1
-COPY user-management-bff/pyproject.toml user-management-bff/poetry.lock ./
-RUN poetry export -f requirements.txt --output requirements.txt --dev --without-hashes
+RUN pip install uv=="$UV_VERSION"
+COPY user-management-bff/pyproject.toml user-management-bff/uv.lock ./
+RUN uv pip compile pyproject.toml --output-file requirements.txt --emit-index-url
 
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
 
