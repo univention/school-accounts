@@ -60,13 +60,16 @@ repos:
   hooks:
     - id: ruff
       args: [--fix]
-- repo: https://github.com/python-poetry/poetry
-  rev: '1.7.0'
+- repo: https://github.com/astral-sh/uv-pre-commit
+  rev: 0.11.21 # Check for the latest release on GitHub
   hooks:
-    - id: poetry-check
-      args: ["-C", "user-management-bff"]
-    - id: poetry-lock
-      args: ["-C", "user-management-bff", "--check"]
+    # Ensure uv lock is up-to-date
+    - id: uv-lock
+      files: user-management-bff/pyproject.toml
+      args: [ --project, user-management-bff ]
+    - id: uv-lock
+      files: dev/tests/product-tests/pyproject.toml
+      args: [ --project, dev/tests/product-tests ]
 - repo: https://github.com/fsfe/reuse-tool
   rev: v5.0.2
   hooks:
