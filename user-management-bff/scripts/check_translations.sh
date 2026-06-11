@@ -15,7 +15,9 @@ echo "Verifying translations..."
 # Note: Encountered problems when working with xgettext 0.24
 # and f-strings -> Moved to old style `.format()` for that case
 if [ ! -f "$TRANSLATIONS_PATH/$APP_ID.pot" ]; then
-    find user-management-bff -name "*.py" | \
+    find user-management-bff -name "*.py" \
+        -not -path "*/site-packages/*" \
+        -not -path "*/.venv/*" | \
         xargs xgettext \
             --language Python \
             --from-code=UTF-8 \
