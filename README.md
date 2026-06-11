@@ -288,12 +288,12 @@ If you test against a fresh installation you need to add the same users as in `d
 
 ```shell
 cd dev/tests/product-tests
-poetry install
+uv sync --locked
 # is needed if playwright is freshly installed in the project
 # playwright install
-CI_INTEGRATION=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE"
+CI_INTEGRATION=1 uv run pytest --base-url "https://$YOUR_TEST_INSTANCE"
 # Or for debugging
-#CI_INTEGRATION=1 PWDEBUG=1 poetry run pytest --base-url "https://$YOUR_TEST_INSTANCE" --headed --browser firefox
+#CI_INTEGRATION=1 PWDEBUG=1 uv run pytest --base-url "https://$YOUR_TEST_INSTANCE" --headed --browser firefox
 ```
 
 ## QA Checklist
