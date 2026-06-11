@@ -107,10 +107,10 @@ services:
     build: *docker-build
     container_name: ucsschool-user-management-bff
     command:
-      - "poetry"
-      - "-C"
-      - "user-management-bff"
+      - "uv"
       - "run"
+      - "--project"
+      - "user-management-bff"
       - "uvicorn"
       - "--reload"
       - "--log-level"

@@ -11,6 +11,8 @@ ARG opa_version=0.53.0
 EXPOSE 8000
 EXPOSE 5173
 
+ENV UV_VERSION=0.11.21
+
 ADD https://github.com/open-policy-agent/opa/releases/download/v${opa_version}/opa_linux_amd64_static /usr/bin/opa
 RUN chmod 755 /usr/bin/opa
 
@@ -73,10 +75,10 @@ RUN apt-get update && \
     libasound2 && \
     npm install --global yarn && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
-    pip install poetry==1.7.1 pre-commit==3.6.0 reuse==2.1.0 python-keycloak
+    pip install uv==$UV_VERSION pre-commit==3.6.0 reuse==2.1.0 python-keycloak
 ENV PROJECT_DIR="/src"
 ENV PYTHONPYCACHEPREFIX=$PROJECT_DIR/.cache/cpython
-ENV POETRY_CACHE_DIR=$PROJECT_DIR/.cache/pypoetry
+ENV UV_CACHE_DIR=$PROJECT_DIR/.cache/uv
 ENV PRE_COMMIT_HOME=$PROJECT_DIR/.cache/pre-commit-home
 ENV YARN_CACHE_FOLDER=$PROJECT_DIR/.cache/yarn
 ENV npm_config_cache=$PROJECT_DIR/.cache/npm

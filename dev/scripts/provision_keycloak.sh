@@ -6,7 +6,7 @@
 
 KEYCLOAK_URL=http://user-management-proxy/keycloak/
 
-poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
+uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -15,7 +15,7 @@ realms add ucs \
 --ignore-exists \
 --realm-data $PROJECT_DIR/dev/data/realm.json || exit 1
 
-poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
+uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -24,7 +24,7 @@ poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 users add dev univention \
 --ignore-exists || exit 1
 
-poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
+uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -32,7 +32,7 @@ poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 --user-realm master \
 clients add $PROJECT_DIR/appcenter-management/files/ucsschool-user-management_client_ui.json || exit 1
 
-poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
+uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -41,7 +41,7 @@ poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
 clients modify ucsschool-user-management-ui \
 --append-redirect-urls "*" || exit 1
 
-poetry -C $PROJECT_DIR/user-management-bff run keycloak-provisioning \
+uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \

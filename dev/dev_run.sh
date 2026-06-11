@@ -66,7 +66,7 @@ run_task() {
     exit $?
   fi
   if [ "$TASK" = "pytest" ]; then
-    run_command env --chdir=user-management-bff/ poetry run \
+    run_command env --chdir=user-management-bff/ uv run \
     pytest \
     -vv \
     --cov=user_management_bff \
@@ -76,7 +76,7 @@ run_task() {
     exit $?
   fi
   if [ "$TASK" = "pytest-e2e" ]; then
-    run_command env --chdir=user-management-bff/ poetry run \
+    run_command env --chdir=user-management-bff/ uv run \
     pytest \
     -vv \
     --screenshot only-on-failure \

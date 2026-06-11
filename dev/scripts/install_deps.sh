@@ -4,8 +4,8 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-poetry -C "$PROJECT_DIR/user-management-bff" install
-poetry -C "$PROJECT_DIR/user-management-bff" run playwright install
+uv --project "$PROJECT_DIR/user-management-bff" sync --locked
+uv run --project "user-management-bff" playwright install
 yarn --cwd "$PROJECT_DIR/user-management-ui" install
 OPA_UTILS=$PROJECT_DIR/.cache/opa/utils.rego
 if [ ! -f "$OPA_UTILS" ]; then
