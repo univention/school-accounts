@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM node:18 AS frontend_builder
+FROM node:18.20.8 AS frontend_builder
 
 COPY user-management-ui /user-management-ui
 WORKDIR /user-management-ui
@@ -10,7 +10,7 @@ RUN yarn install
 RUN yarn build
 
 # Calculate Python dependencies
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest as requirements_builder
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS requirements_builder
 WORKDIR /build
 ENV UV_SYSTEM_PYTHON=1
 ENV UV_PROJECT_ENVIRONMENT="/venv"
@@ -24,7 +24,7 @@ COPY user-management-bff/pyproject.toml user-management-bff/uv.lock ./
 # dev dependencies are currently included because pytest is needed for running integration tests
 RUN uv pip compile pyproject.toml --group dev --output-file requirements.txt --emit-index-url
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3
 
 EXPOSE 8000
 
