@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3
 LABEL description="Development image for ucsschool-users-management"
 
 # The current version used in the Guardian as of 2024-03-06

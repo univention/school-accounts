@@ -80,7 +80,7 @@ services:
       context: ./
       dockerfile: Keycloak.Dockerfile
     hostname: keycloak
-    command: start --optimized
+    command: start
     profiles:
       - clean-profile
       - dev-server

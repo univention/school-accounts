@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM docker.software-univention.de/keycloak-keycloak:25.0.6-ucs2
+FROM docker.software-univention.de/keycloak-keycloak:26.6.3-ucs1@sha256:c469e88a2cad9fdd087303f2747dce185d49becc08f7e594a285f51ba01d0f15
 
 # Configure a database vendor. Problem with dev-mem, set to default dev-file
 ENV KC_DB=dev-file
