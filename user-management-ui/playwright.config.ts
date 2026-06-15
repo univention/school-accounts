@@ -2,9 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { PlaywrightTestConfig } from '@playwright/test'
-import { devices } from '@playwright/test'
-
+import type {PlaywrightTestConfig} from '@playwright/test';
+import {devices} from '@playwright/test';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -18,7 +17,7 @@ const config: PlaywrightTestConfig = {
      * Maximum time expect() should wait for the condition to be met.
      * For example in `await expect(locator).toHaveText();`
      */
-    timeout: 5000
+    timeout: 5000,
   },
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
@@ -48,21 +47,21 @@ const config: PlaywrightTestConfig = {
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome']
-      }
+        ...devices['Desktop Chrome'],
+      },
     },
     {
       name: 'firefox',
       use: {
-        ...devices['Desktop Firefox']
-      }
+        ...devices['Desktop Firefox'],
+      },
     },
     {
       name: 'webkit',
       use: {
-        ...devices['Desktop Safari']
-      }
-    }
+        ...devices['Desktop Safari'],
+      },
+    },
 
     /* Test against mobile viewports. */
     // {
@@ -107,12 +106,12 @@ const config: PlaywrightTestConfig = {
     port: 5173,
     stdout: 'pipe',
     stderr: 'pipe',
-    reuseExistingServer: !process.env.CI
-  }
-}
+    reuseExistingServer: !process.env.CI,
+  },
+};
 
 if (process.env.CI_INTEGRATION) {
-    config.webServer = [];
+  config.webServer = [];
 }
 
-export default config
+export default config;

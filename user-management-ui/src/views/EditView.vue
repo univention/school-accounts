@@ -6,32 +6,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import {
-  UStandbyFullScreen,
+  defaultValue,
+  type Field,
+  type Page,
+  UButton,
+  UComboBox,
+  UConfirmDialog,
   UExtendingInput,
-  UInputText,
+  UIcon,
+  UInputCheckbox,
+  UInputClassified,
   UInputDate,
   UInputPassword,
-  UInputClassified,
-  UInputCheckbox,
-  USelect,
-  UIcon,
+  UInputText,
   UMultiInput,
   UMultiObjectSelect,
   UMultiSelect,
-  UComboBox,
-  UButton,
-  UTransitionHeight,
-  UConfirmDialog,
-  type Field,
-  type Page,
-  defaultValue,
+  USelect,
   useStandby,
+  UStandbyFullScreen,
+  UTransitionHeight,
 } from '@univention/univention-veb';
-import {computed, onMounted, onUnmounted, reactive, ref, watch, nextTick} from 'vue';
-import {useRoute, useRouter, onBeforeRouteLeave, RouterLink, type RouteLocationRaw} from 'vue-router';
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
+import {onBeforeRouteLeave, type RouteLocationRaw, RouterLink, useRoute, useRouter} from 'vue-router';
 import {useTranslation} from 'i18next-vue';
 
-import {fetchAddViewConfig, fetchEditViewConfig, createUser, updateUser} from '@/helpers/dataAccess';
+import {createUser, fetchAddViewConfig, fetchEditViewConfig, updateUser} from '@/helpers/dataAccess';
 import {useErrorStore} from '@/stores/error';
 import type {EditViewConfig} from '@/helpers/models/config';
 import type {FormValues} from '@/helpers/models/interface';
@@ -335,11 +335,13 @@ const validate = (resetCustomErrorMessage = true): boolean => {
   }
   if (firstInvalid !== null) {
     router.push({
-      ...route,
+      name: route.name ?? undefined,
       params: {
         ...route.params,
         page: firstInvalidPage,
       },
+      query: route.query,
+      hash: route.hash,
     });
 
     // TODO is this robust enough?
@@ -583,7 +585,7 @@ const confirmLanguageSwitchReload = computed(() => hasChangedValues.value);
                       :is="components[field.type]"
                       v-for="field in getRow(row)"
                       :key="field.props.name"
-                      :ref="(el) => refFormElem(page.name, fieldset.name, field.props.name, el as unknown as FormElem)"
+                      :ref="el => refFormElem(page.name, fieldset.name, field.props.name, el as unknown as FormElem)"
                       v-bind="field.props"
                       v-model:modelValue="currentValues[field.props.name]"
                     />

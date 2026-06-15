@@ -10,7 +10,8 @@ import vue from '@vitejs/plugin-vue';
 import pluginRewriteAll from 'vite-plugin-rewrite-all';
 
 // https://vitejs.dev/config/
-export default defineConfig(async({mode}) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
+export default defineConfig(async () => {
+  // eslint-disable-line @typescript-eslint/no-unused-vars
   const config: UserConfig = {
     plugins: [vue(), pluginRewriteAll()],
     base: '/univention/ucsschool/user-management/ui/',
