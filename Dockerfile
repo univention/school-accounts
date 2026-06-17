@@ -21,7 +21,8 @@ RUN apt-get update \
 RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 RUN pip install uv=="$UV_VERSION"
 COPY user-management-bff/pyproject.toml user-management-bff/uv.lock ./
-RUN uv pip compile pyproject.toml --output-file requirements.txt --emit-index-url
+# dev dependencies are currently included because pytest is needed for running integration tests
+RUN uv pip compile pyproject.toml --group dev --output-file requirements.txt --emit-index-url
 
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-521:latest
 
