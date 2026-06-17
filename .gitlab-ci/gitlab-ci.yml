@@ -10,11 +10,11 @@ include:
     file: 'pipeline/sphinx.yml'
   - project: univention/dev/internal/ucsschool-ci-utils
     file: fragments/openstack.yaml
-  - component: $CI_SERVER_FQDN/univention/dev/internal/ucsschool-ci-utils/app-release@2
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2
     inputs:
       app_id: "ucsschool-user-management"
       mail_sender: "ucsschool-maintainers@univention.de"
-      author_alias: "UCS@school Team"
+      author_alias: "The ByteBenders"
       changelog_link: "https://docs.software-univention.de/ucsschool-user-management-module/${APP_VERSION}/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#ucsschool"
@@ -24,6 +24,10 @@ include:
         - job: build_appcenter_files
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2
+    inputs:
+      commit_msg_hooks: "conventional-pre-commit issue-reference"
+  - local: .gitlab-ci/SonarQube.yml
 
 variables:
   UV_VERSION: "0.11.21"
@@ -69,19 +73,6 @@ build_appcenter_files:
   artifacts:
     paths:
       - __appcenter
-
-run_pre-commit:
-  stage: lint
-  needs: [build_dev_image]
-  image: $DEV_IMAGE_TAG
-  cache: &cache
-    key: $CI_COMMIT_REF_SLUG
-    paths:
-      - .cache/
-  before_script:
-    PROJECT_DIR="." ./dev/scripts/install_deps.sh
-  script:
-    - pre-commit run -a
 
 bff-test:
   stage: test
@@ -130,9 +121,8 @@ ui-test:
     - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml yarn test:e2e --reporter=junit,html
     - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml ../dev/tests/playwright2gitlab_junit.py
   rules:
-    - if: "$CI_COMMIT_MESSAGE =~ /skip-build/ || $pipeline =~ /skip-build/"
-      when: never
-    - if: "$CI_COMMIT_MESSAGE =~ /force-build/ || $pipeline =~ /force-build/"
+    - when: manual
+      allow_failure: true
     - changes:
         - user-management-bff/**/*
         - user-management-ui/**/*
