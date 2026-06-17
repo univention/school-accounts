@@ -10,21 +10,23 @@ RUN yarn install
 RUN yarn build
 
 # Calculate Python dependencies
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS requirements_builder
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS backend_builder
 WORKDIR /build
-ENV UV_SYSTEM_PYTHON=1
 ENV UV_PROJECT_ENVIRONMENT="/venv"
 ENV UV_VERSION=0.11.21
-RUN apt-get update \
-    && apt-get --assume-yes --verbose-versions --no-install-recommends install pip \
-    && rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* \
-RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
+RUN apt-get update && \
+    apt-get --assume-yes --verbose-versions --no-install-recommends install python3-pip && \
+    rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 RUN pip install uv=="$UV_VERSION"
 COPY user-management-bff/pyproject.toml user-management-bff/uv.lock ./
-# dev dependencies are currently included because pytest is needed for running integration tests
-RUN uv pip compile pyproject.toml --group dev --output-file requirements.txt --emit-index-url
+# Install all dependencies (prod + dev) and backend
+# Currently necessary, as the integration and production tests need this
+RUN uv sync --frozen --no-install-project
+COPY user-management-bff/ ./
+RUN uv sync --frozen
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS runtime
 
 EXPOSE 8000
 
@@ -37,26 +39,31 @@ LABEL "description"="UCS@school User Management API." \
 
 WORKDIR /app/user-management-api
 
-RUN apt-get update \
-    && apt-get --assume-yes --verbose-versions --no-install-recommends install \
-        gettext \
-        python3-pip \
-    && rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* \
-RUN rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
+RUN apt-get update &&\
+    apt-get --assume-yes --verbose-versions --no-install-recommends install \
+        gettext && \
+    rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
+    groupadd --gid 1001 appuser && \
+    useradd --gid 1001 --uid 1001 \
+        --home-dir /app/user-management-api \
+        --shell /bin/bash appuser && \
+    passwd -d appuser
 
-# Install python requirements
-COPY --from=requirements_builder /build/requirements.txt .
-RUN pip install --no-cache-dir -U pip wheel && pip install --no-cache-dir -r requirements.txt
-
-# Install backend
-COPY user-management-bff .
-RUN pip install --no-cache-dir . && pip list
-RUN ./scripts/translate.sh
-
+# Copy backend venv and src code
+ENV PATH="/venv/bin:$PATH"
+COPY --chown=1001:1001 --chmod=555 user-management-bff .
+COPY --from=backend_builder --chown=1001:1001 --chmod=555 /venv /venv
 # Install frontend
-COPY --from=frontend_builder /user-management-ui/dist /app/frontend
+COPY --from=frontend_builder --chown=1001:1001 --chmod=555 /user-management-ui/dist /app/frontend
+RUN ./scripts/translate.sh && \
+    chown -R 1001:1001 /app/user-management-api && \
+    chown -R 1001:1001 /app/frontend
 
-COPY appcenter-management/entrypoint.d/ /entrypoint.d
+COPY --chmod=555 appcenter-management/entrypoint.d/ /entrypoint.d
+# had to be added as the entrypoint runs as user appuser (1001:1001)
+RUN touch /etc/machine.user && chown 1001:1001 /etc/machine.user
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--log-level", "info", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "user_management_bff.main:app"]
+USER 1001:1001
