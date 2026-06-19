@@ -81,7 +81,8 @@ repos:
       files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
       types: [ file ]
       language: node
-      entry: "yarn --cwd user-management-ui type-check"
+      language_version: 18.x # adjust to the currently used node version in the project
+      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
       pass_filenames: false
       additional_dependencies:
         - "yarn"
@@ -90,7 +91,8 @@ repos:
       files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
       types: [ file ]
       language: node
-      entry: "yarn --cwd user-management-ui lint"
+      language_version: 18.x # adjust to the currently used node version in the project
+      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
       pass_filenames: false
       additional_dependencies:
         - "yarn"
@@ -99,7 +101,8 @@ repos:
       files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
       types: [ file ]
       language: node
-      entry: "yarn --cwd user-management-ui format"
+      language_version: 18.x # adjust to the currently used node version in the project
+      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
       pass_filenames: false
       additional_dependencies:
         - "yarn"
