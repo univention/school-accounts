@@ -10,9 +10,10 @@ import pytest
 from user_management_bff.adapter_registry import port_dep
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
+from user_management_bff.constants import FRONTEND_PREFIX
 from user_management_bff.errors import CreationError, NotAuthenticatedError, ObjectNotFoundError
 from user_management_bff.lang import _
-from user_management_bff.main import StaticFilesSPA, app
+from user_management_bff.main import app
 from user_management_bff.ports import PermissionsPort
 
 
@@ -83,45 +84,6 @@ def test_get_users_config(test_client, api_prefix, lang):
             },
         ]
     }
-
-
-@pytest.mark.parametrize(
-    "environ,expected_response",
-    [
-        (
-            {
-                "COLORTERM": "truecolor",
-                "SHELL": "/bin/bash",
-                "SUPER_SECRET_PASSWORD": "password1234",
-            },
-            {},
-        ),
-        (
-            {
-                "LOGNAME": "admin",
-                "VITE__VALUE_1": "foo",
-                "VITE__VALUE_2__SUBVALUE_1": "bar1",
-                "VITE__VALUE_2__SUBVALUE_2": "bar2",
-                "YOLO": "1",
-            },
-            {
-                "VITE__VALUE_1": "foo",
-                "VITE__VALUE_2__SUBVALUE_1": "bar1",
-                "VITE__VALUE_2__SUBVALUE_2": "bar2",
-            },
-        ),
-    ],
-)
-def test_get_app_config(
-    test_client, api_prefix, patch_test_env, environ, expected_response, monkeypatch
-):
-    for key in os.environ.keys():
-        if key.startswith("VITE__"):
-            monkeypatch.delenv(key)
-    patch_test_env(environ)
-    response = test_client.get(f"{api_prefix}/config/app")
-    assert response.status_code == 200, response.json()
-    assert response.json() == expected_response
 
 
 @pytest.mark.parametrize(
@@ -1152,14 +1114,8 @@ def test_patch_user_change_roles(test_client, api_prefix, patch_dict):
     assert roles == expected_roles
 
 
-@pytest.mark.asyncio
-async def test_StaticFilesSPA_get_response(tmp_path, test_client):
-    test_index = tmp_path / "index.html"
-    test_index.write_text("index")
-    test_page = tmp_path / "page.html"
-    test_page.write_text("page")
-    app.mount("/static_test", StaticFilesSPA(directory=tmp_path, html=True), name="static_test")
-    resp = test_client.get("/static_test/foo.html")
-    assert resp.text == "index"
-    resp = test_client.get("/static_test/page.html")
-    assert resp.text == "page"
+def test_serve_frontend(test_client):
+    resp = test_client.get(FRONTEND_PREFIX)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    assert "<html" in resp.text

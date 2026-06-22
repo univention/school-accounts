@@ -1,7 +1,6 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-import os
 from contextlib import asynccontextmanager
 from importlib import metadata
 from uuid import uuid4
@@ -9,14 +8,13 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, ORJSONResponse
+from fastapi.templating import Jinja2Templates
 from loguru import logger
 from port_loader import AsyncAdapterSettingsProvider
-from starlette.exceptions import HTTPException
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
-from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_DIR, FRONTEND_PREFIX
+from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_PREFIX, TEMPLATES_DIR
 from .correlation_id import correlation_id_ctx_var
 from .errors import (
     NotAuthenticatedError,
@@ -101,21 +99,14 @@ if CORS_ALLOWED_ORIGINS:
     )  # pragma: no cover
 
 
-# statically serve the frontend
-class StaticFilesSPA(StaticFiles):
-    async def get_response(self, path: str, scope):
-        try:
-            response = await super().get_response(path, scope)
-        except HTTPException:
-            # serve the index.html for files not found
-            return await super().get_response("index.html", scope)
-        return response
+# serve the frontend via Jinja templates
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
-if os.path.exists(FRONTEND_DIR):
-    app.mount(
-        FRONTEND_PREFIX, StaticFilesSPA(directory=FRONTEND_DIR, html=True), name="frontend"
-    )  # pragma: no cover
+@app.get(FRONTEND_PREFIX, response_class=HTMLResponse)
+@app.get(f"{FRONTEND_PREFIX}/", response_class=HTMLResponse)
+def serve_frontend(request: Request):
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.exception_handler(PermissionsError)
@@ -161,18 +152,3 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
             }
         )
     return ORJSONResponse(status_code=422, content={"detail": errors})
-
-
-@app.get(f"{API_PREFIX}/config/app")
-def get_app_config() -> dict:
-    """
-    Returns the environment variables needed by the frontend to run the app.
-
-    In production we run compiled javascript code in the frontend,
-    which does not have access to environment variables that weren't present
-    at compile time.
-    Since we need AppCenter settings that are set at runtime,
-    we work around this limitation by serving the variables as javascript,
-    which is then fetched by the frontend's `UrlSettingsAdapter`.
-    """
-    return {key: value for key, value in os.environ.items() if key.startswith("VITE__")}
