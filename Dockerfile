@@ -2,13 +2,6 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM node:18.20.8 AS frontend_builder
-
-COPY user-management-ui /user-management-ui
-WORKDIR /user-management-ui
-RUN yarn install
-RUN yarn build
-
 # Calculate Python dependencies
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-525:0.23.0@sha256:afd982bfba8077a08a873e0e2c567dbc9b2c8e943eefac68b1d06a784b0f1859 AS backend_builder
 WORKDIR /build
@@ -53,10 +46,8 @@ RUN apt-get update &&\
 ENV PATH="/venv/bin:$PATH"
 COPY --chown=1001:1001 --chmod=555 user-management-bff .
 COPY --from=backend_builder --chown=1001:1001 --chmod=555 /venv /venv
-# Install frontend
-COPY --from=frontend_builder --chown=1001:1001 --chmod=555 /user-management-ui/dist /app/frontend
 RUN ./scripts/translate.sh && \
-    chown -R 1001:1001 /app/user-management-api /app/frontend
+    chown -R 1001:1001 /app/user-management-api
 
 COPY appcenter-management/entrypoint.d/ /entrypoint.d
 

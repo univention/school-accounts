@@ -136,7 +136,7 @@ services:
     env_file: *env-files
     labels:
       traefik.http.routers.bff.entrypoints: web
-      traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`)
+      traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/user-management/ui`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
     develop:
@@ -180,43 +180,6 @@ services:
       traefik.http.routers.prod.rule: PathPrefix(`/univention/ucsschool/user-management/`)
       traefik.http.routers.prod.service: prod
       traefik.http.services.prod.loadbalancer.server.port: 8000
-  ui:
-    image: ucsschool-user-management-dev:latest
-    build: *docker-build
-    container_name: ucsschool-user-management-ui
-    command: ["yarn", "--cwd", "user-management-ui", "dev"]
-    profiles:
-      - clean-profile
-      - dev-server
-    depends_on:
-      install_deps:
-        condition: service_completed_successfully
-      proxy:
-        condition: service_started
-      keycloak_provisioning:
-        condition: service_completed_successfully
-    user: $DOCKER_USER
-    extra_hosts: *extra_hosts
-    volumes: *default-volumes
-    env_file: *env-files
-    labels:
-      traefik.http.routers.ui.entrypoints: web
-      traefik.http.routers.ui.rule: PathPrefix(`/univention/ucsschool/user-management/ui`)
-      traefik.http.routers.ui.service: ui
-      traefik.http.services.ui.loadbalancer.server.port: 5173
-    develop:
-      watch:
-        - action: sync
-          path: ../user-management-ui
-          target: /src/user-management-ui/src
-        # frontend dependencies
-        - action: rebuild
-          path: ../user-management-ui/package.json
-        - action: rebuild
-          path: ../user-management-ui/yarn.lock
-        # dev Dockerfile
-        - action: rebuild
-          path: Dockerfile
   sphinx:
     image: docker-registry.knut.univention.de/sphinx:latest
     pull_policy: always

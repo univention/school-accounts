@@ -6,7 +6,6 @@
 
 uv --project "$PROJECT_DIR/user-management-bff" sync --locked
 uv run --project "user-management-bff" playwright install
-yarn --cwd "$PROJECT_DIR/user-management-ui" install
 OPA_UTILS=$PROJECT_DIR/.cache/opa/utils.rego
 if [ ! -f "$OPA_UTILS" ]; then
   mkdir -p "$PROJECT_DIR/.cache/opa"

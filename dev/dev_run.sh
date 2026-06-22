@@ -16,7 +16,7 @@ usage: dev_run.sh task TASK
 The following tasks are available:
 
 clean: Cleans up cached files and removes docker containers and local images.
-dev-server: Starts the dev server including the frontend and the API.
+dev-server: Starts the dev server for the API.
 prod-server: Starts the production docker image
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
@@ -34,7 +34,7 @@ run_task() {
   fi
   echo "Running task $TASK"
   if [ "$TASK" = "clean" ]; then
-    rm -rf .cache user-management-ui/node_modules docs/user-management-manual/_build
+    rm -rf .cache docs/user-management-manual/_build
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "clean-profile" \
