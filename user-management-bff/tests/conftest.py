@@ -4,6 +4,8 @@
 import os
 import random
 import re
+import subprocess
+from pathlib import Path
 from typing import Any, Optional
 
 import nest_asyncio
@@ -14,6 +16,15 @@ from ucsschool.kelvin.client import UserResource
 from user_management_bff.models import User, UserAttributes
 
 nest_asyncio.apply()
+
+
+def pytest_configure(config):
+    # Compile gettext .po -> .mo so translation tests run against the real
+    # catalogs. The .mo files are git-ignored and otherwise only compiled by
+    # CI/translate tasks, so without this a local pytest run falls back to the
+    # untranslated strings (e.g. test_translation_smoke_test[de-Klassen]).
+    script = Path(__file__).parent.parent / "scripts" / "translate.sh"
+    subprocess.run([str(script)], check=True)
 
 
 @pytest.fixture(scope="session")
