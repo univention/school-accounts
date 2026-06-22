@@ -195,7 +195,6 @@ def test_get_users(
         ),
     ],
 )
-@pytest.mark.usefixtures("restore_users_json")
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
 def test_get_users_no_permissions(
     _permissions_mock,
@@ -274,7 +273,6 @@ def test_config_work_groups(test_client, api_prefix):
     assert response.json() == expected_data
 
 
-@pytest.mark.usefixtures("restore_users_json")
 def test_create_user(test_client, api_prefix, transform_user_dict_to_api_users_dict):
     user = {
         "first_name": "firstname",
@@ -408,7 +406,6 @@ def test_delete_user_non_existent(test_client, api_prefix):
     assert response.status_code == 204
 
 
-@pytest.mark.usefixtures("restore_users_json")
 def test_delete_user(test_client, api_prefix):
     identifier = "test_user1"
     response = test_client.delete(f"{api_prefix}/users/{identifier}")
@@ -446,7 +443,6 @@ def test_delete_user_not_authenticated(_delete_mock, test_client, api_prefix):
     assert response.status_code == 401
 
 
-@pytest.mark.usefixtures("restore_users_json")
 @pytest.mark.parametrize("lang", ["en", "de"])
 def test_patch_user_wrong_school(test_client, api_prefix, lang):
     user = "test_user1"
@@ -463,7 +459,6 @@ def test_patch_user_wrong_school(test_client, api_prefix, lang):
     }
 
 
-@pytest.mark.usefixtures("restore_users_json")
 @pytest.mark.parametrize("lang", ["en", "de"])
 def test_patch_user_not_found(test_client, api_prefix, lang):
     response = test_client.patch(
@@ -496,7 +491,6 @@ def test_patch_user_not_allowed(_mock_permission_adapter, test_client, api_prefi
     "patch_dict",
     [{}, {"first_name": "John"}, {"first_name": "John", "username": "jon.doe"}, {"activated": False}],
 )
-@pytest.mark.usefixtures("restore_users_json")
 def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
     response = test_client.patch(
         f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json=patch_dict
@@ -524,7 +518,6 @@ def test_patch_user(test_client, api_prefix, patch_dict, users_json_path):
     "patch_dict",
     [{}, {"activated": False}],
 )
-@pytest.mark.usefixtures("restore_users_json")
 def test_patch_user_activated(test_client, api_prefix, patch_dict, users_json_path):
     response = test_client.patch(
         f"{api_prefix}/users/test_user1", params={"school": "test_school1"}, json=patch_dict
@@ -549,7 +542,6 @@ def test_patch_user_activated(test_client, api_prefix, patch_dict, users_json_pa
     assert response.json()["user"] == original_user
 
 
-@pytest.mark.usefixtures("restore_users_json")
 def test_patch_user_school_classes(test_client, api_prefix):
     response = test_client.patch(
         f"{api_prefix}/users/test_user3",

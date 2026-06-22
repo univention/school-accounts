@@ -17,6 +17,18 @@ from user_management_bff.models import User, UserAttributes
 
 nest_asyncio.apply()
 
+# Source files written by the file-backed persistence adapters during tests.
+# These env vars are set by the `patch_env` fixture and point at the real
+# example data under `dev/data/`, so the `restore_data_files` autouse fixture
+# snapshots them and restores any a test modifies.
+_DATA_SOURCE_ENV_VARS = [
+    "FILE_USERS_PERSISTENCE_ADAPTER__SOURCE",
+    "FILE_SCHOOLS_PERSISTENCE_ADAPTER__SOURCE",
+    "FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE",
+    "FILE_WORK_GROUPS_PERSISTENCE_ADAPTER__SOURCE",
+    "FILE_PERMISSIONS_ADAPTER__SOURCE",
+]
+
 
 def pytest_configure(config):
     # Compile gettext .po -> .mo so translation tests run against the real
@@ -174,13 +186,28 @@ def users_json_path():
     return os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"]
 
 
-@pytest.fixture
-def restore_users_json(users_json_path):
-    with open(users_json_path, "r") as file:
-        data = file.read()
+@pytest.fixture(autouse=True)
+def restore_data_files(patch_env):
+    """Snapshot dev/data source files and restore any a test modifies.
+
+    The file-backed persistence adapters write back to the example data under
+    `dev/data/` (see `patch_env`), which would otherwise leave the working tree
+    dirty after a test run. Restoring only the files whose contents changed
+    keeps non-mutating tests (and the e2e suite) free of any disk writes.
+    """
+    snapshots = {}
+    for var in _DATA_SOURCE_ENV_VARS:
+        path = os.environ.get(var)
+        if path and os.path.exists(path):
+            with open(path, "rb") as fd:
+                snapshots[path] = fd.read()
     yield
-    with open(users_json_path, "w") as file:
-        file.write(data)
+    for path, original in snapshots.items():
+        with open(path, "rb") as fd:
+            if fd.read() == original:
+                continue
+        with open(path, "wb") as fd:
+            fd.write(original)
 
 
 @pytest.fixture

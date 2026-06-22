@@ -698,7 +698,6 @@ class TestFileUsersPersistenceAdapter:
             await adapter.save_user(user)
         assert exc_info.value.identifier == user.id
 
-    @pytest.mark.usefixtures("restore_users_json")
     @pytest.mark.asyncio
     async def test_save_user(self, adapter, users_json_path, generate_user):
         user = generate_user(identifier="test_user1")
@@ -723,7 +722,6 @@ class TestFileUsersPersistenceAdapter:
             }
         )
 
-    @pytest.mark.usefixtures("restore_users_json")
     @pytest.mark.asyncio
     async def test_create_user(self, adapter, tmpdir):
         data_file = tmpdir / "test_data.json"
