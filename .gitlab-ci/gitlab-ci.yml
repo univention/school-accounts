@@ -71,9 +71,6 @@ variables:
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
   UV_CACHE_DIR: .cache/uv
-  YARN_CACHE_FOLDER: .cache/yarn
-  npm_config_cache: .cache/npm
-  PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
 
 stages:
   - prepare
@@ -122,7 +119,6 @@ bff-test:
       allow_failure: true
     - changes:
         - user-management-bff/**/*
-        - user-management-ui/**/*
   script:
     - uv run --project user-management-bff/ pytest -vv -m "not e2e" --junitxml=report.xml --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
@@ -132,39 +128,6 @@ bff-test:
         coverage_format: cobertura
         path: coverage.xml
       junit: report.xml
-
-ui-test:
-  stage: test
-  image: mcr.microsoft.com/playwright@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # 1.60.0-noble
-  cache:
-    key:
-      files:
-        - yarn.lock
-    paths:
-      - node_modules
-  before_script:
-    - cd user-management-ui
-    - corepack enable
-    - yarn config set cache-folder .yarn
-    - yarn install --prefer-offline --cache-folder .yarn
-  script:
-    - cp .env.example .env.production.local
-    - yarn test:e2e:setup
-    - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml yarn test:e2e --reporter=junit,html
-    - PLAYWRIGHT_JUNIT_OUTPUT_NAME=../report.xml ../dev/tests/playwright2gitlab_junit.py
-  rules:
-    - when: manual
-      allow_failure: true
-    - changes:
-        - user-management-bff/**/*
-        - user-management-ui/**/*
-  artifacts:
-    reports:
-      junit: report.xml
-    paths:
-      - user-management-ui/playwright-report/
-    expose_as: "Playwright report"
-    when: always
 
 repo_tar:
   stage: prepare
@@ -186,7 +149,6 @@ integration-tests:
   rules:
     - changes:
         - user-management-bff/**/*
-        - user-management-ui/**/*
         - appcenter-management/**/*
         - dev/tests/**/*
       when: manual
@@ -203,7 +165,6 @@ integration-tests:
     when: always
     paths:
       - primary_join.log
-      - "*playwright-report"
       - "*_producttest_traces"
       - "*_kelvin_http.log"
     reports:

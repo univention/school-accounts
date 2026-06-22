@@ -147,38 +147,6 @@ repos:
   rev: v5.0.2
   hooks:
     - id: reuse
-- repo: local
-  hooks:
-    - id: frontend-type-check
-      name: frontend-type-check
-      files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
-      types: [ file ]
-      language: node
-      language_version: 18.x # adjust to the currently used node version in the project
-      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
-      pass_filenames: false
-      additional_dependencies:
-        - "yarn"
-    - id: frontend-lint
-      name: frontend-lint
-      files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
-      types: [ file ]
-      language: node
-      language_version: 18.x # adjust to the currently used node version in the project
-      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
-      pass_filenames: false
-      additional_dependencies:
-        - "yarn"
-    - id: frontend-format
-      name: frontend-format
-      files: \.([jt]sx?|vue)$  # *.js, *.jsx, *.ts and *.tsx, as well as .vue
-      types: [ file ]
-      language: node
-      language_version: 18.x # adjust to the currently used node version in the project
-      entry: bash -c "yarn --cwd user-management-ui install && yarn --cwd user-management-ui type-check"
-      pass_filenames: false
-      additional_dependencies:
-        - "yarn"
 - repo: https://github.com/anderseknert/pre-commit-opa
   rev: v1.5.1
   hooks:

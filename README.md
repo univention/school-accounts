@@ -93,7 +93,7 @@ dev/dev_run.sh pre-commit run
 
 Normally you use pre-commit by installing [pre-commit](https://pre-commit.com/) on your local machine
 and running `pre-commit install` to install the pre-commit hook into the repository.
-If you provide all the requirements, e.g. `python`, `nodejs`, `yarn`, etc. you can do so.
+If you provide all the requirements, e.g. `python`, etc. you can do so.
 
 Alternatively you can use the following pre-commit hook, to execute pre-commit within docker,
 so you do not need to install anything (other than docker) on your machine:
@@ -141,11 +141,11 @@ echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
 
 #### Reachable URLS
 
-The UI can be accessed with "dev:univention" at http://user-management-proxy/univention/ucsschool/user-management/ui/
+The frontend page is served by the API at http://user-management-proxy/univention/ucsschool/user-management/ui/
 
 The API can be accessed at http://user-management-proxy/univention/ucsschool/user-management/bff/docs
 
-Both UI and API react to code changes without the need to restart the environment.
+The API reacts to code changes without the need to restart the environment.
 
 Keycloak can be accessed with "admin:admin" at http://user-management-proxy/keycloak/admin/
 
@@ -195,7 +195,6 @@ The manual can then be accessed at [http://localhost/docs/manual/](http://localh
 Running the different services and jobs creates some artifacts:
 
 - The `.cache` folder
-- `node_modules` in [user-management-ui](user-management-ui)
 - various docker containers, images and networks as part of the [docker compose setup](dev/docker-compose.yaml)
 
 You can clean all of it by running:

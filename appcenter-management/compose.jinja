@@ -47,7 +47,6 @@ if not keycloak_url:
 if not keycloak_url.startswith('http'):
     keycloak_url = f'https://{keycloak_url}'
 well_known_url = f"{keycloak_url}/realms/ucs/.well-known/openid-configuration"
-print(f"      VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__SSO_URI: {keycloak_url}")
 print(f"      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
 print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_url}", end='')@!@
       OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__AUDIENCE: "ucsschool-user-management"
@@ -64,9 +63,3 @@ print(api_url, end='')@!@
       USER_MANAGEMENT__LOGGING__FORMAT: @%@ucsschool-user-management/logging/format@%@
       USER_MANAGEMENT__LOGGING__LEVEL: @%@ucsschool-user-management/logging/level@%@
       USER_MANAGEMENT__LOGGING__STRUCTURED: "@%@ucsschool-user-management/logging/structured@%@"
-
-      VITE__USER_MANAGEMENT_UI__ADAPTER__AUTHENTICATION_PORT: keycloak
-      VITE__USER_MANAGEMENT_UI__ADAPTER__DATA_PORT: api
-      VITE__API_DATA_ADAPTER__URI: /univention/ucsschool/user-management/bff
-      VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__REALM: ucs
-      VITE__KEYCLOAK_AUTHENTICATION_ADAPTER__CLIENT_ID: ucsschool-user-management-ui
