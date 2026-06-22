@@ -402,8 +402,8 @@ class TestGuardianPermissionsAdapter:
     async def test_configure(self, adapter, settings, oauth2_settings, mocker):
         mock = mocker.AsyncMock().func
         mock.return_value = oauth2_settings
-        with mocker.patch("user_management_bff.adapters.permissions.get_oauth2_settings", mock):
-            await adapter.configure(settings)
+        mocker.patch("user_management_bff.adapters.permissions.get_oauth2_settings", mock)
+        await adapter.configure(settings)
         mock.assert_called_once()
         assert adapter._settings == settings
         assert adapter._oauth2_settings == oauth2_settings

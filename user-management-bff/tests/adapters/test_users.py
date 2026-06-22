@@ -247,7 +247,7 @@ class TestKelvinUsersPersistenceAdapter:
                 password="univention",
             )
         )
-        await mock_save.called_once()
+        mock_save.assert_called_once()
         assert result == User(
             id="test_user1",
             attributes=UserAttributes(
@@ -281,7 +281,7 @@ class TestKelvinUsersPersistenceAdapter:
                     password="univention",
                 )
             )
-        await mock_save.called_once()
+        mock_save.assert_called_once()
         assert exc_info.value.message == "error"
 
     @pytest.mark.asyncio
@@ -296,7 +296,7 @@ class TestKelvinUsersPersistenceAdapter:
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
         result = await adapter.delete_user("test_user1")
-        await user_mock.delete.called_once()
+        user_mock.delete.assert_called_once()
         assert result is None
 
     @pytest.mark.asyncio

@@ -111,3 +111,8 @@ source_pkgs = [
 markers = [
     "e2e: marks tests as e2e tests (deselect with '-m \"not e2e\"')",
 ]
+filterwarnings = [
+    # Starlette's TestClient passes the deprecated `app` shortcut to httpx
+    # internally; not something we control from our own code.
+    "ignore:The 'app' shortcut is now deprecated:DeprecationWarning",
+]

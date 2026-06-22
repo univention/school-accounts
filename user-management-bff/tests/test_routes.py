@@ -331,7 +331,7 @@ def test_create_user_creation_error(mock_save, test_client, api_prefix):
     mock_permssions_port = MagicMock()
     app.dependency_overrides[port_dep(PermissionsPort)] = lambda: mock_permssions_port
     response = test_client.post(f"{api_prefix}/users", json=user)
-    mock_save.called_once()
+    mock_save.assert_called_once()
     assert response.status_code == 400, response.json()
     assert response.json() == {"detail": "error"}
 
@@ -364,7 +364,7 @@ def test_create_user_permissions_error(
         "You do not have the permission to create this user.", lang=lang
     ), response_json
 
-    mock_create_user.called_once()
+    mock_create_user.assert_called_once()
 
     # check that the user was not created in the persistence adapter
     with open(os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"], "r") as file:
