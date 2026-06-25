@@ -5,16 +5,16 @@ from contextlib import asynccontextmanager
 from importlib import metadata
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, ORJSONResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import AsyncAdapterSettingsProvider
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
-from .constants import API_PREFIX, CORS_ALLOWED_ORIGINS, FRONTEND_PREFIX, TEMPLATES_DIR
+from .constants import CORS_ALLOWED_ORIGINS, FRONTEND_PREFIX, STATIC_DIR
 from .correlation_id import correlation_id_ctx_var
 from .errors import (
     NotAuthenticatedError,
@@ -24,7 +24,6 @@ from .errors import (
 )
 from .lang import _, get_lang
 from .logging import configure_logger
-from .ports import FastAPIAuthenticationPort
 from .routes import router
 
 
@@ -40,10 +39,6 @@ async def lifespan(fastapi_app: FastAPI):
         await configure_logger(settings_port)
 
         await initialize_adapters(ADAPTER_REGISTRY)
-        auth_adapter = await ADAPTER_REGISTRY.request_port(FastAPIAuthenticationPort)
-        fastapi_app.include_router(
-            router, dependencies=[Depends(await auth_adapter.get_authentication_dependency())]
-        )
     except Exception:
         import traceback
 
@@ -53,17 +48,10 @@ async def lifespan(fastapi_app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    title="UCS@school User Management BFF",
+    title="UCS@school User Management",
     version=metadata.version("user-management-bff"),
-    openapi_url=f"{API_PREFIX}/openapi.json",
-    docs_url=f"{API_PREFIX}/docs",
-    default_response_class=ORJSONResponse,
-    swagger_ui_oauth2_redirect_url=f"{API_PREFIX}/docs/oauth2-redirect",
-    swagger_ui_init_oauth={
-        "usePkceWithAuthorizationCodeGrant": True,
-        "clientId": "ucsschool-user-management-ui",
-        "scopes": ["openid"],
-    },
+    openapi_url=None,
+    default_response_class=HTMLResponse,
 )
 
 CORRELATION_ID_HEADER_NAME = "X-Request-ID"
@@ -99,16 +87,14 @@ if CORS_ALLOWED_ORIGINS:
     )  # pragma: no cover
 
 
-# serve the frontend via Jinja templates
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# Serve the HTML/HTMX UI: vendored static assets + the UI router.
+app.mount(f"{FRONTEND_PREFIX}/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.include_router(router)
 
 
-@app.get(FRONTEND_PREFIX, response_class=HTMLResponse)
-@app.get(f"{FRONTEND_PREFIX}/", response_class=HTMLResponse)
-def serve_frontend(request: Request):
-    return templates.TemplateResponse(request, "index.html")
-
-
+# NOTE: these handlers still emit JSON. They are dormant until UI routes that
+# raise them exist; they will be converted to HTML fragments once those flows
+# are added.
 @app.exception_handler(PermissionsError)
 async def permissions_exception_handler(request: Request, exc: PermissionsError):
     lang = get_lang(request)

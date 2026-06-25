@@ -1,0 +1,33 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+<!doctype html>
+<html lang="{{ lang }}" data-theme="univention-light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ _("UCS@school User Management") }}</title>
+    <script type="module" src="{{ static('vendor/univention-design-system.js') }}"></script>
+    <script defer src="{{ static('vendor/htmx.min.js') }}"></script>
+    <script defer src="{{ static('vendor/alpine.min.js') }}"></script>
+  </head>
+  <body>
+    <u-page>
+      <u-container>
+        <u-hstack justify="between" align="center">
+          <u-page-header>{{ _("User Management") }}</u-page-header>
+          <u-theme-toggle
+            label-light="{{ _('Switch to light theme') }}"
+            label-dark="{{ _('Switch to dark theme') }}"
+          ></u-theme-toggle>
+        </u-hstack>
+
+        {% block content %}{% endblock %}
+
+        <u-toast id="toast-region" aria-live="polite"></u-toast>
+      </u-container>
+    </u-page>
+  </body>
+</html>

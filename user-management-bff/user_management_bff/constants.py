@@ -10,6 +10,7 @@ FRONTEND_PREFIX = os.environ.get(
     "USER_MANAGEMENT__FRONTEND_PREFIX", "/univention/ucsschool/user-management/ui"
 )
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates")
+STATIC_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 APP_NAME = "ucsschool-user-management"
 NAMESPACE_NAME = "user-management"
 
