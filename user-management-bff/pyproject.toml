@@ -53,13 +53,19 @@ dev = [
 [tool.uv]
 default-groups = "all"
 
+[tool.uv.sources]
+port-loader = { index = "port-loader" }
+guardian-authz-client = { index = "guardian-authz-client" }
+
 [[tool.uv.index]]
 name = "port-loader"
 url = "https://git.knut.univention.de/api/v4/projects/908/packages/pypi/simple"
+explicit = true
 
 [[tool.uv.index]]
 name = "guardian-authz-client"
 url = "https://git.knut.univention.de/api/v4/projects/1062/packages/pypi/simple"
+explicit = true
 
 [tool.uv.build-backend]
 module-name = [
