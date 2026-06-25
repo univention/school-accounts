@@ -15,9 +15,10 @@ repos:
     - id: check-yaml
     - id: check-toml
     - id: trailing-whitespace
+      exclude: '^user-management-bff/user_management_bff/static/vendor/'
     - id: pretty-format-json
       args: [--autofix]
-      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$'
+      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$|^user-management-bff/user_management_bff/static/vendor/'
 - repo: https://github.com/psf/black-pre-commit-mirror
   rev: 24.1.1
   hooks:
