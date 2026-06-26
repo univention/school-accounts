@@ -3,18 +3,27 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 from contextlib import asynccontextmanager
 from importlib import metadata
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, ORJSONResponse
+from fastapi.responses import HTMLResponse, ORJSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import AsyncAdapterSettingsProvider
+from starlette.middleware.sessions import SessionMiddleware
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
-from .constants import CORS_ALLOWED_ORIGINS, FRONTEND_PREFIX, STATIC_DIR
+from .constants import (
+    AUTH_LOGIN_PATH,
+    CORS_ALLOWED_ORIGINS,
+    FRONTEND_PREFIX,
+    SESSION_COOKIE_SECURE,
+    SESSION_MIDDLEWARE_SECRET,
+    STATIC_DIR,
+)
 from .correlation_id import correlation_id_ctx_var
 from .errors import (
     NotAuthenticatedError,
@@ -87,6 +96,17 @@ if CORS_ALLOWED_ORIGINS:
     )  # pragma: no cover
 
 
+# Holds the transient OAuth state (`state` + PKCE `code_verifier`) between the
+# login redirect and the callback. The authenticated session itself lives
+# server-side behind SessionStorePort, keyed by a separate signed cookie.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_MIDDLEWARE_SECRET,
+    same_site="lax",
+    https_only=SESSION_COOKIE_SECURE,
+)
+
+
 # Serve the HTML/HTMX UI: vendored static assets + the UI router.
 app.mount(f"{FRONTEND_PREFIX}/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(router)
@@ -119,8 +139,12 @@ async def object_not_found_exception_handler(request: Request, exc: ObjectNotFou
 
 @app.exception_handler(NotAuthenticatedError)
 async def not_authenticated_exception_handler(request: Request, exc: NotAuthenticatedError):
-    lang = get_lang(request)
-    return ORJSONResponse(status_code=401, content={"detail": _(exc.message, lang=lang)})
+    # Send the browser into the interactive login, preserving where it was going.
+    login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(request.url.path)}"
+    if request.headers.get("HX-Request") == "true":
+        # htmx performs a client-side redirect when it sees this header.
+        return Response(status_code=200, headers={"HX-Redirect": login_url})
+    return RedirectResponse(login_url, status_code=303)
 
 
 @app.exception_handler(RequestValidationError)
