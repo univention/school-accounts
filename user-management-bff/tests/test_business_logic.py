@@ -33,6 +33,7 @@ from user_management_bff.errors import (
 )
 from user_management_bff.lang import _
 from user_management_bff.models import (
+    Permission,
     Role,
     Target,
     TargetObject,
@@ -609,3 +610,266 @@ async def test_get_user_edit_config_school_doesnt_exist(ports, lang):
     with pytest.raises(ObjectNotFoundError) as exc_info:
         await _edit_config(ports, user_id="test_user1", school="fake_school", lang=lang)
     assert exc_info.value.identifier == "fake_school"
+
+
+# ---------------------------------------------------------------------------
+# Edge cases / branch behaviour beyond plain line coverage
+#
+# The file permissions adapter grants permissions per target *type*, so the
+# integration tests above cannot exercise per-object permission differences.
+# These tests mock get_permissions to return per-id results.
+# ---------------------------------------------------------------------------
+def _permissions_by_id(mapping: dict[str, list[Permission]]):
+    """Build a get_permissions side effect returning ``mapping`` keyed by target id.
+
+    Any target not present in ``mapping`` resolves to an empty permission list.
+    """
+
+    def _side_effect(actor, targets):
+        return {
+            (target.old_target or target.new_target).id: mapping.get(
+                (target.old_target or target.new_target).id, []
+            )
+            for target in targets
+        }
+
+    return _side_effect
+
+
+# get_school_classes / get_work_groups filter out entries the actor
+# may not use as a filter (the False side of the use_as_filter check).
+@pytest.mark.asyncio
+async def test_get_school_classes_filters_by_use_as_filter(ports, mocker):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"1a": [Permission.use_as_filter]}),
+    )
+    result = await business_logic.get_school_classes(
+        ports.school_classes,
+        ports.school_classes_repr,
+        ports.permissions,
+        ports.users,
+        ACTOR_ID,
+        "school1",
+        "en",
+    )
+    # "2b" is dropped because the actor lacks use_as_filter on it.
+    assert [sc.value for sc in result.school_classes] == ["1a"]
+
+
+@pytest.mark.asyncio
+async def test_get_work_groups_filters_by_use_as_filter(ports, mocker):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"w1a": [Permission.use_as_filter]}),
+    )
+    result = await business_logic.get_work_groups(
+        ports.work_groups,
+        ports.work_groups_repr,
+        ports.permissions,
+        ports.users,
+        ACTOR_ID,
+        "school1",
+        "en",
+    )
+    assert [wg.value for wg in result.work_groups] == ["w1a"]
+
+
+# get_users returns only the users the actor holds a permission for
+# (partial visibility, not the all-or-nothing cases above).
+@pytest.mark.asyncio
+async def test_get_users_partial_visibility(ports, mocker):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.read_first_name]}),
+    )
+    result = await business_logic.get_users(
+        ports.users,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
+        ports.users_repr,
+        ports.permissions,
+        ACTOR_ID,
+        UsersGetRequest(school="test_school1", school_classes=[], work_groups=[]),
+        "en",
+    )
+    # test_school1 also contains test_user4, but the actor has no permission for it.
+    assert {user.id for user in result.users} == {"test_user1"}
+
+
+# create_user / patch_user deny on a *missing subset* of permissions
+# and report exactly the missing element (exercises required - granted, not
+# required - {}).
+@pytest.mark.asyncio
+async def test_create_user_partial_permissions(ports, mocker):
+    granted = [
+        Permission.create_user,
+        Permission.write_last_name,
+        Permission.write_username,
+        Permission.write_roles,
+        Permission.write_schools,
+        Permission.write_school_classes,
+        Permission.write_password,
+    ]  # everything the default request needs except write-first_name
+    mocker.patch.object(
+        FilePermissionsAdapter, "get_permissions", return_value={"username": granted}
+    )
+    with pytest.raises(PermissionsError) as exc_info:
+        await business_logic.create_user(
+            ports.users,
+            ports.users_repr,
+            ports.users,
+            ports.permissions,
+            ACTOR_ID,
+            _create_request(),
+            "en",
+        )
+    assert exc_info.value.missing_permissions == [Permission.write_first_name]
+
+
+@pytest.mark.asyncio
+async def test_patch_user_partial_permissions(ports, mocker):
+    # Two attributes patched, only one write permission granted -> denied,
+    # reporting just the missing one.
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_first_name]}),
+    )
+    with pytest.raises(PermissionsError) as exc_info:
+        await business_logic.patch_user(
+            ports.users,
+            ports.users_repr,
+            ports.permissions,
+            ACTOR_ID,
+            UserPatchRequest(
+                identifier="test_user1",
+                school="test_school1",
+                attributes=UserPatchAttributes(first_name="John", last_name="Doe"),
+            ),
+            "en",
+        )
+    assert exc_info.value.missing_permissions == [Permission.write_last_name]
+
+
+# the required permission set follows the explicitly-set request fields
+# (model_fields_set), incl. the school -> write-schools remap.
+@pytest.mark.asyncio
+async def test_create_user_required_permissions_follow_set_fields(ports, mocker):
+    granted = [
+        Permission.create_user,
+        Permission.write_first_name,
+        Permission.write_last_name,
+        Permission.write_username,
+        Permission.write_roles,
+        Permission.write_schools,
+        Permission.write_school_classes,
+        Permission.write_password,
+    ]  # note: no write-work_groups
+    mocker.patch.object(
+        FilePermissionsAdapter, "get_permissions", return_value={"username": granted}
+    )
+
+    # Without work_groups set, this exact grant set is sufficient.
+    result = await business_logic.create_user(
+        ports.users, ports.users_repr, ports.users, ports.permissions, ACTOR_ID, _create_request(), "en"
+    )
+    assert result.user.id == "username"
+
+    # Explicitly setting work_groups adds write-work_groups to the requirement.
+    with pytest.raises(PermissionsError) as exc_info:
+        await business_logic.create_user(
+            ports.users,
+            ports.users_repr,
+            ports.users,
+            ports.permissions,
+            ACTOR_ID,
+            _create_request(work_groups=["w1a"]),
+            "en",
+        )
+    assert exc_info.value.missing_permissions == [Permission.write_work_groups]
+
+
+# user_create_request_to_target maps plural roles / classes / work
+# groups and defaults work_groups to an empty per-school list.
+def test_user_create_request_to_target_multiple_values():
+    request = UserCreateRequest(
+        last_name="Doe",
+        first_name="Jane",
+        username="jane.doe",
+        password="pw",
+        school="school1",
+        school_classes=["1a", "2b"],
+        work_groups=["w1a", "w2b"],
+        roles=["teacher", "staff"],
+    )
+    attributes = user_create_request_to_target(request).new_target.attributes
+    assert attributes["schools"] == ["school1"]
+    assert attributes["roles"] == ["teacher:school:school1", "staff:school:school1"]
+    assert attributes["school_classes"] == {"school1": ["1a", "2b"]}
+    assert attributes["work_groups"] == {"school1": ["w1a", "w2b"]}
+
+
+def test_user_create_request_to_target_defaults_empty_work_groups():
+    request = UserCreateRequest(
+        last_name="Doe",
+        first_name="Jane",
+        username="jane.doe",
+        school="school1",
+        school_classes=["1a"],
+        roles=["teacher"],
+    )
+    attributes = user_create_request_to_target(request).new_target.attributes
+    assert attributes["work_groups"] == {"school1": []}
+
+
+# patch_user reactivation (activated=True -> disabled=False) and
+# clearing all school classes.
+@pytest.mark.asyncio
+async def test_patch_user_reactivation(ports):
+    await business_logic.patch_user(
+        ports.users,
+        ports.users_repr,
+        ports.permissions,
+        ACTOR_ID,
+        UserPatchRequest(
+            identifier="test_user1",
+            school="test_school1",
+            attributes=UserPatchAttributes(activated=False),
+        ),
+        "en",
+    )
+    result = await business_logic.patch_user(
+        ports.users,
+        ports.users_repr,
+        ports.permissions,
+        ACTOR_ID,
+        UserPatchRequest(
+            identifier="test_user1",
+            school="test_school1",
+            attributes=UserPatchAttributes(activated=True),
+        ),
+        "en",
+    )
+    assert result.user.attributes.activated.value is True
+
+
+@pytest.mark.asyncio
+async def test_patch_user_clear_school_classes(ports):
+    result = await business_logic.patch_user(
+        ports.users,
+        ports.users_repr,
+        ports.permissions,
+        ACTOR_ID,
+        UserPatchRequest(
+            identifier="test_user1",
+            school="test_school1",
+            attributes=UserPatchAttributes(school_classes=[]),
+        ),
+        "en",
+    )
+    assert result.user.attributes.classes.value == []
