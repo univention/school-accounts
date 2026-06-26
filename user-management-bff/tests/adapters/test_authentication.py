@@ -1,247 +1,343 @@
 # Copyright (C) 2024 Univention GmbH
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-import time
-from typing import Callable
+from datetime import datetime, timedelta, timezone
 
-import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from httpx import RequestError
+from authlib.integrations.starlette_client import OAuthError
 
-import user_management_bff
+import user_management_bff.adapters.authentication as authentication
 from user_management_bff.adapters.authentication import (
     AlwaysAuthenticatedAdapter,
+    CookieSessionAuthenticationAdapter,
+    CookieSessionAuthenticationAdapterSettings,
     NeverAuthenticatedAdapter,
-    Oauth2FastAPIAuthenticationAdapter,
-    Oauth2FastAPIAuthenticationAdapterSettings,
 )
+from user_management_bff.adapters.session_store import InMemorySessionStoreAdapter
+from user_management_bff.constants import FRONTEND_PREFIX
 from user_management_bff.errors import NotAuthenticatedError
+from user_management_bff.models import SessionRecord
 
 
-class TestOauth2FastAPIAuthenticationAdapter:
+def _future() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(hours=1)
+
+
+def _past() -> datetime:
+    return datetime.now(timezone.utc) - timedelta(hours=1)
+
+
+def _record(**overrides) -> SessionRecord:
+    data = {
+        "actor_id": "mina.teacher",
+        "sub": "sub-1",
+        "kc_sid": "kc-1",
+        "expires_at": _future(),
+        "refresh_token": "rt",
+        "id_token": "idt",
+        "csrf_token": "csrf-token",
+    }
+    data.update(overrides)
+    return SessionRecord(**data)
+
+
+class FakeAsyncClient:
+    """Minimal async-context httpx.AsyncClient stand-in for refresh tests."""
+
+    def __init__(self, response):
+        self._response = response
+        self.calls = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def post(self, url, data=None, timeout=None):
+        self.calls.append((url, data, timeout))
+        return self._response
+
+
+def _patch_httpx(mocker, response):
+    mocker.patch.object(authentication.httpx, "AsyncClient", lambda *a, **k: FakeAsyncClient(response))
+
+
+class TestCookieSessionAuthenticationAdapter:
     @pytest.fixture
-    def adapter(self):
-        return Oauth2FastAPIAuthenticationAdapter()
-
-    @pytest.fixture
-    def settings(self):
-        return Oauth2FastAPIAuthenticationAdapterSettings(
-            well_known_url="https://example.com",
-            audience="ucsschool-user-management",
-            identifier_claim="dn",
+    def settings(self) -> CookieSessionAuthenticationAdapterSettings:
+        return CookieSessionAuthenticationAdapterSettings(
+            well_known_url="https://kc/realms/ucs/.well-known/openid-configuration",
+            client_id="ucsschool-user-management-ui",
+            redirect_url="https://app/ui/auth/callback",
+            cookie_secret="unit-test-secret",
+            post_logout_redirect_url="https://app/ui",
         )
 
     @pytest.fixture
-    def configured_adapter(self, adapter, settings):
+    def adapter(self, settings) -> CookieSessionAuthenticationAdapter:
+        adapter = CookieSessionAuthenticationAdapter()
         adapter._settings = settings
         return adapter
 
     @pytest.fixture
-    def mocked_adapter(self, configured_adapter, mocker):
-        get_oauth2_settings_mock = mocker.AsyncMock().get
-        get_oauth2_settings_mock.return_value = {
-            "authorization_endpoint": "https://authorization.example.com",
-            "token_endpoint": "https://token.example.com",
-            "issuer": "ISSUER",
-            "jwks_uri": "https://jwks.example.com",
-        }
-        configured_adapter._get_oauth2_settings = get_oauth2_settings_mock
-        return configured_adapter
+    def store(self) -> InMemorySessionStoreAdapter:
+        return InMemorySessionStoreAdapter()
 
     @pytest.fixture
-    def gen_rsa_key(self) -> Callable[[], RSAPrivateKey]:
-        def _gen_rsa_key() -> RSAPrivateKey:
-            return rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-        return _gen_rsa_key
+    def client(self, mocker):
+        return mocker.MagicMock()
 
     @pytest.fixture
-    def mock_pyjwt_client(self, mocker, monkeypatch):
-        def _mock_pyjwt_client(private_key):
-            key_mock = mocker.MagicMock()
-            key_mock.key = private_key.public_key()
-            pyjwt_client_instance_mock = mocker.MagicMock()
-            pyjwt_client_instance_mock.get_signing_key_from_jwt.return_value = key_mock
-            pyjwt_mock = mocker.MagicMock(return_value=pyjwt_client_instance_mock)
-            monkeypatch.setattr(user_management_bff.adapters.authentication, "PyJWKClient", pyjwt_mock)
+    def wired(self, adapter, store, client, mocker):
+        adapter._get_client = lambda: client
+        adapter._session_store = mocker.AsyncMock(return_value=store)
+        return adapter
 
-        return _mock_pyjwt_client
+    def _request(self, mocker, *, cookies=None, session=None):
+        request = mocker.MagicMock()
+        request.cookies = cookies if cookies is not None else {}
+        request.session = session if session is not None else {}
+        return request
+
+    def _signed_cookie(self, adapter, session_id):
+        return {adapter.settings.cookie_name: adapter._serializer.dumps(session_id)}
+
+    # --- settings / configuration -------------------------------------------------
 
     def test_get_settings_cls(self):
         assert (
-            Oauth2FastAPIAuthenticationAdapter.get_settings_cls()
-            == Oauth2FastAPIAuthenticationAdapterSettings
+            CookieSessionAuthenticationAdapter.get_settings_cls()
+            == CookieSessionAuthenticationAdapterSettings
         )
 
-    def test_settings_without_configure(self, adapter):
+    def test_settings_without_configure(self):
+        adapter = CookieSessionAuthenticationAdapter()
         with pytest.raises(
             RuntimeError,
             match="The settings should never be accessed before the adapter was configured!",
         ):
-            _settings = adapter.settings
+            _ = adapter.settings
 
     @pytest.mark.asyncio
-    async def test__get_oauth2_settings(self, configured_adapter, monkeypatch, mocker, settings):
-        response_mock = mocker.MagicMock()
-        response_mock.status_code = 200
-        response_mock.json.return_value = {"foo": "bar"}
-
-        async def get_mock(self, *args, **kwargs):
-            assert args == (settings.well_known_url,)
-            assert kwargs == {"timeout": settings.request_timeout}
-            return response_mock
-
-        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
-        assert await configured_adapter._get_oauth2_settings() == {"foo": "bar"}
-
-    @pytest.mark.asyncio
-    async def test__get_oauth2_settings_wrong_status_code(
-        self, configured_adapter, monkeypatch, mocker, settings
-    ):
-        response_mock = mocker.MagicMock()
-        response_mock.status_code = 404
-
-        async def get_mock(*args, **kwargs):
-            return response_mock
-
-        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
-        with pytest.raises(
-            RuntimeError, match="^Could not load oauth2 settings from https://example.com: '"
-        ):
-            await configured_adapter._get_oauth2_settings()
-
-    @pytest.mark.asyncio
-    async def test__get_oauth2_settings_exc(self, configured_adapter, monkeypatch, settings):
-        async def get_mock(*args, **kwargs):
-            raise RequestError("ERROR MESSAGE")
-
-        monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
-        with pytest.raises(
-            RuntimeError,
-            match="Could not load oauth2 settings from https://example.com: 'ERROR MESSAGE'",
-        ):
-            await configured_adapter._get_oauth2_settings()
-
-    @pytest.mark.asyncio
-    async def test_configure(self, adapter, settings):
+    async def test_configure_registers_oidc_client(self, settings):
+        adapter = CookieSessionAuthenticationAdapter()
         await adapter.configure(settings)
         assert adapter._settings == settings
+        assert adapter._oauth is not None
+        assert adapter._get_client() is not None
 
-    @pytest.mark.asyncio
-    async def test_get_authentication_dependency_valid_token(
-        self, mocked_adapter, monkeypatch, gen_rsa_key, mock_pyjwt_client
-    ):
-        private_key = gen_rsa_key()
-        mock_pyjwt_client(private_key)
-        dep = await mocked_adapter.get_authentication_dependency()
-        payload = {
-            "iss": "ISSUER",
-            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
-            "sub": "admin",
-            "dn": "DN",
-            "iat": time.time(),
-            "exp": time.time() + 500,
-            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
-        }
-        token = jwt.encode(payload, private_key, algorithm="RS256")
-        assert await dep(token=token) == "DN"
+    # --- helpers ------------------------------------------------------------------
 
-    @pytest.mark.asyncio
-    async def test_get_authentication_dependency_missing_identifier(
-        self, mocked_adapter, monkeypatch, gen_rsa_key, mock_pyjwt_client
-    ):
-        private_key = gen_rsa_key()
-        mock_pyjwt_client(private_key)
-        dep = await mocked_adapter.get_authentication_dependency()
-        payload = {
-            "iss": "ISSUER",
-            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
-            "sub": "admin",
-            "iat": time.time(),
-            "exp": time.time() + 500,
-            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
-        }
-        token = jwt.encode(payload, private_key, algorithm="RS256")
-        with pytest.raises(
-            RuntimeError,
-            match="The token does not contain the identifier claim dn. "
-            "Please check the settings of the oauth provider.",
-        ):
-            await dep(token=token)
+    def test_token_expiry_from_expires_at(self, adapter):
+        expires_at = 1_000_000_000
+        result = adapter._token_expiry({"expires_at": expires_at})
+        assert result == datetime.fromtimestamp(expires_at, tz=timezone.utc)
+
+    def test_token_expiry_from_expires_in(self, adapter):
+        before = datetime.now(timezone.utc)
+        result = adapter._token_expiry({"expires_in": 60})
+        assert before + timedelta(seconds=59) <= result <= before + timedelta(seconds=61)
 
     @pytest.mark.parametrize(
-        "overrides",
+        "candidate,expected",
         [
-            {"iss": "OTHER"},
-            {"aud": ["OTHER", "OTHER2"]},
-            {"iat": time.time() + 1000, "exp": time.time() + 1500},
-            {"iat": time.time() - 1000, "exp": time.time() - 500},
+            ("/ui/users", "/ui/users"),
+            ("//evil.com", FRONTEND_PREFIX),
+            ("https://evil.com", FRONTEND_PREFIX),
+            ("", FRONTEND_PREFIX),
         ],
     )
+    def test_safe_next(self, adapter, candidate, expected):
+        assert adapter._safe_next(candidate) == expected
+
+    def test_read_cookie_missing(self, adapter, mocker):
+        assert adapter._read_cookie(self._request(mocker)) is None
+
+    def test_read_cookie_bad_signature(self, adapter, mocker):
+        request = self._request(mocker, cookies={adapter.settings.cookie_name: "garbage"})
+        assert adapter._read_cookie(request) is None
+
+    def test_read_cookie_valid(self, adapter, mocker):
+        request = self._request(mocker, cookies=self._signed_cookie(adapter, "sid-1"))
+        assert adapter._read_cookie(request) == "sid-1"
+
+    @pytest.mark.parametrize(
+        "submitted,expected",
+        [("csrf-token", True), ("wrong", False), ("", False), (None, False)],
+    )
+    def test_verify_csrf(self, adapter, submitted, expected):
+        assert adapter.verify_csrf(submitted, _record()) is expected
+
+    # --- login / callback ---------------------------------------------------------
+
     @pytest.mark.asyncio
-    async def test_get_authentication_dependency_invalid_token(
-        self, mocked_adapter, monkeypatch, gen_rsa_key, mock_pyjwt_client, overrides
-    ):
-        private_key = gen_rsa_key()
-        mock_pyjwt_client(private_key)
-        dep = await mocked_adapter.get_authentication_dependency()
-        payload = {
-            "iss": "ISSUER",
-            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
-            "sub": "admin",
-            "iat": time.time(),
-            "exp": time.time() + 500,
-            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
-        }
-        payload.update(overrides)
-        token = jwt.encode(payload, private_key, algorithm="RS256")
+    async def test_login_redirect(self, wired, client, mocker):
+        sentinel = object()
+        client.authorize_redirect = mocker.AsyncMock(return_value=sentinel)
+        request = self._request(mocker, session={})
+        result = await wired.login_redirect(request, "/ui/users")
+        assert result is sentinel
+        assert request.session["post_login_next"] == "/ui/users"
+        client.authorize_redirect.assert_awaited_once_with(request, wired.settings.redirect_url)
+
+    @pytest.mark.asyncio
+    async def test_complete_login_creates_session(self, wired, store, client, mocker):
+        client.authorize_access_token = mocker.AsyncMock(
+            return_value={
+                "userinfo": {"preferred_username": "mina.teacher", "sub": "SUB", "sid": "KCSID"},
+                "expires_at": int(_future().timestamp()),
+                "refresh_token": "RT",
+                "id_token": "IDT",
+            }
+        )
+        request = self._request(mocker, session={"post_login_next": "/ui/users"})
+        response = await wired.complete_login(request)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/ui/users"
+        assert wired.settings.cookie_name in response.headers["set-cookie"]
+        assert len(store._store) == 1
+        record = next(iter(store._store.values()))
+        assert record.actor_id == "mina.teacher"
+        assert record.sub == "SUB"
+        assert record.kc_sid == "KCSID"
+        assert record.csrf_token
+
+    @pytest.mark.asyncio
+    async def test_complete_login_oauth_error(self, wired, client, mocker):
+        client.authorize_access_token = mocker.AsyncMock(side_effect=OAuthError("bad state"))
         with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
-            await dep(token=token)
+            await wired.complete_login(self._request(mocker, session={}))
 
     @pytest.mark.asyncio
-    async def test_get_authentication_dependency_wrong_key(
-        self, mocked_adapter, monkeypatch, gen_rsa_key, mock_pyjwt_client
+    async def test_complete_login_missing_identifier_claim(self, wired, client, mocker):
+        client.authorize_access_token = mocker.AsyncMock(
+            return_value={"userinfo": {"sub": "SUB"}, "expires_in": 60}
+        )
+        with pytest.raises(RuntimeError, match="does not contain the identifier claim"):
+            await wired.complete_login(self._request(mocker, session={}))
+
+    # --- logout -------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_logout_clears_session_and_redirects_to_end_session(
+        self, wired, store, client, mocker
     ):
-        private_key = gen_rsa_key()
-        private_key2 = gen_rsa_key()
-        mock_pyjwt_client(private_key)
-        dep = await mocked_adapter.get_authentication_dependency()
-        payload = {
-            "iss": "ISSUER",
-            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
-            "sub": "admin",
-            "iat": time.time(),
-            "exp": time.time() + 500,
-            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
-        }
-        token = jwt.encode(payload, private_key2, algorithm="RS256")
-        with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
-            await dep(token=token)
+        session_id = await store.create(_record(id_token="THE_ID_TOKEN"))
+        client.load_server_metadata = mocker.AsyncMock(
+            return_value={"end_session_endpoint": "https://kc/logout"}
+        )
+        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
+        response = await wired.logout(request)
+        assert response.status_code == 303
+        location = response.headers["location"]
+        assert location.startswith("https://kc/logout?")
+        assert "id_token_hint=THE_ID_TOKEN" in location
+        assert "post_logout_redirect_uri=" in location
+        assert await store.get(session_id) is None
+        assert wired.settings.cookie_name in response.headers["set-cookie"]
 
     @pytest.mark.asyncio
-    async def test_get_authenticated_id(self, mocked_adapter, gen_rsa_key, mock_pyjwt_client, mocker):
-        request_mock = mocker.MagicMock()
-        private_key = gen_rsa_key()
-        mock_pyjwt_client(private_key)
-        payload = {
-            "iss": "ISSUER",
-            "aud": ["ucsschool-user-management-ui", "ucsschool-user-management", "account"],
-            "sub": "admin",
-            "dn": "DN",
-            "iat": time.time(),
-            "exp": time.time() + 500,
-            "jti": "9f2cd5fe-9e15-409a-967a-7f2c3f640621",
-        }
-        token = jwt.encode(payload, private_key, algorithm="RS256")
+    async def test_logout_without_cookie(self, wired, client, mocker):
+        client.load_server_metadata = mocker.AsyncMock(
+            return_value={"end_session_endpoint": "https://kc/logout"}
+        )
+        response = await wired.logout(self._request(mocker))
+        assert response.status_code == 303
+        assert "id_token_hint" not in response.headers["location"]
 
-        async def _return_token(*args, **kwargs):
-            return token
+    @pytest.mark.asyncio
+    async def test_logout_without_end_session_endpoint(self, wired, store, client, mocker):
+        session_id = await store.create(_record())
+        client.load_server_metadata = mocker.AsyncMock(return_value={})
+        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
+        response = await wired.logout(request)
+        assert response.headers["location"] == wired.settings.post_logout_redirect_url
 
-        get_oauth2_scheme_mock = mocker.MagicMock(return_value=mocker.Mock(return_value=_return_token()))
-        mocked_adapter._get_oauth2_scheme = get_oauth2_scheme_mock
-        assert await mocked_adapter.get_authenticated_id(request_mock) == "DN"
+    # --- refresh / authenticate ---------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_authenticate_missing_cookie(self, wired, store, mocker):
+        with pytest.raises(NotAuthenticatedError):
+            await wired._authenticate(self._request(mocker), store)
+
+    @pytest.mark.asyncio
+    async def test_authenticate_unknown_session(self, wired, store, mocker):
+        request = self._request(mocker, cookies=self._signed_cookie(wired, "ghost"))
+        with pytest.raises(NotAuthenticatedError):
+            await wired._authenticate(request, store)
+
+    @pytest.mark.asyncio
+    async def test_authenticate_valid(self, wired, store, mocker):
+        session_id = await store.create(_record())
+        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
+        assert await wired._authenticate(request, store) == "mina.teacher"
+
+    @pytest.mark.asyncio
+    async def test_authenticate_expired_triggers_refresh(self, wired, store, client, mocker):
+        session_id = await store.create(_record(expires_at=_past(), refresh_token="RT"))
+        client.load_server_metadata = mocker.AsyncMock(
+            return_value={"token_endpoint": "https://kc/token"}
+        )
+        response = mocker.MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"expires_in": 3600, "refresh_token": "RT2", "id_token": "IDT2"}
+        _patch_httpx(mocker, response)
+        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
+        assert await wired._authenticate(request, store) == "mina.teacher"
+        refreshed = await store.get(session_id)
+        assert refreshed.refresh_token == "RT2"
+        assert refreshed.id_token == "IDT2"
+        assert refreshed.expires_at > datetime.now(timezone.utc)
+
+    @pytest.mark.asyncio
+    async def test_refresh_without_refresh_token(self, wired, store, mocker):
+        session_id = await store.create(_record(expires_at=_past(), refresh_token=None))
+        with pytest.raises(NotAuthenticatedError):
+            await wired._refresh(session_id, await store.get(session_id), store)
+        assert await store.get(session_id) is None
+
+    @pytest.mark.asyncio
+    async def test_refresh_http_error_requires_relogin(self, wired, store, client, mocker):
+        session_id = await store.create(_record(expires_at=_past(), refresh_token="RT"))
+        client.load_server_metadata = mocker.AsyncMock(
+            return_value={"token_endpoint": "https://kc/token"}
+        )
+        response = mocker.MagicMock()
+        response.status_code = 400
+        _patch_httpx(mocker, response)
+        with pytest.raises(NotAuthenticatedError):
+            await wired._refresh(session_id, await store.get(session_id), store)
+        assert await store.get(session_id) is None
+
+    @pytest.mark.asyncio
+    async def test_refresh_keeps_previous_tokens_when_absent(self, wired, store, client, mocker):
+        session_id = await store.create(_record(expires_at=_past(), refresh_token="RT", id_token="IDT"))
+        client.load_server_metadata = mocker.AsyncMock(
+            return_value={"token_endpoint": "https://kc/token"}
+        )
+        response = mocker.MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"expires_in": 3600}
+        _patch_httpx(mocker, response)
+        updated = await wired._refresh(session_id, await store.get(session_id), store)
+        assert updated.refresh_token == "RT"
+        assert updated.id_token == "IDT"
+
+    # --- port interface -----------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_get_authenticated_id_resolves_store_from_registry(self, adapter, store, mocker):
+        session_id = await store.create(_record())
+        mocker.patch.object(authentication, "ADAPTER_REGISTRY", mocker.AsyncMock(return_value=store))
+        request = self._request(mocker, cookies=self._signed_cookie(adapter, session_id))
+        assert await adapter.get_authenticated_id(request) == "mina.teacher"
+
+    @pytest.mark.asyncio
+    async def test_get_authentication_dependency(self, adapter, mocker):
+        adapter.get_authenticated_id = mocker.AsyncMock(return_value="actor")
+        dep = await adapter.get_authentication_dependency()
+        assert await dep(self._request(mocker)) == "actor"
 
 
 class TestAlwaysAuthenticatedAdapter:
@@ -256,6 +352,29 @@ class TestAlwaysAuthenticatedAdapter:
     @pytest.mark.asyncio
     async def test_get_authenticated_id(self, adapter, mocker):
         assert await adapter.get_authenticated_id(mocker.Mock())
+
+    @pytest.mark.asyncio
+    async def test_default_login_redirect_with_next(self, adapter, mocker):
+        response = await adapter.login_redirect(mocker.Mock(), "/ui/users")
+        assert response.status_code == 303
+        assert response.headers["location"] == "/ui/users"
+
+    @pytest.mark.asyncio
+    async def test_default_login_redirect_without_next(self, adapter, mocker):
+        response = await adapter.login_redirect(mocker.Mock())
+        assert response.headers["location"] == FRONTEND_PREFIX
+
+    @pytest.mark.asyncio
+    async def test_default_complete_login(self, adapter, mocker):
+        response = await adapter.complete_login(mocker.Mock())
+        assert response.status_code == 303
+        assert response.headers["location"] == FRONTEND_PREFIX
+
+    @pytest.mark.asyncio
+    async def test_default_logout(self, adapter, mocker):
+        response = await adapter.logout(mocker.Mock())
+        assert response.status_code == 303
+        assert response.headers["location"] == FRONTEND_PREFIX
 
 
 class TestNeverAuthenticatedAdapter:
