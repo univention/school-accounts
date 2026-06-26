@@ -38,7 +38,15 @@ kelvin_url = ucr.get(
     f"{ucr.get('hostname')}.{ucr.get('domainname')}",
 )
 print(kelvin_url, end='')@!@
-      USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:Oauth2FastAPIAuthenticationAdapter"
+      USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:CookieSessionAuthenticationAdapter"
+      USER_MANAGEMENT__ADAPTER__SESSION_STORE: "user_management_bff.adapters.session_store:InMemorySessionStoreAdapter"
+      COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_ID: "ucsschool-user-management-ui"
+      COOKIE_SESSION_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
+      # TODO(appcenter): provision this secret file (e.g. a join/entrypoint step
+      # writing a persistent random value). The same secret signs the
+      # authenticated session cookie and the transient OAuth-state cookie.
+      COOKIE_SESSION_AUTHENTICATION_ADAPTER__COOKIE_SECRET_FILE: "/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret"
+      USER_MANAGEMENT__SESSION_SECRET_FILE: "/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret"
 @!@
 ucr = configRegistry
 keycloak_url = ucr.get('guardian-management-ui/oauth/keycloak-uri')
@@ -47,10 +55,11 @@ if not keycloak_url:
 if not keycloak_url.startswith('http'):
     keycloak_url = f'https://{keycloak_url}'
 well_known_url = f"{keycloak_url}/realms/ucs/.well-known/openid-configuration"
-print(f"      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
+app_base_url = f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/univention/ucsschool/user-management/ui"
+print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
+print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: {app_base_url}/auth/callback")
+print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}")
 print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_url}", end='')@!@
-      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__AUDIENCE: "ucsschool-user-management"
-      OAUTH2_FASTAPI_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
       GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_ID: "ucsschool-user-management-bff"
       GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
       GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL: @!@
