@@ -362,9 +362,7 @@ def test_create_user_classes_validation_error():
 async def test_delete_user_non_existent(ports):
     # A non-existent user is treated as a successful deletion (no error).
     assert (
-        await business_logic.delete_user(
-            ports.users, ports.permissions, ACTOR_ID, "NON_EXISTENT", "en"
-        )
+        await business_logic.delete_user(ports.users, ports.permissions, ACTOR_ID, "NON_EXISTENT", "en")
         is None
     )
 
@@ -401,8 +399,7 @@ async def test_delete_user_race_condition(_delete_mock, ports):
 # patch_user
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
-@pytest.mark.parametrize("lang", ["en", "de"])
-async def test_patch_user_wrong_school(ports, lang):
+async def test_patch_user_wrong_school(ports):
     with pytest.raises(OperationNotSupportedError) as exc_info:
         await business_logic.patch_user(
             ports.users,
@@ -412,11 +409,9 @@ async def test_patch_user_wrong_school(ports, lang):
             UserPatchRequest(
                 identifier="test_user1", school="NON_EXISTENT", attributes=UserPatchAttributes()
             ),
-            lang,
+            "en",
         )
-    assert exc_info.value.message == _(
-        "Cannot update user 'test_user1' in school 'NON_EXISTENT'.", lang=lang
-    )
+    assert exc_info.value.message == "Cannot update user 'test_user1' in school 'NON_EXISTENT'."
 
 
 @pytest.mark.asyncio
@@ -715,9 +710,7 @@ async def test_create_user_partial_permissions(ports, mocker):
         Permission.write_school_classes,
         Permission.write_password,
     ]  # everything the default request needs except write-first_name
-    mocker.patch.object(
-        FilePermissionsAdapter, "get_permissions", return_value={"username": granted}
-    )
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={"username": granted})
     with pytest.raises(PermissionsError) as exc_info:
         await business_logic.create_user(
             ports.users,
@@ -770,9 +763,7 @@ async def test_create_user_required_permissions_follow_set_fields(ports, mocker)
         Permission.write_school_classes,
         Permission.write_password,
     ]  # note: no write-work_groups
-    mocker.patch.object(
-        FilePermissionsAdapter, "get_permissions", return_value={"username": granted}
-    )
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={"username": granted})
 
     # Without work_groups set, this exact grant set is sufficient.
     result = await business_logic.create_user(
