@@ -33,6 +33,8 @@ dependencies = [
     "cryptography>=42.0.4",
     "guardian-authz-client>=0.1.0",
     "w3lib>=2.1.2",
+    "authlib>=1.3.0",
+    "itsdangerous>=2.1.0",
 ]
 
 [project.scripts]
