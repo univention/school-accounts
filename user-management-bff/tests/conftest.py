@@ -75,6 +75,9 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__AUTHENTICATION"] = (
         "user_management_bff.adapters.authentication:AlwaysAuthenticatedAdapter"
     )
+    os.environ["USER_MANAGEMENT__ADAPTER__SESSION_STORE"] = (
+        "user_management_bff.adapters.session_store:InMemorySessionStoreAdapter"
+    )
     os.environ["FILE_SCHOOLS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/schools.json"
     )

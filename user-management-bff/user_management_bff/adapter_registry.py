@@ -22,6 +22,7 @@ from .ports import (
     SchoolClassesRepresentationPort,
     SchoolsPersistencePort,
     SchoolsRepresentationPort,
+    SessionStorePort,
     UsersPersistencePort,
     UsersRepresentationPort,
     WorkGroupsPersistencePort,
@@ -42,6 +43,7 @@ PORT_CLASSES = (
     WorkGroupsPersistencePort,
     WorkGroupsRepresentationPort,
     FastAPIAuthenticationPort,
+    SessionStorePort,
     PermissionsPort,
 )
 
@@ -59,6 +61,7 @@ class AdapterSelection(BaseSettings):
     work_groups_persistence: ImportString
     work_groups_representation: ImportString
     authentication: ImportString
+    session_store: ImportString
     permissions: ImportString
 
     model_config = SettingsConfigDict(env_prefix="USER_MANAGEMENT__ADAPTER__")
@@ -80,6 +83,7 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
         (WorkGroupsRepresentationPort, adapter_selection.work_groups_representation),
         (WorkGroupsPersistencePort, adapter_selection.work_groups_persistence),
         (FastAPIAuthenticationPort, adapter_selection.authentication),
+        (SessionStorePort, adapter_selection.session_store),
         (PermissionsPort, adapter_selection.permissions),
     ]:
         adapter_registry.register_port(port_cls)

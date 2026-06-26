@@ -14,8 +14,13 @@ from user_management_bff.adapter_registry import (
     port_dep,
 )
 from user_management_bff.adapters.api import FastAPIUsersRepresentationAdapter
+from user_management_bff.adapters.session_store import InMemorySessionStoreAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
-from user_management_bff.ports import UsersPersistencePort, UsersRepresentationPort
+from user_management_bff.ports import (
+    SessionStorePort,
+    UsersPersistencePort,
+    UsersRepresentationPort,
+)
 
 
 class TestAdapterSelection:
@@ -23,6 +28,7 @@ class TestAdapterSelection:
         selection = AdapterSelection()
         assert selection.users_persistence == FileUsersPersistenceAdapter
         assert selection.users_representation == FastAPIUsersRepresentationAdapter
+        assert selection.session_store == InMemorySessionStoreAdapter
 
 
 @pytest.mark.parametrize(
@@ -31,6 +37,7 @@ class TestAdapterSelection:
         (AsyncAdapterSettingsProvider, EnvSettingsProvider),
         (UsersPersistencePort, FileUsersPersistenceAdapter),
         (UsersRepresentationPort, FastAPIUsersRepresentationAdapter),
+        (SessionStorePort, InMemorySessionStoreAdapter),
     ],
 )
 @pytest.mark.asyncio
