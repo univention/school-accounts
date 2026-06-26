@@ -39,6 +39,24 @@ class User(BaseModel):
     attributes: UserAttributes
 
 
+class SessionRecord(BaseModel):
+    """A server-side authenticated session.
+
+    Holds only what the UI needs: the actor identifier used for permission
+    checks plus the data required for logout and silent token refresh. The
+    user's access token is deliberately not stored - downstream calls use the
+    service account and identify the actor by ``actor_id``.
+    """
+
+    actor_id: str
+    sub: str
+    kc_sid: str | None = None
+    expires_at: datetime.datetime
+    refresh_token: str | None = None
+    id_token: str | None = None
+    csrf_token: str
+
+
 class School(BaseModel):
     id: str
     display_name: str
