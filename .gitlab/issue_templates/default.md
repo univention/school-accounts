@@ -1,12 +1,11 @@
 <!--
-Copyright (C) 2023 Univention GmbH
+Copyright (C) 2026 Univention GmbH
 
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-/label ~"App::RAM"
 /label ~"Team::UCS@school"
-/label ~"Status::New"
+/status "Idea"
 
 ## Accounting
 
