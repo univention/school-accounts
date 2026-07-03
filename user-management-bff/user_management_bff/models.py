@@ -12,6 +12,17 @@ from .lang import _
 AttributeType = TypeVar("AttributeType")
 
 
+class AttributeAccess(StrEnum):
+    READ = auto()
+    WRITE = auto()
+    NONE = auto()
+
+
+class Attribute(BaseModel):
+    value: str
+    access: AttributeAccess
+
+
 class UserAttributes(BaseModel):
     """
     For now the attributes are fixed and not configurable.

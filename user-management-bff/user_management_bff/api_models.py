@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 from .lang import _
-from .models import Role
+from .models import Attribute, AttributeAccess, Role
 
 
 class APIBaseModel(BaseModel):
@@ -24,25 +24,6 @@ class SortingChoice(StrEnum):
 class FormatterChoice(StrEnum):
     LIST = auto()
     BOOLEAN = auto()
-
-
-class AttributeAccess(StrEnum):
-    READ = auto()
-    WRITE = auto()
-    NONE = auto()
-
-
-class Attribute(BaseModel):
-    value: str
-    access: AttributeAccess
-
-
-class SchoolContextPermission(StrEnum):
-    ADD = auto()
-
-
-class ListUserPermissions(StrEnum):
-    DELETE = auto()
 
 
 class Formatter(BaseModel):
@@ -60,10 +41,6 @@ class ColumnConfig(BaseModel):
     order: int
     sorting: Optional[SortingChoice] = None
     formatter: Optional[Formatter] = None
-
-
-class ListUsersConfig(BaseModel):
-    columns: list[ColumnConfig]
 
 
 AttributeType = TypeVar("AttributeType")
@@ -97,44 +74,6 @@ class CompleteUserFixedAttributes(ListUserFixedAttributes):
     email: ListUserAttribute[str]
     birthday: ListUserAttribute[datetime.date]
     expiration_date: ListUserAttribute[datetime.date]
-
-
-class ListUser(APIBaseModel):
-    id: str
-    allowed_actions: list[ListUserPermissions]
-    attributes: ListUserFixedAttributes
-
-
-class ListUsersResponse(BaseModel):
-    users: list[ListUser]
-
-
-class ListSchool(BaseModel):
-    label: str
-    value: str
-    permissions: list[SchoolContextPermission]
-
-
-class ListSchoolsResponse(BaseModel):
-    schools: list[ListSchool]
-
-
-class ListSchoolClass(BaseModel):
-    label: str
-    value: str
-
-
-class ListWorkGroup(BaseModel):
-    label: str
-    value: str
-
-
-class ListSchoolClassesResponse(BaseModel):
-    school_classes: list[ListSchoolClass]
-
-
-class ListWorkGroupsResponse(BaseModel):
-    work_groups: list[ListWorkGroup]
 
 
 class SchoolClassesGetRequest(BaseModel):

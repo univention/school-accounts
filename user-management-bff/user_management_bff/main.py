@@ -26,6 +26,7 @@ from .constants import (
 )
 from .correlation_id import correlation_id_ctx_var
 from .errors import (
+    NoSchoolUserError,
     NotAuthenticatedError,
     ObjectNotFoundError,
     OperationNotSupportedError,
@@ -33,7 +34,7 @@ from .errors import (
 )
 from .lang import _, get_lang
 from .logging import configure_logger
-from .routes import router
+from .routes import render, router
 
 
 @asynccontextmanager
@@ -122,6 +123,21 @@ async def permissions_exception_handler(request: Request, exc: PermissionsError)
         status_code=403,
         content={"detail": _(exc.message, lang=lang), "missingPermissions": exc.missing_permissions},
     )
+
+
+# NoSchoolUserError subclasses PermissionsError but is the one error the list
+# view can raise, so it gets an HTML rendering: a toast for HTMX requests, a
+# full-page message otherwise.
+@app.exception_handler(NoSchoolUserError)
+async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError):
+    if request.headers.get("HX-Request") == "true":
+        response = render(request, "fragments/toast.html", message=exc.message, variant="error")
+        response.headers["HX-Retarget"] = "#toast-region"
+        response.headers["HX-Reswap"] = "beforeend"
+        return response
+    response = render(request, "pages/message.html", message=exc.message)
+    response.status_code = 403
+    return response
 
 
 @app.exception_handler(OperationNotSupportedError)

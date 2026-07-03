@@ -1,0 +1,19 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{# Shared page chrome. Import "with context" so the macros see `_`, `lang`, etc. #}
+{% macro page_header() %}
+<u-hstack justify="between" align="center">
+  <u-page-header>{{ _("User Management") }}</u-page-header>
+  <u-theme-toggle
+    label-light="{{ _('Switch to light theme') }}"
+    label-dark="{{ _('Switch to dark theme') }}"
+  ></u-theme-toggle>
+</u-hstack>
+{% endmacro %}
+
+{% macro toast() %}
+<u-toast id="toast-region" aria-live="polite"></u-toast>
+{% endmacro %}

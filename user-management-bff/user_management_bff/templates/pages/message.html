@@ -1,0 +1,18 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{% extends "base.html" %}
+{% import "macros/layout.html" as layout with context %}
+{% block body %}
+<u-page variant="scrollable">
+  <u-container>
+    {{ layout.page_header() }}
+    <u-card>
+      <p>{{ message }}</p>
+    </u-card>
+    {{ layout.toast() }}
+  </u-container>
+</u-page>
+{% endblock %}

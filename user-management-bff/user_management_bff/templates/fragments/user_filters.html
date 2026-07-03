@@ -1,0 +1,31 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+<u-form-field label="{{ _('Classes') }}">
+  <u-multiselect
+    name="school_classes"
+    placeholder="{{ _('All classes') }}"
+    hx-get="{{ frontend_prefix }}/users/school-classes"
+    hx-trigger="u-search delay:300ms"
+    hx-target="this"
+    hx-swap="innerHTML"
+    hx-vals='js:{school: {{ (selected_school or "") | tojson }}, q: event.detail.query}'
+  >
+    {% include "fragments/school_class_options.html" %}
+  </u-multiselect>
+</u-form-field>
+<u-form-field label="{{ _('Work Groups') }}">
+  <u-multiselect
+    name="work_groups"
+    placeholder="{{ _('All work groups') }}"
+    hx-get="{{ frontend_prefix }}/users/work-groups"
+    hx-trigger="u-search delay:300ms"
+    hx-target="this"
+    hx-swap="innerHTML"
+    hx-vals='js:{school: {{ (selected_school or "") | tojson }}, q: event.detail.query}'
+  >
+    {% include "fragments/work_group_options.html" %}
+  </u-multiselect>
+</u-form-field>

@@ -1,0 +1,74 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{% extends "base.html" %}
+{% import "macros/layout.html" as layout with context %}
+{% block body %}
+{# Fixed page: the header + filter form stay put while only the results scroll.
+   One container holds both regions; a `lg` gap sets the filter apart from the
+   table, and the results region grows to fill the rest and scrolls on its own. #}
+<u-page variant="fixed">
+  <u-container grow>
+    <u-vstack gap="lg" grow>
+      <u-vstack gap="md">
+        {{ layout.page_header() }}
+        <u-form
+          hx-get="{{ frontend_prefix }}/users"
+          hx-target="#results-region"
+          hx-select="#results-region"
+          hx-swap="outerHTML"
+          hx-push-url="true"
+          hx-disinherit="hx-select hx-push-url"
+        >
+          <u-hstack gap="md" align="end" wrap>
+            <u-form-field label="{{ _('School') }}">
+              <u-combobox
+                id="school-combobox"
+                name="school"
+                required
+                placeholder="{{ _('Select a school') }}"
+                {% if selected_school %}value="{{ selected_school }}" display-value="{{ selected_school_label }}"{% endif %}
+                hx-get="{{ frontend_prefix }}/users/schools"
+                hx-trigger="u-search delay:300ms"
+                hx-target="this"
+                hx-swap="innerHTML"
+                hx-vals="js:{q: event.detail.query}"
+              >
+                {% include "fragments/school_options.html" %}
+              </u-combobox>
+            </u-form-field>
+
+            {# The school combobox's single hx-get drives its own option search, so the
+               class/work-group cascade listens for the combobox's u-change from here. #}
+            <u-hstack
+              id="dependent-filters"
+              gap="md"
+              align="end"
+              wrap
+              hx-get="{{ frontend_prefix }}/users/filters"
+              hx-trigger="u-change from:#school-combobox"
+              hx-target="this"
+              hx-swap="innerHTML"
+              hx-vals="js:{school: event.detail.value}"
+            >
+              {% include "fragments/user_filters.html" %}
+            </u-hstack>
+
+            <u-form-field spacer>
+              <u-button type="submit" variant="primary">{{ _('Search') }}</u-button>
+            </u-form-field>
+          </u-hstack>
+        </u-form>
+      </u-vstack>
+
+      <u-vstack id="results-region" grow scroll>
+        {% include "fragments/user_table.html" %}
+      </u-vstack>
+    </u-vstack>
+  </u-container>
+
+  {{ layout.toast() }}
+</u-page>
+{% endblock %}

@@ -16,32 +16,24 @@ from .ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
     FastAPIAuthenticationPort,
-    ListConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
-    SchoolClassesRepresentationPort,
     SchoolsPersistencePort,
-    SchoolsRepresentationPort,
     SessionStorePort,
     UsersPersistencePort,
     UsersRepresentationPort,
     WorkGroupsPersistencePort,
-    WorkGroupsRepresentationPort,
 )
 
 ADAPTER_REGISTRY: AsyncAdapterRegistry = lazy_object_proxy.Proxy(AsyncAdapterRegistry)
 PORT_CLASSES = (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
-    ListConfigRepresentationPort,
     UsersPersistencePort,
     UsersRepresentationPort,
     SchoolsPersistencePort,
-    SchoolsRepresentationPort,
     SchoolClassesPersistencePort,
-    SchoolClassesRepresentationPort,
     WorkGroupsPersistencePort,
-    WorkGroupsRepresentationPort,
     FastAPIAuthenticationPort,
     SessionStorePort,
     PermissionsPort,
@@ -51,15 +43,11 @@ PORT_CLASSES = (
 class AdapterSelection(BaseSettings):
     add_config_representation: ImportString
     edit_config_representation: ImportString
-    list_config_representation: ImportString
     users_persistence: ImportString
     users_representation: ImportString
     schools_persistence: ImportString
-    schools_representation: ImportString
     school_classes_persistence: ImportString
-    school_classes_representation: ImportString
     work_groups_persistence: ImportString
-    work_groups_representation: ImportString
     authentication: ImportString
     session_store: ImportString
     permissions: ImportString
@@ -73,14 +61,10 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
     for port_cls, adapter_cls in [
         (AddConfigRepresentationPort, adapter_selection.add_config_representation),
         (EditConfigRepresentationPort, adapter_selection.edit_config_representation),
-        (ListConfigRepresentationPort, adapter_selection.list_config_representation),
         (UsersPersistencePort, adapter_selection.users_persistence),
         (UsersRepresentationPort, adapter_selection.users_representation),
         (SchoolsPersistencePort, adapter_selection.schools_persistence),
-        (SchoolsRepresentationPort, adapter_selection.schools_representation),
-        (SchoolClassesRepresentationPort, adapter_selection.school_classes_representation),
         (SchoolClassesPersistencePort, adapter_selection.school_classes_persistence),
-        (WorkGroupsRepresentationPort, adapter_selection.work_groups_representation),
         (WorkGroupsPersistencePort, adapter_selection.work_groups_persistence),
         (FastAPIAuthenticationPort, adapter_selection.authentication),
         (SessionStorePort, adapter_selection.session_store),

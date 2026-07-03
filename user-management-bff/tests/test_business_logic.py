@@ -18,7 +18,7 @@ import pytest
 import pytest_asyncio
 from pydantic import ValidationError
 
-from user_management_bff import business_logic
+from user_management_bff import business_logic, presentation
 from user_management_bff.adapter_registry import ADAPTER_REGISTRY
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
@@ -45,16 +45,12 @@ from user_management_bff.models import (
 from user_management_bff.ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
-    ListConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
-    SchoolClassesRepresentationPort,
     SchoolsPersistencePort,
-    SchoolsRepresentationPort,
     UsersPersistencePort,
     UsersRepresentationPort,
     WorkGroupsPersistencePort,
-    WorkGroupsRepresentationPort,
 )
 
 # The actor id supplied by AlwaysAuthenticatedAdapter in the test environment.
@@ -69,10 +65,6 @@ async def _get_ports() -> SimpleNamespace:
         school_classes=await ADAPTER_REGISTRY(SchoolClassesPersistencePort),
         work_groups=await ADAPTER_REGISTRY(WorkGroupsPersistencePort),
         users_repr=await ADAPTER_REGISTRY(UsersRepresentationPort),
-        schools_repr=await ADAPTER_REGISTRY(SchoolsRepresentationPort),
-        school_classes_repr=await ADAPTER_REGISTRY(SchoolClassesRepresentationPort),
-        work_groups_repr=await ADAPTER_REGISTRY(WorkGroupsRepresentationPort),
-        list_config_repr=await ADAPTER_REGISTRY(ListConfigRepresentationPort),
         add_config_repr=await ADAPTER_REGISTRY(AddConfigRepresentationPort),
         edit_config_repr=await ADAPTER_REGISTRY(EditConfigRepresentationPort),
         permissions=await ADAPTER_REGISTRY(PermissionsPort),
@@ -104,7 +96,6 @@ async def test_get_schools_actor_not_found(mocker, users_get_not_found_mock, lan
         match=_(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
     ) as exc_info:
         await get_schools(
-            mocker.AsyncMock(),
             mocker.AsyncMock(),
             mocker.AsyncMock(),
             users_get_not_found_mock,
@@ -167,26 +158,6 @@ def test_user_create_request_to_target():
 
 
 # ---------------------------------------------------------------------------
-# List column config
-# ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-@pytest.mark.parametrize("lang", ["en", "de"])
-async def test_list_config_representation(ports, lang):
-    config = ports.list_config_repr.list_config_representation(lang)
-    assert [column.attribute for column in config.columns] == [
-        "last_name",
-        "first_name",
-        "username",
-        "roles",
-        "classes",
-        "work_groups",
-        "schools",
-        "activated",
-    ]
-    assert config.columns[0].label == _("Last name", lang=lang)
-
-
-# ---------------------------------------------------------------------------
 # get_users
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
@@ -204,7 +175,6 @@ async def test_get_users(ports, school, expected_ids):
         ports.schools,
         ports.school_classes,
         ports.work_groups,
-        ports.users_repr,
         ports.permissions,
         ACTOR_ID,
         UsersGetRequest(school=school, school_classes=[], work_groups=[]),
@@ -216,19 +186,18 @@ async def test_get_users(ports, school, expected_ids):
 @pytest.mark.asyncio
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
 async def test_get_users_no_permissions(_permissions_mock, ports):
-    # Users for whom the actor holds no permissions are omitted entirely.
+    # Users for whom the actor holds no permissions are omitted from the view.
     result = await business_logic.get_users(
         ports.users,
         ports.schools,
         ports.school_classes,
         ports.work_groups,
-        ports.users_repr,
         ports.permissions,
         ACTOR_ID,
         UsersGetRequest(school="test_school1", school_classes=[], work_groups=[]),
         "en",
     )
-    assert result.users == []
+    assert presentation.build_user_list(result, "en").rows == []
 
 
 # ---------------------------------------------------------------------------
@@ -237,9 +206,9 @@ async def test_get_users_no_permissions(_permissions_mock, ports):
 @pytest.mark.asyncio
 async def test_get_schools(ports):
     result = await business_logic.get_schools(
-        ports.schools, ports.schools_repr, ports.permissions, ports.users, ACTOR_ID, "en"
+        ports.schools, ports.permissions, ports.users, ACTOR_ID, "en"
     )
-    assert [school.value for school in result.schools] == [
+    assert [school.id for school in result.schools] == [
         "school1",
         "school2",
         "school3",
@@ -254,28 +223,26 @@ async def test_get_schools(ports):
 async def test_get_school_classes(ports):
     result = await business_logic.get_school_classes(
         ports.school_classes,
-        ports.school_classes_repr,
         ports.permissions,
         ports.users,
         ACTOR_ID,
         "school1",
         "en",
     )
-    assert [(sc.value, sc.label) for sc in result.school_classes] == [("1a", "1a"), ("2b", "2b")]
+    assert [(sc.id, sc.display_name) for sc in result] == [("1a", "1a"), ("2b", "2b")]
 
 
 @pytest.mark.asyncio
 async def test_get_work_groups(ports):
     result = await business_logic.get_work_groups(
         ports.work_groups,
-        ports.work_groups_repr,
         ports.permissions,
         ports.users,
         ACTOR_ID,
         "school1",
         "en",
     )
-    assert [(wg.value, wg.label) for wg in result.work_groups] == [("w1a", "w1a"), ("w2b", "w2b")]
+    assert [(wg.id, wg.display_name) for wg in result] == [("w1a", "w1a"), ("w2b", "w2b")]
 
 
 # ---------------------------------------------------------------------------
@@ -642,7 +609,6 @@ async def test_get_school_classes_filters_by_use_as_filter(ports, mocker):
     )
     result = await business_logic.get_school_classes(
         ports.school_classes,
-        ports.school_classes_repr,
         ports.permissions,
         ports.users,
         ACTOR_ID,
@@ -650,7 +616,7 @@ async def test_get_school_classes_filters_by_use_as_filter(ports, mocker):
         "en",
     )
     # "2b" is dropped because the actor lacks use_as_filter on it.
-    assert [sc.value for sc in result.school_classes] == ["1a"]
+    assert [sc.id for sc in result] == ["1a"]
 
 
 @pytest.mark.asyncio
@@ -662,14 +628,13 @@ async def test_get_work_groups_filters_by_use_as_filter(ports, mocker):
     )
     result = await business_logic.get_work_groups(
         ports.work_groups,
-        ports.work_groups_repr,
         ports.permissions,
         ports.users,
         ACTOR_ID,
         "school1",
         "en",
     )
-    assert [wg.value for wg in result.work_groups] == ["w1a"]
+    assert [wg.id for wg in result] == ["w1a"]
 
 
 # get_users returns only the users the actor holds a permission for
@@ -686,14 +651,15 @@ async def test_get_users_partial_visibility(ports, mocker):
         ports.schools,
         ports.school_classes,
         ports.work_groups,
-        ports.users_repr,
         ports.permissions,
         ACTOR_ID,
         UsersGetRequest(school="test_school1", school_classes=[], work_groups=[]),
         "en",
     )
-    # test_school1 also contains test_user4, but the actor has no permission for it.
-    assert {user.id for user in result.users} == {"test_user1"}
+    # test_school1 also contains test_user4, but the actor has no permission for it,
+    # so only test_user1 is rendered into a row.
+    view = presentation.build_user_list(result, "en")
+    assert {row.id for row in view.rows} == {"test_user1"}
 
 
 # create_user / patch_user deny on a *missing subset* of permissions

@@ -69,9 +69,6 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE"] = (
         "user_management_bff.adapters.schools:FileSchoolsPersistenceAdapter"
     )
-    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_REPRESENTATION"] = (
-        "user_management_bff.adapters.api:FastAPISchoolsRepresentationAdapter"
-    )
     os.environ["USER_MANAGEMENT__ADAPTER__AUTHENTICATION"] = (
         "user_management_bff.adapters.authentication:AlwaysAuthenticatedAdapter"
     )
@@ -93,26 +90,17 @@ def patch_env():
     os.environ["FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
     )
-    os.environ["USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_REPRESENTATION"] = (
-        "user_management_bff.adapters.api:FastAPISchoolClassesRepresentationAdapter"
-    )
     os.environ["USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE"] = (
         "user_management_bff.adapters.work_groups:FileWorkGroupsPersistenceAdapter"
     )
     os.environ["FILE_WORK_GROUPS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "../../dev/data/work_groups.json"
     )
-    os.environ["USER_MANAGEMENT__ADAPTER__WORK_GROUPS_REPRESENTATION"] = (
-        "user_management_bff.adapters.api:FastAPIWorkGroupsRepresentationAdapter"
-    )
     os.environ["USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__EDIT_CONFIG_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPIEditConfigRepresentationAdapter"
-    )
-    os.environ["USER_MANAGEMENT__ADAPTER__LIST_CONFIG_REPRESENTATION"] = (
-        "user_management_bff.adapters.api:FastAPIListConfigRepresentationAdapter"
     )
     yield
     os.environ.clear()

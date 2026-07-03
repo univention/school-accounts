@@ -1,0 +1,29 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{% import "macros/user_table.html" as table %}
+{% if view.rows %}
+<u-vstack gap="md">
+  <u-table sticky-header>
+    <u-tr slot="header">
+      {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
+    </u-tr>
+    <u-tbody>
+      {% for row in view.rows %}
+      <u-tr>
+        {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
+      </u-tr>
+      {% endfor %}
+    </u-tbody>
+  </u-table>
+</u-vstack>
+{% else %}
+<u-table empty sticky-header>
+  <u-tr slot="header">
+    {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
+  </u-tr>
+  <span slot="empty">{{ _('No users found.') }}</span>
+</u-table>
+{% endif %}

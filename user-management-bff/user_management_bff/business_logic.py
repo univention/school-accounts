@@ -24,20 +24,15 @@ from .ports import (
     AddConfigRepresentationPort,
     EditConfigRepresentationPort,
     PermissionsPort,
-    SchoolClassesGetRepresentation,
     SchoolClassesPersistencePort,
-    SchoolClassesRepresentationPort,
-    SchoolsGetRepresentation,
     SchoolsPersistencePort,
-    SchoolsRepresentationPort,
     UserCreateRepresentation,
     UsersGetRepresentation,
     UsersPersistencePort,
     UsersRepresentationPort,
-    WorkGroupsGetRepresentation,
     WorkGroupsPersistencePort,
-    WorkGroupsRepresentationPort,
 )
+from .presentation import SchoolsData, UserListData
 from .utils import (
     get_required_permissions_for_create_request,
     get_required_permissions_for_patch_request,
@@ -112,12 +107,11 @@ async def get_users(
     schools_get_adapter: SchoolsPersistencePort,
     school_classes_get_adapter: SchoolClassesPersistencePort,
     work_groups_get_adapter: WorkGroupsPersistencePort,
-    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
     permissions_port: PermissionsPort,
     actor_id: str,
     request_data: UsersGetRequest,
     lang: str,
-) -> UsersGetRepresentation:
+) -> UserListData:
     logger.debug("Retrieving all users of a school.", actor_id=actor_id, school=request_data.school)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     users = await users_get_adapter.get_users(
@@ -141,72 +135,71 @@ async def get_users(
             )
         ],
     )
-    return representation_port.create_users_representation(
-        users, schools, school_classes, work_groups, permissions, lang
+    return UserListData(
+        users=users,
+        schools=schools,
+        school_classes=dict(school_classes),
+        work_groups=dict(work_groups),
+        permissions=permissions,
     )
 
 
 async def get_schools(
     schools_get_adapter: SchoolsPersistencePort,
-    representation_port: SchoolsRepresentationPort[SchoolsGetRepresentation],
     permissions_port: PermissionsPort,
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
     lang: str,
-) -> SchoolsGetRepresentation:
+) -> SchoolsData:
     logger.debug("Retrieving all schools.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     schools = await schools_get_adapter.get_schools()
     permissions = await permissions_port.get_permissions(
         actor, [school_to_target(school) for school in schools]
     )
-    return representation_port.create_schools_representation(schools, permissions)
+    return SchoolsData(schools=schools, permissions=permissions)
 
 
 async def get_school_classes(
     schools_get_adapter: SchoolClassesPersistencePort,
-    representation_port: SchoolClassesRepresentationPort[SchoolClassesGetRepresentation],
     permissions_port: PermissionsPort,
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
     school_id: str,
     lang: str,
-) -> SchoolClassesGetRepresentation:
+) -> list[SchoolClass]:
     logger.debug("Retrieving all school classes.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     school_classes = await schools_get_adapter.get_school_classes(school_id)
     permissions = await permissions_port.get_permissions(
         actor, [school_class_to_target(school_class) for school_class in school_classes]
     )
-    school_classes = [
+    return [
         school_class
         for school_class in school_classes
         if Permission.use_as_filter in permissions[school_class.id]
     ]
-    return representation_port.create_school_classes_representation(school_classes)
 
 
 async def get_work_groups(
     schools_get_adapter: WorkGroupsPersistencePort,
-    representation_port: WorkGroupsRepresentationPort[WorkGroupsGetRepresentation],
     permissions_port: PermissionsPort,
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
     school_id: str,
     lang: str,
-) -> WorkGroupsGetRepresentation:
+) -> list[WorkGroup]:
     logger.debug("Retrieving all work groups.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     work_groups = await schools_get_adapter.get_work_groups(school_id)
     permissions = await permissions_port.get_permissions(
         actor, [work_group_to_target(work_group) for work_group in work_groups]
     )
-    work_groups = [
+    return [
         work_group
         for work_group in work_groups
         if Permission.use_as_filter in permissions[work_group.id]
     ]
-    return representation_port.create_work_groups_representation(work_groups)
 
 
 async def create_user(

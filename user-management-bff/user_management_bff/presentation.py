@@ -1,0 +1,254 @@
+# Copyright (C) 2026 Univention GmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+"""Presentation helpers for the server-rendered UI.
+
+Pure functions that turn the raw domain data returned by ``business_logic`` into
+view models the Jinja templates iterate over. This keeps permission resolution
+and display formatting out of the templates without reintroducing a
+representation port/adapter.
+"""
+from collections.abc import Collection
+from dataclasses import dataclass, field
+
+from .lang import _
+from .models import (
+    AttributeAccess,
+    Permission,
+    School,
+    SchoolClass,
+    User,
+    WorkGroup,
+)
+
+
+# ---------------------------------------------------------------------------
+# Raw data bundles returned by ``business_logic`` (input to the builders below)
+# ---------------------------------------------------------------------------
+@dataclass
+class UserListData:
+    users: list[User]
+    schools: list[School]
+    school_classes: dict[str, list[SchoolClass]]
+    work_groups: dict[str, list[WorkGroup]]
+    permissions: dict[str, list[Permission]]
+
+
+@dataclass
+class SchoolsData:
+    schools: list[School]
+    permissions: dict[str, list[Permission]]
+
+
+# ---------------------------------------------------------------------------
+# View models consumed by the templates
+# ---------------------------------------------------------------------------
+@dataclass
+class Option:
+    value: str
+    label: str
+    selected: bool = False
+
+
+@dataclass
+class SchoolOption(Option):
+    # School-context "create-user" permission; drives the future Add button.
+    can_add: bool = False
+
+
+@dataclass
+class Column:
+    label: str
+    kind: str  # "text" | "list" | "boolean"
+
+
+@dataclass
+class Cell:
+    # ``visible`` is False when the actor has no read/write access to the
+    # attribute, in which case the template renders nothing.
+    visible: bool
+    kind: str
+    text: str | None = None
+    items: list[str] = field(default_factory=list)
+    activated: bool | None = None
+
+
+@dataclass
+class Row:
+    id: str
+    cells: list[Cell]
+    can_delete: bool
+
+
+@dataclass
+class UserListView:
+    columns: list[Column]
+    rows: list[Row]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _attribute_access(name: str, permissions: set[Permission]) -> AttributeAccess:
+    """Resolve an attribute's access level from the actor's permissions.
+
+    ``username`` is always readable; a matching ``write-*`` permission upgrades
+    ``read`` to ``write``. Names without a corresponding permission member
+    simply stay ``NONE`` (the ``Permission(...)`` lookup raises ``ValueError``).
+    """
+    access = AttributeAccess.READ if name == "username" else AttributeAccess.NONE
+    try:
+        if Permission(f"read-{name}") in permissions:
+            access = AttributeAccess.READ
+    except ValueError:
+        pass
+    try:
+        if Permission(f"write-{name}") in permissions:
+            access = AttributeAccess.WRITE
+    except ValueError:
+        pass
+    return access
+
+
+def _find_by_id(items, item_id: str):
+    return next((item for item in items if item.id == item_id), None)
+
+
+def _format_school(schools: list[School], school_id: str) -> str:
+    return _find_by_id(schools, school_id).display_name
+
+
+def _format_school_class(
+    schools: list[School], classes: list[SchoolClass], school_id: str, class_id: str
+) -> str:
+    school = _find_by_id(schools, school_id)
+    school_class = _find_by_id(classes, class_id)
+    return f"{school_class.display_name} ({school.display_name})"
+
+
+def _format_work_group(
+    schools: list[School], work_groups: list[WorkGroup], school_id: str, work_group_id: str
+) -> str:
+    school = _find_by_id(schools, school_id)
+    work_group = _find_by_id(work_groups, work_group_id)
+    return f"{work_group.display_name} ({school.display_name})"
+
+
+def _format_role(schools: list[School], role: str, lang: str) -> str:
+    school = _find_by_id(schools, role.rsplit(":", 1)[1])
+    role_str = role.replace("_", " ").split(":", 1)[0].title()
+    return f"{_(role_str, lang=lang)} ({school.display_name})"
+
+
+def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Cell:
+    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    return Cell(visible=visible, kind="text", text=value)
+
+
+def _list_cell(name: str, items: list[str], permissions: set[Permission]) -> Cell:
+    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    return Cell(visible=visible, kind="list", items=items if visible else [])
+
+
+def _boolean_cell(name: str, activated: bool, permissions: set[Permission], lang: str) -> Cell:
+    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    return Cell(
+        visible=visible,
+        kind="boolean",
+        activated=activated,
+        text=_("Activated", lang=lang) if activated else _("Deactivated", lang=lang),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Builders
+# ---------------------------------------------------------------------------
+def build_school_options(data: SchoolsData, query: str = "") -> list[SchoolOption]:
+    needle = query.strip().casefold()
+    return [
+        SchoolOption(
+            value=school.id,
+            label=school.display_name,
+            can_add=Permission.create_user in set(data.permissions.get(school.id, [])),
+        )
+        for school in sorted(data.schools, key=lambda s: s.display_name)
+        if needle in school.display_name.casefold()
+    ]
+
+
+def build_options(
+    items: list[SchoolClass] | list[WorkGroup],
+    selected: Collection[str] = (),
+    query: str = "",
+) -> list[Option]:
+    selected_ids = set(selected)
+    needle = query.strip().casefold()
+    return [
+        Option(value=item.id, label=item.display_name, selected=item.id in selected_ids)
+        for item in sorted(items, key=lambda i: i.display_name)
+        if needle in item.display_name.casefold()
+    ]
+
+
+def empty_user_list_view(lang: str) -> UserListView:
+    return UserListView(columns=list_columns(lang), rows=[])
+
+
+def list_columns(lang: str) -> list[Column]:
+    return [
+        Column(label=_("Last name", lang=lang), kind="text"),
+        Column(label=_("First name", lang=lang), kind="text"),
+        Column(label=_("Username", lang=lang), kind="text"),
+        Column(label=_("Roles", lang=lang), kind="list"),
+        Column(label=_("Classes", lang=lang), kind="list"),
+        Column(label=_("Work Groups", lang=lang), kind="list"),
+        Column(label=_("Schools", lang=lang), kind="list"),
+        Column(label=_("Activated", lang=lang), kind="boolean"),
+    ]
+
+
+def build_user_list(data: UserListData, lang: str) -> UserListView:
+    rows: list[Row] = []
+    for user in data.users:
+        permissions = set(data.permissions.get(user.id, []))
+        # A user is only listed if the actor holds at least one permission on
+        # them (``username`` alone is implicit and never produced in isolation).
+        if not permissions:
+            continue
+        attributes = user.attributes
+        cells = [
+            _text_cell("last_name", attributes.last_name, permissions),
+            _text_cell("first_name", attributes.first_name, permissions),
+            _text_cell("username", attributes.username, permissions),
+            _list_cell(
+                "roles",
+                [_format_role(data.schools, role, lang) for role in attributes.roles],
+                permissions,
+            ),
+            _list_cell(
+                "school_classes",
+                [
+                    _format_school_class(data.schools, data.school_classes[school], school, school_class)
+                    for school, classes in attributes.school_classes.items()
+                    for school_class in classes
+                ],
+                permissions,
+            ),
+            _list_cell(
+                "work_groups",
+                [
+                    _format_work_group(data.schools, data.work_groups[school], school, work_group)
+                    for school, groups in attributes.work_groups.items()
+                    for work_group in groups
+                ],
+                permissions,
+            ),
+            _list_cell(
+                "schools",
+                [_format_school(data.schools, school) for school in attributes.schools],
+                permissions,
+            ),
+            _boolean_cell("activated", not attributes.disabled, permissions, lang),
+        ]
+        rows.append(Row(id=user.id, cells=cells, can_delete=Permission.delete_user in permissions))
+    return UserListView(columns=list_columns(lang), rows=rows)

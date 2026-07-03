@@ -1,0 +1,8 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{% for school in schools %}
+<u-combobox-item value="{{ school.value }}">{{ school.label }}</u-combobox-item>
+{% endfor %}

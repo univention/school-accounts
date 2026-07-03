@@ -14,20 +14,8 @@ SPDX-License-Identifier: AGPL-3.0-only
     <script defer src="{{ static('vendor/alpine.min.js') }}"></script>
   </head>
   <body>
-    <u-page>
-      <u-container>
-        <u-hstack justify="between" align="center">
-          <u-page-header>{{ _("User Management") }}</u-page-header>
-          <u-theme-toggle
-            label-light="{{ _('Switch to light theme') }}"
-            label-dark="{{ _('Switch to dark theme') }}"
-          ></u-theme-toggle>
-        </u-hstack>
-
-        {% block content %}{% endblock %}
-
-        <u-toast id="toast-region" aria-live="polite"></u-toast>
-      </u-container>
-    </u-page>
+    {# Each page owns its own <u-page> so it can choose the scrollable or fixed
+       layout; shared chrome (header, toast) comes from macros/layout.html. #}
+    {% block body %}{% endblock %}
   </body>
 </html>

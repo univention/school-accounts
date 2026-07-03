@@ -79,18 +79,6 @@ UserCreateRepresentation = TypeVar("UserCreateRepresentation")
 
 class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRepresentation]):
     @abstractmethod
-    def create_users_representation(
-        self,
-        users: list[User],
-        schools: list[School],
-        school_classes: dict[str, list[SchoolClass]],
-        work_groups: dict[str, list[WorkGroup]],
-        permissions: dict[str, list[Permission]],
-        lang: str,
-    ) -> UsersGetRepresentation:  # pragma: no cover
-        ...
-
-    @abstractmethod
     def create_user_representation(
         self, user: User, permissions: set[Permission]
     ) -> UserCreateRepresentation:  # pragma: no cover
@@ -100,37 +88,6 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRep
     def edit_user_representation(
         self, user: User, permissions: set[Permission]
     ) -> EditUserResponseUser: ...
-
-
-SchoolsGetRepresentation = TypeVar("SchoolsGetRepresentation")
-
-
-class SchoolsRepresentationPort(ABC, Generic[SchoolsGetRepresentation]):
-    @abstractmethod
-    def create_schools_representation(
-        self, schools: list[School], permissions: dict[str, list[Permission]]
-    ) -> SchoolsGetRepresentation:  # pragma: no cover
-        ...
-
-
-SchoolClassesGetRepresentation = TypeVar("SchoolClassesGetRepresentation")
-WorkGroupsGetRepresentation = TypeVar("WorkGroupsGetRepresentation")
-
-
-class SchoolClassesRepresentationPort(ABC, Generic[SchoolClassesGetRepresentation]):
-    @abstractmethod
-    def create_school_classes_representation(
-        self, school_classes: list[SchoolClass]
-    ) -> SchoolClassesGetRepresentation:  # pragma: no cover
-        ...
-
-
-class WorkGroupsRepresentationPort(ABC, Generic[WorkGroupsGetRepresentation]):
-    @abstractmethod
-    def create_work_groups_representation(
-        self, school_classes: list[WorkGroup]
-    ) -> WorkGroupsGetRepresentation:  # pragma: no cover
-        ...
 
 
 class FastAPIAuthenticationPort(ABC):
@@ -217,14 +174,6 @@ class PermissionsPort(ABC):
         """
         This method returns the permissions the provided actor has on the given targets.
         """
-
-
-ListUsersConfigRepresentation = TypeVar("ListUsersConfigRepresentation")
-
-
-class ListConfigRepresentationPort(ABC, Generic[ListUsersConfigRepresentation]):
-    @abstractmethod
-    def list_config_representation(self, lang: str = "en") -> ListUsersConfigRepresentation: ...
 
 
 AddUserConfigRepresentation = TypeVar("AddUserConfigRepresentation")
