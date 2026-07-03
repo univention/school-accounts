@@ -1,30 +1,42 @@
 [
   {
-    "display_name": "School 1",
-    "id": "school1"
+    "display_name": "Goethe-Gymnasium Berlin",
+    "id": "goethe-gymnasium-berlin"
   },
   {
-    "display_name": "School 2",
-    "id": "school2"
+    "display_name": "Schiller-Realschule M\u00fcnchen",
+    "id": "schiller-realschule-muenchen"
   },
   {
-    "display_name": "School 3",
-    "id": "school3"
+    "display_name": "Grundschule am Stadtpark Hamburg",
+    "id": "grundschule-am-stadtpark-hamburg"
   },
   {
-    "display_name": "School 4",
-    "id": "school4"
+    "display_name": "Albert-Einstein-Gymnasium K\u00f6ln",
+    "id": "einstein-gymnasium-koeln"
   },
   {
-    "display_name": "Test School 1",
-    "id": "test_school1"
+    "display_name": "Gesamtschule Nord Dortmund",
+    "id": "gesamtschule-nord-dortmund"
   },
   {
-    "display_name": "Test School 2",
-    "id": "test_school2"
+    "display_name": "Freiherr-vom-Stein-Gymnasium Frankfurt",
+    "id": "vom-stein-gymnasium-frankfurt"
   },
   {
-    "display_name": "Test School 3",
-    "id": "test_school3"
+    "display_name": "Pestalozzi-Grundschule Leipzig",
+    "id": "pestalozzi-grundschule-leipzig"
+  },
+  {
+    "display_name": "Marie-Curie-Realschule Stuttgart",
+    "id": "curie-realschule-stuttgart"
+  },
+  {
+    "display_name": "Humboldt-Gymnasium D\u00fcsseldorf",
+    "id": "humboldt-gymnasium-duesseldorf"
+  },
+  {
+    "display_name": "Geschwister-Scholl-Gesamtschule Bremen",
+    "id": "scholl-gesamtschule-bremen"
   }
 ]

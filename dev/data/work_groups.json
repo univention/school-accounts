@@ -1,37 +1,85 @@
 {
-  "school1": [
-    "w1a",
-    "w2b"
+  "curie-realschule-stuttgart": [
+    "Debattierclub",
+    "Orchester",
+    "Sch\u00fclerzeitung",
+    "Tanz-AG",
+    "Umwelt-AG"
   ],
-  "school2": [
-    "w1a",
-    "w2b",
-    "w3c"
+  "einstein-gymnasium-koeln": [
+    "Erste-Hilfe-AG",
+    "Foto-AG",
+    "Garten-AG",
+    "Kunst-AG",
+    "Schach-AG",
+    "Schulchor"
   ],
-  "school3": [],
-  "school4": [
-    "w1a",
-    "w1b",
-    "w1c",
-    "w2a",
-    "w2b",
-    "w2c",
-    "w3c",
-    "w4a",
-    "w5b",
-    "w6c",
-    "w7a",
-    "w8b",
-    "w9c"
+  "gesamtschule-nord-dortmund": [
+    "Debattierclub",
+    "Fu\u00dfball-AG",
+    "Garten-AG",
+    "Orchester",
+    "Schulchor",
+    "Sch\u00fclerzeitung",
+    "Tanz-AG"
   ],
-  "test_school1": [
-    "w1a",
-    "w2b"
+  "goethe-gymnasium-berlin": [
+    "Debattierclub",
+    "Erste-Hilfe-AG",
+    "Schulchor",
+    "Sch\u00fclerzeitung",
+    "Tanz-AG"
   ],
-  "test_school2": [
-    "w1a",
-    "w2b",
-    "w3c"
+  "grundschule-am-stadtpark-hamburg": [
+    "Garten-AG",
+    "Kunst-AG",
+    "Schulchor",
+    "Tanz-AG",
+    "Theater-AG"
   ],
-  "test_school3": []
+  "humboldt-gymnasium-duesseldorf": [
+    "Debattierclub",
+    "Erste-Hilfe-AG",
+    "Fu\u00dfball-AG",
+    "Informatik-AG",
+    "Orchester",
+    "Schach-AG",
+    "Tanz-AG",
+    "Umwelt-AG"
+  ],
+  "pestalozzi-grundschule-leipzig": [
+    "Fu\u00dfball-AG",
+    "Garten-AG",
+    "Kunst-AG",
+    "Schulchor",
+    "Tanz-AG",
+    "Theater-AG"
+  ],
+  "schiller-realschule-muenchen": [
+    "Erste-Hilfe-AG",
+    "Foto-AG",
+    "Garten-AG",
+    "Informatik-AG",
+    "Kunst-AG",
+    "Orchester",
+    "Schach-AG",
+    "Schulchor"
+  ],
+  "scholl-gesamtschule-bremen": [
+    "Debattierclub",
+    "Foto-AG",
+    "Sch\u00fclerzeitung",
+    "Tanz-AG",
+    "Umwelt-AG"
+  ],
+  "vom-stein-gymnasium-frankfurt": [
+    "Debattierclub",
+    "Garten-AG",
+    "Informatik-AG",
+    "Kunst-AG",
+    "Schach-AG",
+    "Sch\u00fclerzeitung",
+    "Tanz-AG",
+    "Umwelt-AG"
+  ]
 }
