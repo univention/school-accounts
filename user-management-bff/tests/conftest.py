@@ -18,8 +18,8 @@ from user_management_bff.models import User, UserAttributes
 nest_asyncio.apply()
 
 # Source files written by the file-backed persistence adapters during tests.
-# These env vars are set by the `patch_env` fixture and point at the real
-# example data under `dev/data/`, so the `restore_data_files` autouse fixture
+# These env vars are set by the `patch_env` fixture and point at the test-owned
+# fixture data under `tests/data/`, so the `restore_data_files` autouse fixture
 # snapshots them and restores any a test modifies.
 _DATA_SOURCE_ENV_VARS = [
     "FILE_USERS_PERSISTENCE_ADAPTER__SOURCE",
@@ -64,7 +64,7 @@ def patch_env():
         "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
     )
     os.environ["FILE_USERS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/users.json"
+        os.path.dirname(os.path.abspath(__file__)), "data/users.json"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE"] = (
         "user_management_bff.adapters.schools:FileSchoolsPersistenceAdapter"
@@ -76,25 +76,25 @@ def patch_env():
         "user_management_bff.adapters.session_store:InMemorySessionStoreAdapter"
     )
     os.environ["FILE_SCHOOLS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/schools.json"
+        os.path.dirname(os.path.abspath(__file__)), "data/schools.json"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__PERMISSIONS"] = (
         "user_management_bff.adapters.permissions:FilePermissionsAdapter"
     )
     os.environ["FILE_PERMISSIONS_ADAPTER__SOURCE"] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/permissions.json"
+        os.path.dirname(os.path.abspath(__file__)), "data/permissions.json"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE"] = (
         "user_management_bff.adapters.school_classes:FileSchoolClassesPersistenceAdapter"
     )
     os.environ["FILE_SCHOOL_CLASSES_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/school_classes.json"
+        os.path.dirname(os.path.abspath(__file__)), "data/school_classes.json"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE"] = (
         "user_management_bff.adapters.work_groups:FileWorkGroupsPersistenceAdapter"
     )
     os.environ["FILE_WORK_GROUPS_PERSISTENCE_ADAPTER__SOURCE"] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../../dev/data/work_groups.json"
+        os.path.dirname(os.path.abspath(__file__)), "data/work_groups.json"
     )
     os.environ["USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION"] = (
         "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
@@ -179,11 +179,11 @@ def users_json_path():
 
 @pytest.fixture(autouse=True)
 def restore_data_files(patch_env):
-    """Snapshot dev/data source files and restore any a test modifies.
+    """Snapshot the fixture source files and restore any a test modifies.
 
-    The file-backed persistence adapters write back to the example data under
-    `dev/data/` (see `patch_env`), which would otherwise leave the working tree
-    dirty after a test run. Restoring only the files whose contents changed
+    The file-backed persistence adapters write back to the fixture data under
+    `tests/data/` (see `patch_env`), which would otherwise leave the working
+    tree dirty after a test run. Restoring only the files whose contents changed
     keeps non-mutating tests (and the e2e suite) free of any disk writes.
     """
     snapshots = {}

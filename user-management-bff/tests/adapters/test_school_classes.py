@@ -96,7 +96,7 @@ class TestFileSchoolClassesPersistenceAdapter:
     async def test_get_users(self, adapter):
         source_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "../../../dev/data/school_classes.json",
+            "../data/school_classes.json",
         )
         with open(source_path, "r") as fd:
             expected_school_classes = json.load(fd)["school1"]

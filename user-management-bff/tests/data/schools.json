@@ -1,0 +1,30 @@
+[
+  {
+    "display_name": "School 1",
+    "id": "school1"
+  },
+  {
+    "display_name": "School 2",
+    "id": "school2"
+  },
+  {
+    "display_name": "School 3",
+    "id": "school3"
+  },
+  {
+    "display_name": "School 4",
+    "id": "school4"
+  },
+  {
+    "display_name": "Test School 1",
+    "id": "test_school1"
+  },
+  {
+    "display_name": "Test School 2",
+    "id": "test_school2"
+  },
+  {
+    "display_name": "Test School 3",
+    "id": "test_school3"
+  }
+]

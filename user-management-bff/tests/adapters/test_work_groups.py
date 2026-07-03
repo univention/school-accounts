@@ -97,7 +97,7 @@ class TestFileWorkGroupsPersistenceAdapter:
     async def test_get_users(self, adapter):
         source_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "../../../dev/data/work_groups.json",
+            "../data/work_groups.json",
         )
         with open(source_path, "r") as fd:
             expected_work_groups = json.load(fd)["school1"]

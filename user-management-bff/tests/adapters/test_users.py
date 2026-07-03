@@ -472,7 +472,7 @@ class TestFileUsersPersistenceAdapter:
         mock_users_json_path = tmpdir / "users.json"
         disk_users_json_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "../../../dev/data/users.json",
+            "../data/users.json",
         )
         with open(disk_users_json_path, "r") as disk, open(mock_users_json_path, "w") as mock:
             mock.write(disk.read())

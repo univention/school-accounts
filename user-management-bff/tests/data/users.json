@@ -1,0 +1,210 @@
+[
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "Max",
+      "last_name": "Mustermann",
+      "roles": [
+        "teacher:school:school1"
+      ],
+      "school_classes": {
+        "school1": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "school1"
+      ],
+      "username": "max.muster",
+      "work_groups": {
+        "school1": [
+          "w1a"
+        ]
+      }
+    },
+    "id": "user1"
+  },
+  {
+    "attributes": {
+      "disabled": true,
+      "first_name": "Maria",
+      "last_name": "Musterfrau",
+      "roles": [
+        "staff:school:school2"
+      ],
+      "school_classes": {
+        "school2": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "school2"
+      ],
+      "username": "maria.muster",
+      "work_groups": {
+        "school2": [
+          "w2b"
+        ]
+      }
+    },
+    "id": "user2"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "Kim",
+      "last_name": "Klein",
+      "roles": [
+        "teacher:school:school1",
+        "student:school:school2"
+      ],
+      "school_classes": {
+        "school1": [
+          "1a",
+          "2b"
+        ],
+        "school2": [
+          "3c"
+        ]
+      },
+      "schools": [
+        "school2",
+        "school1"
+      ],
+      "username": "kim.klein",
+      "work_groups": {
+        "school1": [
+          "w2b"
+        ],
+        "school2": [
+          "w3c"
+        ]
+      }
+    },
+    "id": "user3"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname",
+      "last_name": "lastname",
+      "roles": [
+        "teacher:school:test_school1"
+      ],
+      "school_classes": {
+        "test_school1": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "test_school1"
+      ],
+      "username": "firstname.lastname",
+      "work_groups": {}
+    },
+    "id": "test_user1"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname2",
+      "last_name": "lastname2",
+      "roles": [
+        "teacher:school:test_school2"
+      ],
+      "school_classes": {
+        "test_school2": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "test_school2"
+      ],
+      "username": "firstname2.lastname2",
+      "work_groups": {
+        "test_school2": [
+          "w1a"
+        ]
+      }
+    },
+    "id": "test_user2"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname3",
+      "last_name": "lastname3",
+      "roles": [
+        "teacher:school:test_school2",
+        "student:school:test_school3"
+      ],
+      "school_classes": {
+        "test_school1": [
+          "1a",
+          "2b"
+        ],
+        "test_school2": [
+          "3c"
+        ]
+      },
+      "schools": [
+        "test_school2",
+        "test_school3"
+      ],
+      "username": "firstname3.lastname3",
+      "work_groups": {}
+    },
+    "id": "test_user3"
+  },
+  {
+    "attributes": {
+      "birthday": null,
+      "disabled": false,
+      "email": null,
+      "expiration_date": null,
+      "first_name": "Dev",
+      "last_name": "User",
+      "password": null,
+      "roles": [
+        "teacher:school:school1"
+      ],
+      "school_classes": {
+        "school1": [
+          "1a",
+          "2b"
+        ]
+      },
+      "schools": [
+        "school1"
+      ],
+      "username": "dev",
+      "work_groups": {}
+    },
+    "id": "dev"
+  },
+  {
+    "attributes": {
+      "disabled": false,
+      "first_name": "firstname4",
+      "last_name": "lastname4",
+      "roles": [
+        "school_admin:school:test_school1"
+      ],
+      "school_classes": {
+        "test_school1": [
+          "1a"
+        ]
+      },
+      "schools": [
+        "test_school1"
+      ],
+      "username": "firstname4.lastname4",
+      "work_groups": {}
+    },
+    "id": "test_user4"
+  }
+]
