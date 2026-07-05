@@ -1,0 +1,35 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{# One row of the detail/edit view. WRITE -> editable control, READ -> disabled
+   field, empty readable value -> ghost "n.a." badge, not-readable attribute ->
+   ghost "no access" badge. Relational attributes are read-only this epic. #}
+{% macro field(f) -%}
+<u-form-field label="{{ f.label }}"{% if f.error %} error="{{ f.error }}"{% endif %}>
+  {%- if not f.accessible -%}
+    <u-badge variant="ghost">{{ _('no access') }}</u-badge>
+  {%- elif f.kind == "boolean" -%}
+    {%- if f.editable -%}
+      <u-checkbox name="activated" value="true" unchecked-value="false"{% if f.activated %} checked{% endif %}></u-checkbox>
+    {%- else -%}
+      <u-badge variant="{{ 'success' if f.activated else 'ghost' }}">{{ f.text }}</u-badge>
+    {%- endif -%}
+  {%- elif f.kind == "list" -%}
+    {%- if f.items -%}
+      <u-vstack gap="xs">{% for item in f.items %}<span>{{ item }}</span>{% endfor %}</u-vstack>
+    {%- else -%}
+      <u-badge variant="ghost">{{ _('n.a.') }}</u-badge>
+    {%- endif -%}
+  {%- elif f.editable -%}
+    <u-input type="{{ f.kind }}" name="{{ f.name }}"{% if f.value is not none %} value="{{ f.value }}"{% endif %}></u-input>
+  {%- elif f.value -%}
+    {# Read-only value: rendered as static text so it is never submitted (the
+       actor must not post an attribute they cannot write). #}
+    <span>{{ f.value }}</span>
+  {%- else -%}
+    <u-badge variant="ghost">{{ _('n.a.') }}</u-badge>
+  {%- endif -%}
+</u-form-field>
+{%- endmacro %}

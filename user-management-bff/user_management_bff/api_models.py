@@ -69,13 +69,6 @@ class ListUserFixedAttributes(BaseModel):
     roles: ListUserAttribute[list[str]]
 
 
-class CompleteUserFixedAttributes(ListUserFixedAttributes):
-    password: ListUserAttribute[str]
-    email: ListUserAttribute[str]
-    birthday: ListUserAttribute[datetime.date]
-    expiration_date: ListUserAttribute[datetime.date]
-
-
 class SchoolClassesGetRequest(BaseModel):
     school: str
 
@@ -153,17 +146,6 @@ class PageConfig(BaseModel):
 
 
 class AddUsersConfig(BaseModel):
-    pages: list[PageConfig]
-
-
-class EditUserResponseUser(BaseModel):
-    id: str
-    attributes: CompleteUserFixedAttributes
-
-
-class EditUsersConfig(BaseModel):
-    id: str
-    user: dict[str, Any]
     pages: list[PageConfig]
 
 

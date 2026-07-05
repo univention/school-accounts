@@ -44,7 +44,6 @@ from user_management_bff.models import (
 )
 from user_management_bff.ports import (
     AddConfigRepresentationPort,
-    EditConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
     SchoolsPersistencePort,
@@ -66,7 +65,6 @@ async def _get_ports() -> SimpleNamespace:
         work_groups=await ADAPTER_REGISTRY(WorkGroupsPersistencePort),
         users_repr=await ADAPTER_REGISTRY(UsersRepresentationPort),
         add_config_repr=await ADAPTER_REGISTRY(AddConfigRepresentationPort),
-        edit_config_repr=await ADAPTER_REGISTRY(EditConfigRepresentationPort),
         permissions=await ADAPTER_REGISTRY(PermissionsPort),
     )
 
@@ -197,7 +195,7 @@ async def test_get_users_no_permissions(_permissions_mock, ports):
         UsersGetRequest(school="test_school1", school_classes=[], work_groups=[]),
         "en",
     )
-    assert presentation.build_user_list(result, "en").rows == []
+    assert presentation.build_user_list(result, "en", "test_school1").rows == []
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +368,9 @@ async def test_patch_user_wrong_school(ports):
     with pytest.raises(OperationNotSupportedError) as exc_info:
         await business_logic.patch_user(
             ports.users,
-            ports.users_repr,
+            ports.schools,
+            ports.school_classes,
+            ports.work_groups,
             ports.permissions,
             ACTOR_ID,
             UserPatchRequest(
@@ -387,7 +387,9 @@ async def test_patch_user_not_found(ports, lang):
     with pytest.raises(ObjectNotFoundError) as exc_info:
         await business_logic.patch_user(
             ports.users,
-            ports.users_repr,
+            ports.schools,
+            ports.school_classes,
+            ports.work_groups,
             ports.permissions,
             ACTOR_ID,
             UserPatchRequest(
@@ -405,7 +407,9 @@ async def test_patch_user_not_allowed(_permissions_mock, ports, lang):
     with pytest.raises(PermissionsError) as exc_info:
         await business_logic.patch_user(
             ports.users,
-            ports.users_repr,
+            ports.schools,
+            ports.school_classes,
+            ports.work_groups,
             ports.permissions,
             ACTOR_ID,
             UserPatchRequest(
@@ -427,7 +431,9 @@ async def test_patch_user_not_allowed(_permissions_mock, ports, lang):
 async def test_patch_user(ports, patch_dict):
     result = await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -444,18 +450,21 @@ async def test_patch_user(ports, patch_dict):
         "username": "firstname.lastname",
     }
     expected.update(patch_dict)
-    assert result.user.attributes.first_name.value == expected["first_name"]
-    assert result.user.attributes.last_name.value == expected["last_name"]
-    assert result.user.attributes.username.value == expected["username"]
-    assert result.user.attributes.activated.value == expected["activated"]
-    assert result.user.attributes.classes.value == ["test_school1:1a", "test_school1:2b"]
+    assert result.school == "test_school1"
+    assert result.user.attributes.first_name == expected["first_name"]
+    assert result.user.attributes.last_name == expected["last_name"]
+    assert result.user.attributes.username == expected["username"]
+    assert (not result.user.attributes.disabled) == expected["activated"]
+    assert result.user.attributes.school_classes == {"test_school1": ["1a", "2b"]}
 
 
 @pytest.mark.asyncio
 async def test_patch_user_school_classes(ports):
     result = await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -465,11 +474,10 @@ async def test_patch_user_school_classes(ports):
         ),
         "en",
     )
-    assert result.user.attributes.classes.value == [
-        "test_school1:1a",
-        "test_school1:2b",
-        "test_school2:1a",
-    ]
+    assert result.user.attributes.school_classes == {
+        "test_school1": ["1a", "2b"],
+        "test_school2": ["1a"],
+    }
 
 
 @pytest.mark.asyncio
@@ -485,7 +493,9 @@ async def test_patch_user_school_classes(ports):
 async def test_patch_user_change_roles(ports, patch_dict):
     result = await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -494,7 +504,7 @@ async def test_patch_user_change_roles(ports, patch_dict):
         "en",
     )
     # Roles are intentionally not updated by the persistence layer.
-    assert result.user.attributes.roles.value == ["teacher:school:school1"]
+    assert result.user.attributes.roles == ["teacher:school:school1"]
 
 
 # ---------------------------------------------------------------------------
@@ -526,16 +536,14 @@ async def test_get_user_add_config_school_doesnt_exist(ports, lang):
 
 
 # ---------------------------------------------------------------------------
-# get_user_edit_config
+# get_user
 # ---------------------------------------------------------------------------
-async def _edit_config(ports, *, user_id, school, lang="en"):
-    return await business_logic.get_user_edit_config(
+async def _get_user(ports, *, user_id, school, lang="en"):
+    return await business_logic.get_user(
         ports.users,
-        ports.users_repr,
         ports.schools,
         ports.school_classes,
         ports.work_groups,
-        ports.edit_config_repr,
         ports.permissions,
         ACTOR_ID,
         user_id,
@@ -545,33 +553,29 @@ async def _edit_config(ports, *, user_id, school, lang="en"):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("lang", ["en", "de"])
-async def test_get_user_edit_config(ports, lang):
-    config = await _edit_config(ports, user_id="user3", school="school1", lang=lang)
-    assert config.id == "user3"
-    assert config.user["first_name"] == "Kim"
-    assert config.user["last_name"] == "Klein"
-    assert config.user["school"] == "school1"
+async def test_get_user(ports):
+    data = await _get_user(ports, user_id="user3", school="school1")
+    assert data.user.id == "user3"
+    assert data.school == "school1"
+    # The dev actor holds every write permission on user targets in the fixture.
+    assert Permission.write_first_name in data.permissions
+    # Display context is fetched for every school the user belongs to.
+    assert set(data.school_classes) >= set(data.user.attributes.schools)
+    assert any(school.id == "school1" for school in data.schools)
 
 
 @pytest.mark.asyncio
-async def test_get_user_edit_config_non_existing_user(ports):
-    with pytest.raises(ObjectNotFoundError):
-        await _edit_config(ports, user_id="NON_EXISTING", school="test_school1")
-
-
-@pytest.mark.asyncio
-async def test_get_user_edit_config_wrong_school(ports):
-    with pytest.raises(ObjectNotFoundError):
-        await _edit_config(ports, user_id="test_user1", school="school1")
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("lang", ["en", "de"])
-async def test_get_user_edit_config_school_doesnt_exist(ports, lang):
+async def test_get_user_non_existing_user(ports):
     with pytest.raises(ObjectNotFoundError) as exc_info:
-        await _edit_config(ports, user_id="test_user1", school="fake_school", lang=lang)
-    assert exc_info.value.identifier == "fake_school"
+        await _get_user(ports, user_id="NON_EXISTING", school="school1")
+    assert exc_info.value.identifier == "NON_EXISTING"
+
+
+@pytest.mark.asyncio
+async def test_get_user_wrong_school(ports):
+    with pytest.raises(ObjectNotFoundError) as exc_info:
+        await _get_user(ports, user_id="user3", school="school4")
+    assert exc_info.value.identifier == "user3:school4"
 
 
 # ---------------------------------------------------------------------------
@@ -658,7 +662,7 @@ async def test_get_users_partial_visibility(ports, mocker):
     )
     # test_school1 also contains test_user4, but the actor has no permission for it,
     # so only test_user1 is rendered into a row.
-    view = presentation.build_user_list(result, "en")
+    view = presentation.build_user_list(result, "en", "test_school1")
     assert {row.id for row in view.rows} == {"test_user1"}
 
 
@@ -702,7 +706,9 @@ async def test_patch_user_partial_permissions(ports, mocker):
     with pytest.raises(PermissionsError) as exc_info:
         await business_logic.patch_user(
             ports.users,
-            ports.users_repr,
+            ports.schools,
+            ports.school_classes,
+            ports.work_groups,
             ports.permissions,
             ACTOR_ID,
             UserPatchRequest(
@@ -790,7 +796,9 @@ def test_user_create_request_to_target_defaults_empty_work_groups():
 async def test_patch_user_reactivation(ports):
     await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -802,7 +810,9 @@ async def test_patch_user_reactivation(ports):
     )
     result = await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -812,14 +822,16 @@ async def test_patch_user_reactivation(ports):
         ),
         "en",
     )
-    assert result.user.attributes.activated.value is True
+    assert result.user.attributes.disabled is False
 
 
 @pytest.mark.asyncio
 async def test_patch_user_clear_school_classes(ports):
     result = await business_logic.patch_user(
         ports.users,
-        ports.users_repr,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UserPatchRequest(
@@ -829,4 +841,4 @@ async def test_patch_user_clear_school_classes(ports):
         ),
         "en",
     )
-    assert result.user.attributes.classes.value == []
+    assert result.user.attributes.school_classes == {"test_school1": []}

@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from loguru import logger
 
-from .api_models import AddUsersConfig, EditUsersConfig, UserCreateRequest
+from .api_models import AddUsersConfig, UserCreateRequest
 from .errors import NoSchoolUserError, ObjectNotFoundError, OperationNotSupportedError, PermissionsError
 from .lang import _
 from .models import (
@@ -22,7 +22,6 @@ from .models import (
 )
 from .ports import (
     AddConfigRepresentationPort,
-    EditConfigRepresentationPort,
     PermissionsPort,
     SchoolClassesPersistencePort,
     SchoolsPersistencePort,
@@ -32,7 +31,7 @@ from .ports import (
     UsersRepresentationPort,
     WorkGroupsPersistencePort,
 )
-from .presentation import SchoolsData, UserListData
+from .presentation import SchoolsData, UserDetailData, UserListData
 from .utils import (
     get_required_permissions_for_create_request,
     get_required_permissions_for_patch_request,
@@ -284,12 +283,14 @@ async def delete_user(
 
 async def patch_user(
     users_patch_adapter: UsersPersistencePort,
-    representation_port: UsersRepresentationPort[UsersGetRepresentation, UserCreateRepresentation],
+    schools_get_adapter: SchoolsPersistencePort,
+    school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
     permissions_port: PermissionsPort,
     actor_id: str,
     patch_data: UserPatchRequest,
     lang: str,
-) -> UserCreateRepresentation:
+) -> UserDetailData:
     logger.debug(
         "Received request from actor to update user.", actor_id=actor_id, user_id=patch_data.identifier
     )
@@ -353,7 +354,14 @@ async def patch_user(
         )
     new_user = await users_patch_adapter.save_user(new_user)
     logger.info("Updated user on behalf of actor.", actor_id=actor_id, user_id=new_user.id)
-    return representation_port.create_user_representation(new_user, target_permissions)
+    return await _build_user_detail_data(
+        schools_get_adapter,
+        school_classes_get_adapter,
+        work_groups_get_adapter,
+        new_user,
+        target_permissions,
+        patch_data.school,
+    )
 
 
 async def get_user_add_config(
@@ -375,32 +383,58 @@ async def get_user_add_config(
     return representation_port.add_config_representation(school_obj, school_classes, work_groups, lang)
 
 
-async def get_user_edit_config(
-    users_get_port: UsersPersistencePort,
-    user_representation_port: UsersRepresentationPort,
-    schools_get_port: SchoolsPersistencePort,
-    school_classes_persistence_port: SchoolClassesPersistencePort,
-    work_groups_persistence_port: WorkGroupsPersistencePort,
-    representation_port: EditConfigRepresentationPort,
+async def _build_user_detail_data(
+    schools_get_adapter: SchoolsPersistencePort,
+    school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
+    user: User,
+    permissions: set[Permission],
+    school: str,
+) -> UserDetailData:
+    """Assemble the display bundle for a single user.
+
+    Fetches the schools plus the raw (unfiltered) school-classes / work-groups of
+    every school the user belongs to, so ``presentation`` can format the user's
+    relational attributes into display names.
+    """
+    schools = await schools_get_adapter.get_schools()
+    school_classes: dict[str, list[SchoolClass]] = {}
+    work_groups: dict[str, list[WorkGroup]] = {}
+    relevant_schools = (
+        set(user.attributes.schools)
+        | set(user.attributes.school_classes)
+        | set(user.attributes.work_groups)
+    )
+    for school_id in relevant_schools:
+        school_classes[school_id] = await school_classes_get_adapter.get_school_classes(school_id)
+        work_groups[school_id] = await work_groups_get_adapter.get_work_groups(school_id)
+    return UserDetailData(
+        user=user,
+        school=school,
+        schools=schools,
+        school_classes=school_classes,
+        work_groups=work_groups,
+        permissions=permissions,
+    )
+
+
+async def get_user(
+    users_get_adapter: UsersPersistencePort,
+    schools_get_adapter: SchoolsPersistencePort,
+    school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
     permissions_port: PermissionsPort,
     actor_id: str,
     user_id: str,
     school: str,
     lang: str,
-) -> EditUsersConfig:
-
-    logger.debug(
-        "Preparing user edit config for user on behalf of actor", actor_id=actor_id, user_id=user_id
-    )
-
-    try:
-        school_obj = (await schools_get_port.get_schools(name=school))[0]
-    except IndexError:
-        logger.error("School object does not exist.", actor_id=actor_id, school=school)
-        raise ObjectNotFoundError(school)
-
-    actor = await get_actor(actor_id, users_get_port, lang)
-    user = await users_get_port.get_user(user_id)
+) -> UserDetailData:
+    logger.debug("Retrieving a single user.", actor_id=actor_id, user_id=user_id, school=school)
+    actor = await get_actor(actor_id, users_get_adapter, lang)
+    user = await users_get_adapter.get_user(user_id)
+    if school not in user.attributes.schools:
+        logger.error("User is not part of school.", actor_id=actor_id, user_id=user_id, school=school)
+        raise ObjectNotFoundError(f"{user_id}:{school}")
     permissions = await permissions_port.get_permissions(
         actor,
         [
@@ -418,14 +452,11 @@ async def get_user_edit_config(
             )
         ],
     )
-    user_data = user_representation_port.edit_user_representation(user, set(permissions[user.id]))
-    if not user_data.attributes.schools.value or school not in user_data.attributes.schools.value:
-        logger.error("User is not part of school.", actor_id=actor_id, user_id=user_id, school=school)
-        raise ObjectNotFoundError(f"{user_id}:{school}")
-
-    school_classes = await school_classes_persistence_port.get_school_classes(school)
-    work_groups = await work_groups_persistence_port.get_work_groups(school)
-
-    return representation_port.edit_config_representation(
-        user_data, school_obj, school_classes, work_groups, lang
+    return await _build_user_detail_data(
+        schools_get_adapter,
+        school_classes_get_adapter,
+        work_groups_get_adapter,
+        user,
+        set(permissions.get(user.id, [])),
+        school,
     )

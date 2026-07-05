@@ -8,7 +8,7 @@ from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
 from fastapi import Request
 from starlette.responses import RedirectResponse, Response
 
-from .api_models import EditUserResponseUser, UserCreateRequest
+from .api_models import UserCreateRequest
 from .constants import FRONTEND_PREFIX
 from .models import Permission, School, SchoolClass, SessionRecord, Target, User, WorkGroup
 
@@ -83,11 +83,6 @@ class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRep
         self, user: User, permissions: set[Permission]
     ) -> UserCreateRepresentation:  # pragma: no cover
         ...
-
-    @abstractmethod
-    def edit_user_representation(
-        self, user: User, permissions: set[Permission]
-    ) -> EditUserResponseUser: ...
 
 
 class FastAPIAuthenticationPort(ABC):
@@ -184,18 +179,3 @@ class AddConfigRepresentationPort(ABC, Generic[AddUserConfigRepresentation]):
     def add_config_representation(
         self, school: School, school_classes: list[SchoolClass], work_groups: list[WorkGroup], lang: str
     ) -> AddUserConfigRepresentation: ...
-
-
-EditUserConfigRepresentation = TypeVar("EditUserConfigRepresentation")
-
-
-class EditConfigRepresentationPort(ABC, Generic[EditUserConfigRepresentation, UserCreateRepresentation]):
-    @abstractmethod
-    def edit_config_representation(
-        self,
-        user_data: UserCreateRepresentation,
-        school: School,
-        school_classes: list[SchoolClass],
-        work_groups: list[WorkGroup],
-        lang: str,
-    ) -> EditUserConfigRepresentation: ...

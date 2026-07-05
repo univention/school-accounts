@@ -1,0 +1,23 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{% import "macros/detail.html" as detail with context %}
+<u-card id="user-detail">
+  <h2 slot="title">{{ view.title }}</h2>
+  <u-form
+    hx-patch="{{ frontend_prefix }}/users/{{ view.id | urlencode }}?school={{ view.school | urlencode }}"
+    hx-target="#user-detail"
+    hx-swap="outerHTML"
+  >
+    <u-vstack gap="md">
+      {% for field in view.fields %}{{ detail.field(field) }}{% endfor %}
+      {% if view.any_writable %}
+      <u-hstack>
+        <u-button type="submit" variant="primary">{{ _('Save') }}</u-button>
+      </u-hstack>
+      {% endif %}
+    </u-vstack>
+  </u-form>
+</u-card>

@@ -6,6 +6,7 @@ import pytest
 from starlette.responses import RedirectResponse
 
 from user_management_bff.adapters.authentication import NeverAuthenticatedAdapter
+from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
 from user_management_bff.main import app
 from user_management_bff.routes import auth_port
@@ -169,6 +170,99 @@ def test_users_search_empty_state(test_client):
     body = response.text
     assert 'slot="empty"' in body
     assert "No users found" in body
+
+
+def test_users_list_links_username_to_detail(test_client):
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
+    body = response.text
+    # The username cell is a link into the detail view carrying the school context.
+    assert f'<u-link href="{FRONTEND_PREFIX}/users/user1?school=school1"' in body
+
+
+# ---------------------------------------------------------------------------
+# Detail / edit view
+# ---------------------------------------------------------------------------
+def test_user_detail_renders_combined_view(test_client):
+    response = test_client.get(f"{FRONTEND_PREFIX}/users/user1", params={"school": "school1"})
+    assert response.status_code == 200
+    body = response.text
+    assert "<u-page" in body  # full page shell
+    # Heading built from the readable name parts.
+    assert "Max Mustermann" in body
+    # A single u-form patches the user in place (combined detail/edit view).
+    assert f'hx-patch="{FRONTEND_PREFIX}/users/user1?school=school1"' in body
+    assert 'hx-target="#user-detail"' in body
+    # The dev actor can write, so editable controls + a Save button are shown.
+    assert 'name="last_name"' in body
+    assert "Save" in body
+    # A password control appears only because it is writable (write-only attribute).
+    assert 'type="password"' in body
+    # Relational attributes render read-only as formatted display names.
+    assert "Teacher (School 1)" in body
+
+
+def test_user_detail_unknown_school_is_not_found(test_client):
+    # A stale deep link to a school the user does not belong to -> 404 message page.
+    response = test_client.get(f"{FRONTEND_PREFIX}/users/user1", params={"school": "school4"})
+    assert response.status_code == 404
+    assert "Object not found" in response.text
+
+
+def test_user_patch_success_redirects_to_list(test_client):
+    response = test_client.patch(
+        f"{FRONTEND_PREFIX}/users/user1",
+        params={"school": "school1"},
+        data={
+            "last_name": "Neumann",
+            "first_name": "Max",
+            "email": "max@example.com",
+            "birthday": "2010-05-04",
+            "password": "s3cret-pw",
+            # The checkbox submits a single value via its unchecked-value.
+            "activated": "true",
+        },
+    )
+    # On success htmx is told to navigate back to the school-scoped list.
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"] == f"{FRONTEND_PREFIX}/users?school=school1"
+
+
+def test_user_patch_deactivate_without_activated_key(test_client):
+    # No "activated" field submitted at all (exercises the absent-checkbox branch);
+    # patching only a single writable scalar still succeeds.
+    response = test_client.patch(
+        f"{FRONTEND_PREFIX}/users/user1",
+        params={"school": "school1"},
+        data={"first_name": "Maximilian"},
+    )
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"] == f"{FRONTEND_PREFIX}/users?school=school1"
+
+
+def test_user_patch_invalid_date_shows_inline_error(test_client):
+    response = test_client.patch(
+        f"{FRONTEND_PREFIX}/users/user1",
+        params={"school": "school1"},
+        data={"last_name": "Mustermann", "birthday": "not-a-date"},
+    )
+    # Handled inline: the card is re-rendered (200) with the field flagged and the
+    # submitted value preserved, rather than bubbling a generic error.
+    assert response.status_code == 200
+    body = response.text
+    assert "error=" in body
+    assert "not-a-date" in body
+
+
+def test_user_patch_permission_denied(test_client, mocker):
+    # Actor holds no write permission on the target -> PermissionsError -> 403 page.
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+    response = test_client.patch(
+        f"{FRONTEND_PREFIX}/users/user1",
+        params={"school": "school1"},
+        data={"first_name": "Nope"},
+    )
+    assert response.status_code == 403
+    assert "permission" in response.text.lower()
 
 
 def test_login_route_redirects_to_idp(test_client, override_auth):

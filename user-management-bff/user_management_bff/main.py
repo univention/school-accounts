@@ -9,7 +9,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, ORJSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import AsyncAdapterSettingsProvider
@@ -113,44 +113,42 @@ app.mount(f"{FRONTEND_PREFIX}/static", StaticFiles(directory=STATIC_DIR), name="
 app.include_router(router)
 
 
-# NOTE: these handlers still emit JSON. They are dormant until UI routes that
-# raise them exist; they will be converted to HTML fragments once those flows
-# are added.
-@app.exception_handler(PermissionsError)
-async def permissions_exception_handler(request: Request, exc: PermissionsError):
-    lang = get_lang(request)
-    return ORJSONResponse(
-        status_code=403,
-        content={"detail": _(exc.message, lang=lang), "missingPermissions": exc.missing_permissions},
-    )
-
-
-# NoSchoolUserError subclasses PermissionsError but is the one error the list
-# view can raise, so it gets an HTML rendering: a toast for HTMX requests, a
-# full-page message otherwise.
-@app.exception_handler(NoSchoolUserError)
-async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError):
+# All error handlers render HTML: a toast for HTMX requests (retargeted at the
+# shared toast region), a full-page message otherwise.
+def _html_error(request: Request, message: str, status_code: int) -> Response:
     if request.headers.get("HX-Request") == "true":
-        response = render(request, "fragments/toast.html", message=exc.message, variant="error")
+        response = render(request, "fragments/toast.html", message=message, variant="error")
         response.headers["HX-Retarget"] = "#toast-region"
         response.headers["HX-Reswap"] = "beforeend"
         return response
-    response = render(request, "pages/message.html", message=exc.message)
-    response.status_code = 403
+    response = render(request, "pages/message.html", message=message)
+    response.status_code = status_code
     return response
+
+
+@app.exception_handler(PermissionsError)
+async def permissions_exception_handler(request: Request, exc: PermissionsError):
+    lang = get_lang(request)
+    return _html_error(request, _(exc.message, lang=lang), 403)
+
+
+# NoSchoolUserError subclasses PermissionsError; it keeps its own handler only so
+# the message can differ, but the rendering is the same toast/message treatment.
+@app.exception_handler(NoSchoolUserError)
+async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError):
+    return _html_error(request, exc.message, 403)
 
 
 @app.exception_handler(OperationNotSupportedError)
 async def operation_not_supported_exception_handler(request: Request, exc: OperationNotSupportedError):
     lang = get_lang(request)
-    return ORJSONResponse(status_code=400, content={"detail": _(exc.message, lang=lang)})
+    return _html_error(request, _(exc.message, lang=lang), 400)
 
 
 @app.exception_handler(ObjectNotFoundError)
 async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError):
     lang = get_lang(request)
-    detail = f"{_(exc.message, lang=lang)}: {exc.identifier}"
-    return ORJSONResponse(status_code=404, content={"detail": detail})
+    return _html_error(request, f"{_(exc.message, lang=lang)}: {exc.identifier}", 404)
 
 
 @app.exception_handler(NotAuthenticatedError)
@@ -165,16 +163,8 @@ async def not_authenticated_exception_handler(request: Request, exc: NotAuthenti
 
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Field-level 422s from the edit form are handled inline in the route with
+    # per-field messages; this is the fallback for other validation failures
+    # (e.g. a missing query parameter).
     lang = get_lang(request)
-    errors = []
-    for err in exc.errors():
-        loc = err["loc"]
-        if loc == ("body",):
-            loc = (_("general", lang=lang),)
-        errors.append(
-            {
-                "loc": loc,
-                "msg": _(str(err.get("ctx", {}).get("error", None) or err["msg"]), lang=lang),
-            }
-        )
-    return ORJSONResponse(status_code=422, content={"detail": errors})
+    return _html_error(request, _("Invalid request.", lang=lang), 422)

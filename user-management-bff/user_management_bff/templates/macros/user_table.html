@@ -11,6 +11,8 @@ SPDX-License-Identifier: AGPL-3.0-only
     {%- if cell.items -%}
       <u-vstack gap="xs">{% for item in cell.items %}<span>{{ item }}</span>{% endfor %}</u-vstack>
     {%- else -%}—{%- endif -%}
+  {%- elif cell.href and cell.text -%}
+    <u-link href="{{ cell.href }}">{{ cell.text }}</u-link>
   {%- else -%}
     {{ cell.text if cell.text else "—" }}
   {%- endif -%}

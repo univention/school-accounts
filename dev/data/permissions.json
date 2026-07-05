@@ -16,9 +16,8 @@
       "write-activated",
       "write-school_classes",
       "write-password",
-      "write-last_name",
+      "read-last_name",
       "write-email",
-      "write-birthday",
       "write-expiration_date"
     ],
     "work_group": [

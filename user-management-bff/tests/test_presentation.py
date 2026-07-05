@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 """Unit tests for the presentation view-model builders."""
+import datetime
+
 import pytest
 
 from user_management_bff import presentation
+from user_management_bff.constants import FRONTEND_PREFIX
 from user_management_bff.models import (
     AttributeAccess,
     Permission,
@@ -131,13 +134,15 @@ def _list_data(user: User, permissions: list[Permission]) -> presentation.UserLi
 
 
 def test_build_user_list_full_access():
-    view = presentation.build_user_list(_list_data(_user(), list(Permission)), "en")
+    view = presentation.build_user_list(_list_data(_user(), list(Permission)), "en", "school1")
     row = view.rows[0]
     assert row.id == "u1"
     assert row.can_delete is True
     cells = row.cells
     assert cells[0].kind == "text" and cells[0].visible and cells[0].text == "Klein"
     assert cells[2].text == "kim"
+    # The username cell links into the detail view, scoped to the searched school.
+    assert cells[2].href == f"{FRONTEND_PREFIX}/users/u1?school=school1"
     assert cells[3].items == ["Teacher (School 1)"]
     assert cells[4].items == ["1a (School 1)"]
     assert cells[5].items == ["w1a (School 1)"]
@@ -147,7 +152,7 @@ def test_build_user_list_full_access():
 
 def test_build_user_list_hidden_cells_and_deactivated():
     user = _user(disabled=True, school_classes={}, work_groups={}, roles=[])
-    view = presentation.build_user_list(_list_data(user, [Permission.read_last_name]), "en")
+    view = presentation.build_user_list(_list_data(user, [Permission.read_last_name]), "en", "school1")
     row = view.rows[0]
     assert row.can_delete is False
     assert row.cells[0].visible is True  # last_name readable
@@ -162,5 +167,110 @@ def test_build_user_list_skips_users_without_permissions():
     data = presentation.UserListData(
         users=[_user()], schools=[], school_classes={}, work_groups={}, permissions={}
     )
-    view = presentation.build_user_list(data, "en")
+    view = presentation.build_user_list(data, "en", "school1")
     assert view.rows == []
+
+
+# ---------------------------------------------------------------------------
+# build_user_detail
+# ---------------------------------------------------------------------------
+def _detail_data(user: User, permissions, school: str = "school1") -> presentation.UserDetailData:
+    return presentation.UserDetailData(
+        user=user,
+        school=school,
+        schools=[School(id="school1", display_name="School 1")],
+        school_classes={"school1": [SchoolClass(id="1a", display_name="1a", school="school1")]},
+        work_groups={"school1": [WorkGroup(id="w1a", display_name="w1a", school="school1")]},
+        permissions=set(permissions),
+    )
+
+
+def _field(view: presentation.UserDetailView, name: str) -> presentation.DetailField:
+    return next(field for field in view.fields if field.name == name)
+
+
+def test_build_user_detail_full_access():
+    view = presentation.build_user_detail(_detail_data(_user(), set(Permission)), "en")
+    assert view.id == "u1"
+    assert view.school == "school1"
+    assert view.title == "Kim Klein"
+    assert view.any_writable is True
+    assert [field.name for field in view.fields] == [
+        "last_name",
+        "first_name",
+        "username",
+        "email",
+        "password",
+        "birthday",
+        "expiration_date",
+        "activated",
+        "roles",
+        "school_classes",
+        "work_groups",
+        "schools",
+    ]
+    assert all(field.accessible for field in view.fields)
+    assert _field(view, "last_name").editable is True and _field(view, "last_name").value == "Klein"
+    assert _field(view, "password").kind == "password" and _field(view, "password").value == ""
+    # An unset readable value has no value (the template renders it as "n.a.").
+    assert _field(view, "email").value is None
+    # birthday is unset here -> the "else None" branch.
+    assert _field(view, "birthday").value is None
+    activated = _field(view, "activated")
+    assert activated.kind == "boolean" and activated.activated is True and activated.text == "Activated"
+    # Relational attributes are read-only this epic, formatted into display names.
+    assert _field(view, "roles").editable is False
+    assert _field(view, "roles").items == ["Teacher (School 1)"]
+    assert _field(view, "school_classes").items == ["1a (School 1)"]
+    assert _field(view, "work_groups").items == ["w1a (School 1)"]
+    assert _field(view, "schools").items == ["School 1"]
+
+
+def test_build_user_detail_read_only_and_title_fallback():
+    # Only last_name is granted (READ); username is implicitly readable. Every other
+    # attribute is NONE: the row is still present but flagged not accessible (the
+    # template renders a "no access" badge), never carrying a value or control.
+    view = presentation.build_user_detail(_detail_data(_user(), {Permission.read_last_name}), "en")
+    # All attributes remain in the view regardless of access.
+    assert [field.name for field in view.fields] == [
+        "last_name",
+        "first_name",
+        "username",
+        "email",
+        "password",
+        "birthday",
+        "expiration_date",
+        "activated",
+        "roles",
+        "school_classes",
+        "work_groups",
+        "schools",
+    ]
+    last_name = _field(view, "last_name")
+    assert last_name.accessible is True and last_name.editable is False and last_name.value == "Klein"
+    assert _field(view, "username").accessible is True and _field(view, "username").editable is False
+    # Not-readable attributes are flagged inaccessible with no leaked value/items.
+    first_name = _field(view, "first_name")
+    assert first_name.accessible is False and first_name.editable is False and first_name.value is None
+    assert _field(view, "activated").accessible is False and _field(view, "activated").activated is None
+    assert _field(view, "roles").accessible is False and _field(view, "roles").items == []
+    assert view.any_writable is False
+    # first_name is not readable, so the title falls back to the readable last name.
+    assert view.title == "Klein"
+
+
+def test_build_user_detail_title_falls_back_to_username():
+    # Neither name part is readable -> the title is the (always readable) username.
+    view = presentation.build_user_detail(_detail_data(_user(), set()), "en")
+    assert view.title == "kim"
+
+
+def test_build_user_detail_date_value_and_deactivated_badge():
+    user = _user(disabled=True, birthday=datetime.date(2010, 5, 4))
+    view = presentation.build_user_detail(
+        _detail_data(user, {Permission.write_birthday, Permission.write_activated}), "en"
+    )
+    assert _field(view, "birthday").value == "2010-05-04"
+    activated = _field(view, "activated")
+    assert activated.editable is True
+    assert activated.activated is False and activated.text == "Deactivated"
