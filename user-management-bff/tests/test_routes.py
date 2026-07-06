@@ -58,6 +58,10 @@ def test_users_list_renders_filter_form(test_client):
     assert "vendor/univention-design-system.js" in body
     assert "vendor/htmx.min.js" in body
     assert "vendor/alpine.min.js" in body
+    # The design-system stylesheet is a render-blocking <link> carrying the marker
+    # attribute (prevents the flash of unstyled content; module skips self-injection).
+    assert 'rel="stylesheet" href="' in body and "vendor/univention-design-system.css" in body
+    assert "data-univention-design-system" in body
     # Filter form: school combobox (preloaded options) wired to the cascade + search.
     assert "<u-form" in body and 'name="school"' in body
     assert "School 1" in body
