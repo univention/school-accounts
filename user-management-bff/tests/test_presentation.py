@@ -211,6 +211,12 @@ def test_build_user_detail_full_access():
     ]
     assert all(field.accessible for field in view.fields)
     assert _field(view, "last_name").editable is True and _field(view, "last_name").value == "Klein"
+    # Writable scalars/booleans render editable controls; relational rows a list.
+    assert _field(view, "last_name").widget == "input"
+    assert _field(view, "activated").widget == "checkbox"
+    assert _field(view, "roles").widget == "list"
+    # An editable-but-unset scalar is still an input (not the empty badge).
+    assert _field(view, "email").widget == "input"
     assert _field(view, "password").kind == "password" and _field(view, "password").value == ""
     # An unset readable value has no value (the template renders it as "n.a.").
     assert _field(view, "email").value is None
@@ -248,10 +254,13 @@ def test_build_user_detail_read_only_and_title_fallback():
     ]
     last_name = _field(view, "last_name")
     assert last_name.accessible is True and last_name.editable is False and last_name.value == "Klein"
+    # A readable, non-writable scalar with a value renders as static text.
+    assert last_name.widget == "static"
     assert _field(view, "username").accessible is True and _field(view, "username").editable is False
     # Not-readable attributes are flagged inaccessible with no leaked value/items.
     first_name = _field(view, "first_name")
     assert first_name.accessible is False and first_name.editable is False and first_name.value is None
+    assert first_name.widget == "no_access"
     assert _field(view, "activated").accessible is False and _field(view, "activated").activated is None
     assert _field(view, "roles").accessible is False and _field(view, "roles").items == []
     assert view.any_writable is False
@@ -263,6 +272,21 @@ def test_build_user_detail_title_falls_back_to_username():
     # Neither name part is readable -> the title is the (always readable) username.
     view = presentation.build_user_detail(_detail_data(_user(), set()), "en")
     assert view.title == "kim"
+
+
+def test_build_user_detail_readonly_empty_and_boolean_badge_widgets():
+    # Read-only access to attributes that carry no value: a readable-but-unset
+    # scalar (email) and an empty relational (roles) both collapse to "empty";
+    # a readable, non-writable boolean (activated) renders as a status badge.
+    user = _user(roles=[])
+    view = presentation.build_user_detail(
+        _detail_data(user, {Permission.read_email, Permission.read_roles, Permission.read_activated}),
+        "en",
+    )
+    assert _field(view, "email").accessible is True and _field(view, "email").widget == "empty"
+    assert _field(view, "roles").accessible is True and _field(view, "roles").widget == "empty"
+    activated = _field(view, "activated")
+    assert activated.editable is False and activated.widget == "boolean_badge"
 
 
 def test_build_user_detail_date_value_and_deactivated_badge():

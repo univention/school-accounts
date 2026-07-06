@@ -121,6 +121,11 @@ class DetailField:
     text: str | None = None
     # Inline validation error shown on the field after a rejected patch.
     error: str | None = None
+    # The control the template renders for this field. Computed here so the
+    # template stays a flat dispatch instead of re-deriving the same decision
+    # from ``accessible``/``editable``/``kind``/``value``. One of:
+    # "no_access" | "input" | "static" | "checkbox" | "boolean_badge" | "list" | "empty".
+    widget: str = "empty"
 
 
 @dataclass
@@ -334,15 +339,26 @@ def build_user_detail(data: UserDetailData, lang: str) -> UserDetailView:
     def scalar(name: str, label: str, kind: str, value: str | None) -> None:
         access = _attribute_access(name, permissions)
         accessible = access is not AttributeAccess.NONE
+        editable = access is AttributeAccess.WRITE
+        # Never expose a value the actor cannot read.
+        field_value = value if accessible else None
+        if not accessible:
+            widget = "no_access"
+        elif editable:
+            widget = "input"
+        elif field_value:
+            widget = "static"
+        else:
+            widget = "empty"
         fields.append(
             DetailField(
                 name=name,
                 label=_(label, lang=lang),
                 kind=kind,
-                editable=access is AttributeAccess.WRITE,
+                editable=editable,
                 accessible=accessible,
-                # Never expose a value the actor cannot read.
-                value=value if accessible else None,
+                value=field_value,
+                widget=widget,
             )
         )
 
@@ -367,13 +383,20 @@ def build_user_detail(data: UserDetailData, lang: str) -> UserDetailView:
 
     activated_access = _attribute_access("activated", permissions)
     activated_accessible = activated_access is not AttributeAccess.NONE
+    activated_editable = activated_access is AttributeAccess.WRITE
     activated = not attributes.disabled
+    if not activated_accessible:
+        activated_widget = "no_access"
+    elif activated_editable:
+        activated_widget = "checkbox"
+    else:
+        activated_widget = "boolean_badge"
     fields.append(
         DetailField(
             name="activated",
             label=_("Activated", lang=lang),
             kind="boolean",
-            editable=activated_access is AttributeAccess.WRITE,
+            editable=activated_editable,
             accessible=activated_accessible,
             activated=activated if activated_accessible else None,
             text=(
@@ -381,6 +404,7 @@ def build_user_detail(data: UserDetailData, lang: str) -> UserDetailView:
                 if activated_accessible
                 else None
             ),
+            widget=activated_widget,
         )
     )
 
@@ -388,6 +412,13 @@ def build_user_detail(data: UserDetailData, lang: str) -> UserDetailView:
         # Relational attributes are read-only this epic (editable=False).
         access = _attribute_access(name, permissions)
         accessible = access is not AttributeAccess.NONE
+        items = item_builder() if accessible else []
+        if not accessible:
+            widget = "no_access"
+        elif items:
+            widget = "list"
+        else:
+            widget = "empty"
         fields.append(
             DetailField(
                 name=name,
@@ -395,7 +426,8 @@ def build_user_detail(data: UserDetailData, lang: str) -> UserDetailView:
                 kind="list",
                 editable=False,
                 accessible=accessible,
-                items=item_builder() if accessible else [],
+                items=items,
+                widget=widget,
             )
         )
 
