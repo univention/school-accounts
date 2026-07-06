@@ -129,6 +129,22 @@ class FastAPIAuthenticationPort(ABC):
         """
         return RedirectResponse(FRONTEND_PREFIX, status_code=303)
 
+    async def issue_csrf_token(self, request: Request) -> str:
+        """Return the CSRF token to embed in this session's mutating forms.
+
+        An empty string means the adapter does not use CSRF protection (the
+        dev/test doubles), so the template renders no meaningful token.
+        """
+        return ""
+
+    async def check_csrf(self, request: Request, submitted: Optional[str]) -> bool:
+        """Whether ``submitted`` matches the CSRF token bound to the session.
+
+        The default (no-CSRF) adapters accept any request; adapters that keep a
+        real session override this to reject a missing or mismatched token.
+        """
+        return True
+
 
 class SessionStorePort(ABC):
     """Storage for server-side authenticated sessions.

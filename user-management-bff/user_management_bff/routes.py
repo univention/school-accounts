@@ -28,9 +28,11 @@ from .constants import (
     AUTH_CALLBACK_PATH,
     AUTH_LOGIN_PATH,
     AUTH_LOGOUT_PATH,
+    CSRF_HEADER_NAME,
     FRONTEND_PREFIX,
     TEMPLATES_DIR,
 )
+from .errors import PermissionsError
 from .lang import _, get_lang
 from .models import UserPatchAttributes, UserPatchRequest, UsersGetRequest
 from .ports import (
@@ -336,6 +338,7 @@ async def user_detail(
     user_id: str,
     school: str,
     actor: str = Depends(current_actor),
+    auth: FastAPIAuthenticationPort = Depends(auth_port),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
     schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
     school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
@@ -355,7 +358,12 @@ async def user_detail(
         school,
         lang,
     )
-    return render(request, "pages/user_detail.html", view=presentation.build_user_detail(data, lang))
+    return render(
+        request,
+        "pages/user_detail.html",
+        view=presentation.build_user_detail(data, lang),
+        csrf_token=await auth.issue_csrf_token(request),
+    )
 
 
 @router.patch("/users/{user_id}", response_class=HTMLResponse)
@@ -364,6 +372,7 @@ async def user_patch(
     user_id: str,
     school: str,
     actor: str = Depends(current_actor),
+    auth: FastAPIAuthenticationPort = Depends(auth_port),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
     schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
     school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
@@ -372,6 +381,12 @@ async def user_patch(
 ) -> Response:
     """Apply an edit: redirect to the list on success, or re-render the card with inline errors."""
     lang = get_lang(request)
+    # Reject the mutation unless it carries the session's CSRF token (a cookie
+    # session is otherwise vulnerable to cross-site form submission).
+    if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
+        raise PermissionsError(
+            _("Invalid or missing security token. Please reload the page and try again.", lang=lang)
+        )
     # The edit form is always urlencoded (no file uploads), so parse the body
     # directly into a FormData rather than pulling in a multipart parser.
     form = FormData(
@@ -398,7 +413,12 @@ async def user_patch(
         )
         view = presentation.build_user_detail(data, lang)
         _apply_form_errors(view, form, exc)
-        return render(request, "fragments/user_detail.html", view=view)
+        return render(
+            request,
+            "fragments/user_detail.html",
+            view=view,
+            csrf_token=await auth.issue_csrf_token(request),
+        )
     await business_logic.patch_user(
         users_adapter,
         schools_adapter,

@@ -253,6 +253,30 @@ def test_user_patch_invalid_date_shows_inline_error(test_client):
     assert "not-a-date" in body
 
 
+class _CsrfRejectAuth:
+    """Authenticated actor whose CSRF check always fails (exercises the reject branch)."""
+
+    async def get_authenticated_id(self, request):
+        return "dev"
+
+    async def issue_csrf_token(self, request):
+        return "tok"
+
+    async def check_csrf(self, request, submitted):
+        return False
+
+
+def test_user_patch_rejects_missing_csrf_token(test_client, override_auth):
+    override_auth(_CsrfRejectAuth())
+    response = test_client.patch(
+        f"{FRONTEND_PREFIX}/users/user1",
+        params={"school": "school1"},
+        data={"first_name": "Nope"},
+    )
+    assert response.status_code == 403
+    assert "security token" in response.text.lower()
+
+
 def test_user_patch_permission_denied(test_client, mocker):
     # Actor holds no write permission on the target -> PermissionsError -> 403 page.
     mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={})

@@ -20,6 +20,11 @@ AUTH_LOGIN_PATH = "/auth/login"
 AUTH_CALLBACK_PATH = "/auth/callback"
 AUTH_LOGOUT_PATH = "/auth/logout"
 
+# Request header carrying the per-session CSRF token on mutating (unsafe) UI
+# requests. The edit form sends it via htmx ``hx-headers``; the server compares
+# it against the token bound to the session.
+CSRF_HEADER_NAME = "X-CSRF-Token"
+
 
 # Secret for Starlette's SessionMiddleware, which holds the transient OAuth
 # state (CSRF `state` + PKCE `code_verifier`) between the login redirect and the

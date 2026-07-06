@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
   <h2 slot="title">{{ view.title }}</h2>
   <u-form
     hx-patch="{{ frontend_prefix }}/users/{{ view.id | urlencode }}?school={{ view.school | urlencode }}"
+    hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
     hx-target="#user-detail"
     hx-swap="outerHTML"
   >

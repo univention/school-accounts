@@ -279,6 +279,23 @@ class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
             return False
         return secrets.compare_digest(submitted, record.csrf_token)
 
+    async def _current_record(self, request: Request) -> Optional[SessionRecord]:
+        session_id = self._read_cookie(request)
+        if session_id is None:
+            return None
+        store = await self._session_store()
+        return await store.get(session_id)
+
+    async def issue_csrf_token(self, request: Request) -> str:
+        record = await self._current_record(request)
+        return record.csrf_token if record is not None else ""
+
+    async def check_csrf(self, request: Request, submitted: Optional[str]) -> bool:
+        record = await self._current_record(request)
+        if record is None:
+            return False
+        return self.verify_csrf(submitted, record)
+
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
         async def _dep(request: Request) -> str:
             return await self.get_authenticated_id(request)
