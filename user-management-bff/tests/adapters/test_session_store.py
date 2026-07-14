@@ -67,18 +67,11 @@ class TestInMemorySessionStoreAdapter:
     async def test_delete_unknown_is_noop(self, store):
         await store.delete("nope")  # must not raise
 
+    @pytest.mark.parametrize("field,method", [("kc_sid", "delete_by_kc_sid"), ("sub", "delete_by_sub")])
     @pytest.mark.asyncio
-    async def test_delete_by_kc_sid_removes_matching_only(self, store):
-        keep = await store.create(_record(kc_sid="other"))
-        drop = await store.create(_record(kc_sid="target"))
-        await store.delete_by_kc_sid("target")
-        assert await store.get(drop) is None
-        assert await store.get(keep) is not None
-
-    @pytest.mark.asyncio
-    async def test_delete_by_sub_removes_matching_only(self, store):
-        keep = await store.create(_record(sub="other"))
-        drop = await store.create(_record(sub="target"))
-        await store.delete_by_sub("target")
+    async def test_delete_by_identity_removes_matching_only(self, store, field, method):
+        keep = await store.create(_record(**{field: "other"}))
+        drop = await store.create(_record(**{field: "target"}))
+        await getattr(store, method)("target")
         assert await store.get(drop) is None
         assert await store.get(keep) is not None
