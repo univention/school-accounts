@@ -10,7 +10,7 @@ RUN yarn install
 RUN yarn build
 
 # Calculate Python dependencies
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS backend_builder
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-525:0.23.0@sha256:afd982bfba8077a08a873e0e2c567dbc9b2c8e943eefac68b1d06a784b0f1859 AS backend_builder
 WORKDIR /build
 ENV UV_PROJECT_ENVIRONMENT="/venv"
 ENV UV_VERSION=0.11.21
@@ -26,7 +26,7 @@ RUN uv sync --frozen --no-install-project
 COPY user-management-bff/ ./
 RUN uv sync --frozen
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3 AS runtime
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-525:0.23.0@sha256:afd982bfba8077a08a873e0e2c567dbc9b2c8e943eefac68b1d06a784b0f1859 AS runtime
 
 EXPOSE 8000
 
