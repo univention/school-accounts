@@ -24,7 +24,7 @@ if [ "$action" = "remove" ]; then
         then
         keycloak_url="https://$keycloak_url"
     fi
-    univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+    univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
           --username "$machine_username" \
           --password "$machine_pw" \
           --url "$keycloak_url" \

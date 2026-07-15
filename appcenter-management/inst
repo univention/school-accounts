@@ -113,7 +113,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
   machine_pw="$(cat /etc/machine.secret)"
 
   # This client is used by the frontend to communicate with the bff
-  univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
@@ -123,7 +123,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --ignore-exists \
       --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" || die
 
-  univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
@@ -133,7 +133,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
 
   # This client is used by the bff to communicate with the guardian
-  univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
@@ -144,7 +144,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --create-secret \
       --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" || die
 
-  SECRET=$(univention-app shell "$APP_ID" /usr/local/bin/keycloak-provisioning \
+  SECRET=$(univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
