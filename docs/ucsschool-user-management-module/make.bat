@@ -1,5 +1,4 @@
-REM Copyright (C) 2024 Univention GmbH
-REM
+REM SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 REM SPDX-License-Identifier: AGPL-3.0-only
 
 @ECHO OFF
