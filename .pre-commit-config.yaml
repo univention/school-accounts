@@ -1,5 +1,4 @@
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # See https://pre-commit.com for more information
@@ -144,10 +143,54 @@ repos:
     - id: uv-lock
       files: dev/tests/product-tests/pyproject.toml
       args: [ --project, dev/tests/product-tests ]
+- repo: https://git.knut.univention.de/univention/infrastructure/pre-commit-hooks/pre-commit-copyright
+  rev: 0.2.1
+  hooks:
+    - id: reuse-toml-dry-run
+    - id: reuse-toml
+      stages: [ manual ]
+    - id: update-copyright-year
+      stages: [ manual ]
 - repo: https://github.com/fsfe/reuse-tool
-  rev: v5.0.2
+  rev: v6.2.0
   hooks:
     - id: reuse
+      alias: reuse-annotate
+      name: "reuse annotate"
+      args: ["annotate", "-c", "Univention GmbH", "-l", "AGPL-3.0-only", "--skip-unrecognised", "--skip-existing", "--template", "univention"]
+      pass_filenames: true
+      description: "Annotate all unlicensed files as AGPL-3.0-only with Univention GmbH copyright"
+      stages: [manual]
+      # we have to specify everything already covered by REUSE.toml again due to
+      # https://github.com/fsfe/reuse-tool/issues/1190
+      # MAKE SURE THIS IS IN SYNC WITH REUSE.toml
+      # every path below is already licensed via one of:
+      #  - the manual [[annotations]] block at the top of REUSE.toml
+      #  - a dedicated block further down (doc images, spelling wordlists, vendored code)
+      # some are also uncommentable formats (json/csv/svg/png) where reuse-annotate
+      # would otherwise create stray *.license sidecar files instead of skipping
+      exclude: "^basedpyright-baseline[.]json$\
+                |^pyrightconfig[.]json$\
+                |^renovate[.]json$\
+                |^appcenter-management/files/.*[.]json$\
+                |^dev/data/.*[.]json$\
+                |^dev/tests/.*[.]json$\
+                |^dev/tests/.*[.]csv$\
+                |^dev/tests/product-tests/uv[.]lock$\
+                |^dev/tests/product-tests/[.]python-version$\
+                |^docs/ucsschool-user-management-module/spelling_wordlist$\
+                |^docs/ucsschool-user-management-module/_static/.*[.]pdf$\
+                |^user-management-bff/uv[.]lock$\
+                |^user-management-bff/tests/data/.*[.]json$\
+                |^user-management-bff/user_management_bff/static/vendor/alpine[.]min[.]js$\
+                |^user-management-bff/user_management_bff/static/vendor/htmx[.]min[.]js$\
+                |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]js$\
+                |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]css$\
+                "
+    - id: reuse
+      alias: reuse-lint
+      stages: [manual]
+    - id: reuse-lint-file
 - repo: https://github.com/anderseknert/pre-commit-opa
   rev: v1.5.1
   hooks:

@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+
+version = 1
+SPDX-PackageName = "UCS@school"
+SPDX-PackageSupplier = "Univention GmbH <info@univention.de>"
+SPDX-PackageDownloadLocation = "https://www.univention.com/products/ucsschool/"
+
+# ENSURE this is in sync with the reuse annotate pre-commit hook
+[[annotations]]
+path = [
+    "basedpyright-baseline.json",
+    "renovate.json",
+    "appcenter-management/files/**.json",
+    "appcenter-management/files/conditions/**.json",
+    "dev/data/**.json",
+    "dev/tests/**.json",
+    "dev/tests/**.csv",
+    "dev/tests/product-tests/uv.lock",
+    "dev/tests/product-tests/.python-version",
+    "docs/ucsschool-user-management-module/spelling_wordlist",
+    "docs/ucsschool-user-management-module/_static/**.pdf",
+    "user-management-bff/uv.lock",
+    "user-management-bff/tests/data/**.json",
+]
+SPDX-FileCopyrightText = "2024-2026 Univention GmbH"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = [
+    "user-management-bff/user_management_bff/static/vendor/alpine.min.js",
+]
+SPDX-FileCopyrightText = "2019 Caleb Porzio and contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+    "user-management-bff/user_management_bff/static/vendor/htmx.min.js",
+]
+SPDX-FileCopyrightText = "2020 Big Sky Software"
+SPDX-License-Identifier = "0BSD"
+
+[[annotations]]
+path = [
+    "user-management-bff/user_management_bff/static/vendor/univention-design-system.js",
+    "user-management-bff/user_management_bff/static/vendor/univention-design-system.css",
+]
+SPDX-FileCopyrightText = "2026 Univention GmbH"
+SPDX-License-Identifier = "AGPL-3.0-only"
