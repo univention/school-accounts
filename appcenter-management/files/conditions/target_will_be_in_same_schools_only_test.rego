@@ -1,5 +1,4 @@
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 package univention.target_will_be_in_same_school_only_test

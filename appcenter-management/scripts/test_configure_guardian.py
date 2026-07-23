@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Script to test the configuration of guardian for the user-management app."""

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Script to create the necessary Guardian objects fot the User management App."""
