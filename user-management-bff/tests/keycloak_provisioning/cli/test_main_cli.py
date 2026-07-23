@@ -1,5 +1,4 @@
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 import keycloak_provisioning
 from keycloak_provisioning.cli.main import main_callback, run_script
