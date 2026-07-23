@@ -1,6 +1,5 @@
 <!--
-Copyright (C) 2024 Univention GmbH
-
+SPDX-FileCopyrightText: 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -213,13 +212,12 @@ dev/dev_run.sh task reuse
 
 If after this command the hook still fails, it means that the repo contains some files for which the tool does not know
 how to automatically add licensing information.
-In those cases you create a text file with the same name, but the suffix ``.license``
-and the following content next to the file in question:
+In those cases you add the path of the file to first block of the `REUSE.toml`, if for some reason it still does not work.
+Add a text file with the same name and the suffix ``.license`` and the following content:
 
 ```text
-Copyright (C) 2024 Univention GmbH
-
-SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
 ```
 
 #### Running unit tests for the Backend
