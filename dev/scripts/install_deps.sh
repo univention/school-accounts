@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 uv --project "$PROJECT_DIR/user-management-bff" sync --locked

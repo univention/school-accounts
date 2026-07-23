@@ -1,6 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2024 Univention GmbH
-#
+# SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
 cd /user-management/dev/tests/product-tests || exit 1
