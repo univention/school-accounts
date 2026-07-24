@@ -43,17 +43,34 @@ RUN apt-get update &&\
     apt-get --assume-yes --verbose-versions --no-install-recommends install \
         gettext && \
     rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
-    rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
+    rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
+    groupadd --gid 1001 appuser && \
+    useradd --gid 1001 --uid 1001 \
+        --home-dir /app/user-management-api \
+        --shell /bin/bash appuser
 
 # Copy backend venv and src code
 ENV PATH="/venv/bin:$PATH"
-COPY user-management-bff .
-COPY --from=backend_builder /venv /venv
+COPY --chown=1001:1001 --chmod=555 user-management-bff .
+COPY --from=backend_builder --chown=1001:1001 --chmod=555 /venv /venv
 # Install frontend
-COPY --from=frontend_builder /user-management-ui/dist /app/frontend
-RUN ./scripts/translate.sh
+COPY --from=frontend_builder --chown=1001:1001 --chmod=555 /user-management-ui/dist /app/frontend
+RUN ./scripts/translate.sh && \
+    chown -R 1001:1001 /app/user-management-api /app/frontend
 
 COPY appcenter-management/entrypoint.d/ /entrypoint.d
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "--log-level", "info", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "user_management_bff.main:app"]
+# Same as the base image's default entrypoint:
+# tini is required as PID 1 so it forwards signals through the runuser hop
+# below.
+ENTRYPOINT ["tini", "--", "/entrypoint.sh"]
+# --no-control-socket: gunicorn has no write permissions in the workdir, so
+# it logs a permission error when trying to create the control socket
+# directory otherwise.
+# drop privileges and start app as unprivileged user
+CMD ["runuser", "-u", "appuser", "--", "gunicorn", \
+     "--log-level", "info", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--no-control-socket", \
+     "user_management_bff.main:app"]

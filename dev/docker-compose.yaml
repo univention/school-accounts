@@ -169,7 +169,9 @@ services:
       keycloak_provisioning:
         condition: service_completed_successfully
     extra_hosts: *extra_hosts
-    volumes: *default-volumes
+    volumes:
+      - ../:/src
+      - ./data/fake-machine.secret:/etc/machine.secret:ro
     env_file: *env-files
     environment:
       USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
