@@ -24,15 +24,14 @@ msgstr "Aktiviert"
 msgid "Classes"
 msgstr "Klassen"
 
-#, fuzzy
 msgid "Deactivated"
-msgstr "Aktiviert"
+msgstr "Deaktiviert"
 
 msgid "First name"
 msgstr "Vorname"
 
 msgid "Invalid request."
-msgstr ""
+msgstr "Ungültige Anfrage."
 
 msgid "Last name"
 msgstr "Nachname"
