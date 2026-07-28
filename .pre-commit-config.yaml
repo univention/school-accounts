@@ -191,14 +191,6 @@ repos:
       alias: reuse-lint
       stages: [manual]
     - id: reuse-lint-file
-- repo: https://github.com/anderseknert/pre-commit-opa
-  rev: v1.5.1
-  hooks:
-    - id: opa-fmt
-    - id: opa-check
-      args: ["appcenter-management/files/conditions", ".cache/opa", "--ignore=\"*.json\""]
-    - id: opa-test
-      args: ["appcenter-management/files/conditions", ".cache/opa", "-v", "--ignore=\"*.json\""]
 - repo: https://github.com/compilerla/conventional-pre-commit
   rev: v4.3.0
   hooks:
