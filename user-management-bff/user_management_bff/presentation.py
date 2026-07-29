@@ -50,6 +50,12 @@ class Option:
 
 
 @dataclass
+class OptionGroup:
+    heading: str
+    options: list[Option]
+
+
+@dataclass
 class Column:
     label: str
 
@@ -153,10 +159,19 @@ def _boolean_cell(name: str, activated: bool, permissions: set[Permission], lang
 # ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
-def build_school_options(data: SchoolsData, query: str = "") -> list[Option]:
+# Classes and work groups share one filter control, so their option values are
+# prefixed with the kind they came from and split apart again server-side.
+SCHOOL_CLASS_KIND = "school_class"
+WORK_GROUP_KIND = "work_group"
+# The control is single-select and always has a selection, so "no group filter"
+# needs a value of its own rather than being the absence of one.
+ALL_GROUPS = "all"
+
+
+def build_school_options(data: SchoolsData, query: str = "", selected: str = "") -> list[Option]:
     needle = query.strip().casefold()
     return [
-        Option(value=school.id, label=school.display_name)
+        Option(value=school.id, label=school.display_name, selected=school.id == selected)
         for school in sorted(data.schools, key=lambda s: s.display_name)
         if needle in school.display_name.casefold()
     ]
@@ -174,6 +189,44 @@ def build_options(
         for item in sorted(items, key=lambda i: i.display_name)
         if needle in item.display_name.casefold()
     ]
+
+
+def split_group_value(value: str | None) -> tuple[str, str]:
+    """Split a combined ``kind:id`` filter value into its two parts.
+
+    Anything that is not a known kind yields ``("", "")``, so a stale or
+    hand-edited deep link degrades to "no group filter" instead of erroring.
+    Only the first colon separates, leaving ids that contain one intact.
+    """
+    kind, _sep, item_id = (value or "").partition(":")
+    if kind not in (SCHOOL_CLASS_KIND, WORK_GROUP_KIND) or not item_id:
+        return "", ""
+    return kind, item_id
+
+
+def build_group_options(
+    school_classes: list[SchoolClass],
+    work_groups: list[WorkGroup],
+    lang: str,
+    selected: str = "",
+    query: str = "",
+) -> list[OptionGroup]:
+    """Build the sections of the combined class/work-group filter.
+
+    Both datasets feed a single-select control, so each value carries its kind as
+    a prefix; ``selected`` is such a prefixed value.
+    """
+    groups: list[OptionGroup] = []
+    for kind, heading, items in (
+        (SCHOOL_CLASS_KIND, _("Classes", lang=lang), school_classes),
+        (WORK_GROUP_KIND, _("Work Groups", lang=lang), work_groups),
+    ):
+        options: list[Option] = []
+        for option in build_options(items, query=query):
+            value = f"{kind}:{option.value}"
+            options.append(Option(value=value, label=option.label, selected=value == selected))
+        groups.append(OptionGroup(heading=heading, options=options))
+    return groups
 
 
 def empty_user_list_view(lang: str) -> UserListView:

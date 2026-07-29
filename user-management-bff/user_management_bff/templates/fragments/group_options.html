@@ -1,0 +1,24 @@
+{#
+Copyright (C) 2026 Univention GmbH
+
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{# The reset option, hidden while filtering so a query with no matches still
+   reaches the list's empty state. #}
+{% if not query %}
+<u-list-select-item value="{{ all_groups_value }}"{% if selected_group == all_groups_value %} selected{% endif %}>{{ _('All classes and work groups') }}</u-list-select-item>
+{% endif %}
+{% for section in group_sections %}
+{% if section.options %}
+<u-list-select-group heading="{{ section.heading }}" sticky>
+  {% for option in section.options %}
+  <u-list-select-item value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</u-list-select-item>
+  {% endfor %}
+</u-list-select-group>
+{% endif %}
+{% endfor %}
+{# Slotted into the list select's own empty state, so it has to travel with the
+   items: an innerHTML swap replaces every light-DOM child. #}
+<span slot="empty">
+  {%- if selected_school %}{{ _('No classes or work groups found.') }}{% else %}{{ _('Select a school first.') }}{% endif -%}
+</span>

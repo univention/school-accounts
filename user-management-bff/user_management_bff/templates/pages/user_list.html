@@ -6,66 +6,74 @@ SPDX-License-Identifier: AGPL-3.0-only
 {% extends "base.html" %}
 {% import "macros/layout.html" as layout with context %}
 {% block body %}
-{# Fixed page: the header + filter form stay put while only the results scroll.
-   One container holds both regions; a `lg` gap sets the filter apart from the
-   table, and the results region grows to fill the rest and scrolls on its own. #}
+{# Fixed page: the header and the filter sidebar stay put while only the results
+   column scrolls. Every element between the page and the two scrolling regions
+   has to grow, or the results region has no bounded height to scroll inside. #}
 <u-page variant="fixed">
   <u-container grow>
-    <u-vstack gap="lg" grow>
-      <u-vstack gap="md">
-        {{ layout.page_header() }}
-        <u-form
-          hx-get="{{ frontend_prefix }}/users"
-          hx-target="#results-region"
-          hx-select="#results-region"
-          hx-swap="outerHTML"
-          hx-push-url="true"
-          hx-disinherit="hx-select hx-push-url"
-        >
-          <u-hstack gap="md" align="end" wrap>
-            <u-form-field label="{{ _('School') }}">
-              <u-combobox
-                id="school-combobox"
-                name="school"
-                required
-                placeholder="{{ _('Select a school') }}"
-                {% if selected_school %}value="{{ selected_school }}" display-value="{{ selected_school_label }}"{% endif %}
-                hx-get="{{ frontend_prefix }}/users/schools"
-                hx-trigger="u-search delay:300ms"
-                hx-target="this"
-                hx-swap="innerHTML"
-                hx-vals="js:{q: event.detail.query}"
-              >
-                {% include "fragments/school_options.html" %}
-              </u-combobox>
-            </u-form-field>
+    <u-vstack gap="md" grow>
+      {{ layout.page_header() }}
+      {# `align="stretch"` overrides the default `center`, which would collapse
+         both columns to their content height. #}
+      <u-hstack gap="lg" align="stretch" grow>
+        <u-vstack basis="sm">
+          {# Picking anything searches straight away — there is no submit button.
+             ``u-change`` bubbles out of both list selects, so listening on the
+             form itself keeps working when the cascade replaces the group
+             control. The delay is required, not cosmetic: the list select
+             publishes its new form value in a Lit update, which lands after the
+             synchronously dispatched event, so serialising immediately would
+             send the previous selection. #}
+          <u-form
+            grow
+            hx-get="{{ frontend_prefix }}/users"
+            hx-trigger="u-change delay:100ms"
+            hx-target="#results-region"
+            hx-select="#results-region"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            hx-disinherit="hx-select hx-push-url"
+          >
+            <u-list-select
+              id="school-list"
+              name="school"
+              required
+              size="sm"
+              filterable
+              heading="{{ _('School') }}"
+              placeholder="{{ _('Filter schools') }}"
+              {% if selected_school %}value="{{ selected_school }}"{% endif %}
+              hx-get="{{ frontend_prefix }}/users/schools"
+              hx-trigger="u-search delay:300ms"
+              hx-target="this"
+              hx-swap="innerHTML"
+              hx-vals="js:{q: event.detail.query}"
+            >
+              {% include "fragments/school_options.html" %}
+            </u-list-select>
 
-            {# The school combobox's single hx-get drives its own option search, so the
-               class/work-group cascade listens for the combobox's u-change from here. #}
-            <u-hstack
+            {# The school list select's single hx-get drives its own item search,
+               so the class/work-group cascade listens for its u-change from here.
+               Swapping this wrapper replaces the whole control, which is what
+               drops the previous school's selection. #}
+            <u-vstack
               id="dependent-filters"
-              gap="md"
-              align="end"
-              wrap
+              grow
               hx-get="{{ frontend_prefix }}/users/filters"
-              hx-trigger="u-change from:#school-combobox"
+              hx-trigger="u-change from:#school-list"
               hx-target="this"
               hx-swap="innerHTML"
               hx-vals="js:{school: event.detail.value}"
             >
               {% include "fragments/user_filters.html" %}
-            </u-hstack>
+            </u-vstack>
+          </u-form>
+        </u-vstack>
 
-            <u-form-field spacer>
-              <u-button type="submit" variant="primary">{{ _('Search') }}</u-button>
-            </u-form-field>
-          </u-hstack>
-        </u-form>
-      </u-vstack>
-
-      <u-vstack id="results-region" grow scroll>
-        {% include "fragments/user_table.html" %}
-      </u-vstack>
+        <u-vstack id="results-region" grow scroll>
+          {% include "fragments/user_table.html" %}
+        </u-vstack>
+      </u-hstack>
     </u-vstack>
   </u-container>
 

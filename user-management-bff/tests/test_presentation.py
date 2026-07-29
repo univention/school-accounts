@@ -85,6 +85,72 @@ def test_build_options_filters_by_query():
     assert [o.value for o in presentation.build_options(items, query="2")] == ["2b"]
 
 
+def test_build_school_options_marks_selected():
+    data = presentation.SchoolsData(
+        schools=[School(id="a", display_name="Alpha"), School(id="b", display_name="Beta")]
+    )
+    options = presentation.build_school_options(data, selected="b")
+    assert {o.value: o.selected for o in options} == {"a": False, "b": True}
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("school_class:1a", ("school_class", "1a")),
+        ("work_group:w1a", ("work_group", "w1a")),
+        ("school_class:a:b", ("school_class", "a:b")),  # only the first colon separates
+        (None, ("", "")),
+        ("", ("", "")),
+        ("1a", ("", "")),  # no separator
+        ("school_class:", ("", "")),  # no id
+        ("teacher:1a", ("", "")),  # unknown kind
+        (presentation.ALL_GROUPS, ("", "")),  # the reset option means "no filter"
+    ],
+)
+def test_split_group_value(value, expected):
+    assert presentation.split_group_value(value) == expected
+
+
+def _group_sections():
+    return (
+        [
+            SchoolClass(id="2b", display_name="2b", school="s"),
+            SchoolClass(id="1a", display_name="1a", school="s"),
+        ],
+        [WorkGroup(id="w1a", display_name="w1a", school="s")],
+    )
+
+
+def test_build_group_options_prefixes_and_sorts():
+    classes, work_groups = _group_sections()
+    sections = presentation.build_group_options(classes, work_groups, "en")
+    assert [s.heading for s in sections] == ["Classes", "Work Groups"]
+    assert [o.value for o in sections[0].options] == ["school_class:1a", "school_class:2b"]
+    assert [o.label for o in sections[0].options] == ["1a", "2b"]
+    assert [o.value for o in sections[1].options] == ["work_group:w1a"]
+
+
+def test_build_group_options_headings_are_translated():
+    classes, work_groups = _group_sections()
+    sections = presentation.build_group_options(classes, work_groups, "de")
+    assert [s.heading for s in sections] == ["Klassen", "Arbeitsgruppen"]
+
+
+def test_build_group_options_marks_selected_across_sections():
+    classes, work_groups = _group_sections()
+    sections = presentation.build_group_options(classes, work_groups, "en", selected="work_group:w1a")
+    # The prefix is what disambiguates, so no class is selected by a bare id match.
+    assert [o.selected for o in sections[0].options] == [False, False]
+    assert [o.selected for o in sections[1].options] == [True]
+
+
+def test_build_group_options_filters_both_sections_by_query():
+    classes, work_groups = _group_sections()
+    sections = presentation.build_group_options(classes, work_groups, "en", query="1a")
+    assert [o.value for o in sections[0].options] == ["school_class:1a"]
+    assert [o.value for o in sections[1].options] == ["work_group:w1a"]
+
+
 def test_list_columns_labels():
     assert [c.label for c in presentation.list_columns("en")] == [
         "Last name",

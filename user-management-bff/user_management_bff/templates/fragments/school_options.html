@@ -4,5 +4,8 @@ Copyright (C) 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 #}
 {% for school in schools %}
-<u-combobox-item value="{{ school.value }}">{{ school.label }}</u-combobox-item>
+<u-list-select-item value="{{ school.value }}"{% if school.selected %} selected{% endif %}>{{ school.label }}</u-list-select-item>
 {% endfor %}
+{# Slotted into the list select's own empty state, so it has to travel with the
+   items: an innerHTML swap replaces every light-DOM child. #}
+<span slot="empty">{{ _('No schools found.') }}</span>

@@ -1,8 +1,0 @@
-{#
-Copyright (C) 2026 Univention GmbH
-
-SPDX-License-Identifier: AGPL-3.0-only
-#}
-{% for option in school_classes %}
-<u-multiselect-option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</u-multiselect-option>
-{% endfor %}

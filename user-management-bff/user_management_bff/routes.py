@@ -13,7 +13,7 @@ or tear down that session.
 
 from functools import partial
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse, Response
@@ -44,6 +44,8 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 templates.env.globals["static"] = lambda path: f"{FRONTEND_PREFIX}/static/{path}"
 # Expose the UI prefix so templates can build ``hx-*`` URLs to other routes.
 templates.env.globals["frontend_prefix"] = FRONTEND_PREFIX
+# The all-groups sentinel is rendered as an option value, so templates need it too.
+templates.env.globals["all_groups_value"] = presentation.ALL_GROUPS
 
 router = APIRouter(prefix=FRONTEND_PREFIX)
 
@@ -109,8 +111,7 @@ def shell(request: Request, actor: str = Depends(current_actor)) -> Response:
 async def users_list(
     request: Request,
     school: str | None = None,
-    school_classes: list[str] = Query(default=[]),
-    work_groups: list[str] = Query(default=[]),
+    group: str | None = None,
     actor: str = Depends(current_actor),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
     schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
@@ -121,15 +122,17 @@ async def users_list(
     """Render the list view.
 
     Without a ``school`` query parameter this is the empty landing page. When
-    ``school`` (and optionally ``school_classes``/``work_groups``) are present,
-    the same page is rendered with those filters preselected and the matching
-    results already filled in, so a searched URL is a shareable deep link. The
-    search form pushes that URL via ``hx-push-url`` while swapping only the
-    results region.
+    ``school`` (and optionally ``group``) are present, the same page is rendered
+    with those filters preselected and the matching results already filled in, so
+    a searched URL is a shareable deep link. The search form pushes that URL via
+    ``hx-push-url`` while swapping only the results region.
+
+    ``group`` carries the combined class/work-group filter as a single
+    ``kind:id`` value, because both datasets share one single-select control.
     """
     lang = get_lang(request)
     schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
-    school_options = presentation.build_school_options(schools)
+    school_options = presentation.build_school_options(schools, selected=school or "")
 
     if school is None:
         return render(
@@ -137,30 +140,36 @@ async def users_list(
             "pages/user_list.html",
             schools=school_options,
             selected_school=None,
-            selected_school_label="",
-            school_classes=[],
-            work_groups=[],
+            selected_group=presentation.ALL_GROUPS,
+            group_sections=[],
+            query="",
             view=presentation.empty_user_list_view(lang),
         )
 
+    kind, item_id = presentation.split_group_value(group)
     # A deep link can outlive its school; only load the dependent filters for a
     # school that still exists (the File adapter raises on an unknown id).
     known_school = any(option.value == school for option in school_options)
-    class_options: list[presentation.Option] = []
-    work_group_options: list[presentation.Option] = []
+    group_sections: list[presentation.OptionGroup] = []
     if known_school:
-        class_options = presentation.build_options(
-            await business_logic.get_school_classes(
-                school_classes_adapter, permissions_adapter, users_adapter, actor, school, lang
-            ),
-            selected=school_classes,
+        group_sections = await _group_sections(
+            school_classes_adapter,
+            work_groups_adapter,
+            permissions_adapter,
+            users_adapter,
+            actor,
+            school,
+            lang,
+            selected=f"{kind}:{item_id}" if kind else "",
         )
-        work_group_options = presentation.build_options(
-            await business_logic.get_work_groups(
-                work_groups_adapter, permissions_adapter, users_adapter, actor, school, lang
-            ),
-            selected=work_groups,
-        )
+    # Drop a group the selected school does not have. That covers a stale deep
+    # link, and the moment after a school change where the search fires while the
+    # dependent control still holds the previous school's selection.
+    if kind and not any(o.selected for section in group_sections for o in section.options):
+        kind, item_id = "", ""
+    # The control always carries a selection, so "no group filter" is the
+    # explicit all-groups value rather than an empty one.
+    selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS
     data = await business_logic.get_users(
         users_adapter,
         schools_adapter,
@@ -168,7 +177,11 @@ async def users_list(
         work_groups_adapter,
         permissions_adapter,
         actor,
-        UsersGetRequest(school=school, school_classes=school_classes, work_groups=work_groups),
+        UsersGetRequest(
+            school=school,
+            school_classes=[item_id] if kind == presentation.SCHOOL_CLASS_KIND else [],
+            work_groups=[item_id] if kind == presentation.WORK_GROUP_KIND else [],
+        ),
         lang,
     )
     return render(
@@ -176,12 +189,35 @@ async def users_list(
         "pages/user_list.html",
         schools=school_options,
         selected_school=school,
-        selected_school_label=next(
-            (option.label for option in school_options if option.value == school), school
-        ),
-        school_classes=class_options,
-        work_groups=work_group_options,
+        selected_group=selected_group,
+        group_sections=group_sections,
+        query="",
         view=presentation.build_user_list(data, lang),
+    )
+
+
+async def _group_sections(
+    school_classes_adapter: SchoolClassesPersistencePort,
+    work_groups_adapter: WorkGroupsPersistencePort,
+    permissions_adapter: PermissionsPort,
+    users_adapter: UsersPersistencePort,
+    actor: str,
+    school: str,
+    lang: str,
+    selected: str = "",
+    query: str = "",
+) -> list[presentation.OptionGroup]:
+    """Load both filterable datasets for ``school`` as combined filter sections."""
+    return presentation.build_group_options(
+        await business_logic.get_school_classes(
+            school_classes_adapter, permissions_adapter, users_adapter, actor, school, lang
+        ),
+        await business_logic.get_work_groups(
+            work_groups_adapter, permissions_adapter, users_adapter, actor, school, lang
+        ),
+        lang,
+        selected=selected,
+        query=query,
     )
 
 
@@ -195,24 +231,33 @@ async def users_filters(
     permissions_adapter: PermissionsPort = Depends(permissions),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
 ) -> HTMLResponse:
-    """Return the class/work-group filter options for the selected school (cascade)."""
+    """Return the combined class/work-group filter for the selected school (cascade).
+
+    Swaps the whole control rather than just its items: ``u-list-select`` keeps
+    its ``value`` across an item swap, so replacing the element is what drops the
+    previous school's selection.
+    """
     lang = get_lang(request)
-    school_classes = await business_logic.get_school_classes(
-        school_classes_adapter, permissions_adapter, users_adapter, actor, school, lang
-    )
-    work_groups = await business_logic.get_work_groups(
-        work_groups_adapter, permissions_adapter, users_adapter, actor, school, lang
-    )
     return render(
         request,
         "fragments/user_filters.html",
         selected_school=school,
-        school_classes=presentation.build_options(school_classes),
-        work_groups=presentation.build_options(work_groups),
+        # A fresh school starts unfiltered.
+        selected_group=presentation.ALL_GROUPS,
+        query="",
+        group_sections=await _group_sections(
+            school_classes_adapter,
+            work_groups_adapter,
+            permissions_adapter,
+            users_adapter,
+            actor,
+            school,
+            lang,
+        ),
     )
 
 
-# NOTE: The ``q`` filtering in the three handlers below is applied in-memory in the
+# NOTE: The ``q`` filtering in the two handlers below is applied in-memory in the
 # presentation layer over the full option list the adapter returns. This is a
 # stopgap: the persistence ports (schools/school-classes/work-groups) should grow
 # a query parameter so the filtering happens at the data source, avoiding fetching
@@ -225,7 +270,7 @@ async def users_school_options(
     users_adapter: UsersPersistencePort = Depends(users_persistence),
     schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
 ) -> HTMLResponse:
-    """Return the school combobox options filtered by the typed query (``u-search``)."""
+    """Return the school list-select options filtered by the typed query (``u-search``)."""
     lang = get_lang(request)
     schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
     return render(
@@ -235,45 +280,39 @@ async def users_school_options(
     )
 
 
-@router.get("/users/school-classes", response_class=HTMLResponse)
-async def users_school_class_options(
+@router.get("/users/groups", response_class=HTMLResponse)
+async def users_group_options(
     request: Request,
     school: str = "",
     q: str = "",
     actor: str = Depends(current_actor),
     school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
-) -> HTMLResponse:
-    """Return the class multiselect options for a school, filtered by query (``u-search``)."""
-    lang = get_lang(request)
-    options: list[presentation.Option] = []
-    # No school selected yet (e.g. typing before a school is chosen) → no options.
-    if school:
-        school_classes = await business_logic.get_school_classes(
-            school_classes_adapter, permissions_adapter, users_adapter, actor, school, lang
-        )
-        options = presentation.build_options(school_classes, query=q)
-    return render(request, "fragments/school_class_options.html", school_classes=options)
-
-
-@router.get("/users/work-groups", response_class=HTMLResponse)
-async def users_work_group_options(
-    request: Request,
-    school: str = "",
-    q: str = "",
-    actor: str = Depends(current_actor),
     work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
     permissions_adapter: PermissionsPort = Depends(permissions),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
 ) -> HTMLResponse:
-    """Return the work-group multiselect options for a school, filtered by query (``u-search``)."""
+    """Return the combined class/work-group items for a school, filtered by query."""
     lang = get_lang(request)
-    options: list[presentation.Option] = []
+    sections: list[presentation.OptionGroup] = []
     # No school selected yet (e.g. typing before a school is chosen) → no options.
     if school:
-        work_groups = await business_logic.get_work_groups(
-            work_groups_adapter, permissions_adapter, users_adapter, actor, school, lang
+        sections = await _group_sections(
+            school_classes_adapter,
+            work_groups_adapter,
+            permissions_adapter,
+            users_adapter,
+            actor,
+            school,
+            lang,
+            query=q,
         )
-        options = presentation.build_options(work_groups, query=q)
-    return render(request, "fragments/work_group_options.html", work_groups=options)
+    return render(
+        request,
+        "fragments/group_options.html",
+        selected_school=school,
+        group_sections=sections,
+        # The element keeps its own selection across an item swap, so the
+        # fragment does not need to know which value is currently selected.
+        selected_group="",
+        query=q,
+    )
