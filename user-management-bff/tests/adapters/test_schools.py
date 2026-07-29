@@ -88,12 +88,15 @@ class TestFileSchoolsPersistenceAdapter:
         await adapter.configure(FileSchoolsPersistenceAdapterSettings(source=str(data_file)))
         assert adapter._data == data
 
-    @pytest.mark.asyncio
-    async def test_get_users(self, adapter):
-        source_path = os.path.join(
+    @pytest.fixture
+    def source_path(self):
+        return os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "../data/schools.json",
         )
+
+    @pytest.mark.asyncio
+    async def test_get_users(self, adapter, source_path):
         with open(source_path, "r") as fd:
             expected_schools = json.load(fd)
         await adapter.configure(FileSchoolsPersistenceAdapterSettings(source=source_path))
@@ -101,3 +104,16 @@ class TestFileSchoolsPersistenceAdapter:
         assert result == [
             School(id=school["id"], display_name=school["display_name"]) for school in expected_schools
         ]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "name,expected",
+        [
+            ("school2", [School(id="school2", display_name="School 2")]),
+            ("NON_EXISTENT", []),
+        ],
+    )
+    async def test_get_schools_by_name(self, adapter, source_path, name, expected):
+        # A name narrows the result to that single school (no match -> empty list).
+        await adapter.configure(FileSchoolsPersistenceAdapterSettings(source=source_path))
+        assert await adapter.get_schools(name=name) == expected

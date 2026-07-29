@@ -3,12 +3,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
+from typing import Any, Callable, Coroutine, Optional
 
 from fastapi import Request
 from starlette.responses import RedirectResponse, Response
 
-from .api_models import UserCreateRequest
 from .constants import FRONTEND_PREFIX
 from .models import Permission, School, SchoolClass, SessionRecord, Target, User, WorkGroup
 
@@ -26,26 +25,6 @@ class UsersPersistencePort(ABC):
         This method returns the user, which is identified by identifier.
 
         Raises an ObjectNotFoundError, if the user could not be found.
-        """
-
-    @abstractmethod
-    async def create_user(self, user: UserCreateRequest) -> User:  # pragma: no cover
-        ...
-
-    @abstractmethod
-    async def delete_user(self, identifier: str) -> None:  # pragma: no cover
-        """
-        This method deletes the user, which is identified by identifier.
-
-        Raises an ObjectNotFoundError, if the user could not be found.
-        """
-
-    @abstractmethod
-    async def save_user(self, user: User) -> User:  # pragma: no cover
-        """
-        This method saves a given user.
-
-        Raises ObjectNotFoundError, if the user could not be found.
         """
 
 
@@ -71,18 +50,6 @@ class WorkGroupsPersistencePort(ABC):
         """
         This method returns all work groups of a given school.
         """
-
-
-UsersGetRepresentation = TypeVar("UsersGetRepresentation")
-UserCreateRepresentation = TypeVar("UserCreateRepresentation")
-
-
-class UsersRepresentationPort(ABC, Generic[UsersGetRepresentation, UserCreateRepresentation]):
-    @abstractmethod
-    def create_user_representation(
-        self, user: User, permissions: set[Permission]
-    ) -> UserCreateRepresentation:  # pragma: no cover
-        ...
 
 
 class FastAPIAuthenticationPort(ABC):
@@ -129,22 +96,6 @@ class FastAPIAuthenticationPort(ABC):
         """
         return RedirectResponse(FRONTEND_PREFIX, status_code=303)
 
-    async def issue_csrf_token(self, request: Request) -> str:
-        """Return the CSRF token to embed in this session's mutating forms.
-
-        An empty string means the adapter does not use CSRF protection (the
-        dev/test doubles), so the template renders no meaningful token.
-        """
-        return ""
-
-    async def check_csrf(self, request: Request, submitted: Optional[str]) -> bool:
-        """Whether ``submitted`` matches the CSRF token bound to the session.
-
-        The default (no-CSRF) adapters accept any request; adapters that keep a
-        real session override this to reject a missing or mismatched token.
-        """
-        return True
-
 
 class SessionStorePort(ABC):
     """Storage for server-side authenticated sessions.
@@ -185,13 +136,3 @@ class PermissionsPort(ABC):
         """
         This method returns the permissions the provided actor has on the given targets.
         """
-
-
-AddUserConfigRepresentation = TypeVar("AddUserConfigRepresentation")
-
-
-class AddConfigRepresentationPort(ABC, Generic[AddUserConfigRepresentation]):
-    @abstractmethod
-    def add_config_representation(
-        self, school: School, school_classes: list[SchoolClass], work_groups: list[WorkGroup], lang: str
-    ) -> AddUserConfigRepresentation: ...

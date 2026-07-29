@@ -17,7 +17,6 @@ def _record(**overrides) -> SessionRecord:
         "expires_at": datetime(2999, 1, 1, tzinfo=timezone.utc),
         "refresh_token": "rt",
         "id_token": "idt",
-        "csrf_token": "csrf",
     }
     data.update(overrides)
     return SessionRecord(**data)

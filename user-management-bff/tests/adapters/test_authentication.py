@@ -35,7 +35,6 @@ def _record(**overrides) -> SessionRecord:
         "expires_at": _future(),
         "refresh_token": "rt",
         "id_token": "idt",
-        "csrf_token": "csrf-token",
     }
     data.update(overrides)
     return SessionRecord(**data)
@@ -162,42 +161,6 @@ class TestCookieSessionAuthenticationAdapter:
         request = self._request(mocker, cookies=self._signed_cookie(adapter, "sid-1"))
         assert adapter._read_cookie(request) == "sid-1"
 
-    @pytest.mark.parametrize(
-        "submitted,expected",
-        [("csrf-token", True), ("wrong", False), ("", False), (None, False)],
-    )
-    def test_verify_csrf(self, adapter, submitted, expected):
-        assert adapter.verify_csrf(submitted, _record()) is expected
-
-    @pytest.mark.asyncio
-    async def test_issue_csrf_token_returns_session_token(self, wired, store, mocker):
-        session_id = await store.create(_record(csrf_token="the-token"))
-        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
-        assert await wired.issue_csrf_token(request) == "the-token"
-
-    @pytest.mark.asyncio
-    async def test_issue_csrf_token_without_cookie(self, wired, mocker):
-        assert await wired.issue_csrf_token(self._request(mocker)) == ""
-
-    @pytest.mark.asyncio
-    async def test_issue_csrf_token_unknown_session(self, wired, mocker):
-        request = self._request(mocker, cookies=self._signed_cookie(wired, "ghost"))
-        assert await wired.issue_csrf_token(request) == ""
-
-    @pytest.mark.parametrize(
-        "submitted,expected",
-        [("the-token", True), ("wrong", False), (None, False)],
-    )
-    @pytest.mark.asyncio
-    async def test_check_csrf_against_session(self, wired, store, mocker, submitted, expected):
-        session_id = await store.create(_record(csrf_token="the-token"))
-        request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
-        assert await wired.check_csrf(request, submitted) is expected
-
-    @pytest.mark.asyncio
-    async def test_check_csrf_without_session_is_rejected(self, wired, mocker):
-        assert await wired.check_csrf(self._request(mocker), "the-token") is False
-
     # --- login / callback ---------------------------------------------------------
 
     @pytest.mark.asyncio
@@ -230,7 +193,6 @@ class TestCookieSessionAuthenticationAdapter:
         assert record.actor_id == "mina.teacher"
         assert record.sub == "SUB"
         assert record.kc_sid == "KCSID"
-        assert record.csrf_token
 
     @pytest.mark.asyncio
     async def test_complete_login_oauth_error(self, wired, client, mocker):
@@ -404,16 +366,6 @@ class TestAlwaysAuthenticatedAdapter:
         response = await adapter.logout(mocker.Mock())
         assert response.status_code == 303
         assert response.headers["location"] == FRONTEND_PREFIX
-
-    @pytest.mark.asyncio
-    async def test_issue_csrf_token_is_empty(self, adapter, mocker):
-        # The dev double keeps no session, so it issues no CSRF token.
-        assert await adapter.issue_csrf_token(mocker.Mock()) == ""
-
-    @pytest.mark.asyncio
-    async def test_check_csrf_accepts_anything(self, adapter, mocker):
-        # And it does not enforce CSRF (no session to bind a token to).
-        assert await adapter.check_csrf(mocker.Mock(), None) is True
 
 
 class TestNeverAuthenticatedAdapter:

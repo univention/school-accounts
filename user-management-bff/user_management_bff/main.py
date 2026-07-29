@@ -29,7 +29,6 @@ from .errors import (
     NoSchoolUserError,
     NotAuthenticatedError,
     ObjectNotFoundError,
-    OperationNotSupportedError,
     PermissionsError,
 )
 from .lang import _, get_lang
@@ -139,12 +138,6 @@ async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserEr
     return _html_error(request, exc.message, 403)
 
 
-@app.exception_handler(OperationNotSupportedError)
-async def operation_not_supported_exception_handler(request: Request, exc: OperationNotSupportedError):
-    lang = get_lang(request)
-    return _html_error(request, _(exc.message, lang=lang), 400)
-
-
 @app.exception_handler(ObjectNotFoundError)
 async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError):
     lang = get_lang(request)
@@ -163,8 +156,6 @@ async def not_authenticated_exception_handler(request: Request, exc: NotAuthenti
 
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Field-level 422s from the edit form are handled inline in the route with
-    # per-field messages; this is the fallback for other validation failures
-    # (e.g. a missing query parameter).
+    # Fallback for request validation failures (e.g. a missing query parameter).
     lang = get_lang(request)
     return _html_error(request, _("Invalid request.", lang=lang), 422)

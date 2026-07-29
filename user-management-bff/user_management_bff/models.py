@@ -3,24 +3,15 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import datetime
 from enum import StrEnum, auto
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional
 
-from pydantic import BaseModel, model_validator
-
-from .lang import _
-
-AttributeType = TypeVar("AttributeType")
+from pydantic import BaseModel
 
 
 class AttributeAccess(StrEnum):
     READ = auto()
     WRITE = auto()
     NONE = auto()
-
-
-class Attribute(BaseModel):
-    value: str
-    access: AttributeAccess
 
 
 class UserAttributes(BaseModel):
@@ -65,7 +56,6 @@ class SessionRecord(BaseModel):
     expires_at: datetime.datetime
     refresh_token: str | None = None
     id_token: str | None = None
-    csrf_token: str
 
 
 class School(BaseModel):
@@ -134,46 +124,3 @@ class Permission(StrEnum):
     write_email = "write-email"
     write_birthday = "write-birthday"
     write_expiration_date = "write-expiration_date"
-
-
-class Role(StrEnum):
-    STUDENT = "student"
-    TEACHER = "teacher"
-    STAFF = "staff"
-
-
-class UserCreateRequest(BaseModel):
-    last_name: str
-    first_name: str
-    username: str | None = None
-    password: str | None = None
-    school: str
-    school_classes: list[str]
-    work_groups: list[str]
-    roles: list[Role]
-    activated: bool = True
-
-    @model_validator(mode="after")
-    def check_school_classes_for_student(self) -> "UserCreateRequest":
-        if Role.STUDENT in self.roles and not self.school_classes:
-            raise ValueError(_("A student must be member of at least one school class."))
-        return self
-
-
-class UserPatchAttributes(BaseModel):
-    last_name: Optional[str] = None
-    first_name: Optional[str] = None
-    username: Optional[str] = None
-    password: str | None = None
-    school_classes: Optional[list[str]] = None
-    activated: Optional[bool] = None
-    roles: Optional[list[str]] = None
-    email: Optional[str] = None
-    birthday: Optional[datetime.date] = None
-    expiration_date: Optional[datetime.date] = None
-
-
-class UserPatchRequest(BaseModel):
-    identifier: str
-    school: str
-    attributes: UserPatchAttributes

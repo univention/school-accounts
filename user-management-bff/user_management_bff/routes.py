@@ -12,14 +12,10 @@ or tear down that session.
 """
 
 from functools import partial
-from typing import Any, cast
-from urllib.parse import parse_qsl, quote
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import ValidationError
-from starlette.datastructures import FormData, UploadFile
 from starlette.responses import RedirectResponse, Response
 
 from . import business_logic, presentation
@@ -28,13 +24,11 @@ from .constants import (
     AUTH_CALLBACK_PATH,
     AUTH_LOGIN_PATH,
     AUTH_LOGOUT_PATH,
-    CSRF_HEADER_NAME,
     FRONTEND_PREFIX,
     TEMPLATES_DIR,
 )
-from .errors import PermissionsError
 from .lang import _, get_lang
-from .models import UserPatchAttributes, UserPatchRequest, UsersGetRequest
+from .models import UsersGetRequest
 from .ports import (
     FastAPIAuthenticationPort,
     PermissionsPort,
@@ -134,9 +128,7 @@ async def users_list(
     results region.
     """
     lang = get_lang(request)
-    schools = await business_logic.get_schools(
-        schools_adapter, permissions_adapter, users_adapter, actor, lang
-    )
+    schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
     school_options = presentation.build_school_options(schools)
 
     if school is None:
@@ -189,7 +181,7 @@ async def users_list(
         ),
         school_classes=class_options,
         work_groups=work_group_options,
-        view=presentation.build_user_list(data, lang, school),
+        view=presentation.build_user_list(data, lang),
     )
 
 
@@ -232,13 +224,10 @@ async def users_school_options(
     actor: str = Depends(current_actor),
     users_adapter: UsersPersistencePort = Depends(users_persistence),
     schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
 ) -> HTMLResponse:
     """Return the school combobox options filtered by the typed query (``u-search``)."""
     lang = get_lang(request)
-    schools = await business_logic.get_schools(
-        schools_adapter, permissions_adapter, users_adapter, actor, lang
-    )
+    schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
     return render(
         request,
         "fragments/school_options.html",
@@ -288,148 +277,3 @@ async def users_work_group_options(
         )
         options = presentation.build_options(work_groups, query=q)
     return render(request, "fragments/work_group_options.html", work_groups=options)
-
-
-# Editable scalar attributes and how to coerce their submitted form values.
-# Empty date/email values mean "clear" (None) rather than an empty string; text
-# fields keep the submitted value as-is. Only fields present in the form (i.e.
-# the writable controls the actor was shown) are patched.
-_EDITABLE_SCALARS = {
-    "last_name": "text",
-    "first_name": "text",
-    "username": "text",
-    "email": "email",
-    "birthday": "date",
-    "expiration_date": "date",
-}
-
-
-def _patch_attributes_from_form(form: FormData) -> dict[str, Any]:
-    attributes: dict[str, Any] = {}
-    for name, kind in _EDITABLE_SCALARS.items():
-        if name not in form:
-            continue
-        value = form[name]
-        attributes[name] = (value or None) if kind in ("email", "date") else value
-    # Password is only patched when a new value is entered (blank = no change).
-    if form.get("password"):
-        attributes["password"] = form["password"]
-    # The checkbox carries an ``unchecked-value`` so the form always submits
-    # ``activated=true`` or ``activated=false``.
-    if "activated" in form:
-        attributes["activated"] = form["activated"] == "true"
-    return attributes
-
-
-def _apply_form_errors(view: presentation.UserDetailView, form: FormData, exc: ValidationError) -> None:
-    """Echo submitted values back onto the view and attach per-field error messages."""
-    errors = {str(err["loc"][-1]): err["msg"] for err in exc.errors() if err["loc"]}
-    for field in view.fields:
-        if field.editable and field.kind in ("text", "email", "date") and field.name in form:
-            # Urlencoded body only, so form values are always ``str`` (never ``UploadFile``).
-            field.value = cast("str", form[field.name])
-        if field.name in errors:
-            field.error = errors[field.name]
-
-
-@router.get("/users/{user_id}", response_class=HTMLResponse)
-async def user_detail(
-    request: Request,
-    user_id: str,
-    school: str,
-    actor: str = Depends(current_actor),
-    auth: FastAPIAuthenticationPort = Depends(auth_port),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
-    schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
-    school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
-) -> HTMLResponse:
-    """Render the combined detail/edit view for a single user, scoped to ``school``."""
-    lang = get_lang(request)
-    data = await business_logic.get_user(
-        users_adapter,
-        schools_adapter,
-        school_classes_adapter,
-        work_groups_adapter,
-        permissions_adapter,
-        actor,
-        user_id,
-        school,
-        lang,
-    )
-    return render(
-        request,
-        "pages/user_detail.html",
-        view=presentation.build_user_detail(data, lang),
-        csrf_token=await auth.issue_csrf_token(request),
-    )
-
-
-@router.patch("/users/{user_id}", response_class=HTMLResponse)
-async def user_patch(
-    request: Request,
-    user_id: str,
-    school: str,
-    actor: str = Depends(current_actor),
-    auth: FastAPIAuthenticationPort = Depends(auth_port),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
-    schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
-    school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
-) -> Response:
-    """Apply an edit: redirect to the list on success, or re-render the card with inline errors."""
-    lang = get_lang(request)
-    # Reject the mutation unless it carries the session's CSRF token (a cookie
-    # session is otherwise vulnerable to cross-site form submission).
-    if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
-        raise PermissionsError(
-            _("Invalid or missing security token. Please reload the page and try again.", lang=lang)
-        )
-    # The edit form is always urlencoded (no file uploads), so parse the body
-    # directly into a FormData rather than pulling in a multipart parser.
-    form = FormData(
-        cast(
-            "list[tuple[str, str | UploadFile]]",
-            parse_qsl((await request.body()).decode("utf-8"), keep_blank_values=True),
-        )
-    )
-    try:
-        patch_attributes = UserPatchAttributes(**_patch_attributes_from_form(form))
-    except ValidationError as exc:
-        # Invalid input (e.g. a malformed date): re-render the card with the
-        # submitted values preserved and the offending fields flagged.
-        data = await business_logic.get_user(
-            users_adapter,
-            schools_adapter,
-            school_classes_adapter,
-            work_groups_adapter,
-            permissions_adapter,
-            actor,
-            user_id,
-            school,
-            lang,
-        )
-        view = presentation.build_user_detail(data, lang)
-        _apply_form_errors(view, form, exc)
-        return render(
-            request,
-            "fragments/user_detail.html",
-            view=view,
-            csrf_token=await auth.issue_csrf_token(request),
-        )
-    await business_logic.patch_user(
-        users_adapter,
-        schools_adapter,
-        school_classes_adapter,
-        work_groups_adapter,
-        permissions_adapter,
-        actor,
-        UserPatchRequest(identifier=user_id, school=school, attributes=patch_attributes),
-        lang,
-    )
-    # On success, send the actor back to the school-scoped list (htmx performs a
-    # client-side redirect when it sees this header).
-    list_url = f"{FRONTEND_PREFIX}/users?school={quote(school)}"
-    return Response(status_code=200, headers={"HX-Redirect": list_url})

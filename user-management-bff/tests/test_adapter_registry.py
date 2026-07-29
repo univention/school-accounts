@@ -13,21 +13,15 @@ from user_management_bff.adapter_registry import (
     configure_registry,
     port_dep,
 )
-from user_management_bff.adapters.api import FastAPIUsersRepresentationAdapter
 from user_management_bff.adapters.session_store import InMemorySessionStoreAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
-from user_management_bff.ports import (
-    SessionStorePort,
-    UsersPersistencePort,
-    UsersRepresentationPort,
-)
+from user_management_bff.ports import SessionStorePort, UsersPersistencePort
 
 
 class TestAdapterSelection:
     def test_correct_test_selection(self):
         selection = AdapterSelection()
         assert selection.users_persistence == FileUsersPersistenceAdapter
-        assert selection.users_representation == FastAPIUsersRepresentationAdapter
         assert selection.session_store == InMemorySessionStoreAdapter
 
 
@@ -36,7 +30,6 @@ class TestAdapterSelection:
     [
         (AsyncAdapterSettingsProvider, EnvSettingsProvider),
         (UsersPersistencePort, FileUsersPersistenceAdapter),
-        (UsersRepresentationPort, FastAPIUsersRepresentationAdapter),
         (SessionStorePort, InMemorySessionStoreAdapter),
     ],
 )

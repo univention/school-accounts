@@ -17,12 +17,10 @@ services:
       USER_MANAGEMENT__API_PREFIX: "/univention/ucsschool/user-management/bff"
       USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
       USER_MANAGEMENT__CORS__ALLOWED_ORIGINS: "*"
-      USER_MANAGEMENT__ADAPTER__USERS_REPRESENTATION: "user_management_bff.adapters.api:FastAPIUsersRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE: "user_management_bff.adapters.users:KelvinUsersPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "user_management_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE: "user_management_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__ADD_CONFIG_REPRESENTATION: "user_management_bff.adapters.api:FastAPIAddConfigRepresentationAdapter"
       USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:GuardianPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /run/secrets/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /run/secrets/machine.secret
