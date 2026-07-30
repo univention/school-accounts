@@ -53,7 +53,7 @@ msgstr "Schulen"
 
 #, python-brace-format
 msgid "The logged in user '{user}' is not a valid UCS@school user."
-msgstr ""
+msgstr "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
 "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer"
 
 msgid "Username"
