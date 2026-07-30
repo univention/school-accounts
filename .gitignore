@@ -12,6 +12,9 @@ _build/
 *.mo
 dev/local
 .idea
+**/.container_venv/
+.gitlab-ci-local/
+basedpyright-code-quality.json
 
 # App Center files
 appcenter-management/preinst

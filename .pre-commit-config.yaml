@@ -9,6 +9,7 @@ repos:
   rev: v4.5.0
   hooks:
     - id: check-added-large-files
+      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$'
     - id: check-json
     - id: check-xml
     - id: check-yaml
@@ -16,6 +17,7 @@ repos:
     - id: trailing-whitespace
     - id: pretty-format-json
       args: [--autofix]
+      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$'
 - repo: https://github.com/psf/black-pre-commit-mirror
   rev: 24.1.1
   hooks:
@@ -27,13 +29,6 @@ repos:
   hooks:
     - id: bandit
       exclude: "user-management-bff/tests|appcenter-management/scripts/test_*"
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.8.0
-  hooks:
-    - id: mypy
-      args: ["--config-file=user-management-bff/pyproject.toml"]
-      exclude: "docs/|tests/"
-      additional_dependencies: [fastapi, loguru, pytest, types-requests]
 - repo: local
   hooks:
     - id: bff-translation-check
@@ -41,6 +36,84 @@ repos:
       entry: user-management-bff/scripts/check_translations.sh
       language: script
       pass_filenames: false
+- repo: local
+  hooks:
+    # Native hooks run by default: this repo's local dev workflow (dev/dev_run.sh pre-commit run -a)
+    # already wraps pre-commit itself inside the dev container, which has uv/git but no docker.sock,
+    # so a docker_image-based default hook would fail there. The container hooks below are kept as
+    # manual-stage fallbacks for contributors running bare pre-commit without a local uv/Python setup.
+    - id: basedpyright-bff-native-baseline
+      name: basedpyright (bff, relative to baseline, native)
+      language: system
+      entry: |
+        sh -c 'cd user-management-bff && uv sync --python 3.11 && \
+          uv pip install basedpyright==1.39.8 && \
+          .venv/bin/basedpyright \
+            --project pyrightconfig.json \
+            --baselinefile basedpyright-baseline.json \
+            --baselinemode=auto' --
+      pass_filenames: false
+      types: [python]
+      files: ^user-management-bff/
+    - id: basedpyright-bff-container-baseline
+      name: basedpyright (bff, relative to baseline, docker)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh user-management-bff baseline
+      stages: [manual]
+      pass_filenames: false
+      types: [python]
+      files: ^user-management-bff/
+    - id: basedpyright-bff-container-no-baseline
+      name: basedpyright (bff, lint file, no baseline)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh user-management-bff no-baseline
+      stages: [manual]
+      pass_filenames: true
+      types: [python]
+      files: ^user-management-bff/
+    - id: basedpyright-bff-container-write-baseline
+      name: basedpyright (bff, write baseline)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh user-management-bff write-baseline
+      stages: [manual]
+      pass_filenames: false
+      files: ^user-management-bff/
+    - id: basedpyright-product-tests-native-baseline
+      name: basedpyright (product-tests, relative to baseline, native)
+      language: system
+      entry: |
+        sh -c 'cd dev/tests/product-tests && uv sync --python 3.11 && \
+          uv pip install basedpyright==1.39.8 && \
+          .venv/bin/basedpyright \
+            --project pyrightconfig.json \
+            --baselinefile basedpyright-baseline.json \
+            --baselinemode=auto' --
+      pass_filenames: false
+      types: [python]
+      files: ^dev/tests/product-tests/
+    - id: basedpyright-product-tests-container-baseline
+      name: basedpyright (product-tests, relative to baseline, docker)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests baseline
+      stages: [manual]
+      pass_filenames: false
+      types: [python]
+      files: ^dev/tests/product-tests/
+    - id: basedpyright-product-tests-container-no-baseline
+      name: basedpyright (product-tests, lint file, no baseline)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests no-baseline
+      stages: [manual]
+      pass_filenames: true
+      types: [python]
+      files: ^dev/tests/product-tests/
+    - id: basedpyright-product-tests-container-write-baseline
+      name: basedpyright (product-tests, write baseline)
+      language: system
+      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests write-baseline
+      stages: [manual]
+      pass_filenames: false
+      files: ^dev/tests/product-tests/
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:
