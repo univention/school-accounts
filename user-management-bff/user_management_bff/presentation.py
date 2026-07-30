@@ -216,10 +216,11 @@ def build_group_options(
     a prefix; ``selected`` is such a prefixed value.
     """
     groups: list[OptionGroup] = []
-    for kind, heading, items in (
+    sections: list[tuple[str, str, list[SchoolClass] | list[WorkGroup]]] = [
         (SCHOOL_CLASS_KIND, _("Classes", lang=lang), school_classes),
         (WORK_GROUP_KIND, _("Work Groups", lang=lang), work_groups),
-    ):
+    ]
+    for kind, heading, items in sections:
         options: list[Option] = []
         for option in build_options(items, query=query):
             value = f"{kind}:{option.value}"
