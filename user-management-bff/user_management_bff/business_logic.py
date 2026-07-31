@@ -135,7 +135,7 @@ async def get_school_classes(
     return [
         school_class
         for school_class in school_classes
-        if Permission.use_as_filter in permissions[school_class.id]
+        if Permission.use_as_filter in permissions.get(school_class.id, [])
     ]
 
 
@@ -156,5 +156,5 @@ async def get_work_groups(
     return [
         work_group
         for work_group in work_groups
-        if Permission.use_as_filter in permissions[work_group.id]
+        if Permission.use_as_filter in permissions.get(work_group.id, [])
     ]
