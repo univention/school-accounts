@@ -111,6 +111,8 @@ services:
       - "user-management-bff"
       - "uvicorn"
       - "--reload"
+      - "--reload-dir"
+      - "user-management-bff/user_management_bff"
       - "--log-level"
       - "debug"
       - "--host"

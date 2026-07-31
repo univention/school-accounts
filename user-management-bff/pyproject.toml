@@ -50,6 +50,7 @@ dev = [
     "faker>=24.2.0",
     "nest-asyncio>=1.6.0",
     "pytest-playwright>=0.7.0",
+    "watchfiles>=1.0.0",
 ]
 
 [tool.uv]
