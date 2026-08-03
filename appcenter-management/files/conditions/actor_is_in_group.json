@@ -1,5 +1,0 @@
-{
-  "display_name": "Only if actor is in group",
-  "documentation": "True, if the actor is in the work group or school class represented by the target",
-  "parameters": []
-}

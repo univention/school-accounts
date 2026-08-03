@@ -4,15 +4,9 @@
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-525:0.23.0@sha256:b256a95a43f989b24fcb2ac40b4a4524d23d4b59b6fa1b804ab7187cf7425bb3
 LABEL description="Development image for ucsschool-users-management"
 
-# The current version used in the Guardian as of 2024-03-06
-ARG opa_version=0.53.0
-
 EXPOSE 8000
 
 ENV UV_VERSION=0.11.21
-
-ADD https://github.com/open-policy-agent/opa/releases/download/v${opa_version}/opa_linux_amd64_static /usr/bin/opa
-RUN chmod 755 /usr/bin/opa
 
 RUN apt-get update && \
     apt-get install -y sudo \

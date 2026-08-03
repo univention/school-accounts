@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
+
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  version: "default"
+  resource: "ucsschool:workgroup"
+  importDerivedRoles:
+    - ucsschool_derived_roles
+  rules:
+    # Any ucsschool user may use a work_group they're a member of as a search filter.
+    - actions:
+        - use-as-filter
+      effect: EFFECT_ALLOW
+      roles:
+        - ucsschool:user
+      condition:
+        match:
+          expr: >-
+            P.attr.work_groups.exists(
+              school,
+              groups,
+              R.attr.old.school == school && R.id in groups
+            )
+    # A school_admin may filter by any work_group in their own school.
+    - actions:
+        - use-as-filter
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - school_admin

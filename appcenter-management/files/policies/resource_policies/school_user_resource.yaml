@@ -1,0 +1,133 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Scope note: the only write capability currently required anywhere is
+# resetting a password. There is no create/edit/delete-user requirement
+# right now, so those capabilities aren't modeled here
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "ucsschool:user"
+  importDerivedRoles:
+    - ucsschool_derived_roles
+  variables:
+    local:
+      teacher_of_student_in_same_class: >-
+        P.attr.cerbos_roles.exists(
+          p_role,
+          p_role.name == "teacher" &&
+          R.attr.old.cerbos_roles.exists(
+            r_role,
+            r_role.name == "student" &&
+            r_role.context == p_role.context
+          ) &&
+          p_role.context in P.attr.school_classes &&
+          p_role.context in R.attr.old.school_classes &&
+          hasIntersection(
+            P.attr.school_classes[p_role.context],
+            R.attr.old.school_classes[p_role.context]
+          )
+        )
+  rules:
+    # A user may read their own data.
+    - name: self_read_data
+      actions:
+        - read-last_name
+        - read-first_name
+        - read-disabled
+        - read-activated
+        - read-schools
+        - read-school_classes
+        - read-work_groups
+        - read-roles
+        - read-email
+        - read-birthday
+        - read-expiration_date
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - self
+    # A teacher may read all data of, and reset the password of, a student
+    # sharing a class with them in their own school.
+    - name: teachers_of_students_in_same_class
+      actions:
+        - read-last_name
+        - read-first_name
+        - read-disabled
+        - read-activated
+        - read-schools
+        - read-school_classes
+        - read-work_groups
+        - read-roles
+        - read-email
+        - read-birthday
+        - read-expiration_date
+        - write-password
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - teacher
+      condition:
+        match:
+          expr: variables.teacher_of_student_in_same_class
+    # A school_admin may read all data of every user in their own school,
+    # including other school_admins.
+    - name: school_admin_reads_users_in_same_school
+      actions:
+        - read-last_name
+        - read-first_name
+        - read-disabled
+        - read-activated
+        - read-schools
+        - read-school_classes
+        - read-work_groups
+        - read-roles
+        - read-email
+        - read-birthday
+        - read-expiration_date
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - school_admin
+    # A school_admin may reset the password of any user in their own
+    # school who is not a school_admin.
+    # Uses a NOT-school_admin check rather than an allow-list of roles
+    - name: school_admin_resets_passwords_in_same_school
+      actions:
+        - write-password
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - school_admin
+      condition:
+        match:
+          expr: "!R.attr.old.cerbos_roles.exists(r, r.name == 'school_admin')"
+    # Staff may read the same fields as a teacher, but only of other staff in
+    # their own school - the traditional UCS@school behaviour.
+    - name: staff_reads_staff_in_same_school
+      actions:
+        - read-last_name
+        - read-first_name
+        - read-disabled
+        - read-activated
+        - read-schools
+        - read-school_classes
+        - read-work_groups
+        - read-roles
+        - read-email
+        - read-birthday
+        - read-expiration_date
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - staff
+      condition:
+        match:
+          expr: >-
+            P.attr.cerbos_roles.exists(
+              p_role,
+              p_role.name == "staff" &&
+              R.attr.old.cerbos_roles.exists(
+                r_role,
+                r_role.name == "staff" &&
+                r_role.context == p_role.context
+              )
+            )

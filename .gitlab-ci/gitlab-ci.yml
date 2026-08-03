@@ -73,6 +73,10 @@ variables:
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
   UV_CACHE_DIR: .cache/uv
+  # Keep in sync with the version/checksum used in dev/docker-compose.yaml and
+  # docker/pre_commit/check_cerbos_policies.sh.
+  CERBOS_VERSION: "0.54.0"
+  CERBOS_TARBALL_SHA256: "68ce48355cf1df125da9ff2b6c0b07d35781155d3aa1707707c381c2e454f156"
 
 stages:
   - prepare
@@ -104,6 +108,52 @@ build_appcenter_files:
   artifacts:
     paths:
       - __appcenter
+
+compile-policies:
+  stage: test
+  needs: []
+  image: debian:stable-slim
+  variables:
+    CERBOS_TARBALL: "cerbos_${CERBOS_VERSION}_Linux_x86_64.tar.gz"
+    CERBOS_NO_TELEMETRY: "1"
+  cache:
+    key: "cerbos-${CERBOS_VERSION}"
+    paths:
+      - .cerbos-bin/
+  rules:
+    - changes:
+        - appcenter-management/files/policies/**/*
+  script:
+    - |
+      set -eu
+      if [ ! -x .cerbos-bin/cerbos ]; then
+        apt-get update
+        apt-get install -y --no-install-recommends curl ca-certificates
+        mkdir -p .cerbos-bin
+        curl -fsSL -o /tmp/cerbos.tar.gz \
+          "https://github.com/cerbos/cerbos/releases/download/v${CERBOS_VERSION}/${CERBOS_TARBALL}"
+        echo "${CERBOS_TARBALL_SHA256}  /tmp/cerbos.tar.gz" | sha256sum -c -
+        tar -xzf /tmp/cerbos.tar.gz -C .cerbos-bin cerbos
+      fi
+    - .cerbos-bin/cerbos compile --no-color appcenter-management/files/policies
+
+# Guards against editing a shipped Cerbos policy without bumping VERSION in
+# appcenter-management/inst - see the script for why that combination fails
+# silently on the target system.
+policy-version-bump:
+  stage: test
+  needs: []
+  tags: ["dae-m"]
+  image: $EC2_TOOLS_IMAGE
+  variables:
+    # CI_MERGE_REQUEST_DIFF_BASE_SHA lies outside the default shallow clone.
+    GIT_DEPTH: 0
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+      changes:
+        - appcenter-management/files/policies/**/*
+  script:
+    - .gitlab-ci/scripts/check-policy-version-bump.sh
 
 bff-test:
   stage: test

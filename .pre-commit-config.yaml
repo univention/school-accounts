@@ -181,6 +181,14 @@ repos:
       alias: reuse-lint
       stages: [manual]
     - id: reuse-lint-file
+- repo: local
+  hooks:
+    - id: cerbos-policy-check
+      name: cerbos-policy-check
+      entry: appcenter-management/scripts/check_cerbos_policies.sh
+      language: script
+      pass_filenames: false
+      files: '^appcenter-management/files/policies/'
 - repo: https://github.com/compilerla/conventional-pre-commit
   rev: v4.3.0
   hooks:

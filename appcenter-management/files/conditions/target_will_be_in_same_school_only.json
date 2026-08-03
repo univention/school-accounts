@@ -1,5 +1,0 @@
-{
-  "display_name": "Only if target will be in the same school",
-  "documentation": "True if the new target has only roles in the school of the actors' role.",
-  "parameters": []
-}

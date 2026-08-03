@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Cerbos policy tests for school_resource.yaml, run via `cerbos compile` (not
+# shipped in the LDAP bundle - Cerbos ignores *_test.yaml as policies).
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/TestSuite.schema.json
+
+name: SchoolResourceTests
+description: Locks in the "ucsschool:school" resource's use-as-filter capability
+
+principals:
+  bob_of_school1:
+    id: bob
+    roles: ["ucsschool:user"]
+    attr:
+      schools: ["school1"]
+
+  # A school_admin is enrolled like any other user: the actor attributes carry
+  # both the schools list and cerbos_roles (see _user_to_actor, which dumps all
+  # of UserAttributes). The school filter is deliberately role-agnostic - being
+  # a school_admin grants nothing extra here.
+  dave_school_admin_school1:
+    id: dave
+    roles: ["ucsschool:user"]
+    attr:
+      schools: ["school1"]
+      cerbos_roles:
+        - {name: school_admin, context: school1}
+
+resources:
+  school1:
+    id: school1
+    kind: "ucsschool:school"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: school, context: school1}
+
+  school2:
+    id: school2
+    kind: "ucsschool:school"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: school, context: school2}
+
+tests:
+  - name: a user enrolled in the school can use it as a filter, one who isn't cannot
+    input:
+      principals: [bob_of_school1]
+      resources: [school1, school2]
+      actions: [use-as-filter]
+    expected:
+      - principal: bob_of_school1
+        resource: school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: bob_of_school1
+        resource: school2
+        actions:
+          use-as-filter: EFFECT_DENY
+
+  - name: a school_admin can use their own school as a filter, but not another school
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [school1, school2]
+      actions: [use-as-filter]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: school2
+        actions:
+          use-as-filter: EFFECT_DENY

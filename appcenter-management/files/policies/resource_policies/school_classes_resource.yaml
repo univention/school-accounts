@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "ucsschool:class"
+  importDerivedRoles:
+    - ucsschool_derived_roles
+  rules:
+    # Any ucsschool user may use a school_class they're a member of as a search filter.
+    - actions:
+        - use-as-filter
+      effect: EFFECT_ALLOW
+      roles:
+        - ucsschool:user
+      condition:
+        match:
+          expr: >-
+            P.attr.school_classes.exists(
+              school,
+              classes,
+              R.attr.old.school == school && R.id in classes
+            )
+    # A school_admin may filter by any school_class in their own school.
+    - actions:
+        - use-as-filter
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - school_admin

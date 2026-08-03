@@ -1,0 +1,416 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Cerbos policy tests for school_user_resource.yaml, run via `cerbos compile`
+# (not shipped in the LDAP bundle - Cerbos ignores *_test.yaml as policies).
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/TestSuite.schema.json
+
+name: SchoolUserResourceTests
+description: Locks in the "ucsschool:user" resource capabilities.
+
+principals:
+  alice_student_school1:
+    id: alice
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: student, context: school1}
+
+  bob_teacher_school1:
+    id: bob
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+      school_classes:
+        school1: ["1a"]
+
+  carol_teacher_school2:
+    id: carol
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school2}
+
+  dave_school_admin_school1:
+    id: dave
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: school_admin, context: school1}
+
+  grace_staff_school1:
+    id: grace
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: staff, context: school1}
+
+  # Teaches at school1. At school2 she is enrolled as a student herself, in
+  # class 9z - the same class frank attends.
+  eve_teacher_school1_student_school2:
+    id: eve
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+        - {name: student, context: school2}
+      school_classes:
+        school2: ["9z"]
+
+  # Teaches at both schools, and shares class 9z at school2 with frank.
+  heidi_teacher_school1_and_school2:
+    id: heidi
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+        - {name: teacher, context: school2}
+      school_classes:
+        school2: ["9z"]
+
+  # A double role. UCS@school's TeachersAndStaff carries both teacher:school:X
+  # and staff:school:X, so this arrives as two cerbos_roles entries rather than
+  # a single "teacher_and_staff" role.
+  ida_teacher_and_staff_school1:
+    id: ida2
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+        - {name: staff, context: school1}
+      school_classes:
+        school1: ["1a"]
+
+resources:
+  alice_self:
+    id: alice
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+
+  student_school1_class1a:
+    id: student1
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  student_school1_class1b:
+    id: student2
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+        school_classes:
+          school1: ["1b"]
+
+  student_school2:
+    id: student3
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+
+  existing_teacher_school1:
+    id: teacher1
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: teacher, context: school1}
+
+  existing_school_admin_school1:
+    id: admin2
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: school_admin, context: school1}
+
+  existing_staff_school1:
+    id: staff2
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: staff, context: school1}
+
+  existing_staff_school2:
+    id: staff3
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: staff, context: school2}
+
+  # A student at both schools. At school1 he shares no class with eve; the only
+  # class they share is 9z at school2, where eve is a student herself.
+  frank_student_school1_and_school2:
+    id: frank
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: student, context: school2}
+        school_classes:
+          school2: ["9z"]
+
+tests:
+  - name: self can read own data, not someone else's
+    input:
+      principals: [alice_student_school1]
+      resources: [alice_self, student_school2]
+      actions: [read-first_name, read-disabled]
+    expected:
+      - principal: alice_student_school1
+        resource: alice_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+      - principal: alice_student_school1
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+
+  - name: teacher reads and resets the password of a student sharing their class, not just their school
+    input:
+      principals: [bob_teacher_school1, carol_teacher_school2]
+      resources: [student_school1_class1a, student_school1_class1b, student_school2]
+      actions: [read-first_name, read-disabled, write-password]
+    expected:
+      - principal: bob_teacher_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: bob_teacher_school1
+        resource: student_school1_class1b
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: carol_teacher_school2
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  - name: school_admin reads every user in their own school, including another school_admin
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [existing_teacher_school1, existing_school_admin_school1, existing_staff_school1, student_school1_class1a, student_school2]
+      actions: [read-first_name, read-disabled]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: existing_teacher_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: existing_school_admin_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: existing_staff_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+
+  - name: school_admin resets passwords in their own school, except for another school_admin
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [existing_teacher_school1, existing_school_admin_school1, existing_staff_school1, student_school1_class1a, student_school2]
+      actions: [write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: existing_teacher_school1
+        actions:
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: existing_school_admin_school1
+        actions:
+          write-password: EFFECT_DENY
+      - principal: dave_school_admin_school1
+        resource: existing_staff_school1
+        actions:
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: student_school1_class1a
+        actions:
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: student_school2
+        actions:
+          write-password: EFFECT_DENY
+
+  - name: staff reads the same data as a teacher for staff in their own school, not other roles or another school, and can't reset passwords
+    input:
+      principals: [grace_staff_school1]
+      resources:
+        - existing_staff_school1
+        - existing_staff_school2
+        - existing_teacher_school1
+        - existing_school_admin_school1
+        - student_school1_class1a
+        - student_school2
+      actions: [read-first_name, read-last_name, read-disabled, read-email, read-birthday, write-password]
+    expected:
+      - principal: grace_staff_school1
+        resource: existing_staff_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-last_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      # Staff at another school, even though both are staff.
+      - principal: grace_staff_school1
+        resource: existing_staff_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-last_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: existing_teacher_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          read-last_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: existing_school_admin_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          read-last_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          read-last_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-last_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # Regression: the teacher rule's three checks - the actor teaches at S, the
+  # resource is a student at S, both share a class within S - must all bind the
+  # same S. Evaluated independently they bound different schools: eve's teacher
+  # role at school1 satisfied the first two checks (frank is a student at
+  # school1), while the class check was satisfied by class 9z at *school2*,
+  # where eve is only a student herself. She must share a class with frank at
+  # school1 to gain anything over him there.
+  - name: the teacher rule must not combine a teacher role at one school with a shared class at another
+    input:
+      principals: [eve_teacher_school1_student_school2]
+      resources: [frank_student_school1_and_school2]
+      actions: [read-first_name, read-birthday, write-password]
+    expected:
+      - principal: eve_teacher_school1_student_school2
+        resource: frank_student_school1_and_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # The counterpart to the above: denying mismatched-school combinations must
+  # not break a teacher who legitimately teaches at several schools.
+  - name: a teacher at several schools keeps capabilities over a student sharing a class at either
+    input:
+      principals: [heidi_teacher_school1_and_school2]
+      resources: [frank_student_school1_and_school2]
+      actions: [read-first_name, read-birthday, write-password]
+    expected:
+      - principal: heidi_teacher_school1_and_school2
+        resource: frank_student_school1_and_school2
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # The double-role exception, which needs no rule of its own: ida is
+  # teacher_and_staff, so the teacher rule covers the student in her class and
+  # the staff rule covers her staff colleague. A plain teacher would be denied
+  # the colleague, and plain staff would be denied the student.
+  - name: a teacher_and_staff user gets the union of both rules
+    input:
+      principals: [ida_teacher_and_staff_school1]
+      resources: [existing_staff_school1, student_school1_class1a, existing_teacher_school1]
+      actions: [read-first_name, read-birthday, write-password]
+    expected:
+      - principal: ida_teacher_and_staff_school1
+        resource: existing_staff_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: ida_teacher_and_staff_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      # A teacher colleague is neither a student in her class nor staff.
+      - principal: ida_teacher_and_staff_school1
+        resource: existing_teacher_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY

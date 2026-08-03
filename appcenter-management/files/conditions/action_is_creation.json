@@ -1,5 +1,0 @@
-{
-  "display_name": "Only if action is creation",
-  "documentation": "True if the old target is null or empty.",
-  "parameters": []
-}

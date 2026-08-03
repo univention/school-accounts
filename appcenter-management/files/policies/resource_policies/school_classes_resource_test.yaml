@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Cerbos policy tests for school_classes_resource.yaml, run via
+# `cerbos compile` (not shipped in the LDAP bundle - Cerbos ignores *_test.yaml as policies).
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/TestSuite.schema.json
+
+name: SchoolClassesResourceTests
+description: Locks in configure_guardian.py's "*-member-groups-as-filters" and "school_admin-groups-as-filters" capabilities for the "ucsschool:class" resource.
+
+principals:
+  bob_member_of_1a:
+    id: bob
+    roles: ["ucsschool:user"]
+    attr:
+      school_classes:
+        school1: ["1a"]
+
+  carol_member_of_1b:
+    id: carol
+    roles: ["ucsschool:user"]
+    attr:
+      school_classes:
+        school1: ["1b"]
+
+  dave_school_admin_school1:
+    id: dave
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: school_admin, context: school1}
+
+resources:
+  class_1a_school1:
+    id: "1a"
+    kind: "ucsschool:class"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        school: school1
+        cerbos_roles:
+          - {name: school_class, context: school1}
+
+  class_2a_school2:
+    id: "2a"
+    kind: "ucsschool:class"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        school: school2
+        cerbos_roles:
+          - {name: school_class, context: school2}
+
+tests:
+  - name: a member of the class can use it as a filter, a non-member cannot
+    input:
+      principals: [bob_member_of_1a, carol_member_of_1b]
+      resources: [class_1a_school1]
+      actions: [use-as-filter]
+    expected:
+      - principal: bob_member_of_1a
+        resource: class_1a_school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: carol_member_of_1b
+        resource: class_1a_school1
+        actions:
+          use-as-filter: EFFECT_DENY
+
+  - name: school_admin can use any class in their school as a filter, not another school's
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [class_1a_school1, class_2a_school2]
+      actions: [use-as-filter]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: class_1a_school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: class_2a_school2
+        actions:
+          use-as-filter: EFFECT_DENY

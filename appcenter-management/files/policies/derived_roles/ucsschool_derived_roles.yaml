@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Common dynamic roles used within UCS@school user-management's Cerbos
+# policies.
+#
+# yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
+
+apiVersion: "api.cerbos.dev/v1"
+description: |-
+  Common dynamic roles used within UCS@school
+derivedRoles:
+  name: ucsschool_derived_roles
+  definitions:
+    # True when the principal is the resource itself (e.g. own user record).
+    - name: self
+      parentRoles: ["ucsschool:user"]
+      condition:
+        match:
+          expr: R.id == P.id
+    # True when the principal has a "teacher" role in the resource's school.
+    - name: teacher
+      parentRoles: ["ucsschool:user"]
+      condition:
+        match:
+          expr: >-
+            P.attr.cerbos_roles.exists(
+              p_role,
+              R.attr.old.cerbos_roles.exists(
+                r_role,
+                p_role.context == r_role.context
+              ) &&
+              p_role.name == "teacher"
+            )
+    # True when the principal has a "staff" role in the resource's school.
+    - name: staff
+      parentRoles: ["ucsschool:user"]
+      condition:
+        match:
+          expr: >-
+            P.attr.cerbos_roles.exists(
+              p_role,
+              R.attr.old.cerbos_roles.exists(
+                r_role,
+                p_role.context == r_role.context
+              ) &&
+              p_role.name == "staff"
+            )
+    # True when the principal has a "school_admin" role in the resource's school.
+    - name: school_admin
+      parentRoles: [ "ucsschool:user" ]
+      condition:
+        match:
+          expr: >-
+            P.attr.cerbos_roles.exists(
+              p_role,
+              R.attr.old.cerbos_roles.exists(
+                r_role,
+                p_role.context == r_role.context
+              ) &&
+              p_role.name == "school_admin"
+            )
