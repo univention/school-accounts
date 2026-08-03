@@ -11,6 +11,7 @@ SPDX-PackageDownloadLocation = "https://www.univention.com/products/ucsschool/"
 path = [
     "/dev/tests/product-tests/basedpyright-baseline.json",
     "/dev/tests/product-tests/pyrightconfig.json",
+    "AGENTS.md",
     "appcenter-management/files/**.json",
     "appcenter-management/files/conditions/**.json",
     "basedpyright-baseline.json",
