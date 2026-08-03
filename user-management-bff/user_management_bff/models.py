@@ -29,6 +29,8 @@ class UserAttributes(BaseModel):
     school_classes: dict[str, list[str]]
     work_groups: dict[str, list[str]]
     roles: list[str]
+    legal_wards: list[str] = []
+    legal_guardians: list[str] = []
     password: str | None = None
     email: str | None = None
     birthday: datetime.date | None = None

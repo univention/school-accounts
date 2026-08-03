@@ -29,6 +29,8 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 school_classes=kelvin_user.school_classes or {},
                 work_groups=kelvin_user.workgroups or {},
                 roles=kelvin_user.ucsschool_roles,
+                legal_wards=kelvin_user.legal_wards,
+                legal_guardians=kelvin_user.legal_guardians,
                 email=kelvin_user.email,
                 birthday=kelvin_user.birthday,
                 expiration_date=kelvin_user.expiration_date,
