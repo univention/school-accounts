@@ -1,24 +1,21 @@
 {
   "dev": {
-    "school": [
-      "create-user"
-    ],
     "school_class": [
       "use-as-filter"
     ],
     "user": [
-      "create-user",
-      "delete-user",
-      "write-first_name",
-      "write-schools",
-      "write-roles",
-      "write-username",
-      "write-activated",
-      "write-school_classes",
-      "write-password",
       "read-last_name",
-      "write-email",
-      "write-expiration_date"
+      "read-first_name",
+      "read-disabled",
+      "read-activated",
+      "read-schools",
+      "read-school_classes",
+      "read-work_groups",
+      "read-roles",
+      "read-email",
+      "read-birthday",
+      "read-expiration_date",
+      "write-password"
     ],
     "work_group": [
       "use-as-filter"

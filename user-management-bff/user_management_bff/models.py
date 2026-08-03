@@ -99,8 +99,6 @@ class Target(BaseModel):
 
 
 class Permission(StrEnum):
-    create_user = "create-user"
-    delete_user = "delete-user"
     use_as_filter = "use-as-filter"  # Target can be used as a filter by actor when searching for users
     read_last_name = "read-last_name"
     read_first_name = "read-first_name"
@@ -113,15 +111,4 @@ class Permission(StrEnum):
     read_email = "read-email"
     read_birthday = "read-birthday"
     read_expiration_date = "read-expiration_date"
-    write_last_name = "write-last_name"
-    write_first_name = "write-first_name"
-    write_username = "write-username"
-    write_activated = "write-activated"
-    write_schools = "write-schools"
-    write_school_classes = "write-school_classes"
-    write_work_groups = "write-work_groups"
-    write_roles = "write-roles"
     write_password = "write-password"  # nosec B105
-    write_email = "write-email"
-    write_birthday = "write-birthday"
-    write_expiration_date = "write-expiration_date"

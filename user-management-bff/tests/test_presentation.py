@@ -20,14 +20,14 @@ from user_management_bff.models import (
     "name,permissions,expected",
     [
         ("username", set(), AttributeAccess.READ),  # username is implicitly readable
-        ("username", {Permission.write_username}, AttributeAccess.WRITE),
         ("first_name", set(), AttributeAccess.NONE),
         ("first_name", {Permission.read_first_name}, AttributeAccess.READ),
-        ("first_name", {Permission.write_first_name}, AttributeAccess.WRITE),
+        ("password", set(), AttributeAccess.NONE),
+        ("password", {Permission.write_password}, AttributeAccess.WRITE),
         (
             "first_name",
-            {Permission.read_first_name, Permission.write_first_name},
-            AttributeAccess.WRITE,  # write upgrades read
+            {Permission.read_first_name, Permission.write_password},
+            AttributeAccess.READ,  # an unrelated write permission doesn't upgrade a different field
         ),
         ("nonexistent", {Permission.read_first_name}, AttributeAccess.NONE),  # ValueError branches
     ],

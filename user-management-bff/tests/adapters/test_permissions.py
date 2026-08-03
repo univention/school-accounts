@@ -327,14 +327,16 @@ class TestGuardianPermissionsAdapter:
                 GetPermissionsResult(
                     actor_id="ACTOR_ID",
                     general_permissions=[
-                        ClientPermission(app_name="APP", namespace_name="NAMESPACE", name="create-user")
+                        ClientPermission(
+                            app_name="APP", namespace_name="NAMESPACE", name="read-first_name"
+                        )
                     ],
                     target_permissions=[
                         TargetPermission(
                             target_id="ID1",
                             permissions=[
                                 ClientPermission(
-                                    app_name="APP", namespace_name="NAMESPACE", name="create-user"
+                                    app_name="APP", namespace_name="NAMESPACE", name="read-first_name"
                                 )
                             ],
                         )
@@ -346,26 +348,32 @@ class TestGuardianPermissionsAdapter:
                 GetPermissionsResult(
                     actor_id="ACTOR_ID",
                     general_permissions=[
-                        ClientPermission(app_name="APP", namespace_name="NAMESPACE", name="create-user")
+                        ClientPermission(
+                            app_name="APP", namespace_name="NAMESPACE", name="read-first_name"
+                        )
                     ],
                     target_permissions=[
                         TargetPermission(
                             target_id="ID1",
                             permissions=[
                                 ClientPermission(
-                                    app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="create-user"
+                                    app_name=APP_NAME,
+                                    namespace_name=NAMESPACE_NAME,
+                                    name="read-first_name",
                                 )
                             ],
                         )
                     ],
                 ),
-                {"ID1": [Permission.create_user]},
+                {"ID1": [Permission.read_first_name]},
             ),
             (
                 GetPermissionsResult(
                     actor_id="ACTOR_ID",
                     general_permissions=[
-                        ClientPermission(app_name="APP", namespace_name="NAMESPACE", name="create-user")
+                        ClientPermission(
+                            app_name="APP", namespace_name="NAMESPACE", name="read-first_name"
+                        )
                     ],
                     target_permissions=[
                         TargetPermission(
@@ -438,7 +446,7 @@ class TestGuardianPermissionsAdapter:
                     target_id="TID",
                     permissions=[
                         ClientPermission(
-                            app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="create-user"
+                            app_name=APP_NAME, namespace_name=NAMESPACE_NAME, name="read-first_name"
                         )
                     ],
                 )
@@ -446,7 +454,7 @@ class TestGuardianPermissionsAdapter:
         )
         configured_adapter._client = client_mock
         result = await configured_adapter.get_permissions(user, [])
-        assert result == {"TID": [Permission.create_user]}
+        assert result == {"TID": [Permission.read_first_name]}
 
 
 class TestFilePermissionsAdapter:
@@ -470,8 +478,11 @@ class TestFilePermissionsAdapter:
         "data,expected",
         [
             ({}, []),
-            ({"ID": {"school": ["create-user"]}}, [Permission.create_user]),
-            ({"ID": {"school": ["create-user", "unknown-permission"]}}, [Permission.create_user]),
+            ({"ID": {"school": ["read-first_name"]}}, [Permission.read_first_name]),
+            (
+                {"ID": {"school": ["read-first_name", "unknown-permission"]}},
+                [Permission.read_first_name],
+            ),
         ],
     )
     @pytest.mark.asyncio

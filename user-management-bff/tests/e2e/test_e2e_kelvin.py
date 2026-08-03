@@ -64,10 +64,7 @@ async def test_create_user_not_allowed(access_token, base_url, get_kelvin_user, 
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to create this user."
     assert set(response.json()["missingPermissions"]) == {
-        "create-user",
-        "write-first_name",
         "write-schools",
-        "write-roles",
         "write-username",
         "write-activated",
         "write-school_classes",
@@ -96,10 +93,7 @@ async def test_create_user_not_allowed_wrong_school(access_token, base_url, get_
     assert response.status_code == 403, response.json()
     assert response.json()["detail"] == "You do not have the permission to create this user."
     assert set(response.json()["missingPermissions"]) == {
-        "create-user",
-        "write-first_name",
         "write-schools",
-        "write-roles",
         "write-username",
         "write-activated",
         "write-school_classes",
