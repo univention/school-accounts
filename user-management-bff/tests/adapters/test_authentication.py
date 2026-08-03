@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 from datetime import datetime, timedelta, timezone
+from typing import final
 
+import httpx
 import pytest
 from authlib.integrations.starlette_client import OAuthError
 
@@ -26,19 +28,19 @@ def _past() -> datetime:
     return datetime.now(timezone.utc) - timedelta(hours=1)
 
 
-def _record(**overrides) -> SessionRecord:
-    data = {
-        "actor_id": "mina.teacher",
-        "sub": "sub-1",
-        "kc_sid": "kc-1",
-        "expires_at": _future(),
-        "refresh_token": "rt",
-        "id_token": "idt",
-    }
-    data.update(overrides)
-    return SessionRecord(**data)
+def _record(**overrides: object) -> SessionRecord:
+    base = SessionRecord(
+        actor_id="mina.teacher",
+        sub="sub-1",
+        kc_sid="kc-1",
+        expires_at=_future(),
+        refresh_token="rt",
+        id_token="idt",
+    )
+    return base.model_copy(update=overrides)
 
 
+@final
 class FakeAsyncClient:
     """Minimal async-context httpx.AsyncClient stand-in for refresh tests."""
 
@@ -58,7 +60,7 @@ class FakeAsyncClient:
 
 
 def _patch_httpx(mocker, response):
-    mocker.patch.object(authentication.httpx, "AsyncClient", lambda *a, **k: FakeAsyncClient(response))
+    mocker.patch.object(httpx, "AsyncClient", lambda *a, **k: FakeAsyncClient(response))
 
 
 class TestCookieSessionAuthenticationAdapter:

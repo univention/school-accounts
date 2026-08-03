@@ -8,17 +8,16 @@ from user_management_bff.adapters.session_store import InMemorySessionStoreAdapt
 from user_management_bff.models import SessionRecord
 
 
-def _record(**overrides) -> SessionRecord:
-    data = {
-        "actor_id": "mina.teacher",
-        "sub": "sub-1",
-        "kc_sid": "kc-1",
-        "expires_at": datetime(2999, 1, 1, tzinfo=timezone.utc),
-        "refresh_token": "rt",
-        "id_token": "idt",
-    }
-    data.update(overrides)
-    return SessionRecord(**data)
+def _record(**overrides: object) -> SessionRecord:
+    base = SessionRecord(
+        actor_id="mina.teacher",
+        sub="sub-1",
+        kc_sid="kc-1",
+        expires_at=datetime(2999, 1, 1, tzinfo=timezone.utc),
+        refresh_token="rt",
+        id_token="idt",
+    )
+    return base.model_copy(update=overrides)
 
 
 class TestInMemorySessionStoreAdapter:

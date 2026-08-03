@@ -171,8 +171,8 @@ def test_list_columns_are_translated():
     ]
 
 
-def _user(**overrides) -> User:
-    attributes = dict(
+def _user(**overrides: object) -> User:
+    attributes = UserAttributes(
         last_name="Klein",
         first_name="Kim",
         username="kim",
@@ -182,8 +182,7 @@ def _user(**overrides) -> User:
         work_groups={"school1": ["w1a"]},
         roles=["teacher:school:school1"],
     )
-    attributes.update(overrides)
-    return User(id="u1", attributes=UserAttributes(**attributes))
+    return User(id="u1", attributes=attributes.model_copy(update=overrides))
 
 
 def _list_data(user: User, permissions: list[Permission]) -> presentation.UserListData:

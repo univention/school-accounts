@@ -9,9 +9,10 @@ identifier for permission checks plus the data required for logout and silent
 token refresh. Downstream calls (Kelvin/Guardian) use the service account and
 never the user's access token, so the access token is not retained.
 """
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Coroutine, Optional, Type, cast
+from typing import Any, Callable, Coroutine, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -22,6 +23,11 @@ from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 from user_management_bff.adapter_registry import ADAPTER_REGISTRY
 from user_management_bff.constants import FRONTEND_PREFIX
@@ -91,11 +97,11 @@ class CookieSessionAuthenticationAdapter(
 
     def __init__(self) -> None:
         super().__init__()
-        self._settings: Optional[CookieSessionAuthenticationAdapterSettings] = None
-        self._oauth: Optional[OAuth] = None
+        self._settings: CookieSessionAuthenticationAdapterSettings | None = None
+        self._oauth: OAuth | None = None
 
     @classmethod
-    def get_settings_cls(cls) -> Type[CookieSessionAuthenticationAdapterSettings]:
+    def get_settings_cls(cls) -> type[CookieSessionAuthenticationAdapterSettings]:
         return CookieSessionAuthenticationAdapterSettings
 
     @property
@@ -161,7 +167,7 @@ class CookieSessionAuthenticationAdapter(
             path="/",
         )
 
-    def _read_cookie(self, request: Request) -> Optional[str]:
+    def _read_cookie(self, request: Request) -> str | None:
         raw = request.cookies.get(self.settings.cookie_name)
         if not raw:
             return None
@@ -171,6 +177,7 @@ class CookieSessionAuthenticationAdapter(
             logger.warning("Rejected a session cookie with an invalid signature.")
             return None
 
+    @override
     async def login_redirect(self, request: Request, next_url: str = "") -> Response:
         request.session[_NEXT_SESSION_KEY] = self._safe_next(next_url)
         # authlib ships no types for authorize_redirect(); it returns a RedirectResponse.
@@ -178,6 +185,7 @@ class CookieSessionAuthenticationAdapter(
             Response, await self._get_client().authorize_redirect(request, self.settings.redirect_url)
         )
 
+    @override
     async def complete_login(self, request: Request) -> Response:
         try:
             # authlib ships no types for authorize_access_token(); it returns an
@@ -211,6 +219,7 @@ class CookieSessionAuthenticationAdapter(
         self._set_cookie(response, session_id)
         return response
 
+    @override
     async def logout(self, request: Request) -> Response:
         id_token = None
         session_id = self._read_cookie(request)
@@ -225,7 +234,7 @@ class CookieSessionAuthenticationAdapter(
         response.delete_cookie(self.settings.cookie_name, path="/")
         return response
 
-    async def _end_session_url(self, id_token: Optional[str]) -> str:
+    async def _end_session_url(self, id_token: str | None) -> str:
         metadata = await self._get_client().load_server_metadata()
         end_session_endpoint = metadata.get("end_session_endpoint")
         logout_redirect = self.settings.post_logout_redirect_url or FRONTEND_PREFIX

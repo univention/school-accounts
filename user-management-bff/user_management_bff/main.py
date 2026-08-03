@@ -36,7 +36,7 @@ from .routes import render, router
 
 
 @asynccontextmanager
-async def lifespan(fastapi_app: FastAPI):
+async def lifespan(_fastapi_app: FastAPI):
     try:
         await configure_logger()
         configure_registry(ADAPTER_REGISTRY)
@@ -144,7 +144,7 @@ async def object_not_found_exception_handler(request: Request, exc: ObjectNotFou
 
 
 @app.exception_handler(NotAuthenticatedError)
-async def not_authenticated_exception_handler(request: Request, exc: NotAuthenticatedError):
+async def not_authenticated_exception_handler(request: Request, _exc: NotAuthenticatedError):
     # Send the browser into the interactive login, preserving where it was going.
     login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(request.url.path)}"
     if request.headers.get("HX-Request") == "true":
@@ -154,7 +154,7 @@ async def not_authenticated_exception_handler(request: Request, exc: NotAuthenti
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+async def request_validation_exception_handler(request: Request, _exc: RequestValidationError):
     # Fallback for request validation failures (e.g. a missing query parameter).
     lang = get_lang(request)
     return _html_error(request, _("Invalid request.", lang=lang), 422)

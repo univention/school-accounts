@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine
 
 from fastapi import Request
 from starlette.responses import RedirectResponse, Response
@@ -29,7 +29,7 @@ class UsersPersistencePort(ABC):
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod
-    async def get_schools(self, name: Optional[str] = None) -> list[School]:  # pragma: no cover
+    async def get_schools(self, name: str | None = None) -> list[School]:  # pragma: no cover
         ...
 
 
@@ -73,7 +73,7 @@ class FastAPIAuthenticationPort(ABC):
         If no user can be authenticated, a ``NotAuthenticatedError`` is raised.
         """
 
-    async def login_redirect(self, request: Request, next_url: str = "") -> Response:
+    async def login_redirect(self, _request: Request, next_url: str = "") -> Response:
         """Start an interactive login, returning a redirect to the identity provider.
 
         The default implementation is a no-op redirect for adapters that do not
@@ -81,14 +81,14 @@ class FastAPIAuthenticationPort(ABC):
         """
         return RedirectResponse(next_url or FRONTEND_PREFIX, status_code=303)
 
-    async def complete_login(self, request: Request) -> Response:
+    async def complete_login(self, _request: Request) -> Response:
         """Finish an interactive login (provider callback) and establish a session.
 
         The default implementation simply redirects to the application shell.
         """
         return RedirectResponse(FRONTEND_PREFIX, status_code=303)
 
-    async def logout(self, request: Request) -> Response:
+    async def logout(self, _request: Request) -> Response:
         """End the current session and redirect away from the application.
 
         The default implementation simply redirects to the application shell.
@@ -109,7 +109,7 @@ class SessionStorePort(ABC):
         """Persist a new session and return its opaque session id."""
 
     @abstractmethod
-    async def get(self, session_id: str) -> Optional[SessionRecord]:  # pragma: no cover
+    async def get(self, session_id: str) -> SessionRecord | None:  # pragma: no cover
         """Return the session for ``session_id``, or ``None`` if unknown."""
 
     @abstractmethod

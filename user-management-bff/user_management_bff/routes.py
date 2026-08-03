@@ -72,7 +72,7 @@ async def current_actor(request: Request, auth: FastAPIAuthenticationPort = Depe
     return await auth.get_authenticated_id(request)
 
 
-def render(request: Request, name: str, **context) -> HTMLResponse:
+def render(request: Request, name: str, **context: object) -> HTMLResponse:
     """Render ``name`` with the request's language and translation helper bound.
 
     Templates can call ``{{ _("text") }}`` (translated into the request language)
@@ -110,7 +110,7 @@ async def logout(request: Request, auth: FastAPIAuthenticationPort = Depends(aut
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-def shell(request: Request, actor: str = Depends(current_actor)) -> Response:
+def shell(_request: Request, _actor: str = Depends(current_actor)) -> Response:
     """Land on the user list (requires an authenticated session)."""
     return RedirectResponse(f"{FRONTEND_PREFIX}/users", status_code=303)
 
