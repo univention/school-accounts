@@ -39,12 +39,3 @@ uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --user-realm master \
 clients modify ucsschool-user-management-ui \
 --append-redirect-urls "*" || exit 1
-
-uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
---username admin \
---password admin \
---url "$KEYCLOAK_URL" \
---realm ucs \
---user-realm master \
-clients add $PROJECT_DIR/appcenter-management/files/ucsschool-user-management_client_bff.json \
---create-secret || exit 1
