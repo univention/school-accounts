@@ -183,10 +183,12 @@ repos:
     - id: reuse-lint-file
 - repo: local
   hooks:
-    - id: cerbos-policy-check
-      name: cerbos-policy-check
-      entry: appcenter-management/scripts/check_cerbos_policies.sh
+    - id: cerbos-policy-check-docker
+      name: cerbos-policy-check (docker)
+      description: "Lints and tests Cerbos policies via `cerbos compile`, using the cerbos docker-compose service"
+      entry: dev/dev_run.sh task cerbos-compile
       language: script
+      stages: [manual]
       pass_filenames: false
       files: '^appcenter-management/files/policies/'
 - repo: https://github.com/compilerla/conventional-pre-commit

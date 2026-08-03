@@ -35,6 +35,24 @@ services:
     extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.54.0
+    container_name: ucsschool-user-management-cerbos
+    profiles:
+      - clean-profile
+      - cerbos-server
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    volumes:
+      - ../appcenter-management/files/policies:/policies:ro
+    command:
+      - "server"
+      - "--set=storage.driver=disk"
+      - "--set=storage.disk.directory=/policies"
+      # Watch for changes so editing a policy file takes effect live, without restarting the container.
+      - "--set=storage.disk.watchForChanges=true"
+      - "--set=telemetry.disabled=true"
   proxy:
     image: traefik:v2.11
     container_name: ucsschool-user-management-proxy

@@ -17,6 +17,8 @@ The following tasks are available:
 clean: Cleans up cached files and removes docker containers and local images.
 dev-server: Starts the dev server for the API.
 prod-server: Starts the production docker image
+cerbos-server: Starts a local Cerbos server for manually testing the policies. (currently not started with dev-server or prod-server as the adapter is not yet adjusted)
+cerbos-compile: Lints and tests the Cerbos policies via \`cerbos compile\`.
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
 pytest: Runs the pytests for the BFF.
@@ -32,7 +34,7 @@ run_task() {
     exit 1
   fi
   echo "Running task $TASK"
-  if [ "$TASK" = "clean" ]; then
+  if [[ "$TASK" = "clean" ]]; then
     rm -rf .cache docs/user-management-manual/_build
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
@@ -42,7 +44,7 @@ run_task() {
     --rmi local
     exit $?
   fi
-  if [ "$TASK" = "dev-server" ] || [ "$TASK" = "sphinx" ] || [ "$TASK" = "prod-server" ]; then
+  if [[ "$TASK" = "dev-server" ]] || [[ "$TASK" = "sphinx" ]] || [[ "$TASK" = "prod-server" ]] || [[ "$TASK" = "cerbos-server" ]]; then
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "$TASK" \
@@ -50,7 +52,17 @@ run_task() {
     --build
     exit $?
   fi
-  if [ "$TASK" = "reuse" ]; then
+  if [[ "$TASK" = "cerbos-compile" ]]; then
+    DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
+    -f dev/docker-compose.yaml \
+    --profile "cerbos-server" \
+    run \
+    --rm \
+    cerbos \
+    compile /policies
+    exit $?
+  fi
+  if [[ "$TASK" = "reuse" ]]; then
     run_command reuse annotate \
     --copyright="Univention GmbH" \
     --copyright-style=string-c \
@@ -64,7 +76,7 @@ run_task() {
     .
     exit $?
   fi
-  if [ "$TASK" = "pytest" ]; then
+  if [[ "$TASK" = "pytest" ]]; then
     run_command env --chdir=user-management-bff/ uv run \
     pytest \
     -vv \
@@ -74,7 +86,7 @@ run_task() {
     .
     exit $?
   fi
-  if [ "$TASK" = "pytest-e2e" ]; then
+  if [[ "$TASK" = "pytest-e2e" ]]; then
     run_command env --chdir=user-management-bff/ uv run \
     pytest \
     -vv \
@@ -114,14 +126,14 @@ COMMAND="$1"
 GITLAB_IP="$(getent -i ahostsv4 git.knut.univention.de | head -n 1 | cut -d ' ' -f 1)"
 DOCKER_USER="$(id -u):$(id -g)"
 
-if [ ! -f "dev/.env" ]; then
+if [[ ! -f "dev/.env" ]]; then
     cp dev/.env.example dev/.env
 fi
 
-if [ "$COMMAND" = "task" ]; then
+if [[ "$COMMAND" = "task" ]]; then
   run_task $@
 fi
-if [ "$COMMAND" = "--help" ]; then
+if [[ "$COMMAND" = "--help" ]]; then
   print_help
   exit 0
 else
