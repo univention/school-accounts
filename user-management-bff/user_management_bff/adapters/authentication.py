@@ -11,11 +11,11 @@ never the user's access token, so the access token is not retained.
 """
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, Optional, Type, cast
 from urllib.parse import urlencode
 
 import httpx
-from authlib.integrations.starlette_client import OAuth, OAuthError
+from authlib.integrations.starlette_client import OAuth, OAuthError, StarletteOAuth2App
 from itsdangerous import BadSignature, URLSafeSerializer
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
@@ -81,7 +81,9 @@ class CookieSessionAuthenticationAdapterSettings:
     )
 
 
-class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin[CookieSessionAuthenticationAdapterSettings]):
+class CookieSessionAuthenticationAdapter(
+    FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin[CookieSessionAuthenticationAdapterSettings]
+):
 
     class Config:
         alias: str = "cookie_session"
@@ -115,8 +117,14 @@ class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
         )
         self._oauth = oauth
 
-    def _get_client(self):
-        return self._oauth.create_client(_OIDC_CLIENT_NAME)
+    def _get_client(self) -> StarletteOAuth2App:
+        if self._oauth is None:
+            error_msg = "The OAuth client should never be accessed before the adapter was configured!"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        # authlib ships no types for create_client(); safe because configure() always
+        # registers _OIDC_CLIENT_NAME as an OAuth2 client before this is ever called.
+        return cast(StarletteOAuth2App, self._oauth.create_client(_OIDC_CLIENT_NAME))
 
     async def _session_store(self) -> SessionStorePort:
         return await ADAPTER_REGISTRY(SessionStorePort)
@@ -165,15 +173,20 @@ class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfigu
 
     async def login_redirect(self, request: Request, next_url: str = "") -> Response:
         request.session[_NEXT_SESSION_KEY] = self._safe_next(next_url)
-        return await self._get_client().authorize_redirect(request, self.settings.redirect_url)
+        # authlib ships no types for authorize_redirect(); it returns a RedirectResponse.
+        return cast(
+            Response, await self._get_client().authorize_redirect(request, self.settings.redirect_url)
+        )
 
     async def complete_login(self, request: Request) -> Response:
         try:
-            token = await self._get_client().authorize_access_token(request)
+            # authlib ships no types for authorize_access_token(); it returns an
+            # OAuth2Token, which is a plain dict subclass.
+            token = cast(dict[str, Any], await self._get_client().authorize_access_token(request))
         except OAuthError as exc:
             logger.error("OIDC callback failed: {}", str(exc))
             raise NotAuthenticatedError(_("Not authenticated"))
-        claims = token.get("userinfo") or {}
+        claims: dict[str, Any] = token.get("userinfo") or {}
         actor_id = claims.get(self.settings.identifier_claim)
         if not actor_id:
             error_msg = (
