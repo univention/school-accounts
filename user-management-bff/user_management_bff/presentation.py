@@ -9,6 +9,7 @@ representation port/adapter.
 """
 from collections.abc import Collection
 from dataclasses import dataclass, field
+from typing import Protocol, TypeVar
 
 from .lang import _
 from .models import (
@@ -19,6 +20,13 @@ from .models import (
     User,
     WorkGroup,
 )
+
+
+class _HasId(Protocol):
+    id: str
+
+
+_Identifiable = TypeVar("_Identifiable", bound=_HasId)
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +113,14 @@ def _attribute_access(name: str, permissions: set[Permission]) -> AttributeAcces
     return access
 
 
-def _find_by_id(items, item_id: str):
-    return next((item for item in items if item.id == item_id), None)
+def _find_by_id(items: Collection[_Identifiable], item_id: str) -> _Identifiable:
+    try:
+        return next(item for item in items if item.id == item_id)
+    except StopIteration:
+        # TODO univention/dev/education/user-management#214
+        #      Handle this situation properly (context dependent),
+        #      e.g. log an error and return user toast
+        raise KeyError(f"Item with id {item_id} not found")
 
 
 def _format_school(schools: list[School], school_id: str) -> str:

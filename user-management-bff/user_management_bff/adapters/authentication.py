@@ -81,11 +81,11 @@ class CookieSessionAuthenticationAdapterSettings:
     )
 
 
-class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin):
+class CookieSessionAuthenticationAdapter(FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin[CookieSessionAuthenticationAdapterSettings]):
 
     class Config:
-        alias = "cookie_session"
-        cached = True
+        alias: str = "cookie_session"
+        cached: bool = True
 
     def __init__(self) -> None:
         super().__init__()
@@ -296,8 +296,8 @@ class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
 class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
 
     class Config:
-        alias = "never_authenticated"
-        cached = True
+        alias: str = "never_authenticated"
+        cached: bool = True
 
     async def get_authentication_dependency(self) -> Callable:
         def _dep():

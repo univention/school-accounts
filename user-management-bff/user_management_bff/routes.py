@@ -11,6 +11,7 @@ or tear down that session.
 """
 
 from functools import partial
+from typing import cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -37,14 +38,22 @@ from .ports import (
     WorkGroupsPersistencePort,
 )
 
+
+def _static_url(path: str) -> str:
+    return f"{FRONTEND_PREFIX}/static/{path}"
+
+
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# `env.globals` is typed against Jinja's default globals (range, dict, cycler, ...),
+# so pyright rejects new keys unless we widen the type here.
+env_globals = cast("dict[str, object]", templates.env.globals)
 # Build static asset URLs relative to the UI prefix (StaticFiles is mounted at
 # ``{FRONTEND_PREFIX}/static`` in main.py).
-templates.env.globals["static"] = lambda path: f"{FRONTEND_PREFIX}/static/{path}"
+env_globals["static"] = _static_url
 # Expose the UI prefix so templates can build ``hx-*`` URLs to other routes.
-templates.env.globals["frontend_prefix"] = FRONTEND_PREFIX
+env_globals["frontend_prefix"] = FRONTEND_PREFIX
 # The all-groups sentinel is rendered as an option value, so templates need it too.
-templates.env.globals["all_groups_value"] = presentation.ALL_GROUPS
+env_globals["all_groups_value"] = presentation.ALL_GROUPS
 
 router = APIRouter(prefix=FRONTEND_PREFIX)
 

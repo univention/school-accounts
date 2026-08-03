@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-from typing import Iterable, Optional, Type
+from collections.abc import Iterable
 
 import lazy_object_proxy
 from port_loader import (
@@ -34,19 +34,20 @@ PORT_CLASSES = (
 
 
 class AdapterSelection(BaseSettings):
-    users_persistence: ImportString
-    schools_persistence: ImportString
-    school_classes_persistence: ImportString
-    work_groups_persistence: ImportString
-    authentication: ImportString
-    session_store: ImportString
-    permissions: ImportString
+    users_persistence: ImportString[type[UsersPersistencePort]]
+    schools_persistence: ImportString[type[SchoolsPersistencePort]]
+    school_classes_persistence: ImportString[type[SchoolClassesPersistencePort]]
+    work_groups_persistence: ImportString[type[WorkGroupsPersistencePort]]
+    authentication: ImportString[type[FastAPIAuthenticationPort]]
+    session_store: ImportString[type[SessionStorePort]]
+    permissions: ImportString[type[PermissionsPort]]
 
     model_config = SettingsConfigDict(env_prefix="USER_MANAGEMENT__ADAPTER__")
 
 
 def configure_registry(adapter_registry: AsyncAdapterRegistry):
-    adapter_selection = AdapterSelection()
+    # Fields are populated from env vars by pydantic-settings; pyright doesn't know that.
+    adapter_selection = AdapterSelection()  # pyright: ignore[reportCallIssue]
     adapter_registry.register_adapter(AsyncAdapterSettingsProvider, adapter_cls=EnvSettingsProvider)
     for port_cls, adapter_cls in [
         (UsersPersistencePort, adapter_selection.users_persistence),
@@ -62,13 +63,13 @@ def configure_registry(adapter_registry: AsyncAdapterRegistry):
 
 
 async def initialize_adapters(
-    adapter_registry: AsyncAdapterRegistry, port_classes: Iterable[Type] = PORT_CLASSES
+    adapter_registry: AsyncAdapterRegistry, port_classes: Iterable[type] = PORT_CLASSES
 ):
     for port_cls in port_classes:
         await adapter_registry(port_cls)
 
 
-def port_dep(port_cls: Type, adapter_cls: Optional[Type] = None):
+def port_dep(port_cls: type, adapter_cls: type | None = None):
     async def _wrapper():
         return await ADAPTER_REGISTRY(port_cls, adapter_cls)
 
