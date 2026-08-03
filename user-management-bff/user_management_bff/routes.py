@@ -11,7 +11,7 @@ or tear down that session.
 """
 
 from functools import partial
-from typing import cast
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -66,10 +66,20 @@ school_classes_persistence = port_dep(SchoolClassesPersistencePort)
 work_groups_persistence = port_dep(WorkGroupsPersistencePort)
 permissions = port_dep(PermissionsPort)
 
+AuthDep = Annotated[FastAPIAuthenticationPort, Depends(auth_port)]
+UsersAdapterDep = Annotated[UsersPersistencePort, Depends(users_persistence)]
+SchoolsAdapterDep = Annotated[SchoolsPersistencePort, Depends(schools_persistence)]
+SchoolClassesAdapterDep = Annotated[SchoolClassesPersistencePort, Depends(school_classes_persistence)]
+WorkGroupsAdapterDep = Annotated[WorkGroupsPersistencePort, Depends(work_groups_persistence)]
+PermissionsAdapterDep = Annotated[PermissionsPort, Depends(permissions)]
 
-async def current_actor(request: Request, auth: FastAPIAuthenticationPort = Depends(auth_port)) -> str:
+
+async def current_actor(request: Request, auth: AuthDep) -> str:
     """Resolve the authenticated actor id, or raise ``NotAuthenticatedError``."""
     return await auth.get_authenticated_id(request)
+
+
+ActorDep = Annotated[str, Depends(current_actor)]
 
 
 def render(request: Request, name: str, **context: object) -> HTMLResponse:
@@ -87,30 +97,28 @@ def render(request: Request, name: str, **context: object) -> HTMLResponse:
 @router.get(AUTH_LOGIN_PATH)
 async def login(
     request: Request,
+    auth: AuthDep,
     next: str = "",
-    auth: FastAPIAuthenticationPort = Depends(auth_port),
 ) -> Response:
     """Begin the interactive login: redirect to Keycloak (auth code + PKCE)."""
     return await auth.login_redirect(request, next)
 
 
 @router.get(AUTH_CALLBACK_PATH)
-async def auth_callback(
-    request: Request, auth: FastAPIAuthenticationPort = Depends(auth_port)
-) -> Response:
+async def auth_callback(request: Request, auth: AuthDep) -> Response:
     """Handle the Keycloak redirect: create the session and set the cookie."""
     return await auth.complete_login(request)
 
 
 @router.api_route(AUTH_LOGOUT_PATH, methods=["GET", "POST"])
-async def logout(request: Request, auth: FastAPIAuthenticationPort = Depends(auth_port)) -> Response:
+async def logout(request: Request, auth: AuthDep) -> Response:
     """End the local session and redirect into Keycloak's RP-initiated logout."""
     return await auth.logout(request)
 
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-def shell(_request: Request, _actor: str = Depends(current_actor)) -> Response:
+def shell(_request: Request, _actor: ActorDep) -> Response:
     """Land on the user list (requires an authenticated session)."""
     return RedirectResponse(f"{FRONTEND_PREFIX}/users", status_code=303)
 
@@ -118,14 +126,14 @@ def shell(_request: Request, _actor: str = Depends(current_actor)) -> Response:
 @router.get("/users", response_class=HTMLResponse)
 async def users_list(
     request: Request,
+    actor: ActorDep,
+    users_adapter: UsersAdapterDep,
+    schools_adapter: SchoolsAdapterDep,
+    school_classes_adapter: SchoolClassesAdapterDep,
+    work_groups_adapter: WorkGroupsAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
     school: str | None = None,
     group: str | None = None,
-    actor: str = Depends(current_actor),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
-    schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
-    school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
 ) -> HTMLResponse:
     """Render the list view.
 
@@ -233,11 +241,11 @@ async def _group_sections(
 async def users_filters(
     request: Request,
     school: str,
-    actor: str = Depends(current_actor),
-    school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
+    actor: ActorDep,
+    school_classes_adapter: SchoolClassesAdapterDep,
+    work_groups_adapter: WorkGroupsAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
+    users_adapter: UsersAdapterDep,
 ) -> HTMLResponse:
     """Return the combined class/work-group filter for the selected school (cascade).
 
@@ -273,10 +281,10 @@ async def users_filters(
 @router.get("/users/schools", response_class=HTMLResponse)
 async def users_school_options(
     request: Request,
+    actor: ActorDep,
+    users_adapter: UsersAdapterDep,
+    schools_adapter: SchoolsAdapterDep,
     q: str = "",
-    actor: str = Depends(current_actor),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
-    schools_adapter: SchoolsPersistencePort = Depends(schools_persistence),
 ) -> HTMLResponse:
     """Return the school list-select options filtered by the typed query (``u-search``)."""
     lang = get_lang(request)
@@ -291,13 +299,13 @@ async def users_school_options(
 @router.get("/users/groups", response_class=HTMLResponse)
 async def users_group_options(
     request: Request,
+    actor: ActorDep,
+    school_classes_adapter: SchoolClassesAdapterDep,
+    work_groups_adapter: WorkGroupsAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
+    users_adapter: UsersAdapterDep,
     school: str = "",
     q: str = "",
-    actor: str = Depends(current_actor),
-    school_classes_adapter: SchoolClassesPersistencePort = Depends(school_classes_persistence),
-    work_groups_adapter: WorkGroupsPersistencePort = Depends(work_groups_persistence),
-    permissions_adapter: PermissionsPort = Depends(permissions),
-    users_adapter: UsersPersistencePort = Depends(users_persistence),
 ) -> HTMLResponse:
     """Return the combined class/work-group items for a school, filtered by query."""
     lang = get_lang(request)
