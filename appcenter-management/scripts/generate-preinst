@@ -9,22 +9,34 @@
 ###############################################################################
 
 PREINST_TEMPLATE="templates/preinst.tmpl"
-CONFIGURE_GUARDIAN_SCRIPT="scripts/configure_guardian.py"
 FILES_DIR="files"
-CONDITIONS_DIR="$FILES_DIR/conditions"
+POLICIES_SOURCE_DIR="$FILES_DIR/policies"
 
 cp $PREINST_TEMPLATE preinst
 
-sed -i -e "/%CONFIGURE-GUARDIAN%/r $CONFIGURE_GUARDIAN_SCRIPT" -e "/%CONFIGURE-GUARDIAN%/d" preinst
 sed -i -e "/%UI_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_ui.json" -e "/%UI_CLIENT%/d" preinst
-sed -i -e "/%BFF_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_bff.json" -e "/%BFF_CLIENT%/d" preinst
-sed -i -e "/%ACTION_IS_CREATION_INFO%/r $CONDITIONS_DIR/action_is_creation.json" -e "/%ACTION_IS_CREATION_INFO%/d" preinst
-sed -i -e "/%ACTION_IS_CREATION_REGO%/r $CONDITIONS_DIR/action_is_creation.rego" -e "/%ACTION_IS_CREATION_REGO%/d" preinst
-sed -i -e "/%ACTOR_IS_IN_GROUP_INFO%/r $CONDITIONS_DIR/actor_is_in_group.json" -e "/%ACTOR_IS_IN_GROUP_INFO%/d" preinst
-sed -i -e "/%ACTOR_IS_IN_GROUP_REGO%/r $CONDITIONS_DIR/actor_is_in_group.rego" -e "/%ACTOR_IS_IN_GROUP_REGO%/d" preinst
-sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%/r $CONDITIONS_DIR/target_will_be_in_same_school_only.json" -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_INFO%/d" preinst
-sed -i -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/r $CONDITIONS_DIR/target_will_be_in_same_school_only.rego" -e "/%TARGET_WILL_BE_IN_SAME_SCHOOL_ONLY_REGO%/d" preinst
-sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.json" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_INFO%/d" preinst
-sed -i -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/r $CONDITIONS_DIR/target_will_have_allowed_roles_only.rego" -e "/%TARGET_WILL_HAVE_ALLOWED_ROLES_ONLY_REGO%/d" preinst
-sed -i -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_INFO%/r $CONDITIONS_DIR/target_shares_school_class_in_school_context.json" -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_INFO%/d" preinst
-sed -i -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_REGO%/r $CONDITIONS_DIR/target_shares_school_class_in_school_context.rego" -e "/%TARGET_SHARES_SCHOOL_CLASS_IN_SCHOOL_CONTEXT_REGO%/d" preinst
+
+# Generate one heredoc block per non-test policy YAML file (plain text, no
+# tar/base64 involved), so a new policy file ships automatically without
+# needing to be wired in here by name. Recurses to preserve the
+# resource_policies/derived_roles split under files/policies/.
+POLICIES_BLOCK="$(mktemp)"
+trap 'rm -f "$POLICIES_BLOCK"' EXIT
+while IFS= read -r policy_file; do
+    base_name="$(basename "$policy_file")"
+    case "$base_name" in
+        *_test.yaml) continue ;;
+    esac
+    rel_path="${policy_file#"$POLICIES_SOURCE_DIR"/}"
+    var_name="${base_name%.yaml}_yaml_path"
+    {
+        echo "mkdir -p \$POLICIES_DIR/$(dirname "$rel_path")"
+        echo "${var_name}=\$POLICIES_DIR/$rel_path"
+        echo "cat <<'%EOF' >\"\$${var_name}\""
+        cat "$policy_file"
+        echo "%EOF"
+        echo "chmod 644 \$${var_name}"
+        echo
+    } >> "$POLICIES_BLOCK"
+done < <(find "$POLICIES_SOURCE_DIR" -name '*.yaml' | sort)
+sed -i -e "/%POLICIES%/r $POLICIES_BLOCK" -e "/%POLICIES%/d" preinst

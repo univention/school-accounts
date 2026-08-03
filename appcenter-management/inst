@@ -9,16 +9,14 @@
 #
 
 # shellcheck disable=SC2034
-VERSION=2
-
-APP_ID="ucsschool-user-management"
-APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
-SCRIPTS_DIR="$APP_DIR/scripts"
-CONDITION_DIR="$SCRIPTS_DIR/conditions"
-CONF_DIR="$APP_DIR/conf"
+VERSION=3
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
+
+APP_DIR="/var/lib/univention-appcenter/apps/$APP"
+SCRIPTS_DIR="$APP_DIR/scripts"
+CONF_DIR="$APP_DIR/conf"
 
 joinscript_init
 
@@ -26,7 +24,7 @@ eval "$(ucr shell hostname domainname ldap/base appcenter/apps/ucsschool-user-ma
 
 univention-directory-manager portals/entry create "$@" --ignore_exists \
     --position "cn=entry,cn=portals,cn=univention,${ldap_base:?}" \
-    --set name=$APP_ID \
+    --set name=$APP \
     --append displayName='"en_US" "UCS@school User Management"' \
     --append displayName='"de_DE" "UCS@school Benutzerverwaltung"' \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
@@ -44,7 +42,7 @@ univention-directory-manager portals/category create "$@" --ignore_exists \
 
 univention-directory-manager portals/category modify "$@" \
     --dn "cn=ucsschool-ram,cn=category,cn=portals,cn=univention,${ldap_base:?}" \
-    --append entries="cn=$APP_ID,cn=entry,cn=portals,cn=univention,${ldap_base:?}" || die
+    --append entries="cn=$APP,cn=entry,cn=portals,cn=univention,${ldap_base:?}" || die
 
 univention-directory-manager portals/portal modify "$@" \
     --dn "cn=domain,cn=portal,cn=portals,cn=univention,$ldap_base" \
@@ -80,31 +78,24 @@ else
     echo "Keycloak OK"
 fi
 
-# Create temporary user for guardian administration.
-SYS_USER_PW=$(openssl rand -base64 24)
-SYS_USER_NAME="ucsschool-user-management-sys-user-$(date +%s)"
-udm users/user create "$@" \
-  --position "cn=users,$ldap_base" \
-  --set guardianRoles="guardian:builtin:super-admin" \
-  --set username="$SYS_USER_NAME" \
-  --set lastname="Sysuser" \
-  --set password="$SYS_USER_PW" || die
+# Register the Cerbos policy bundle in LDAP;
+# Runs on every join (not gated by JS_LAST_EXECUTED_VERSION) so policy updates ship on every app update too.
+# *_test.yaml files are already filtered in the preinst
+POLICIES_DIR="$SCRIPTS_DIR/policies"
+BUNDLE_TAR="$(mktemp --suffix=.tar)"
+tar -C "$POLICIES_DIR" -cf "$BUNDLE_TAR" . || die
 
-# shellcheck disable=SC2317
-cleanup_sys_user() {
-    udm users/user remove "$@" --dn "uid=$SYS_USER_NAME,cn=users,$ldap_base" || die
-}
-trap cleanup_sys_user SIGINT SIGTERM ERR EXIT
+# TODO(2026-08-04, jlai): pacakgeversion can not contain '/' -> check if joinscript version is enough
+. /usr/share/univention-lib/all.sh &&
+ucs_registerLDAPExtension "$@" \
+    --name ucsschool-user-management-policies \
+    --packagename "$APP" \
+    --packageversion "$VERSION" \
+    --data "$BUNDLE_TAR" \
+    --data_meta "{\"app\": \"$APP\", \"version\": \"$VERSION\"}" \
+    --data_type "guardian/policy-bundle" || die
 
-guardian_management_api_url="https://$(univention-ldapsearch "(univentionService=guardian-management-api)" cn | grep -Po '(?<=^cn: )[^,]*' | head -1).$domainname/guardian/management"
-echo "Configuring Guardian objects at $guardian_management_api_url"
-$SCRIPTS_DIR/configure_guardian.py \
-    "$guardian_management_api_url" \
-    "$SYS_USER_NAME" \
-    "$SYS_USER_PW" \
-    "$keycloak_url/realms/ucs/protocol/openid-connect/token" \
-    guardian-scripts \
-    $CONDITION_DIR || die
+rm -f "$BUNDLE_TAR"
 
 if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
 
@@ -112,7 +103,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
   machine_pw="$(cat /etc/machine.secret)"
 
   # This client is used by the frontend to communicate with the bff
-  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
+  univention-app shell "$APP" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
@@ -122,7 +113,7 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --ignore-exists \
       --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" || die
 
-  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
+  univention-app shell "$APP" /venv/bin/keycloak-provisioning \
       --username "$machine_username" \
       --password "$machine_pw" \
       --url "$keycloak_url" \
@@ -130,32 +121,6 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --user-realm master \
       clients modify ucsschool-user-management-ui \
       --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
-
-  # This client is used by the bff to communicate with the guardian
-  univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
-      --username "$machine_username" \
-      --password "$machine_pw" \
-      --url "$keycloak_url" \
-      --realm ucs \
-      --user-realm master \
-      clients add "$CONF_DIR/ucsschool-user-management_client_bff.json" \
-      --ignore-exists \
-      --create-secret \
-      --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/bff" || die
-
-  SECRET=$(univention-app shell "$APP_ID" /venv/bin/keycloak-provisioning \
-      --username "$machine_username" \
-      --password "$machine_pw" \
-      --url "$keycloak_url" \
-      --realm ucs \
-      --user-realm master \
-      clients get-secret ucsschool-user-management-bff) || die
-  echo "$SECRET" > "$CONF_DIR/client.secret"
-
-  guardian_authorization_api_url="https://$(univention-ldapsearch "$@" "(univentionService=guardian-authorization-api)" cn | grep -Po '(?<=^cn: )[^,]*' | head -1).$domainname/guardian/authorization"
-
-  univention-app configure $APP_ID --set ucsschool-user-management/guardian/client_secret="$SECRET" \
-                                         ucsschool-user-management/guardian/url="$guardian_authorization_api_url" || die
 
 fi
 

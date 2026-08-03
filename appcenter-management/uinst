@@ -18,6 +18,10 @@ joinscript_init
 
 eval "$(ucr shell ldap/base)"
 
+. /usr/share/univention-lib/all.sh
+
+ucs_unregisterLDAPExtension "$@" --data ucsschool-user-management-policies || die
+
 univention-directory-manager portals/category modify "$@" --ignore_not_exists \
     --dn "cn=domain-admin,cn=category,cn=portals,cn=univention,${ldap_base:?}" \
     --remove entries="cn=$APP_ID,cn=entry,cn=portals,cn=univention,$ldap_base" || die
