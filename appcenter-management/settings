@@ -17,14 +17,6 @@ Group = Authentication
 Scope = outside
 Show = Install,Settings
 
-[ucsschool-user-management/guardian/url]
-Type = String
-Description = Base URI of the Guardian server for authorization. If unset the joinscript will attempt to set this value automatically from service entries in UDM.
-Description[de] = URL des Guardian-Servers zur Autorisierung. Falls dieser Wert nicht gesetzt wird, versucht das Joinscript diesen Wert automatisch aus service Einträgen in UDM zu ermitteln.
-Group = Guardian
-Scope = outside
-Show = Install,Settings
-
 [ucsschool-user-management/logging/level]
 Type = List
 InitialValue = INFO

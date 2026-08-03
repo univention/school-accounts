@@ -56,11 +56,14 @@ print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_u
       GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
       GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL: @!@
 ucr = configRegistry
-api_url = ucr.get(
-    'ucsschool-user-management/guardian/url',
-    f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/guardian/authorization",
-)
+api_url = 'http://cerbos:3592'
 print(api_url, end='')@!@
       USER_MANAGEMENT__LOGGING__FORMAT: @%@ucsschool-user-management/logging/format@%@
       USER_MANAGEMENT__LOGGING__LEVEL: @%@ucsschool-user-management/logging/level@%@
       USER_MANAGEMENT__LOGGING__STRUCTURED: "@%@ucsschool-user-management/logging/structured@%@"
+    networks:
+      - guardian
+
+networks:
+  guardian:
+    external: true
