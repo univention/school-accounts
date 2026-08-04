@@ -6,11 +6,13 @@ These call ``business_logic.*`` directly using the real file-based adapters
 obtained from the configured ``ADAPTER_REGISTRY`` (the registry is configured by
 the app startup that the session-scoped ``test_client`` fixture triggers).
 """
-from types import SimpleNamespace
-from unittest.mock import patch
+from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
 
 from user_management_bff import business_logic, presentation
 from user_management_bff.adapter_registry import ADAPTER_REGISTRY
@@ -18,7 +20,7 @@ from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.business_logic import get_schools
 from user_management_bff.errors import NoSchoolUserError, ObjectNotFoundError
 from user_management_bff.lang import _
-from user_management_bff.models import Permission, UsersGetRequest
+from user_management_bff.models import Permission, Target, User, UsersGetRequest
 from user_management_bff.ports import (
     PermissionsPort,
     SchoolClassesPersistencePort,
@@ -31,9 +33,18 @@ from user_management_bff.ports import (
 ACTOR_ID = "dev"
 
 
-async def _get_ports() -> SimpleNamespace:
+@dataclass
+class Ports:
+    users: UsersPersistencePort
+    schools: SchoolsPersistencePort
+    school_classes: SchoolClassesPersistencePort
+    work_groups: WorkGroupsPersistencePort
+    permissions: PermissionsPort
+
+
+async def _get_ports() -> Ports:
     """Fetch the configured file-based adapters from the registry."""
-    return SimpleNamespace(
+    return Ports(
         users=await ADAPTER_REGISTRY(UsersPersistencePort),
         schools=await ADAPTER_REGISTRY(SchoolsPersistencePort),
         school_classes=await ADAPTER_REGISTRY(SchoolClassesPersistencePort),
@@ -43,7 +54,7 @@ async def _get_ports() -> SimpleNamespace:
 
 
 @pytest_asyncio.fixture
-async def ports(test_client):
+async def ports(test_client: TestClient) -> Ports:
     # `test_client` triggers app startup, which configures the registry.
     return await _get_ports()
 
@@ -52,7 +63,7 @@ async def ports(test_client):
 # Pure helpers / actor resolution
 # ---------------------------------------------------------------------------
 @pytest.fixture
-def users_get_not_found_mock(mocker):
+def users_get_not_found_mock(mocker: MockerFixture) -> AsyncMock:
     users_get_mock = mocker.AsyncMock()
     users_get_mock.get_user.side_effect = ObjectNotFoundError(identifier="USER")
     return users_get_mock
@@ -60,7 +71,9 @@ def users_get_not_found_mock(mocker):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("lang", ["en", "de"])
-async def test_get_schools_actor_not_found(mocker, users_get_not_found_mock, lang):
+async def test_get_schools_actor_not_found(
+    mocker: MockerFixture, users_get_not_found_mock: AsyncMock, lang: str
+):
     user = "USER"
     with pytest.raises(
         NoSchoolUserError,
@@ -73,7 +86,7 @@ async def test_get_schools_actor_not_found(mocker, users_get_not_found_mock, lan
 # ---------------------------------------------------------------------------
 # get_users
 # ---------------------------------------------------------------------------
-async def _get_users(ports, school, *, lang="en"):
+async def _get_users(ports: Ports, school: str, *, lang: str = "en"):
     return await business_logic.get_users(
         ports.users,
         ports.schools,
@@ -95,14 +108,14 @@ async def _get_users(ports, school, *, lang="en"):
         ("test_school2", {"test_user2", "test_user3"}),
     ],
 )
-async def test_get_users(ports, school, expected_ids):
+async def test_get_users(ports: Ports, school: str, expected_ids: set[str]):
     result = await _get_users(ports, school)
     assert {user.id for user in result.users} == expected_ids
 
 
 @pytest.mark.asyncio
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
-async def test_get_users_no_permissions(_permissions_mock, ports):
+async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Ports):
     # Users for whom the actor holds no permissions are omitted from the view.
     result = await _get_users(ports, "test_school1")
     assert presentation.build_user_list(result, "en").rows == []
@@ -112,7 +125,7 @@ async def test_get_users_no_permissions(_permissions_mock, ports):
 # get_schools / get_school_classes / get_work_groups
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_get_schools(ports):
+async def test_get_schools(ports: Ports):
     result = await business_logic.get_schools(ports.schools, ports.users, ACTOR_ID, "en")
     assert [school.id for school in result.schools] == [
         "school1",
@@ -126,7 +139,7 @@ async def test_get_schools(ports):
 
 
 @pytest.mark.asyncio
-async def test_get_school_classes(ports):
+async def test_get_school_classes(ports: Ports):
     result = await business_logic.get_school_classes(
         ports.school_classes,
         ports.permissions,
@@ -139,7 +152,7 @@ async def test_get_school_classes(ports):
 
 
 @pytest.mark.asyncio
-async def test_get_work_groups(ports):
+async def test_get_work_groups(ports: Ports):
     result = await business_logic.get_work_groups(
         ports.work_groups,
         ports.permissions,
@@ -164,13 +177,14 @@ def _permissions_by_id(mapping: dict[str, list[Permission]]):
     Any target not present in ``mapping`` resolves to an empty permission list.
     """
 
-    def _side_effect(actor, targets):
-        return {
-            (target.old_target or target.new_target).id: mapping.get(
-                (target.old_target or target.new_target).id, []
-            )
-            for target in targets
-        }
+    def _target_id(target: Target) -> str:
+        target_object = target.old_target or target.new_target
+        # Every target built by business_logic.*_to_target sets old_target (or both).
+        assert target_object is not None
+        return target_object.id
+
+    def _side_effect(actor: User, targets: list[Target]):
+        return {(target_id := _target_id(target)): mapping.get(target_id, []) for target in targets}
 
     return _side_effect
 
@@ -178,7 +192,7 @@ def _permissions_by_id(mapping: dict[str, list[Permission]]):
 # get_school_classes / get_work_groups filter out entries the actor
 # may not use as a filter (the False side of the use_as_filter check).
 @pytest.mark.asyncio
-async def test_get_school_classes_filters_by_use_as_filter(ports, mocker):
+async def test_get_school_classes_filters_by_use_as_filter(ports: Ports, mocker: MockerFixture):
     mocker.patch.object(
         FilePermissionsAdapter,
         "get_permissions",
@@ -197,7 +211,7 @@ async def test_get_school_classes_filters_by_use_as_filter(ports, mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_work_groups_filters_by_use_as_filter(ports, mocker):
+async def test_get_work_groups_filters_by_use_as_filter(ports: Ports, mocker: MockerFixture):
     mocker.patch.object(
         FilePermissionsAdapter,
         "get_permissions",
@@ -217,7 +231,7 @@ async def test_get_work_groups_filters_by_use_as_filter(ports, mocker):
 # get_users returns only the users the actor holds a permission for
 # (partial visibility, not the all-or-nothing cases above).
 @pytest.mark.asyncio
-async def test_get_users_partial_visibility(ports, mocker):
+async def test_get_users_partial_visibility(ports: Ports, mocker: MockerFixture):
     mocker.patch.object(
         FilePermissionsAdapter,
         "get_permissions",
