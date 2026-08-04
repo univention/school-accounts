@@ -73,7 +73,12 @@ class FastAPIAuthenticationPort(ABC):
         If no user can be authenticated, a ``NotAuthenticatedError`` is raised.
         """
 
-    async def login_redirect(self, _request: Request, next_url: str = "") -> Response:
+    # Async is required by the authentication port contract.
+    async def login_redirect(  # NOSONAR(S7503)
+        self,
+        _request: Request,
+        next_url: str = "",
+    ) -> Response:
         """Start an interactive login, returning a redirect to the identity provider.
 
         The default implementation is a no-op redirect for adapters that do not
@@ -81,14 +86,22 @@ class FastAPIAuthenticationPort(ABC):
         """
         return RedirectResponse(next_url or FRONTEND_PREFIX, status_code=303)
 
-    async def complete_login(self, _request: Request) -> Response:
+    # Async is required by the authentication port contract.
+    async def complete_login(  # NOSONAR(S7503)
+        self,
+        _request: Request,
+    ) -> Response:
         """Finish an interactive login (provider callback) and establish a session.
 
         The default implementation simply redirects to the application shell.
         """
         return RedirectResponse(FRONTEND_PREFIX, status_code=303)
 
-    async def logout(self, _request: Request) -> Response:
+    # Async is required by the authentication port contract.
+    async def logout(  # NOSONAR(S7503)
+        self,
+        _request: Request,
+    ) -> Response:
         """End the current session and redirect away from the application.
 
         The default implementation simply redirects to the application shell.
