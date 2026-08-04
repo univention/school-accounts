@@ -1,628 +1,351 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from typing import Any
+
 import pytest
 import requests
 
 
-@pytest.mark.e2e
-def test_guardian_conditions(access_token, guardian_management_url):
-    token = access_token("Administrator", "univention")
-    response = requests.get(
-        f"{guardian_management_url}/conditions/ucsschool-user-management",
-        headers={"Authorization": f"Bearer {token}"},
-    )
+def _check(guardian_management_url: str, payload: dict[str, Any]) -> dict[str, dict[str, str]]:
+    response = requests.post(f"{guardian_management_url}/api/check/resources", json=payload)
     assert response.status_code == 200
-    assert sorted(response.json()) == sorted(
-        {
-            "pagination": {"offset": 0, "limit": 3, "total_count": 3},
-            "conditions": [
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "conditions",
-                    "name": "action_is_creation",
-                    "display_name": "Only if action is creation",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/conditions/"
-                    "ucsschool-user-management/conditions/action_is_creation",
-                    "documentation": "True if the old target is null or empty.",
-                    "parameters": [],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "conditions",
-                    "name": "target_will_be_in_same_school_only",
-                    "display_name": "Only if target will be in the same school",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/conditions/"
-                    "ucsschool-user-management/conditions/target_will_be_in_same_school_only",
-                    "documentation": "True if the new target has only roles in the school of the "
-                    "actors' role.",
-                    "parameters": [],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "conditions",
-                    "name": "target_will_have_allowed_roles_only",
-                    "display_name": "Only if target will have only the allowed roles",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/conditions/"
-                    "ucsschool-user-management/conditions/target_will_have_allowed_roles_only",
-                    "documentation": "True if the new target has only roles that are specified "
-                    "in the roles "
-                    "parameter. Roles should be separated by ','",
-                    "parameters": [{"name": "roles", "value_type": "STRING"}],
-                },
-            ],
-        }
-    )
+    return {result["resource"]["id"]: result["actions"] for result in response.json()["results"]}
 
 
 @pytest.mark.e2e
-def test_guardian_permissions(access_token, guardian_management_url):
-    token = access_token("Administrator", "univention")
-    response = requests.get(
-        f"{guardian_management_url}/permissions/ucsschool-user-management",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    assert sorted(response.json()) == sorted(
+def test_self_reads_own_data_not_someone_elses(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
         {
-            "pagination": {"offset": 0, "limit": 15, "total_count": 15},
-            "permissions": [
+            "requestId": "self-read",
+            "principal": {
+                "id": "alice",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "student", "context": "school1"}],
+                    "school_classes": {},
+                },
+            },
+            "resources": [
                 {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "create-user",
-                    "display_name": "Create User Action",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/create-user",
+                    "resource": {
+                        "id": "alice",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "student", "context": "school1"}],
+                                "school_classes": {},
+                            },
+                        },
+                    },
+                    "actions": ["read-first_name", "read-disabled"],
                 },
                 {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-activation-state",
-                    "display_name": "Read Activation State",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-activation-state",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-data-for-all-schools",
-                    "display_name": "Read Data for All Schools",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-data-for-all-schools",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-firstname",
-                    "display_name": "Read First Name",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-firstname",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-lastname",
-                    "display_name": "Read Last Name",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-lastname",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-role",
-                    "display_name": "Read Role",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-role",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "read-schools",
-                    "display_name": "Read Schools",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/read-schools",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-activation-state",
-                    "display_name": "Write Activation State",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-activation-state",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-data-for-all-schools",
-                    "display_name": "Write Data for All Schools",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-data-for-all-schools",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-firstname",
-                    "display_name": "Write First Name",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-firstname",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-lastname",
-                    "display_name": "Write Last Name",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-lastname",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-password",
-                    "display_name": "Write Password",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-password",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-role",
-                    "display_name": "Write Role",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-role",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-schools",
-                    "display_name": "Write Schools",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-schools",
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "write-username",
-                    "display_name": "Write Username",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/permissions/"
-                    "ucsschool-user-management/user-management/write-username",
+                    "resource": {
+                        "id": "someone_else",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "student", "context": "school2"}],
+                                "school_classes": {},
+                            },
+                        },
+                    },
+                    "actions": ["read-first_name"],
                 },
             ],
-        }
+        },
     )
+    assert actions["alice"] == {"read-first_name": "EFFECT_ALLOW", "read-disabled": "EFFECT_ALLOW"}
+    assert actions["someone_else"] == {"read-first_name": "EFFECT_DENY"}
 
 
 @pytest.mark.e2e
-def test_guardian_capabilities(access_token, guardian_management_url):
-    token = access_token("Administrator", "univention")
-    response = requests.get(
-        f"{guardian_management_url}/capabilities/ucsschool-user-management/user-management",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    assert sorted(response.json()) == sorted(
+def test_teacher_reads_and_resets_student_in_same_class_not_another_class(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
         {
-            "pagination": {"offset": 0, "limit": 7, "total_count": 7},
-            "capabilities": [
+            "requestId": "teacher-class-scope",
+            "principal": {
+                "id": "bob",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "teacher", "context": "school1"}],
+                    "school_classes": {"school1": ["1a"]},
+                },
+            },
+            "resources": [
                 {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "create-users-in-same-school",
-                    "display_name": "Create Users within same school",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/create-users-in-same-school",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "school-admin",
+                    "resource": {
+                        "id": "student1",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "student", "context": "school1"}],
+                                "school_classes": {"school1": ["1a"]},
+                            },
+                        },
                     },
-                    "conditions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "conditions",
-                            "name": "target_will_have_allowed_roles_only",
-                            "parameters": [
-                                {
-                                    "name": "roles",
-                                    "value": "ucsschool-user-management:user-management:student,"
-                                    "ucsschool-user-management:user-management:teacher",
-                                    "value_type": "STRING",
-                                }
-                            ],
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "conditions",
-                            "name": "target_will_be_in_same_school_only",
-                            "parameters": [],
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "conditions",
-                            "name": "action_is_creation",
-                            "parameters": [],
-                        },
-                    ],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "create-user",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-password",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-username",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-lastname",
-                        },
-                    ],
+                    "actions": ["read-first_name", "write-password"],
                 },
                 {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "school-admin-read-self",
-                    "display_name": "school-admin can read their own fields",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/school-admin-read-self",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "school-admin",
+                    "resource": {
+                        "id": "student2",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "student", "context": "school1"}],
+                                "school_classes": {"school1": ["1b"]},
+                            },
+                        },
                     },
-                    "conditions": [
-                        {
-                            "app_name": "guardian",
-                            "namespace_name": "builtin",
-                            "name": "target_is_self",
-                            "parameters": [],
-                        }
-                    ],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                    ],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "staff-read-self",
-                    "display_name": "staff can read their own fields",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/staff-read-self",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "staff",
-                    },
-                    "conditions": [
-                        {
-                            "app_name": "guardian",
-                            "namespace_name": "builtin",
-                            "name": "target_is_self",
-                            "parameters": [],
-                        }
-                    ],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                    ],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "student-read-self",
-                    "display_name": "student can read their own fields",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/student-read-self",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "student",
-                    },
-                    "conditions": [
-                        {
-                            "app_name": "guardian",
-                            "namespace_name": "builtin",
-                            "name": "target_is_self",
-                            "parameters": [],
-                        }
-                    ],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                    ],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "super-admin_ucsschool-user-management",
-                    "display_name": "super-admin has all permissions in "
-                    "ucsschool-user-management:user-management",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/super-admin_ucsschool-user-management",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "super-admin",
-                    },
-                    "conditions": [],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "create-user",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-lastname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-activation-state",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-password",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-username",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-data-for-all-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "write-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-data-for-all-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                    ],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "teacher-create-user",
-                    "display_name": "Teacher can create users",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/teacher-create-user",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "teacher",
-                    },
-                    "conditions": [],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "create-user",
-                        }
-                    ],
-                },
-                {
-                    "app_name": "ucsschool-user-management",
-                    "namespace_name": "user-management",
-                    "name": "teacher-read-self",
-                    "display_name": "teacher can read their own fields",
-                    "resource_url": "https://primary.ucsschool.test/guardian/management/capabilities/"
-                    "ucsschool-user-management/user-management/teacher-read-self",
-                    "role": {
-                        "app_name": "ucsschool-user-management",
-                        "namespace_name": "user-management",
-                        "name": "teacher",
-                    },
-                    "conditions": [
-                        {
-                            "app_name": "guardian",
-                            "namespace_name": "builtin",
-                            "name": "target_is_self",
-                            "parameters": [],
-                        }
-                    ],
-                    "relation": "AND",
-                    "permissions": [
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-lastname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-firstname",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-schools",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-role",
-                        },
-                        {
-                            "app_name": "ucsschool-user-management",
-                            "namespace_name": "user-management",
-                            "name": "read-activation-state",
-                        },
-                    ],
+                    "actions": ["read-first_name", "write-password"],
                 },
             ],
-        }
+        },
     )
+    assert actions["student1"] == {"read-first_name": "EFFECT_ALLOW", "write-password": "EFFECT_ALLOW"}
+    assert actions["student2"] == {"read-first_name": "EFFECT_DENY", "write-password": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_school_admin_resets_passwords_in_school_except_another_school_admin(
+    guardian_management_url: str,
+):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "school-admin-reset",
+            "principal": {
+                "id": "dave",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "school_admin", "context": "school1"}],
+                    "school_classes": {},
+                },
+            },
+            "resources": [
+                {
+                    "resource": {
+                        "id": "teacher1",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "teacher", "context": "school1"}],
+                                "school_classes": {},
+                            },
+                        },
+                    },
+                    "actions": ["write-password"],
+                },
+                {
+                    "resource": {
+                        "id": "admin2",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "school_admin", "context": "school1"}],
+                                "school_classes": {},
+                            },
+                        },
+                    },
+                    "actions": ["write-password"],
+                },
+            ],
+        },
+    )
+    assert actions["teacher1"] == {"write-password": "EFFECT_ALLOW"}
+    assert actions["admin2"] == {"write-password": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_staff_reads_staff_data_but_cannot_reset_password(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "staff-parity",
+            "principal": {
+                "id": "grace",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "staff", "context": "school1"}],
+                    "school_classes": {},
+                },
+            },
+            "resources": [
+                {
+                    "resource": {
+                        "id": "staff1",
+                        "kind": "ucsschool:user",
+                        "attr": {
+                            "app_name": "ucsschool-user-management",
+                            "old": {
+                                "cerbos_roles": [{"name": "staff", "context": "school1"}],
+                                "school_classes": {},
+                            },
+                        },
+                    },
+                    "actions": ["read-birthday", "write-password"],
+                },
+            ],
+        },
+    )
+    assert actions["staff1"] == {"read-birthday": "EFFECT_ALLOW", "write-password": "EFFECT_DENY"}
+
+
+def _group_resource(kind: str, role: str, group_id: str, school: str) -> dict[str, Any]:
+    """A class or work group target, shaped the way the BFF sends it.
+
+    ``_target_object_to_guardian_object`` synthesises a role for every non-user
+    target - ``school_class:school:<school>`` / ``workgroup:school:<school>`` -
+    so these targets carry cerbos_roles alongside the school attribute. Leaving
+    the roles out here would make the school_admin rules look broken.
+    """
+    return {
+        "resource": {
+            "id": group_id,
+            "kind": kind,
+            "attr": {
+                "app_name": "ucsschool-user-management",
+                "old": {"school": school, "cerbos_roles": [{"name": role, "context": school}]},
+            },
+        },
+        "actions": ["use-as-filter"],
+    }
+
+
+def _school_resource(school_id: str) -> dict[str, Any]:
+    """A school target. Its synthesised role is ``school:school:<id>``."""
+    return {
+        "resource": {
+            "id": school_id,
+            "kind": "ucsschool:school",
+            "attr": {
+                "app_name": "ucsschool-user-management",
+                "old": {"cerbos_roles": [{"name": "school", "context": school_id}]},
+            },
+        },
+        "actions": ["use-as-filter"],
+    }
+
+
+@pytest.mark.e2e
+def test_school_class_filter_scoped_to_own_class(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "class-filter-member",
+            "principal": {
+                "id": "bob",
+                "roles": ["ucsschool:user"],
+                "attr": {"cerbos_roles": [], "school_classes": {"school1": ["1a"]}},
+            },
+            "resources": [
+                _group_resource("ucsschool:class", "school_class", "1a", "school1"),
+                _group_resource("ucsschool:class", "school_class", "1b", "school1"),
+            ],
+        },
+    )
+    assert actions["1a"] == {"use-as-filter": "EFFECT_ALLOW"}
+    assert actions["1b"] == {"use-as-filter": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_school_class_filter_for_school_admin_covers_the_whole_school(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "class-filter-school-admin",
+            "principal": {
+                "id": "dave",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "school_admin", "context": "school1"}],
+                    "school_classes": {},
+                },
+            },
+            "resources": [
+                _group_resource("ucsschool:class", "school_class", "1a", "school1"),
+                _group_resource("ucsschool:class", "school_class", "2a", "school2"),
+            ],
+        },
+    )
+    # A school_admin is a member of no class, so this only passes via the
+    # school_admin rule.
+    assert actions["1a"] == {"use-as-filter": "EFFECT_ALLOW"}
+    assert actions["2a"] == {"use-as-filter": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_work_group_filter_scoped_to_own_group(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "work-group-filter-member",
+            "principal": {
+                "id": "bob",
+                "roles": ["ucsschool:user"],
+                "attr": {"cerbos_roles": [], "work_groups": {"school1": ["chess-club"]}},
+            },
+            "resources": [
+                _group_resource("ucsschool:workgroup", "workgroup", "chess-club", "school1"),
+                _group_resource("ucsschool:workgroup", "workgroup", "art-club", "school1"),
+            ],
+        },
+    )
+    assert actions["chess-club"] == {"use-as-filter": "EFFECT_ALLOW"}
+    assert actions["art-club"] == {"use-as-filter": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_work_group_filter_for_school_admin_covers_the_whole_school(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "work-group-filter-school-admin",
+            "principal": {
+                "id": "dave",
+                "roles": ["ucsschool:user"],
+                "attr": {
+                    "cerbos_roles": [{"name": "school_admin", "context": "school1"}],
+                    "work_groups": {},
+                },
+            },
+            "resources": [
+                _group_resource("ucsschool:workgroup", "workgroup", "chess-club", "school1"),
+                _group_resource("ucsschool:workgroup", "workgroup", "robotics-club", "school2"),
+            ],
+        },
+    )
+    assert actions["chess-club"] == {"use-as-filter": "EFFECT_ALLOW"}
+    assert actions["robotics-club"] == {"use-as-filter": "EFFECT_DENY"}
+
+
+@pytest.mark.e2e
+def test_school_filter_scoped_to_enrolled_schools(guardian_management_url: str):
+    actions = _check(
+        guardian_management_url,
+        {
+            "requestId": "school-filter",
+            "principal": {
+                "id": "bob",
+                "roles": ["ucsschool:user"],
+                # The school filter reads attr.schools, which _user_to_actor
+                # always sends because it dumps all of UserAttributes.
+                "attr": {
+                    "cerbos_roles": [{"name": "student", "context": "school1"}],
+                    "schools": ["school1"],
+                },
+            },
+            "resources": [_school_resource("school1"), _school_resource("school2")],
+        },
+    )
+    assert actions["school1"] == {"use-as-filter": "EFFECT_ALLOW"}
+    assert actions["school2"] == {"use-as-filter": "EFFECT_DENY"}

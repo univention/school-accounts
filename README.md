@@ -181,6 +181,24 @@ you need to install gettext:
 sudo apt-get install -y gettext
 ```
 
+#### Start Cerbos server for development
+
+Currently as there is no adapter implemented the cerbos server can be started with
+
+```shell
+dev/dev_run.sh task cerbos-server
+```
+
+This might be integrated into the `dev-server` task if the adapter is rewritten.
+If you want to check if a CEL expression is interpreted correctly you can run
+
+```shell
+docker exec -it ucsschool-user-management-ccerbos /cerbos repl
+```
+
+This will open a cerbos terminal in which you can type in the expressions, if you have the necessary data beforehand,
+like `[1,2,3].exists(i, v, i==1 && v==2)`.
+
 #### Start live server for the manual
 
 ```shell
@@ -244,10 +262,12 @@ This way you have access to the setup after the job is done.
 You can run the e2e tests for the backend with:
 > The integration test pipeline currently only creates a primary.
 > `E2E_GUARDIAN_MANAGEMENT_URL="https://primary.ucsschool.test/guardian/management"`
+> The cerbos guardian currently can only be reached via localhost
+> `E2E_GUARDIAN_MANAGEMENT_URL="http://cerbos:3592"`
 
 ```shell
 E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
-E2E_GUARDIAN_MANAGEMENT_URL="https://primary.ucsschool.test/guardian/management" \
+E2E_GUARDIAN_MANAGEMENT_URL="http://cerbos:3592" \
 E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
 ```
