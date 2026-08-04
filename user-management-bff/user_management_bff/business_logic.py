@@ -79,8 +79,8 @@ async def get_users(
         request_data.school, request_data.school_classes, request_data.work_groups
     )
     schools = await schools_get_adapter.get_schools()
-    school_classes = defaultdict(list)
-    work_groups = defaultdict(list)
+    school_classes: defaultdict[str, list[SchoolClass]] = defaultdict(list)
+    work_groups: defaultdict[str, list[WorkGroup]] = defaultdict(list)
     for school in schools:
         school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
         work_groups[school.id].extend(await work_groups_get_adapter.get_work_groups(school.id))
