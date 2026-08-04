@@ -92,6 +92,7 @@ stages:
 build_dev_image:
   stage: prepare
   needs: []
+  tags: ["dae-m"]
   extends: .kaniko
   variables:
     KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/dev"
@@ -112,6 +113,7 @@ build_appcenter_files:
 compile-policies:
   stage: test
   needs: []
+  tags: ["dae-m"]
   image: debian:stable-slim
   variables:
     CERBOS_TARBALL: "cerbos_${CERBOS_VERSION}_Linux_x86_64.tar.gz"
@@ -158,6 +160,7 @@ policy-version-bump:
 bff-test:
   stage: test
   needs: [build_dev_image]
+  tags: ["dae-m"]
   image: $DEV_IMAGE_TAG
   variables:
     BFF_COVERAGE_LIMIT: "100"
@@ -194,6 +197,7 @@ integration-tests:
   stage: integration_test
   extends: .run_openstack_cfg
   timeout: 2h
+  tags: ["dae-m"]
   needs:
     - job: repo_tar
     - job: create_app_version
@@ -224,6 +228,7 @@ integration-tests:
 
 build_docker_image_user_management:
   stage: prepare
+  tags: ["dae-m"]
   rules:
     - if: "$CI_COMMIT_TAG"
       variables:
