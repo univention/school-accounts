@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM gitregistry.knut.univention.de/univention/dev/tooling/ci-components/uv:62d1e485c3a3825c72293d18158f6281fa5421572d23266668e8a720a7ecfa85
+FROM gitregistry.knut.univention.de/univention/dev/tooling/ci-components/uv@sha256:62d1e485c3a3825c72293d18158f6281fa5421572d23266668e8a720a7ecfa85
 
 ENV PYTHONUNBUFFERED=1
 ENV PIPX_HOME="/opt/pipx"
