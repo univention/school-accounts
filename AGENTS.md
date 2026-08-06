@@ -15,10 +15,12 @@ Top-level areas:
 - [user-management-bff/](user-management-bff/) — the application: FastAPI + Jinja2 + htmx. Nearly
   all day-to-day work happens here.
 - [appcenter-management/](appcenter-management/) — UCS App Center install/config scripts, Docker
-  Compose templates, and Guardian/OPA authorization policies (`.rego` files under
-  `appcenter-management/files/conditions/`). Independent from the BFF's own permission adapters
-  (§ Architecture) — only touch this when changing how the app is *installed* or how Guardian
-  conditions are evaluated for this app, not for UI/business-logic changes.
+  Compose templates, and Cerbos authorization policies (`.yaml` resource/derived-role policies under
+  `appcenter-management/files/policies/`, registered in LDAP on join as a Guardian policy bundle for
+  a Cerbos-hosting listener to pick up — see `appcenter-management/inst`/`templates/preinst.tmpl`).
+  Independent from the BFF's own permission adapter (§ Architecture) — only touch this when changing
+  how the app is *installed* or how Cerbos policies are evaluated for this app, not for
+  UI/business-logic changes.
 - [docs/ucsschool-user-management-module/](docs/ucsschool-user-management-module/) — the published
   Sphinx user manual (installation, configuration, troubleshooting, changelog). User-facing, built
   in CI (`docs-*` jobs); not developer documentation.
@@ -94,6 +96,12 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   users/schools/classes/work-groups, Guardian for permissions, Keycloak for auth) or, in dev/test, a
   flat JSON file (`File*Adapter`) that is fully re-read and rewritten on every mutation — fine for
   single-developer use, not a model to extend for concurrency.
+- **Permissions migration in progress**: the app-center side now ships Cerbos policies and registers
+  them in LDAP (§ Repository Structure above), but `GuardianPermissionsAdapter`
+  (`adapters/permissions.py`) still speaks the Guardian client protocol — in dev/prod it's simply
+  pointed at the Cerbos service's port as a stand-in (`compose.jinja`'s `GUARDIAN_URL` default). The
+  adapter itself has not been rewritten against Cerbos's own API yet; don't assume permission checks
+  are Cerbos-native until that adapter changes.
 - Which adapter backs each port is selected only via `USER_MANAGEMENT__ADAPTER__*` env vars
   (`dev/.env.example` documents all of them); never gate adapter choice on anything else.
 
@@ -214,6 +222,10 @@ beyond having `docker` (>= 25) installed.
     [README.md](README.md#running-e2e-tests-for-the-backend)). Not runnable standalone locally.
   - `translate` — verifies and (re)compiles gettext translations; must be run at least once locally
     since `.mo` files are git-ignored (see § Documentation and Changelog Requirements).
+  - `cerbos-server` — starts a local Cerbos server for manually testing policies from
+    `appcenter-management/files/policies/`; not wired into `dev-server`/`prod-server` yet since the
+    BFF's permission adapter isn't Cerbos-native (see § Architecture and Dependency Boundaries).
+  - `cerbos-compile` — lints/tests the Cerbos policies (`cerbos compile`); also in pre-commit as a manual stage.
   - `reuse` — generates SPDX license headers/`.license` sidecar files.
   - `sphinx` — live server for the manual at `http://localhost/docs/manual/`.
   - `prod-server` — starts the production Docker image (built image, not the live-reload dev server).
@@ -318,7 +330,7 @@ no access token is stored) rather than restating what the code does.
 | New adapter or port method | The relevant `tests/adapters/test_*.py` + `test_adapter_registry.py` if wiring changed |
 | New translatable string | `dev/dev_run.sh task translate` (fails loudly on untranslated/fuzzy strings) before running tests |
 | Any backend code change | Full `dev/dev_run.sh task pytest`, since CI enforces 100% coverage on non-omitted files |
-| App Center / OPA policy change (`appcenter-management/`) | `opa-fmt`/`opa-check`/`opa-test` (via pre-commit) — these run local `_test.rego` files per condition |
+| App Center / Cerbos policy change (`appcenter-management/files/policies/`) | `dev/dev_run.sh task cerbos-compile` (also wired into pre-commit as manual stage `cerbos-policy-check-docker`) — lints/tests via `cerbos compile`, using each policy's `*_test.yaml` |
 
 ## Generated and Sensitive Files
 
