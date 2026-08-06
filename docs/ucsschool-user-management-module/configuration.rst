@@ -24,7 +24,7 @@ User visibility
 ===============
 
 User visibility in the list view can only be changed implicitly:
-The user of the |UASUMM| can see other users in the list view for which the Guardian
+The user of the |UASUMM| can see other users in the list view for which Cerbos
 has granted at least one permission.
 
 App Settings
@@ -54,11 +54,3 @@ Authentication
    If unset, the application tries to derive the URL from the UCR variable
    :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`
    or falls back to the domain name of the UCS system where you installed the application.
-
-Guardian
---------
-
-.. envvar:: ucsschool-user-management/guardian/url
-
-   Defines the URL of the Guardian Authorization API. It usually has the form of ``https://fqdn/guardian/authorization/``
-   If unset, the application tries to derive the URL from the domain name of the UCS system where you installed the application.

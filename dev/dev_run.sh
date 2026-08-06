@@ -17,7 +17,7 @@ The following tasks are available:
 clean: Cleans up cached files and removes docker containers and local images.
 dev-server: Starts the dev server for the API.
 prod-server: Starts the production docker image
-cerbos-server: Starts a local Cerbos server for manually testing the policies. (currently not started with dev-server or prod-server as the adapter is not yet adjusted)
+cerbos-server: Starts a local Cerbos server for manually testing the policies or running CerbosPermissionsAdapter against a real PDP. (not wired into dev-server or prod-server yet, so start it separately)
 cerbos-compile: Lints and tests the Cerbos policies via \`cerbos compile\`.
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.

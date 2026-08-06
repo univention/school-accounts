@@ -3,6 +3,7 @@
     {
       "reportAny": "hint",
       "reportExplicitAny": "hint",
+      "reportPrivateUsage": "hint",
       "reportUnknownLambdaType": "hint",
       "reportUnusedParameter": "hint",
       "root": "tests"

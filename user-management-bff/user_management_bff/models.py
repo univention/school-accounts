@@ -86,6 +86,17 @@ class TargetObjectType(StrEnum):
     SCHOOL_CLASS = auto()
     WORK_GROUP = auto()
 
+    @property
+    def sensitive_attributes(self) -> frozenset[str]:
+        return _SENSITIVE_ATTRIBUTES_BY_TYPE.get(self, frozenset())
+
+
+# Attribute names that must never be forwarded to a third-party PDP (e.g. Cerbos) as
+# authorization data, keyed by the TargetObjectType they can appear on.
+_SENSITIVE_ATTRIBUTES_BY_TYPE: dict[TargetObjectType, frozenset[str]] = {
+    TargetObjectType.USER: frozenset({"password"}),
+}
+
 
 TargetObjectAttributeValue: TypeAlias = (
     str | bool | int | list[str] | dict[str, list[str]] | datetime.date | None

@@ -10,7 +10,6 @@ FRONTEND_PREFIX = os.environ.get(
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 APP_NAME = "ucsschool-user-management"
-NAMESPACE_NAME = "user-management"
 
 # UI auth routes (relative to FRONTEND_PREFIX). The callback path must match the
 # redirect URI registered for the public `-ui` Keycloak client.

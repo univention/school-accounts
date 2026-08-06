@@ -20,7 +20,7 @@ services:
       USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "user_management_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
       USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE: "user_management_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:GuardianPermissionsAdapter"
+      USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:CerbosPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /run/secrets/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /run/secrets/machine.secret
       KELVIN_PERSISTENCE_ADAPTER__URL: @!@
@@ -50,14 +50,11 @@ well_known_url = f"{keycloak_url}/realms/ucs/.well-known/openid-configuration"
 app_base_url = f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/univention/ucsschool/user-management/ui"
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: {app_base_url}/auth/callback")
-print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}")
-print(f"      GUARDIAN_PERMISSIONS_ADAPTER__OAUTH2_WELL_KNOWN_URL: {well_known_url}", end='')@!@
-      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_ID: "ucsschool-user-management-bff"
-      GUARDIAN_PERMISSIONS_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
-      GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL: @!@
-ucr = configRegistry
-api_url = 'http://cerbos:3592'
-print(api_url, end='')@!@
+print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}", end='')@!@
+      CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'
+      # The on-prem Cerbos sidecar runs over a plain Docker network with no TLS today, so disable
+      # the gRPC TLS handshake.
+      CERBOS_PERMISSIONS_ADAPTER__TLS_VERIFY: "false"
       USER_MANAGEMENT__LOGGING__FORMAT: @%@ucsschool-user-management/logging/format@%@
       USER_MANAGEMENT__LOGGING__LEVEL: @%@ucsschool-user-management/logging/level@%@
       USER_MANAGEMENT__LOGGING__STRUCTURED: "@%@ucsschool-user-management/logging/structured@%@"

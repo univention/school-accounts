@@ -30,7 +30,11 @@ dependencies = [
     "python-keycloak>=3.9.0",
     "pyjwt>=2.8.0",
     "cryptography>=42.0.4",
-    "guardian-authz-client>=0.1.0",
+    "cerbos>=0.15.1",
+    # Transitive deps of cerbos regardless of client choice, but the adapter now imports these
+    # directly (grpc.aio.AioRpcError, google.protobuf.struct_pb2) rather than only through cerbos.
+    "grpcio>=1.83.0",
+    "protobuf>=7.35.1",
     "w3lib>=2.1.2",
     "authlib>=1.3.0",
     "itsdangerous>=2.1.0",
@@ -59,16 +63,10 @@ default-groups = "all"
 
 [tool.uv.sources]
 port-loader = { index = "port-loader" }
-guardian-authz-client = { index = "guardian-authz-client" }
 
 [[tool.uv.index]]
 name = "port-loader"
 url = "https://git.knut.univention.de/api/v4/projects/908/packages/pypi/simple"
-explicit = true
-
-[[tool.uv.index]]
-name = "guardian-authz-client"
-url = "https://git.knut.univention.de/api/v4/projects/1062/packages/pypi/simple"
 explicit = true
 
 [tool.uv.build-backend]

@@ -69,6 +69,23 @@ async def initialize_adapters(
         await adapter_registry(port_cls)
 
 
+async def shutdown_adapters(
+    adapter_registry: AsyncAdapterRegistry, port_classes: Iterable[type] = PORT_CLASSES
+):
+    """Close every already-initialized adapter that defines an optional `close()`.
+
+    port_loader has no teardown hook symmetric to `configure()` (see
+    univention/dev/libraries/port-loader#4), so this re-requests each cached adapter instance
+    and calls `close()` on it if present, rather than every adapter needing a no-op override.
+    """
+    for port_cls in port_classes:
+        adapter = await adapter_registry(port_cls)  # pyright: ignore[reportUnknownVariableType]
+        close = getattr(adapter, "close", None)  # pyright: ignore[reportUnknownArgumentType]
+        if close is not None:
+            # TODO try catch invoking close() to log errors, but not fail shutdown.
+            await close()
+
+
 def port_dep(port_cls: type, adapter_cls: type | None = None):
     async def _wrapper():
         return await ADAPTER_REGISTRY(port_cls, adapter_cls)

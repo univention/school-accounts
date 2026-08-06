@@ -260,14 +260,10 @@ If you want to manually run the tests, make sure to start the job with the `TERM
 This way you have access to the setup after the job is done.
 
 You can run the e2e tests for the backend with:
-> The integration test pipeline currently only creates a primary.
-> `E2E_GUARDIAN_MANAGEMENT_URL="https://primary.ucsschool.test/guardian/management"`
-> The cerbos guardian currently can only be reached via localhost
-> `E2E_GUARDIAN_MANAGEMENT_URL="http://cerbos:3592"`
 
 ```shell
 E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
-E2E_GUARDIAN_MANAGEMENT_URL="http://cerbos:3592" \
+E2E_GUARDIAN_MANAGEMENT_URL="cerbos:3593" \
 E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
 ```

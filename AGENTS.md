@@ -93,15 +93,19 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   `adapter_registry.py` — never branch on environment/deployment inside `business_logic.py` or
   `routes.py` itself.
 - **No database anywhere.** "Persistence" is either an external service (Kelvin REST API for
-  users/schools/classes/work-groups, Guardian for permissions, Keycloak for auth) or, in dev/test, a
+  users/schools/classes/work-groups, Cerbos for permissions, Keycloak for auth) or, in dev/test, a
   flat JSON file (`File*Adapter`) that is fully re-read and rewritten on every mutation — fine for
   single-developer use, not a model to extend for concurrency.
-- **Permissions migration in progress**: the app-center side now ships Cerbos policies and registers
-  them in LDAP (§ Repository Structure above), but `GuardianPermissionsAdapter`
-  (`adapters/permissions.py`) still speaks the Guardian client protocol — in dev/prod it's simply
-  pointed at the Cerbos service's port as a stand-in (`compose.jinja`'s `GUARDIAN_URL` default). The
-  adapter itself has not been rewritten against Cerbos's own API yet; don't assume permission checks
-  are Cerbos-native until that adapter changes.
+- **Permissions are Cerbos-native**: `CerbosPermissionsAdapter` (`adapters/permissions.py`) talks
+  directly to Cerbos's own gRPC API (`cerbos.sdk.grpc.client.AsyncCerbosClient`), mapping domain
+  `User`/`Target` objects to Cerbos `Principal`/`Resource` (Protobuf messages, built via
+  `google.protobuf.struct_pb2.Struct` for attribute maps) per the policies in
+  `appcenter-management/files/policies/` — the resource-kind/role strings in that YAML are
+  authoritative. The old `GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL` env var (and the
+  `ucsschool-user-management/guardian/url` UCR variable that used to back it) are gone; `compose.jinja`
+  now hardcodes `CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'`, a bare `host:port` gRPC
+  target rather than a URL, with no UCR variable/App Center setting behind it and no OAuth2 step
+  anymore.
 - Which adapter backs each port is selected only via `USER_MANAGEMENT__ADAPTER__*` env vars
   (`dev/.env.example` documents all of them); never gate adapter choice on anything else.
 
@@ -223,8 +227,9 @@ beyond having `docker` (>= 25) installed.
   - `translate` — verifies and (re)compiles gettext translations; must be run at least once locally
     since `.mo` files are git-ignored (see § Documentation and Changelog Requirements).
   - `cerbos-server` — starts a local Cerbos server for manually testing policies from
-    `appcenter-management/files/policies/`; not wired into `dev-server`/`prod-server` yet since the
-    BFF's permission adapter isn't Cerbos-native (see § Architecture and Dependency Boundaries).
+    `appcenter-management/files/policies/`, or for running `CerbosPermissionsAdapter` against a real
+    PDP (e.g. `tests/e2e/test_cerbos_permissions_adapter.py`); not wired into `dev-server`/
+    `prod-server` yet, so start it separately when exercising permission checks locally.
   - `cerbos-compile` — lints/tests the Cerbos policies (`cerbos compile`); also in pre-commit as a manual stage.
   - `reuse` — generates SPDX license headers/`.license` sidecar files.
   - `sphinx` — live server for the manual at `http://localhost/docs/manual/`.
@@ -251,6 +256,8 @@ docker compose so no local Python/Node install is required.
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
 | Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-bff-container-baseline --all-files` |
 | Start the dev server | `dev/dev_run.sh task dev-server` |
+| Start a local Cerbos server (manual policy/adapter testing) | `dev/dev_run.sh task cerbos-server` |
+| Lint/test the Cerbos policies (`cerbos compile`) | `dev/dev_run.sh task cerbos-compile` |
 | Regenerate/verify translations | `dev/dev_run.sh task translate` |
 | Generate license headers | `dev/dev_run.sh task reuse` |
 | Serve the Sphinx manual locally | `dev/dev_run.sh task sphinx` |
