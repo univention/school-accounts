@@ -84,17 +84,21 @@ async def get_users(
     for school in schools:
         school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
         work_groups[school.id].extend(await work_groups_get_adapter.get_work_groups(school.id))
+
+    def make_target(user: User) -> Target:
+        target_object = TargetObject(
+            id=user.id,
+            type=TargetObjectType.USER,
+            attributes=user.attributes.model_dump(),
+        )
+        return Target(
+            old_target=target_object,
+            new_target=target_object,
+        )
+
     permissions = await permissions_port.get_permissions(
         actor,
-        [
-            Target(old_target=target_object, new_target=target_object)
-            for user in users
-            if (
-                target_object := TargetObject(
-                    id=user.id, type=TargetObjectType.USER, attributes=user.attributes.model_dump()
-                )
-            )
-        ],
+        [make_target(user) for user in users],
     )
     return UserListData(
         users=users,
