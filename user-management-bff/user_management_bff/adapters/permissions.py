@@ -3,7 +3,7 @@
 import datetime
 import json
 from dataclasses import dataclass, field
-from typing import Any, Optional, Type
+from typing import TypeVar
 
 from guardian_authz_client.client import GuardianAuthzClient
 from guardian_authz_client.errors import GuardianAuthzClientError
@@ -23,9 +23,18 @@ from typing_extensions import override
 
 from ..constants import APP_NAME, NAMESPACE_NAME
 from ..errors import PermissionsError
-from ..models import Permission, Target, TargetObject, TargetObjectType, User
+from ..models import (
+    Permission,
+    Target,
+    TargetObject,
+    TargetObjectAttributeValue,
+    TargetObjectType,
+    User,
+)
 from ..ports import PermissionsPort
 from ..utils import get_oauth2_settings
+
+_SanitizableAttr = TypeVar("_SanitizableAttr")
 
 
 @dataclass
@@ -73,26 +82,27 @@ class GuardianPermissionsAdapter(
         self._client = None
 
     @staticmethod
-    def _sanitize_attr(attr: Any) -> Any:
+    def _sanitize_attr(attr: _SanitizableAttr) -> _SanitizableAttr | str:
         if isinstance(attr, datetime.datetime) or isinstance(attr, datetime.date):
             return str(attr)
         return attr
 
     @staticmethod
     def _user_to_actor(user: User) -> Actor:
+        attribute_values: dict[str, TargetObjectAttributeValue] = user.attributes.model_dump()
         return Actor(
             id=user.id,
             roles=ucsschool_roles_to_guardian_roles(user.attributes.roles),
             attributes={
                 key: GuardianPermissionsAdapter._sanitize_attr(value)
-                for key, value in user.attributes.model_dump().items()
+                for key, value in attribute_values.items()
             },
         )
 
     @staticmethod
     def _target_object_to_guardian_object(
-        target_object: Optional[TargetObject],
-    ) -> Optional[GuardianObject]:
+        target_object: TargetObject | None,
+    ) -> GuardianObject | None:
         if target_object is None:
             return None
         role_strings: list[str] = []
@@ -103,15 +113,17 @@ class GuardianPermissionsAdapter(
         elif target_object.type == TargetObjectType.WORK_GROUP:
             role_strings = [f"workgroup:school:{target_object.attributes['school']}"]
         elif target_object.type == TargetObjectType.USER:
-            role_strings = target_object.attributes.get("roles", [])
+            roles = target_object.attributes.get("roles", [])
+            role_strings = roles if isinstance(roles, list) else []
 
+        attributes: dict[str, TargetObjectAttributeValue] = {
+            key: GuardianPermissionsAdapter._sanitize_attr(value)
+            for key, value in target_object.attributes.items()
+        }
         return GuardianObject(
             id=target_object.id,
             roles=ucsschool_roles_to_guardian_roles(role_strings),
-            attributes={
-                key: GuardianPermissionsAdapter._sanitize_attr(value)
-                for key, value in target_object.attributes.items()
-            },
+            attributes=attributes,
         )
 
     @staticmethod
@@ -150,7 +162,7 @@ class GuardianPermissionsAdapter(
 
     @classmethod
     @override
-    def get_settings_cls(cls) -> Type[GuardianPermissionsAdapterSettings]:
+    def get_settings_cls(cls) -> type[GuardianPermissionsAdapterSettings]:
         return GuardianPermissionsAdapterSettings
 
     @override
@@ -199,7 +211,7 @@ class FilePermissionsAdapter(
 
     @classmethod
     @override
-    def get_settings_cls(cls) -> Type[FilePermissionsAdapterSettings]:
+    def get_settings_cls(cls) -> type[FilePermissionsAdapterSettings]:
         return FilePermissionsAdapterSettings
 
     @override

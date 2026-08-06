@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import datetime
 from enum import StrEnum, auto
-from typing import Any
+from typing import TypeAlias
 
 from pydantic import BaseModel
 
@@ -87,10 +87,15 @@ class TargetObjectType(StrEnum):
     WORK_GROUP = auto()
 
 
+TargetObjectAttributeValue: TypeAlias = (
+    str | bool | int | list[str] | dict[str, list[str]] | datetime.date | None
+)
+
+
 class TargetObject(BaseModel):
     id: str
     type: TargetObjectType
-    attributes: dict[str, Any]
+    attributes: dict[str, TargetObjectAttributeValue]
 
 
 class Target(BaseModel):
