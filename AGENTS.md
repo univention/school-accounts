@@ -291,6 +291,24 @@ optional:
   `from user_management_bff.lang import _`) so they flow into the translation catalog — see next
   section for the follow-up step this requires.
 
+**Type-only imports go under `if TYPE_CHECKING:`** — not gated by a specific tool, but treat as
+required, since getting it wrong is a real runtime bug rather than a lint nit. An import used
+exclusively inside type annotations — never instantiated/called, never a base class, never in an
+`isinstance`/`except` clause, and never the right-hand side of a module-level
+`X: TypeAlias = ...` assignment — belongs in the `if TYPE_CHECKING:` block, not as a top-level
+import. Whether that requires quoting the annotation depends on the file:
+
+- Without `from __future__ import annotations` at the top, annotations are evaluated eagerly at
+  `def`/class time, so any annotation referencing a `TYPE_CHECKING`-only name must be a quoted
+  string, e.g. `-> "SomeType"` (see `adapters/permissions.py`'s `_attrs_to_struct_fields`, whose
+  return type references `MessageMap` this way).
+- With `from __future__ import annotations` present (as in most `tests/` files), all annotations
+  are deferred/stringified automatically — no quoting needed.
+- Don't move a name that's genuinely evaluated at runtime — e.g. the RHS of a module-level
+  `TypeAlias`, a decorator, a base class, an `except`/`isinstance` target, or anything actually
+  constructed/called in a method body. That raises `NameError` at import time once `TYPE_CHECKING`
+  is `False`, not just a type-checker complaint.
+
 Non-mandatory but consistently observed in current code: dataclasses (not classes) for view
 models/data bundles in `presentation.py`; ports/adapters named `<Noun>Port` / `<Adapter><Noun>Adapter`;
 docstrings explaining *why* a design choice was made (e.g. `authentication.py` module docstring on why
@@ -390,6 +408,9 @@ no access token is stored) rather than restating what the code does.
   just a manually-run local suite.
 - Editing `appcenter-management/preinst` directly — it's generated; edit
   `appcenter-management/templates/preinst.tmpl` and run `./scripts/generate-preinst`.
+- Moving an import into `if TYPE_CHECKING:` and leaving its annotation unquoted in a file without
+  `from __future__ import annotations` — this raises `NameError` at import time (not just a
+  type-checker warning), since the annotation is evaluated eagerly. See § Coding Conventions.
 
 ## Definition of Done
 
