@@ -139,6 +139,14 @@ class TestCookieSessionAuthenticationAdapter:
         ):
             _ = adapter.settings
 
+    def test_get_client_without_configure(self):
+        adapter = CookieSessionAuthenticationAdapter()
+        with pytest.raises(
+            RuntimeError,
+            match="The OAuth client should never be accessed before the adapter was configured!",
+        ):
+            adapter._get_client()
+
     @pytest.mark.asyncio
     async def test_configure_registers_oidc_client(
         self, settings: CookieSessionAuthenticationAdapterSettings

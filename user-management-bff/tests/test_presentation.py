@@ -36,6 +36,11 @@ def test_attribute_access(name: str, permissions: set[Permission], expected: Att
     assert presentation._attribute_access(name, permissions) is expected
 
 
+def test_find_by_id_missing_raises_keyerror():
+    with pytest.raises(KeyError, match="Item with id missing not found"):
+        presentation._find_by_id([School(id="a", display_name="Alpha")], "missing")
+
+
 def test_build_school_options_sorts_by_display_name():
     data = presentation.SchoolsData(
         schools=[School(id="b", display_name="Beta"), School(id="a", display_name="Alpha")]

@@ -14,7 +14,7 @@ import sys
 from user_management_bff.models import SessionRecord
 from user_management_bff.ports import SessionStorePort
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 12):  # pragma: no cover
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override

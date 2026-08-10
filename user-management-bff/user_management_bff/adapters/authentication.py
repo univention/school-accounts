@@ -26,7 +26,7 @@ from port_loader.models import SETTINGS_NAME_METADATA
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 12):  # pragma: no cover
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
