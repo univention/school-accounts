@@ -80,7 +80,7 @@ async def test_get_schools_actor_not_found(
         NoSchoolUserError,
         match=_(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
     ) as exc_info:
-        await get_schools(mocker.AsyncMock(), users_get_not_found_mock, "USER", lang)
+        await get_schools(mocker.AsyncMock(), mocker.AsyncMock(), users_get_not_found_mock, "USER", lang)
     assert exc_info.value.identifier == "USER"
 
 
@@ -127,7 +127,9 @@ async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Por
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_get_schools(ports: Ports):
-    result = await business_logic.get_schools(ports.schools, ports.users, ACTOR_ID, "en")
+    result = await business_logic.get_schools(
+        ports.schools, ports.permissions, ports.users, ACTOR_ID, "en"
+    )
     assert [school.id for school in result.schools] == [
         "school1",
         "school2",
@@ -190,8 +192,22 @@ def _permissions_by_id(mapping: dict[str, list[Permission]]):
     return _side_effect
 
 
-# get_school_classes / get_work_groups filter out entries the actor
+# get_schools / get_school_classes / get_work_groups filter out entries the actor
 # may not use as a filter (the False side of the use_as_filter check).
+@pytest.mark.asyncio
+async def test_get_schools_filters_by_use_as_filter(ports: Ports, mocker: MockerFixture):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"school1": [Permission.use_as_filter]}),
+    )
+    result = await business_logic.get_schools(
+        ports.schools, ports.permissions, ports.users, ACTOR_ID, "en"
+    )
+    # Every other school is dropped because the actor lacks use_as_filter on it.
+    assert [school.id for school in result.schools] == ["school1"]
+
+
 @pytest.mark.asyncio
 async def test_get_school_classes_filters_by_use_as_filter(ports: Ports, mocker: MockerFixture):
     mocker.patch.object(

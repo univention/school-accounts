@@ -147,7 +147,9 @@ async def users_list(
     ``kind:id`` value, because both datasets share one single-select control.
     """
     lang = get_lang(request)
-    schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
+    schools = await business_logic.get_schools(
+        schools_adapter, permissions_adapter, users_adapter, actor, lang
+    )
     school_options = presentation.build_school_options(schools, selected=school or "")
 
     if school is None:
@@ -284,11 +286,14 @@ async def users_school_options(
     actor: ActorDep,
     users_adapter: UsersAdapterDep,
     schools_adapter: SchoolsAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
     q: str = "",
 ) -> HTMLResponse:
     """Return the school list-select options filtered by the typed query (``u-search``)."""
     lang = get_lang(request)
-    schools = await business_logic.get_schools(schools_adapter, users_adapter, actor, lang)
+    schools = await business_logic.get_schools(
+        schools_adapter, permissions_adapter, users_adapter, actor, lang
+    )
     return render(
         request,
         "fragments/school_options.html",

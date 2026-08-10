@@ -8,6 +8,7 @@ from .errors import NoSchoolUserError, ObjectNotFoundError
 from .lang import _
 from .models import (
     Permission,
+    School,
     SchoolClass,
     Target,
     TargetObject,
@@ -63,6 +64,15 @@ def work_group_to_target(work_group: WorkGroup) -> Target:
     )
 
 
+def school_to_target(school: School) -> Target:
+    return Target(
+        old_target=TargetObject(
+            id=school.id, type=TargetObjectType.SCHOOL, attributes=school.model_dump()
+        ),
+        new_target=None,
+    )
+
+
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
@@ -111,15 +121,22 @@ async def get_users(
 
 async def get_schools(
     schools_get_adapter: SchoolsPersistencePort,
+    permissions_port: PermissionsPort,
     users_get_adapter: UsersPersistencePort,
     actor_id: str,
     lang: str,
 ) -> SchoolsData:
     logger.debug("Retrieving all schools.", actor_id=actor_id)
-    # Resolves the actor purely to reject a non-UCS@school login; the school list
-    # itself is not permission-filtered.
-    await get_actor(actor_id, users_get_adapter, lang)
-    return SchoolsData(schools=await schools_get_adapter.get_schools())
+    actor = await get_actor(actor_id, users_get_adapter, lang)
+    schools = await schools_get_adapter.get_schools()
+    permissions = await permissions_port.get_permissions(
+        actor, [school_to_target(school) for school in schools]
+    )
+    return SchoolsData(
+        schools=[
+            school for school in schools if Permission.use_as_filter in permissions.get(school.id, [])
+        ]
+    )
 
 
 async def get_school_classes(

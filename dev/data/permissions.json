@@ -1,5 +1,8 @@
 {
   "dev": {
+    "school": [
+      "use-as-filter"
+    ],
     "school_class": [
       "use-as-filter"
     ],
