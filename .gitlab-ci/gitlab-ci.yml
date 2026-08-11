@@ -212,7 +212,7 @@ integration-tests:
     - when: manual
       allow_failure: true
   variables:
-    TARGET_VERSION: "5.2-5"
+    TARGET_VERSION: "5.2-6"
     OPENSTACK_CFG_FILE: "dev/tests/integration_tests.cfg"
     PACKAGES_TO_INSTALL: ""
     UCSSCHOOL_USER_MANAGEMENT_VERSION: $APP_VERSION
