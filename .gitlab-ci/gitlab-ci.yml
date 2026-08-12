@@ -9,7 +9,7 @@ include:
     file: 'pipeline/sphinx.yml'
   - project: univention/dev/internal/ucsschool-ci-utils
     file: fragments/openstack.yaml
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.12.0
     inputs:
       app_id: "ucsschool-user-management"
       mail_sender: "ucsschool-maintainers@univention.de"
@@ -23,10 +23,10 @@ include:
         - job: build_appcenter_files
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@main
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.12.0
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@main
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.12.0
     inputs:
       job_prefix: "bff_"
       pipeline_stage: build
@@ -42,7 +42,7 @@ include:
             - user-management-bff/**/*
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@main
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.12.0
     inputs:
       job_prefix: "product_tests_"
       pipeline_stage: build
