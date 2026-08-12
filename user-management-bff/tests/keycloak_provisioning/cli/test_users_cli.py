@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import pytest
+from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
-import keycloak_provisioning
+import keycloak_provisioning.cli.users
 from keycloak_provisioning.cli.main import app
 from keycloak_provisioning.cli.users import add
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError
 
 
 @pytest.mark.parametrize("ignore_exists", [True, False])
-def test_user_add(monkeypatch, mocker, ignore_exists):
+def test_user_add(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, ignore_exists: bool):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     ctx_mock = mocker.MagicMock()
     monkeypatch.setattr(
@@ -25,7 +26,7 @@ def test_user_add(monkeypatch, mocker, ignore_exists):
     )
 
 
-def test_client_add_kc_client_error(mocker, monkeypatch):
+def test_client_add_kc_client_error(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     kc_client_mock.create_user = mocker.Mock(side_effect=KeycloakClientError("THIS IS THE MESSAGE"))
     monkeypatch.setattr(

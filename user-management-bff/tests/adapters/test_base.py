@@ -14,11 +14,11 @@ class DummyAdapter(KelvinPersistenceBaseAdapter): ...
 
 class TestKelvinPersistenceBaseAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> DummyAdapter:
         return DummyAdapter()
 
     @pytest.fixture
-    def dummy_settings(self):
+    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
         return KelvinPersistenceAdapterSettings(
             url="https://test.com", username="test", password="password"
         )
@@ -27,11 +27,13 @@ class TestKelvinPersistenceBaseAdapter:
         assert KelvinPersistenceBaseAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, dummy_settings):
+    async def test_configure(
+        self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
+    ):
         await adapter.configure(dummy_settings)
         assert adapter._settings == dummy_settings
 
-    def test_kelvin_session_no_settings(self, adapter):
+    def test_kelvin_session_no_settings(self, adapter: DummyAdapter):
         with pytest.raises(
             RuntimeError,
             match="Something went wrong with the configuration of the "
@@ -39,7 +41,9 @@ class TestKelvinPersistenceBaseAdapter:
         ):
             _session = adapter.kelvin_session
 
-    def test_kelvin_session(self, adapter, dummy_settings):
+    def test_kelvin_session(
+        self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
+    ):
         adapter._settings = dummy_settings
         assert adapter.kelvin_session.host == dummy_settings.url
         assert adapter.kelvin_session.username == dummy_settings.username

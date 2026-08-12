@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 import time
-from typing import Callable, Optional
+from typing import Callable
 from urllib.parse import urlparse
 
 import nest_asyncio
@@ -88,8 +88,8 @@ def kelvin_user_factory(kelvin_credentials, kelvin_user_deletion, faker):
         school: str,
         schools: list[str],
         roles: list[str],
-        school_classes: Optional[dict[str, list[str]]] = None,
-        password: Optional[str] = None,
+        school_classes: dict[str, list[str]] | None = None,
+        password: str | None = None,
     ):
         first_name = faker.first_name()
         last_name = faker.last_name()

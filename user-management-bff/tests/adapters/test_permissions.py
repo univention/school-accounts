@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import datetime
 import json
+from typing import Any
 
 import pytest
 from guardian_authz_client.errors import GuardianAuthzClientError, HTTPStatusError
@@ -16,6 +17,7 @@ from guardian_authz_client.models import (
 from guardian_authz_client.models import (
     Permission as ClientPermission,
 )
+from pytest_mock import MockerFixture
 
 from user_management_bff.adapters.permissions import (
     FilePermissionsAdapter,
@@ -65,7 +67,7 @@ from user_management_bff.models import (
         ),
     ],
 )
-def test_ucsschool_roles_to_guardian_roles(role_strings, expected):
+def test_ucsschool_roles_to_guardian_roles(role_strings: list[str], expected: list[Role]):
     assert ucsschool_roles_to_guardian_roles(role_strings) == expected
 
 
@@ -85,17 +87,22 @@ class TestGuardianPermissionsAdapter:
         )
 
     @pytest.fixture
-    def oauth2_settings(self):
+    def oauth2_settings(self) -> dict[str, str]:
         return {"token_endpoint": "TOKEN_ENDPOINT"}
 
     @pytest.fixture
-    def configured_adapter(self, adapter, settings, oauth2_settings):
+    def configured_adapter(
+        self,
+        adapter: GuardianPermissionsAdapter,
+        settings: GuardianPermissionsAdapterSettings,
+        oauth2_settings: dict[str, str],
+    ) -> GuardianPermissionsAdapter:
         adapter._settings = settings
         adapter._oauth2_settings = oauth2_settings
         return adapter
 
     @pytest.fixture
-    def user(self):
+    def user(self) -> User:
         return User(
             id="ID",
             attributes=UserAttributes(
@@ -110,7 +117,7 @@ class TestGuardianPermissionsAdapter:
             ),
         )
 
-    def test_init_state(self, adapter):
+    def test_init_state(self, adapter: GuardianPermissionsAdapter):
         assert adapter._settings is None
         assert adapter._client is None
         assert adapter._oauth2_settings == {}
@@ -125,7 +132,7 @@ class TestGuardianPermissionsAdapter:
             (datetime.datetime(2000, 1, 1), "2000-01-01 00:00:00"),
         ],
     )
-    def test__sanitize_attr(self, adapter, attr, expected):
+    def test__sanitize_attr(self, adapter: GuardianPermissionsAdapter, attr: Any, expected: Any):
         assert adapter._sanitize_attr(attr) == expected
 
     @pytest.mark.parametrize(
@@ -171,7 +178,7 @@ class TestGuardianPermissionsAdapter:
             },
         ],
     )
-    def test__user_to_actor(self, adapter, user_data):
+    def test__user_to_actor(self, adapter: GuardianPermissionsAdapter, user_data: dict[str, Any]):
         user = User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
         expected_roles = [
             Role(
@@ -297,7 +304,12 @@ class TestGuardianPermissionsAdapter:
             ),
         ],
     )
-    def test__target_object_to_guardian_object(self, adapter, target_obj, expected):
+    def test__target_object_to_guardian_object(
+        self,
+        adapter: GuardianPermissionsAdapter,
+        target_obj: TargetObject | None,
+        expected: GuardianObject | None,
+    ):
         assert adapter._target_object_to_guardian_object(target_obj) == expected
 
     @pytest.mark.parametrize(
@@ -390,10 +402,17 @@ class TestGuardianPermissionsAdapter:
             ),
         ],
     )
-    def test__permissions_result_to_permissions_dict(self, adapter, result, expected):
+    def test__permissions_result_to_permissions_dict(
+        self,
+        adapter: GuardianPermissionsAdapter,
+        result: GetPermissionsResult,
+        expected: dict[str, list[Permission]],
+    ):
         assert adapter._permissions_result_to_permissions_dict(result) == expected
 
-    def test_settings_property(self, adapter, settings):
+    def test_settings_property(
+        self, adapter: GuardianPermissionsAdapter, settings: GuardianPermissionsAdapterSettings
+    ):
         with pytest.raises(
             RuntimeError,
             match="The settings should never be accessed before the adapter was configured!",
@@ -402,15 +421,21 @@ class TestGuardianPermissionsAdapter:
         adapter._settings = settings
         assert adapter.settings == settings
 
-    def test_client(self, configured_adapter):
+    def test_client(self, configured_adapter: GuardianPermissionsAdapter):
         assert configured_adapter._client is None
         assert configured_adapter.client is not None
 
-    def test_get_settings_cls(self, adapter):
+    def test_get_settings_cls(self, adapter: GuardianPermissionsAdapter):
         assert adapter.get_settings_cls() == GuardianPermissionsAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, settings, oauth2_settings, mocker):
+    async def test_configure(
+        self,
+        adapter: GuardianPermissionsAdapter,
+        settings: GuardianPermissionsAdapterSettings,
+        oauth2_settings: dict[str, str],
+        mocker: MockerFixture,
+    ):
         mock = mocker.AsyncMock().func
         mock.return_value = oauth2_settings
         mocker.patch("user_management_bff.adapters.permissions.get_oauth2_settings", mock)
@@ -420,7 +445,9 @@ class TestGuardianPermissionsAdapter:
         assert adapter._oauth2_settings == oauth2_settings
 
     @pytest.mark.asyncio
-    async def test_get_permissions_err(self, configured_adapter, user, mocker):
+    async def test_get_permissions_err(
+        self, configured_adapter: GuardianPermissionsAdapter, user: User, mocker: MockerFixture
+    ):
         client_mock = mocker.AsyncMock()
         client_mock.get_permissions.side_effect = GuardianAuthzClientError("MESSAGE")
         configured_adapter._client = client_mock
@@ -428,7 +455,9 @@ class TestGuardianPermissionsAdapter:
             await configured_adapter.get_permissions(user, [])
 
     @pytest.mark.asyncio
-    async def test_get_permissions_status_err(self, configured_adapter, user, mocker):
+    async def test_get_permissions_status_err(
+        self, configured_adapter: GuardianPermissionsAdapter, user: User, mocker: MockerFixture
+    ):
         client_mock = mocker.AsyncMock()
         client_mock.get_permissions.side_effect = HTTPStatusError("MESSAGE", 500)
         configured_adapter._client = client_mock
@@ -436,7 +465,9 @@ class TestGuardianPermissionsAdapter:
             await configured_adapter.get_permissions(user, [])
 
     @pytest.mark.asyncio
-    async def test_get_permissions(self, configured_adapter, user, mocker):
+    async def test_get_permissions(
+        self, configured_adapter: GuardianPermissionsAdapter, user: User, mocker: MockerFixture
+    ):
         client_mock = mocker.AsyncMock()
         client_mock.get_permissions.return_value = GetPermissionsResult(
             actor_id="ID",
@@ -459,14 +490,14 @@ class TestGuardianPermissionsAdapter:
 
 class TestFilePermissionsAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> FilePermissionsAdapter:
         return FilePermissionsAdapter()
 
-    def test_get_settings_cls(self, adapter):
+    def test_get_settings_cls(self, adapter: FilePermissionsAdapter):
         assert adapter.get_settings_cls() == FilePermissionsAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, tmpdir):
+    async def test_configure(self, adapter: FilePermissionsAdapter, tmpdir: Any):
         data_file = tmpdir / "test_data.json"
         data = {"foo": "bar"}
         with open(data_file, "w") as fd:
@@ -486,7 +517,12 @@ class TestFilePermissionsAdapter:
         ],
     )
     @pytest.mark.asyncio
-    async def test_get_permissions_for_schools(self, adapter, data, expected):
+    async def test_get_permissions_for_schools(
+        self,
+        adapter: FilePermissionsAdapter,
+        data: dict[str, dict[str, list[str]]],
+        expected: list[Permission],
+    ):
         adapter._data = data
         actor = User(
             id="ID",

@@ -7,6 +7,7 @@ from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from typing_extensions import override
 from ucsschool.kelvin.client import SchoolClassResource
 
 from ..models import SchoolClass
@@ -35,24 +36,30 @@ class FileSchoolClassesPersistenceAdapterSettings:
     )
 
 
-class FileSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, AsyncConfiguredAdapterMixin):
+class FileSchoolClassesPersistenceAdapter(
+    SchoolClassesPersistencePort,
+    AsyncConfiguredAdapterMixin[FileSchoolClassesPersistenceAdapterSettings],
+):
     class Config:
-        alias = "file"
-        cached = True
+        alias: str = "file"
+        cached: bool = True
 
     def __init__(self):
         self._data = {}
 
     @classmethod
+    @override
     def get_settings_cls(
         cls,
     ) -> Type[FileSchoolClassesPersistenceAdapterSettings]:  # pragma: no cover
         return FileSchoolClassesPersistenceAdapterSettings
 
+    @override
     async def configure(self, settings: FileSchoolClassesPersistenceAdapterSettings):
         with open(settings.source, "r") as fd:
             self._data = json.load(fd)
 
+    @override
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         return [
             SchoolClass(id=school_class, display_name=school_class, school=school)

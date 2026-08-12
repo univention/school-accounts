@@ -32,7 +32,7 @@ from user_management_bff.models import (
         ("nonexistent", {Permission.read_first_name}, AttributeAccess.NONE),  # ValueError branches
     ],
 )
-def test_attribute_access(name, permissions, expected):
+def test_attribute_access(name: str, permissions: set[Permission], expected: AttributeAccess):
     assert presentation._attribute_access(name, permissions) is expected
 
 
@@ -107,7 +107,7 @@ def test_build_school_options_marks_selected():
         (presentation.ALL_GROUPS, ("", "")),  # the reset option means "no filter"
     ],
 )
-def test_split_group_value(value, expected):
+def test_split_group_value(value: str | None, expected: tuple[str, str]):
     assert presentation.split_group_value(value) == expected
 
 

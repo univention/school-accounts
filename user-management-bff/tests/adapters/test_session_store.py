@@ -26,47 +26,49 @@ class TestInMemorySessionStoreAdapter:
         return InMemorySessionStoreAdapter()
 
     @pytest.mark.asyncio
-    async def test_create_returns_opaque_id_and_persists(self, store):
+    async def test_create_returns_opaque_id_and_persists(self, store: InMemorySessionStoreAdapter):
         record = _record()
         session_id = await store.create(record)
         assert isinstance(session_id, str) and session_id
         assert await store.get(session_id) == record
 
     @pytest.mark.asyncio
-    async def test_create_generates_unique_ids(self, store):
+    async def test_create_generates_unique_ids(self, store: InMemorySessionStoreAdapter):
         first = await store.create(_record())
         second = await store.create(_record())
         assert first != second
 
     @pytest.mark.asyncio
-    async def test_get_unknown_returns_none(self, store):
+    async def test_get_unknown_returns_none(self, store: InMemorySessionStoreAdapter):
         assert await store.get("nope") is None
 
     @pytest.mark.asyncio
-    async def test_update_existing(self, store):
+    async def test_update_existing(self, store: InMemorySessionStoreAdapter):
         session_id = await store.create(_record())
         updated = _record(actor_id="other")
         await store.update(session_id, updated)
         assert (await store.get(session_id)).actor_id == "other"
 
     @pytest.mark.asyncio
-    async def test_update_unknown_is_noop(self, store):
+    async def test_update_unknown_is_noop(self, store: InMemorySessionStoreAdapter):
         await store.update("nope", _record())
         assert await store.get("nope") is None
 
     @pytest.mark.asyncio
-    async def test_delete(self, store):
+    async def test_delete(self, store: InMemorySessionStoreAdapter):
         session_id = await store.create(_record())
         await store.delete(session_id)
         assert await store.get(session_id) is None
 
     @pytest.mark.asyncio
-    async def test_delete_unknown_is_noop(self, store):
+    async def test_delete_unknown_is_noop(self, store: InMemorySessionStoreAdapter):
         await store.delete("nope")  # must not raise
 
     @pytest.mark.parametrize("field,method", [("kc_sid", "delete_by_kc_sid"), ("sub", "delete_by_sub")])
     @pytest.mark.asyncio
-    async def test_delete_by_identity_removes_matching_only(self, store, field, method):
+    async def test_delete_by_identity_removes_matching_only(
+        self, store: InMemorySessionStoreAdapter, field: str, method: str
+    ):
         keep = await store.create(_record(**{field: "other"}))
         drop = await store.create(_record(**{field: "target"}))
         await getattr(store, method)("target")

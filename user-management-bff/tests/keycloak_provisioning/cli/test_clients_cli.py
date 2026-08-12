@@ -3,11 +3,13 @@
 
 import json
 import secrets
+from pathlib import Path
 
 import pytest
+from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
-import keycloak_provisioning
+import keycloak_provisioning.cli.clients
 from keycloak_provisioning.cli.clients import add, get_secret, modify
 from keycloak_provisioning.cli.main import app
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError
@@ -22,7 +24,7 @@ class FileTextMock:
 
 
 @pytest.mark.parametrize("ignore_exists", [True, False])
-def test_client_add(monkeypatch, mocker, ignore_exists):
+def test_client_add(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, ignore_exists: bool):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     ctx_mock = mocker.MagicMock()
     monkeypatch.setattr(
@@ -34,7 +36,9 @@ def test_client_add(monkeypatch, mocker, ignore_exists):
     kc_client_mock.create_client.assert_called_once_with({"a": 1}, ignore_exists=ignore_exists)
 
 
-def test_client_get_secret(monkeypatch, mocker, capsys):
+def test_client_get_secret(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     kc_client_mock.get_client_secret = mocker.Mock(return_value="SECRET")
     ctx_mock = mocker.MagicMock()
@@ -48,7 +52,7 @@ def test_client_get_secret(monkeypatch, mocker, capsys):
     assert captured.out == "SECRET\n"
 
 
-def test_client_modify(monkeypatch, mocker):
+def test_client_modify(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     ctx_mock = mocker.MagicMock()
     monkeypatch.setattr(
@@ -69,7 +73,7 @@ def test_client_modify(monkeypatch, mocker):
     )
 
 
-def test_client_add_overrides(monkeypatch, mocker):
+def test_client_add_overrides(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     ctx_mock = mocker.MagicMock()
     monkeypatch.setattr(
@@ -98,7 +102,7 @@ def test_client_add_overrides(monkeypatch, mocker):
     )
 
 
-def test_client_add_invalid_json(mocker, monkeypatch, tmp_path):
+def test_client_add_invalid_json(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     monkeypatch.setattr(
         keycloak_provisioning.cli.clients,
@@ -126,7 +130,9 @@ def test_client_add_invalid_json(mocker, monkeypatch, tmp_path):
     assert "The provided client data is not a valid json file." in result.stdout
 
 
-def test_client_add_kc_client_error(mocker, monkeypatch, tmp_path):
+def test_client_add_kc_client_error(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     kc_client_mock.create_client = mocker.Mock(side_effect=KeycloakClientError("THIS IS THE MESSAGE"))
     monkeypatch.setattr(
@@ -155,7 +161,7 @@ def test_client_add_kc_client_error(mocker, monkeypatch, tmp_path):
     assert "Client creation failed with the following error: THIS IS THE MESSAGE" in result.stdout
 
 
-def test_client_modify_kc_client_error(mocker, monkeypatch):
+def test_client_modify_kc_client_error(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     kc_client_mock.modify_client = mocker.Mock(side_effect=KeycloakClientError("THIS IS THE MESSAGE"))
     monkeypatch.setattr(
@@ -184,7 +190,7 @@ def test_client_modify_kc_client_error(mocker, monkeypatch):
     assert "Client modification failed with the following error: THIS IS THE MESSAGE" in result.stdout
 
 
-def test_client_get_secret_kc_client_error(mocker, monkeypatch):
+def test_client_get_secret_kc_client_error(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     kc_client_mock.get_client_secret = mocker.Mock(
         side_effect=KeycloakClientError("THIS IS THE MESSAGE")

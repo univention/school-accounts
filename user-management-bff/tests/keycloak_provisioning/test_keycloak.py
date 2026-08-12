@@ -11,6 +11,7 @@ from keycloak import (
     KeycloakPostError,
     KeycloakPutError,
 )
+from pytest_mock import MockerFixture
 
 import keycloak_provisioning.keycloak
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError, get_keycloak_client
@@ -19,7 +20,7 @@ from keycloak_provisioning.models import LoginCredentials
 
 class TestKeycloakClient:
     @pytest.fixture
-    def client_instance(self, mocker, monkeypatch):
+    def client_instance(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> KeycloakClient:
         kc_oidc_mock = mocker.Mock(spec=KeycloakOpenIDConnection)
         kc_admin_mock = mocker.Mock(spec=KeycloakAdmin)
         monkeypatch.setattr(keycloak_provisioning.keycloak, "KeycloakOpenIDConnection", kc_oidc_mock)
@@ -28,7 +29,7 @@ class TestKeycloakClient:
             LoginCredentials(username="user", password="password", url="url", realm="realm")
         )
 
-    def test_init_keycloak_error(self, mocker, monkeypatch):
+    def test_init_keycloak_error(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         connect_mock = mocker.Mock(side_effect=KeycloakError("THIS IS THE MESSAGE!"))
         monkeypatch.setattr(keycloak_provisioning.keycloak.KeycloakClient, "connect", connect_mock)
         with pytest.raises(KeycloakClientError, match="THIS IS THE MESSAGE!"):
@@ -36,7 +37,7 @@ class TestKeycloakClient:
                 LoginCredentials(username="user", password="password", url="url", realm="realm")
             )
 
-    def test__connect(self, mocker, monkeypatch):
+    def test__connect(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         kc_oidc_mock = mocker.Mock()
         monkeypatch.setattr(keycloak_provisioning.keycloak, "KeycloakOpenIDConnection", kc_oidc_mock)
         KeycloakClient.connect(
@@ -52,14 +53,14 @@ class TestKeycloakClient:
         )
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
-    def test_create_realm(self, client_instance, ignore_exists):
+    def test_create_realm(self, client_instance: KeycloakClient, ignore_exists: bool):
         client_instance.create_realm("REALM", ignore_exists=ignore_exists)
         client_instance.keycloak_admin.create_realm.assert_called_once_with(
             payload={"realm": "REALM", "enabled": True},
             skip_exists=ignore_exists,
         )
 
-    def test_create_realm_with_extra_data(self, client_instance):
+    def test_create_realm_with_extra_data(self, client_instance: KeycloakClient):
         client_instance.create_realm("REALM", realm_data={"requiredActions": []})
         client_instance.keycloak_admin.create_realm.assert_called_once_with(
             payload={"realm": "REALM", "enabled": True, "requiredActions": []},
@@ -67,7 +68,7 @@ class TestKeycloakClient:
         )
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
-    def test_create_user(self, client_instance, ignore_exists):
+    def test_create_user(self, client_instance: KeycloakClient, ignore_exists: bool):
         client_instance.create_user("username", "password", ignore_exists)
 
         client_instance.keycloak_admin.create_user.assert_called_once_with(
@@ -80,13 +81,13 @@ class TestKeycloakClient:
         )
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
-    def test_create_client(self, client_instance, ignore_exists):
+    def test_create_client(self, client_instance: KeycloakClient, ignore_exists: bool):
         client_instance.create_client({}, ignore_exists)
         client_instance.keycloak_admin.create_client.assert_called_once_with(
             payload={}, skip_exists=ignore_exists
         )
 
-    def test_get_client_secret(self, client_instance, mocker):
+    def test_get_client_secret(self, client_instance: KeycloakClient, mocker: MockerFixture):
         client_instance.keycloak_admin.get_client_secrets = mocker.Mock(
             return_value={"type": "test", "value": "SECRET"}
         )
@@ -102,10 +103,10 @@ class TestKeycloakClient:
     )
     def test_modify_client(
         self,
-        mocker,
-        client_instance,
-        append_redirect_urls,
-        remove_redirect_urls,
+        mocker: MockerFixture,
+        client_instance: KeycloakClient,
+        append_redirect_urls: list[str] | None,
+        remove_redirect_urls: list[str] | None,
     ):
         client_test_data = {
             "a": 1,
@@ -133,7 +134,7 @@ class TestKeycloakClient:
         )
 
 
-def test_get_keycloak_client(mocker, monkeypatch):
+def test_get_keycloak_client(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     kc_oidc_mock = mocker.Mock()
     kc_admin_mock = mocker.Mock()
     monkeypatch.setattr(keycloak_provisioning.keycloak, "KeycloakOpenIDConnection", kc_oidc_mock)
@@ -167,7 +168,7 @@ def test_get_keycloak_client(mocker, monkeypatch):
         (KeycloakError("THIS IS THE MESSAGE!"), KeycloakError, "THIS IS THE MESSAGE!"),
     ],
 )
-def test_convert_keycloak_error(error, new_error, match):
+def test_convert_keycloak_error(error: KeycloakError, new_error: type[Exception], match: str):
     with pytest.raises(new_error, match=match):
         with keycloak_provisioning.keycloak.convert_keycloak_error():
             raise error

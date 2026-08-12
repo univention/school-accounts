@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 nest_asyncio.apply()
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config):
     # Compile gettext .po -> .mo so translation tests run against the real
     # catalogs. The .mo files are git-ignored and otherwise only compiled by
     # CI/translate tasks, so without this a local pytest run falls back to the

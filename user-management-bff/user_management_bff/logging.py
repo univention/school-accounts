@@ -57,7 +57,7 @@ class InterceptHandler(logging.Handler):  # pragma: no cover
     This should be done during our logging setup for all loggers we want to intercept in this way.
     """
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord):
         # Get corresponding Loguru level if it exists.
         try:
             level = logger.level(record.levelname).name

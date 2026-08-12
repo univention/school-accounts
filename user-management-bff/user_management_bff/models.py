@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import datetime
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -94,8 +94,8 @@ class TargetObject(BaseModel):
 
 
 class Target(BaseModel):
-    old_target: Optional[TargetObject]
-    new_target: Optional[TargetObject]
+    old_target: TargetObject | None
+    new_target: TargetObject | None
 
 
 class Permission(StrEnum):

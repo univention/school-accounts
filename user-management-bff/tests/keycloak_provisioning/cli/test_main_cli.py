@@ -1,11 +1,14 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-import keycloak_provisioning
+import pytest
+from pytest_mock import MockerFixture
+
+import keycloak_provisioning.cli.main
 from keycloak_provisioning.cli.main import main_callback, run_script
 from keycloak_provisioning.models import ContextObject, LoginCredentials
 
 
-def test_main_callback_ctx_obj_created(mocker):
+def test_main_callback_ctx_obj_created(mocker: MockerFixture):
     ctx_mock = mocker.Mock()
     main_callback(ctx_mock, "USERNAME", "PASSWORD", "URL", "REALM", "USER_REALM", True)
     assert ctx_mock.obj == ContextObject(
@@ -20,7 +23,7 @@ def test_main_callback_ctx_obj_created(mocker):
     )
 
 
-def test_main_callback_ctx_defaults(mocker):
+def test_main_callback_ctx_defaults(mocker: MockerFixture):
     ctx_mock = mocker.Mock()
     main_callback(ctx_mock, "USERNAME", "PASSWORD", "URL")
     assert ctx_mock.obj == ContextObject(
@@ -35,7 +38,7 @@ def test_main_callback_ctx_defaults(mocker):
     )
 
 
-def test_run_scripts_calls_app(monkeypatch, mocker):
+def test_run_scripts_calls_app(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     app_mock = mocker.Mock()
     monkeypatch.setattr(keycloak_provisioning.cli.main, "app", app_mock)
     run_script()

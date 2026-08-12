@@ -38,7 +38,7 @@ def add(
     except JSONDecodeError:
         print("The provided client data is not a valid json file.")
         raise typer.Exit(1)
-    overrides: dict = dict()
+    overrides: dict[str, str] = {}
     if create_secret:
         overrides["secret"] = secrets.token_urlsafe(24)
     if home_url:

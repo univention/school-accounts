@@ -19,6 +19,7 @@ from guardian_authz_client.models import Target as ClientTarget
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from typing_extensions import override
 
 from ..constants import APP_NAME, NAMESPACE_NAME
 from ..errors import PermissionsError
@@ -59,10 +60,12 @@ def ucsschool_roles_to_guardian_roles(role_strings: list[str]) -> list[Role]:
     ]
 
 
-class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
+class GuardianPermissionsAdapter(
+    PermissionsPort, AsyncConfiguredAdapterMixin[GuardianPermissionsAdapterSettings]
+):
     class Config:
-        alias = "guardian"
-        cached = True
+        alias: str = "guardian"
+        cached: bool = True
 
     def __init__(self):
         self._settings = None
@@ -146,15 +149,18 @@ class GuardianPermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
         return self._client
 
     @classmethod
+    @override
     def get_settings_cls(cls) -> Type[GuardianPermissionsAdapterSettings]:
         return GuardianPermissionsAdapterSettings
 
+    @override
     async def configure(self, settings: GuardianPermissionsAdapterSettings):
         self._settings = settings
         self._oauth2_settings = await get_oauth2_settings(
             settings.oauth2_well_known_url, settings.request_timeout
         )
 
+    @override
     async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
         try:
             result = await self.client.get_permissions(
@@ -181,22 +187,27 @@ class FilePermissionsAdapterSettings:
     source: str = field(metadata={SETTINGS_NAME_METADATA: "file_permissions_adapter.source"})
 
 
-class FilePermissionsAdapter(PermissionsPort, AsyncConfiguredAdapterMixin):
+class FilePermissionsAdapter(
+    PermissionsPort, AsyncConfiguredAdapterMixin[FilePermissionsAdapterSettings]
+):
     class Config:
-        alias = "file"
-        cached = True
+        alias: str = "file"
+        cached: bool = True
 
     def __init__(self):
         self._data = {}
 
     @classmethod
+    @override
     def get_settings_cls(cls) -> Type[FilePermissionsAdapterSettings]:
         return FilePermissionsAdapterSettings
 
+    @override
     async def configure(self, settings: FilePermissionsAdapterSettings):
         with open(settings.source, "r") as fd:
             self._data = json.load(fd)
 
+    @override
     async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
         logger.debug("Fetching actor permissions from the Guardian", actor_id=actor.id)
         permission_data = {}

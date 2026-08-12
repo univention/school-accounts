@@ -5,7 +5,7 @@ import json
 import warnings
 from contextlib import contextmanager
 from json import JSONDecodeError
-from typing import Optional
+from typing import Any, Optional
 
 from keycloak import (
     KeycloakAdmin,
@@ -18,7 +18,7 @@ from .models import LoginCredentials
 
 
 class KeycloakClientError(Exception):
-    def __init__(self, error_message=""):
+    def __init__(self, error_message: str = ""):
         Exception.__init__(self, error_message)
         self.error_message = error_message
 
@@ -54,7 +54,12 @@ class KeycloakClient:
                 verify=login_credentials.secure,
             )
 
-    def create_realm(self, realm_name: str, ignore_exists: bool = False, realm_data=None):
+    def create_realm(
+        self,
+        realm_name: str,
+        ignore_exists: bool = False,
+        realm_data: Optional[dict[str, Any]] = None,
+    ):
         realm_data = realm_data or {}
         with convert_keycloak_error():
             self.keycloak_admin.create_realm(
@@ -72,7 +77,7 @@ class KeycloakClient:
                 exist_ok=ignore_exists,
             )
 
-    def create_client(self, client_data: dict, ignore_exists: bool = False):
+    def create_client(self, client_data: dict[str, Any], ignore_exists: bool = False):
         with convert_keycloak_error():
             self.keycloak_admin.create_client(payload=client_data, skip_exists=ignore_exists)
 

@@ -2,8 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
 import os
+from pathlib import Path
+from typing import Any, Callable
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.users
@@ -19,18 +23,18 @@ from user_management_bff.models import User, UserAttributes
 
 class TestKelvinUsersPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> KelvinUsersPersistenceAdapter:
         return KelvinUsersPersistenceAdapter()
 
     @pytest.fixture
-    def dummy_settings(self):
+    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
         return KelvinPersistenceAdapterSettings(
             url="https://test.com", username="test", password="password"
         )
 
     @pytest.fixture
-    def make_kelvin_user_from_data(self, mocker):
-        def _make_kelvin_user_from_data(user_data: dict):
+    def make_kelvin_user_from_data(self, mocker: MockerFixture) -> Callable[[dict[str, Any]], MagicMock]:
+        def _make_kelvin_user_from_data(user_data: dict[str, Any]) -> MagicMock:
             kelvin_user = mocker.MagicMock()
             kelvin_user.name = user_data["id"]
             kelvin_user.lastname = user_data["attributes"]["last_name"]
@@ -68,7 +72,12 @@ class TestKelvinUsersPersistenceAdapter:
             }
         ],
     )
-    def test_user_from_kelvin_user(self, input_data, adapter, make_kelvin_user_from_data):
+    def test_user_from_kelvin_user(
+        self,
+        input_data: dict[str, Any],
+        adapter: KelvinUsersPersistenceAdapter,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
         kelvin_user = make_kelvin_user_from_data(input_data)
         result = adapter._user_from_kelvin_user(kelvin_user)
         assert result == User(id=input_data["id"], attributes=UserAttributes(**input_data["attributes"]))
@@ -92,7 +101,10 @@ class TestKelvinUsersPersistenceAdapter:
         ],
     )
     def test_user_from_kelvin_user_staff_without_classes(
-        self, input_data, adapter, make_kelvin_user_from_data
+        self,
+        input_data: dict[str, Any],
+        adapter: KelvinUsersPersistenceAdapter,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
     ):
         kelvin_user = make_kelvin_user_from_data(input_data)
         result = adapter._user_from_kelvin_user(kelvin_user)
@@ -150,10 +162,16 @@ class TestKelvinUsersPersistenceAdapter:
     )
     @pytest.mark.asyncio
     async def test_get_users(
-        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_user_from_data, input_data
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+        input_data: list[dict[str, Any]],
     ):
         class MockUserResource:
-            async def search(self, *_args, **_kwargs):
+            async def search(self, *_args: Any, **_kwargs: Any):
                 for user_data in input_data:
                     yield make_kelvin_user_from_data(user_data)
 
@@ -186,10 +204,16 @@ class TestKelvinUsersPersistenceAdapter:
     )
     @pytest.mark.asyncio
     async def test_get_user(
-        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_user_from_data, return_user
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+        return_user: dict[str, Any],
     ):
         class MockUserResource:
-            async def get(self, *_args, **_kwargs):
+            async def get(self, *_args: Any, **_kwargs: Any):
                 return make_kelvin_user_from_data(return_user)
 
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
@@ -201,9 +225,15 @@ class TestKelvinUsersPersistenceAdapter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_user_not_found(self, adapter, dummy_settings, monkeypatch, mocker):
+    async def test_get_user_not_found(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
         class MockUserResource:
-            async def get(self, *_args, **_kwargs):
+            async def get(self, *_args: Any, **_kwargs: Any):
                 raise NoObject()
 
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
@@ -216,11 +246,11 @@ class TestKelvinUsersPersistenceAdapter:
 
 class TestFileUsersPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> FileUsersPersistenceAdapter:
         return FileUsersPersistenceAdapter()
 
     @pytest.fixture
-    def users_json(self, tmpdir):
+    def users_json(self, tmpdir: Path) -> Any:
         mock_users_json_path = tmpdir / "users.json"
         disk_users_json_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -230,11 +260,11 @@ class TestFileUsersPersistenceAdapter:
             mock.write(disk.read())
         return mock_users_json_path
 
-    def test_get_settings_cls(self, adapter):
+    def test_get_settings_cls(self, adapter: FileUsersPersistenceAdapter):
         assert adapter.get_settings_cls() == FileUsersPersistenceAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, tmpdir):
+    async def test_configure(self, adapter: FileUsersPersistenceAdapter, tmpdir: Path):
         data_file = tmpdir / "test_data.json"
         data = {"foo": "bar"}
         with open(data_file, "w") as fd:
@@ -398,7 +428,13 @@ class TestFileUsersPersistenceAdapter:
     )
     @pytest.mark.asyncio
     async def test_get_users_with_search_filters(
-        self, adapter, school, school_classes, work_groups, expected_users, users_json
+        self,
+        adapter: FileUsersPersistenceAdapter,
+        school: str,
+        school_classes: list[str] | None,
+        work_groups: list[str] | None,
+        expected_users: list[dict[str, Any]],
+        users_json: Any,
     ):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         result = await adapter.get_users(school, school_classes=school_classes, work_groups=work_groups)
@@ -408,7 +444,7 @@ class TestFileUsersPersistenceAdapter:
         ]
 
     @pytest.mark.asyncio
-    async def test_get_user(self, adapter, users_json):
+    async def test_get_user(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         result = await adapter.get_user("dev")
         assert result == User(
@@ -426,7 +462,7 @@ class TestFileUsersPersistenceAdapter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_user_not_found(self, adapter, users_json):
+    async def test_get_user_not_found(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("NON_EXISTENT")

@@ -85,7 +85,9 @@ class FileUsersPersistenceAdapterSettings:
     source: str = field(metadata={SETTINGS_NAME_METADATA: "file_users_persistence_adapter.source"})
 
 
-class FileUsersPersistenceAdapter(UsersPersistencePort, AsyncConfiguredAdapterMixin):
+class FileUsersPersistenceAdapter(
+    UsersPersistencePort, AsyncConfiguredAdapterMixin[FileUsersPersistenceAdapterSettings]
+):
     class Config:
         alias = "file"
         cached = True

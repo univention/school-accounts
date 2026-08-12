@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import pytest
-from httpx import RequestError
+from httpx import AsyncClient, RequestError
+from pytest_mock import MockerFixture
 
-import user_management_bff
 from user_management_bff.utils import get_oauth2_settings
 
 
 @pytest.mark.asyncio
-async def test_get_oauth2_settings(monkeypatch, mocker):
+async def test_get_oauth2_settings(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     response_mock = mocker.MagicMock()
     response_mock.status_code = 200
     response_mock.json.return_value = {"foo": "bar"}
@@ -17,19 +17,21 @@ async def test_get_oauth2_settings(monkeypatch, mocker):
     async def get_mock(*args, **kwargs):
         return response_mock
 
-    monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
+    monkeypatch.setattr(AsyncClient, "get", get_mock)
     assert await get_oauth2_settings("URL", 10) == {"foo": "bar"}
 
 
 @pytest.mark.asyncio
-async def test_get_oauth2_settings_wrong_status_code(monkeypatch, mocker):
+async def test_get_oauth2_settings_wrong_status_code(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+):
     response_mock = mocker.MagicMock()
     response_mock.status_code = 404
 
-    async def get_mock(*args, **kwargs):
+    async def get_mock(*args: object, **kwargs: object):
         return response_mock
 
-    monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
+    monkeypatch.setattr(AsyncClient, "get", get_mock)
     with pytest.raises(
         RuntimeError, match="^Could not load oauth2 settings from https://example.com: '"
     ):
@@ -37,11 +39,11 @@ async def test_get_oauth2_settings_wrong_status_code(monkeypatch, mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_oauth2_settings_exc(monkeypatch):
+async def test_get_oauth2_settings_exc(monkeypatch: pytest.MonkeyPatch):
     async def get_mock(*args, **kwargs):
         raise RequestError("ERROR MESSAGE")
 
-    monkeypatch.setattr(user_management_bff.utils.AsyncClient, "get", get_mock)
+    monkeypatch.setattr(AsyncClient, "get", get_mock)
     with pytest.raises(
         RuntimeError,
         match="Could not load oauth2 settings from https://example.com: 'ERROR MESSAGE'",

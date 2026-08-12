@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import AsyncAdapterSettingsProvider
+from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
@@ -66,7 +67,7 @@ CORRELATION_ID_HEADER_NAME = "X-Request-ID"
 
 
 @app.middleware("http")
-async def add_correlation_id(request: Request, call_next):
+async def add_correlation_id(request: Request, call_next: RequestResponseEndpoint):
     """Add correlation id to request object and contextualize logger
 
     The contextualize method uses Python `contextvars` so the are unique to each thread/task.

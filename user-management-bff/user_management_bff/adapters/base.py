@@ -7,6 +7,7 @@ from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from typing_extensions import override
 from ucsschool.kelvin.client import Session
 
 
@@ -17,8 +18,9 @@ class KelvinPersistenceAdapterSettings:
     password: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.password"})
 
 
-class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin, ABC):
+class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistenceAdapterSettings], ABC):
     @classmethod
+    @override
     def get_settings_cls(
         cls,
     ) -> Type[KelvinPersistenceAdapterSettings]:  # pragma: no cover
@@ -27,6 +29,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin, ABC):
     def __init__(self):
         self._settings = None
 
+    @override
     async def configure(self, settings: KelvinPersistenceAdapterSettings):
         self._settings = settings
 

@@ -33,7 +33,9 @@ class FileWorkGroupsPersistenceAdapterSettings:
     source: str = field(metadata={SETTINGS_NAME_METADATA: "file_work_groups_persistence_adapter.source"})
 
 
-class FileWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, AsyncConfiguredAdapterMixin):
+class FileWorkGroupsPersistenceAdapter(
+    WorkGroupsPersistencePort, AsyncConfiguredAdapterMixin[FileWorkGroupsPersistenceAdapterSettings]
+):
     class Config:
         alias = "file"
         cached = True

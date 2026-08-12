@@ -3,10 +3,14 @@
 
 import json
 import os
+from pathlib import Path
+from typing import Any, Callable
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
-import user_management_bff.adapters.users
+import user_management_bff.adapters.schools
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
 from user_management_bff.adapters.schools import (
     FileSchoolsPersistenceAdapter,
@@ -18,18 +22,20 @@ from user_management_bff.models import School
 
 class TestKelvinSchoolsPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> KelvinSchoolsPersistenceAdapter:
         return KelvinSchoolsPersistenceAdapter()
 
     @pytest.fixture
-    def dummy_settings(self):
+    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
         return KelvinPersistenceAdapterSettings(
             url="https://test.com", username="test", password="password"
         )
 
     @pytest.fixture
-    def make_kelvin_school_from_data(self, mocker):
-        def _make_kelvin_school_from_data(school_data: dict):
+    def make_kelvin_school_from_data(
+        self, mocker: MockerFixture
+    ) -> Callable[[dict[str, str]], MagicMock]:
+        def _make_kelvin_school_from_data(school_data: dict[str, str]) -> MagicMock:
             kelvin_school = mocker.MagicMock()
             kelvin_school.name = school_data["id"]
             kelvin_school.display_name = school_data["display_name"]
@@ -53,10 +59,16 @@ class TestKelvinSchoolsPersistenceAdapter:
     )
     @pytest.mark.asyncio
     async def test_get_users(
-        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_school_from_data, input_data
+        self,
+        adapter: KelvinSchoolsPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_school_from_data: Callable[[dict[str, str]], MagicMock],
+        input_data: list[dict[str, str]],
     ):
         class MockSchoolResource:
-            async def search(self, *_args, **_kwargs):
+            async def search(self, *_args: Any, **_kwargs: Any):
                 for user_data in input_data:
                     yield make_kelvin_school_from_data(user_data)
 
@@ -72,14 +84,14 @@ class TestKelvinSchoolsPersistenceAdapter:
 
 class TestFileSchoolsPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> FileSchoolsPersistenceAdapter:
         return FileSchoolsPersistenceAdapter()
 
-    def test_get_settings_cls(self, adapter):
+    def test_get_settings_cls(self, adapter: FileSchoolsPersistenceAdapter):
         assert adapter.get_settings_cls() == FileSchoolsPersistenceAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, tmpdir):
+    async def test_configure(self, adapter: FileSchoolsPersistenceAdapter, tmpdir: Path):
         data_file = tmpdir / "test_data.json"
         data = {"foo": "bar"}
         with open(data_file, "w") as fd:
@@ -88,14 +100,14 @@ class TestFileSchoolsPersistenceAdapter:
         assert adapter._data == data
 
     @pytest.fixture
-    def source_path(self):
+    def source_path(self) -> str:
         return os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "../data/schools.json",
         )
 
     @pytest.mark.asyncio
-    async def test_get_users(self, adapter, source_path):
+    async def test_get_users(self, adapter: FileSchoolsPersistenceAdapter, source_path: str):
         with open(source_path, "r") as fd:
             expected_schools = json.load(fd)
         await adapter.configure(FileSchoolsPersistenceAdapterSettings(source=source_path))
@@ -112,7 +124,9 @@ class TestFileSchoolsPersistenceAdapter:
             ("NON_EXISTENT", []),
         ],
     )
-    async def test_get_schools_by_name(self, adapter, source_path, name, expected):
+    async def test_get_schools_by_name(
+        self, adapter: FileSchoolsPersistenceAdapter, source_path: str, name: str, expected: list[School]
+    ):
         # A name narrows the result to that single school (no match -> empty list).
         await adapter.configure(FileSchoolsPersistenceAdapterSettings(source=source_path))
         assert await adapter.get_schools(name=name) == expected

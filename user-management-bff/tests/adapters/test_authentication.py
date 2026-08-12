@@ -140,7 +140,9 @@ class TestCookieSessionAuthenticationAdapter:
             _ = adapter.settings
 
     @pytest.mark.asyncio
-    async def test_configure_registers_oidc_client(self, settings):
+    async def test_configure_registers_oidc_client(
+        self, settings: CookieSessionAuthenticationAdapterSettings
+    ):
         adapter = CookieSessionAuthenticationAdapter()
         await adapter.configure(settings)
         assert adapter._settings == settings
@@ -149,12 +151,12 @@ class TestCookieSessionAuthenticationAdapter:
 
     # --- helpers ------------------------------------------------------------------
 
-    def test_token_expiry_from_expires_at(self, adapter):
+    def test_token_expiry_from_expires_at(self, adapter: CookieSessionAuthenticationAdapter):
         expires_at = 1_000_000_000
         result = adapter._token_expiry({"expires_at": expires_at})
         assert result == datetime.fromtimestamp(expires_at, tz=timezone.utc)
 
-    def test_token_expiry_from_expires_in(self, adapter):
+    def test_token_expiry_from_expires_in(self, adapter: CookieSessionAuthenticationAdapter):
         before = datetime.now(timezone.utc)
         result = adapter._token_expiry({"expires_in": 60})
         assert before + timedelta(seconds=59) <= result <= before + timedelta(seconds=61)
@@ -168,24 +170,30 @@ class TestCookieSessionAuthenticationAdapter:
             ("", FRONTEND_PREFIX),
         ],
     )
-    def test_safe_next(self, adapter, candidate, expected):
+    def test_safe_next(self, adapter: CookieSessionAuthenticationAdapter, candidate: str, expected: str):
         assert adapter._safe_next(candidate) == expected
 
-    def test_read_cookie_missing(self, adapter, mocker: MockerFixture):
+    def test_read_cookie_missing(
+        self, adapter: CookieSessionAuthenticationAdapter, mocker: MockerFixture
+    ):
         assert adapter._read_cookie(self._request(mocker)) is None
 
-    def test_read_cookie_bad_signature(self, adapter, mocker: MockerFixture):
+    def test_read_cookie_bad_signature(
+        self, adapter: CookieSessionAuthenticationAdapter, mocker: MockerFixture
+    ):
         request = self._request(mocker, cookies={adapter.settings.cookie_name: "garbage"})
         assert adapter._read_cookie(request) is None
 
-    def test_read_cookie_valid(self, adapter, mocker: MockerFixture):
+    def test_read_cookie_valid(self, adapter: CookieSessionAuthenticationAdapter, mocker: MockerFixture):
         request = self._request(mocker, cookies=self._signed_cookie(adapter, "sid-1"))
         assert adapter._read_cookie(request) == "sid-1"
 
     # --- login / callback ---------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_login_redirect(self, wired, client: MagicMock, mocker: MockerFixture):
+    async def test_login_redirect(
+        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
+    ):
         sentinel = object()
         client.authorize_redirect = mocker.AsyncMock(return_value=sentinel)
         request = self._request(mocker, session={})
@@ -196,7 +204,11 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_complete_login_creates_session(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         client.authorize_access_token = mocker.AsyncMock(
             return_value={
@@ -218,14 +230,16 @@ class TestCookieSessionAuthenticationAdapter:
         assert record.kc_sid == "KCSID"
 
     @pytest.mark.asyncio
-    async def test_complete_login_oauth_error(self, wired, client: MagicMock, mocker: MockerFixture):
+    async def test_complete_login_oauth_error(
+        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
+    ):
         client.authorize_access_token = mocker.AsyncMock(side_effect=OAuthError("bad state"))
         with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
             await wired.complete_login(self._request(mocker, session={}))
 
     @pytest.mark.asyncio
     async def test_complete_login_missing_identifier_claim(
-        self, wired, client: MagicMock, mocker: MockerFixture
+        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
     ):
         client.authorize_access_token = mocker.AsyncMock(
             return_value={"userinfo": {"sub": "SUB"}, "expires_in": 60}
@@ -237,7 +251,11 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_logout_clears_session_and_redirects_to_end_session(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record(id_token="THE_ID_TOKEN"))
         client.load_server_metadata = mocker.AsyncMock(
@@ -254,7 +272,9 @@ class TestCookieSessionAuthenticationAdapter:
         assert wired.settings.cookie_name in response.headers["set-cookie"]
 
     @pytest.mark.asyncio
-    async def test_logout_without_cookie(self, wired, client: MagicMock, mocker: MockerFixture):
+    async def test_logout_without_cookie(
+        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
+    ):
         client.load_server_metadata = mocker.AsyncMock(
             return_value={"end_session_endpoint": "https://kc/logout"}
         )
@@ -264,7 +284,11 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_logout_without_end_session_endpoint(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record())
         client.load_server_metadata = mocker.AsyncMock(return_value={})
@@ -275,25 +299,44 @@ class TestCookieSessionAuthenticationAdapter:
     # --- refresh / authenticate ---------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_authenticate_missing_cookie(self, wired, store, mocker: MockerFixture):
+    async def test_authenticate_missing_cookie(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        mocker: MockerFixture,
+    ):
         with pytest.raises(NotAuthenticatedError):
             await wired._authenticate(self._request(mocker), store)
 
     @pytest.mark.asyncio
-    async def test_authenticate_unknown_session(self, wired, store, mocker: MockerFixture):
+    async def test_authenticate_unknown_session(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        mocker: MockerFixture,
+    ):
         request = self._request(mocker, cookies=self._signed_cookie(wired, "ghost"))
         with pytest.raises(NotAuthenticatedError):
             await wired._authenticate(request, store)
 
     @pytest.mark.asyncio
-    async def test_authenticate_valid(self, wired, store, mocker: MockerFixture):
+    async def test_authenticate_valid(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        mocker: MockerFixture,
+    ):
         session_id = await store.create(_record())
         request = self._request(mocker, cookies=self._signed_cookie(wired, session_id))
         assert await wired._authenticate(request, store) == "mina.teacher"
 
     @pytest.mark.asyncio
     async def test_authenticate_expired_triggers_refresh(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record(expires_at=_past(), refresh_token="RT"))
         client.load_server_metadata = mocker.AsyncMock(
@@ -311,7 +354,12 @@ class TestCookieSessionAuthenticationAdapter:
         assert refreshed.expires_at > datetime.now(timezone.utc)
 
     @pytest.mark.asyncio
-    async def test_refresh_without_refresh_token(self, wired, store, mocker: MockerFixture):
+    async def test_refresh_without_refresh_token(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        mocker: MockerFixture,
+    ):
         session_id = await store.create(_record(expires_at=_past(), refresh_token=None))
         with pytest.raises(NotAuthenticatedError):
             await wired._refresh(session_id, await store.get(session_id), store)
@@ -319,7 +367,11 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_refresh_http_error_requires_relogin(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record(expires_at=_past(), refresh_token="RT"))
         client.load_server_metadata = mocker.AsyncMock(
@@ -334,7 +386,11 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_refresh_keeps_previous_tokens_when_absent(
-        self, wired, store, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record(expires_at=_past(), refresh_token="RT", id_token="IDT"))
         client.load_server_metadata = mocker.AsyncMock(
@@ -352,7 +408,10 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_get_authenticated_id_resolves_store_from_registry(
-        self, adapter, store, mocker: MockerFixture
+        self,
+        adapter: CookieSessionAuthenticationAdapter,
+        store: InMemorySessionStoreAdapter,
+        mocker: MockerFixture,
     ):
         session_id = await store.create(_record())
         mocker.patch.object(authentication, "ADAPTER_REGISTRY", mocker.AsyncMock(return_value=store))
@@ -360,7 +419,9 @@ class TestCookieSessionAuthenticationAdapter:
         assert await adapter.get_authenticated_id(request) == "mina.teacher"
 
     @pytest.mark.asyncio
-    async def test_get_authentication_dependency(self, adapter, mocker: MockerFixture):
+    async def test_get_authentication_dependency(
+        self, adapter: CookieSessionAuthenticationAdapter, mocker: MockerFixture
+    ):
         adapter.get_authenticated_id = mocker.AsyncMock(return_value="actor")
         dep = await adapter.get_authentication_dependency()
         assert await dep(self._request(mocker)) == "actor"
@@ -372,32 +433,40 @@ class TestAlwaysAuthenticatedAdapter:
         return AlwaysAuthenticatedAdapter()
 
     @pytest.mark.asyncio
-    async def test_get_authentication_dependency(self, adapter):
+    async def test_get_authentication_dependency(self, adapter: AlwaysAuthenticatedAdapter):
         assert await (await adapter.get_authentication_dependency())() == "dev"
 
     @pytest.mark.asyncio
-    async def test_get_authenticated_id(self, adapter, mocker: MockerFixture):
+    async def test_get_authenticated_id(
+        self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
+    ):
         assert await adapter.get_authenticated_id(mocker.Mock())
 
     @pytest.mark.asyncio
-    async def test_default_login_redirect_with_next(self, adapter, mocker: MockerFixture):
+    async def test_default_login_redirect_with_next(
+        self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
+    ):
         response = await adapter.login_redirect(mocker.Mock(), "/ui/users")
         assert response.status_code == 303
         assert response.headers["location"] == "/ui/users"
 
     @pytest.mark.asyncio
-    async def test_default_login_redirect_without_next(self, adapter, mocker: MockerFixture):
+    async def test_default_login_redirect_without_next(
+        self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
+    ):
         response = await adapter.login_redirect(mocker.Mock())
         assert response.headers["location"] == FRONTEND_PREFIX
 
     @pytest.mark.asyncio
-    async def test_default_complete_login(self, adapter, mocker: MockerFixture):
+    async def test_default_complete_login(
+        self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
+    ):
         response = await adapter.complete_login(mocker.Mock())
         assert response.status_code == 303
         assert response.headers["location"] == FRONTEND_PREFIX
 
     @pytest.mark.asyncio
-    async def test_default_logout(self, adapter, mocker: MockerFixture):
+    async def test_default_logout(self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture):
         response = await adapter.logout(mocker.Mock())
         assert response.status_code == 303
         assert response.headers["location"] == FRONTEND_PREFIX
@@ -409,11 +478,11 @@ class TestNeverAuthenticatedAdapter:
         return NeverAuthenticatedAdapter()
 
     @pytest.mark.asyncio
-    async def test_get_authentication_dependency(self, adapter):
+    async def test_get_authentication_dependency(self, adapter: NeverAuthenticatedAdapter):
         with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
             await (await adapter.get_authentication_dependency())()
 
     @pytest.mark.asyncio
-    async def test_get_authenticated_id(self, adapter, mocker: MockerFixture):
+    async def test_get_authenticated_id(self, adapter: NeverAuthenticatedAdapter, mocker: MockerFixture):
         with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
             await adapter.get_authenticated_id(mocker.Mock())

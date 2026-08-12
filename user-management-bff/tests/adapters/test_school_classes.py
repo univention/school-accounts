@@ -3,10 +3,14 @@
 
 import json
 import os
+from pathlib import Path
+from typing import Any, Callable
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
-import user_management_bff.adapters.users
+import user_management_bff.adapters.school_classes
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
 from user_management_bff.adapters.school_classes import (
     FileSchoolClassesPersistenceAdapter,
@@ -18,18 +22,20 @@ from user_management_bff.models import SchoolClass
 
 class TestKelvinSchoolClassesPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> KelvinSchoolClassesPersistenceAdapter:
         return KelvinSchoolClassesPersistenceAdapter()
 
     @pytest.fixture
-    def dummy_settings(self):
+    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
         return KelvinPersistenceAdapterSettings(
             url="https://test.com", username="test", password="password"
         )
 
     @pytest.fixture
-    def make_kelvin_school_from_data(self, mocker):
-        def _make_kelvin_school_from_data(school_data: dict):
+    def make_kelvin_school_from_data(
+        self, mocker: MockerFixture
+    ) -> Callable[[dict[str, str]], MagicMock]:
+        def _make_kelvin_school_from_data(school_data: dict[str, str]) -> MagicMock:
             kelvin_school = mocker.MagicMock()
             kelvin_school.name = school_data["id"]
             kelvin_school.description = school_data["display_name"]
@@ -55,10 +61,16 @@ class TestKelvinSchoolClassesPersistenceAdapter:
     )
     @pytest.mark.asyncio
     async def test_get_users(
-        self, adapter, dummy_settings, monkeypatch, mocker, make_kelvin_school_from_data, input_data
+        self,
+        adapter: KelvinSchoolClassesPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_school_from_data: Callable[[dict[str, str]], MagicMock],
+        input_data: list[dict[str, str]],
     ):
         class MockSchoolClassResource:
-            async def search(self, *_args, **_kwargs):
+            async def search(self, *_args: Any, **_kwargs: Any):
                 for user_data in input_data:
                     yield make_kelvin_school_from_data(user_data)
 
@@ -76,14 +88,14 @@ class TestKelvinSchoolClassesPersistenceAdapter:
 
 class TestFileSchoolClassesPersistenceAdapter:
     @pytest.fixture
-    def adapter(self):
+    def adapter(self) -> FileSchoolClassesPersistenceAdapter:
         return FileSchoolClassesPersistenceAdapter()
 
-    def test_get_settings_cls(self, adapter):
+    def test_get_settings_cls(self, adapter: FileSchoolClassesPersistenceAdapter):
         assert adapter.get_settings_cls() == FileSchoolClassesPersistenceAdapterSettings
 
     @pytest.mark.asyncio
-    async def test_configure(self, adapter, tmpdir):
+    async def test_configure(self, adapter: FileSchoolClassesPersistenceAdapter, tmpdir: Path):
         data_file = tmpdir / "test_data.json"
         data = {"foo": "bar"}
         with open(data_file, "w") as fd:
@@ -92,7 +104,7 @@ class TestFileSchoolClassesPersistenceAdapter:
         assert adapter._data == data
 
     @pytest.mark.asyncio
-    async def test_get_users(self, adapter):
+    async def test_get_users(self, adapter: FileSchoolClassesPersistenceAdapter):
         source_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "../data/school_classes.json",

@@ -11,9 +11,10 @@ never the user's access token, so the access token is not retained.
 """
 
 import sys
+from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Coroutine, cast
+from typing import Any, Callable, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -101,6 +102,7 @@ class CookieSessionAuthenticationAdapter(
         self._oauth: OAuth | None = None
 
     @classmethod
+    @override
     def get_settings_cls(cls) -> type[CookieSessionAuthenticationAdapterSettings]:
         return CookieSessionAuthenticationAdapterSettings
 
@@ -112,6 +114,7 @@ class CookieSessionAuthenticationAdapter(
             raise RuntimeError(error_msg)
         return self._settings
 
+    @override
     async def configure(self, settings: CookieSessionAuthenticationAdapterSettings):
         self._settings = settings
         oauth = OAuth()
@@ -288,12 +291,14 @@ class CookieSessionAuthenticationAdapter(
             record = await self._refresh(session_id, record, store)
         return record.actor_id
 
+    @override
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
         async def _dep(request: Request) -> str:
             return await self.get_authenticated_id(request)
 
         return _dep
 
+    @override
     async def get_authenticated_id(self, request: Request) -> str:
         store = await self._session_store()
         return await self._authenticate(request, store)
@@ -319,7 +324,7 @@ class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
         alias: str = "never_authenticated"
         cached: bool = True
 
-    async def get_authentication_dependency(self) -> Callable:
+    async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
         def _dep():
             raise NotAuthenticatedError(_("Never authenticated."))
 

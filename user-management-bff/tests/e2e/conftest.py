@@ -17,7 +17,7 @@ def base_url(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-def guardian_management_url(pytestconfig):
+def guardian_management_url(pytestconfig) -> str:
     return pytestconfig.getoption("guardian_management_url")
 
 
