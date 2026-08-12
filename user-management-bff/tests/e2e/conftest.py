@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from os import getenv
-from typing import Callable, Optional
+from typing import Callable, Optional, cast
 
 import pytest
 import pytest_asyncio
@@ -12,18 +12,18 @@ from ucsschool.kelvin.client import User as KelvinUser
 
 
 @pytest.fixture(scope="session")
-def base_url(pytestconfig):
-    return pytestconfig.getoption("base_url")
+def base_url(pytestconfig: pytest.Config) -> str:
+    return cast(str, pytestconfig.getoption("base_url"))
 
 
 @pytest.fixture(scope="session")
-def guardian_management_url(pytestconfig) -> str:
-    return pytestconfig.getoption("guardian_management_url")
+def cerbos_url(pytestconfig: pytest.Config) -> str:
+    return cast(str, pytestconfig.getoption("cerbos_url"))
 
 
 @pytest.fixture(scope="session")
-def kelvin_url(pytestconfig):
-    return pytestconfig.getoption("kelvin_url")
+def kelvin_url(pytestconfig: pytest.Config) -> str:
+    return cast(str, pytestconfig.getoption("kelvin_url"))
 
 
 @pytest.fixture

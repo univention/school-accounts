@@ -274,7 +274,7 @@ You can run the e2e tests for the backend with:
 
 ```shell
 E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
-E2E_GUARDIAN_MANAGEMENT_URL="cerbos:3593" \
+E2E_CERBOS_URL="cerbos:3593" \
 E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
 ```

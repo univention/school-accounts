@@ -222,7 +222,7 @@ beyond having `docker` (>= 25) installed.
   - `pytest` — unit/integration tests (excludes `e2e`-marked tests); accepts up to 7 extra pytest
     args, e.g. `dev/dev_run.sh task pytest --pdb`.
   - `pytest-e2e` — Playwright-backed backend e2e tests against a real deployed environment; requires
-    `E2E_BASE_URL`, `E2E_GUARDIAN_MANAGEMENT_URL`, `E2E_KELVIN_URL` and resolvable domain names (see
+    `E2E_BASE_URL`, `E2E_CERBOS_URL`, `E2E_KELVIN_URL` and resolvable domain names (see
     [README.md](README.md#running-e2e-tests-for-the-backend)). Not runnable standalone locally.
   - `translate` — verifies and (re)compiles gettext translations; must be run at least once locally
     since `.mo` files are git-ignored (see § Documentation and Changelog Requirements).

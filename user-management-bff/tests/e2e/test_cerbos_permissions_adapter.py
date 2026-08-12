@@ -3,9 +3,9 @@
 #
 # Exercises the real CerbosPermissionsAdapter (domain objects in, mapped Permission
 # dict out) against a live Cerbos server, using the same scenarios already locked in
-# by dev/scripts/cerbos_check_examples.sh and test_guardian_objects.py. Those two
-# validate the raw wire shape; this validates that our domain-object -> Principal/
-# Resource mapping actually produces the same policy decisions end to end.
+# by dev/scripts/cerbos_check_examples.sh, which validates the raw wire shape; this
+# validates that our domain-object -> Principal/Resource mapping actually produces
+# the same policy decisions end to end.
 
 import pytest
 import pytest_asyncio
@@ -61,11 +61,9 @@ def _school_class_target(target_id: str, *, school: str) -> Target:
 
 
 @pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
-async def cerbos_adapter(guardian_management_url: str) -> CerbosPermissionsAdapter:
+async def cerbos_adapter(cerbos_url: str) -> CerbosPermissionsAdapter:
     adapter = CerbosPermissionsAdapter()
-    await adapter.configure(
-        CerbosPermissionsAdapterSettings(cerbos_target=guardian_management_url, tls_verify=False)
-    )
+    await adapter.configure(CerbosPermissionsAdapterSettings(cerbos_target=cerbos_url, tls_verify=False))
     return adapter
 
 
