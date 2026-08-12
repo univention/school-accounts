@@ -8,26 +8,37 @@ SPDX-License-Identifier: AGPL-3.0-only
 This is the repository for the new UCS@school User Management Module.
 **Table of content**
 
-- [Development](#development)
-  - [Prerequisites](#prerequisites)
-  - [Gitlab Pipeline](#gitlab-pipeline)
-    - [Integration Tests](#integration-tests)
-  - [Development Container Commands](#running-commands-in-the-development-container)
-  - [Pre-Commit Usage](#use-pre-commit)
-  - [Special Tasks](#special-tasks)
-    - [Development Server](#start-development-server)
-    - [Reachable URLs](#reachable-urls)
-    - [Generating Translations](#generating-backend-translations)
-    - [Manual Live Server](#start-live-server-for-the-manual)
-    - [Developer Environment Cleanup](#cleanup-the-environment)
-    - [Generate licenses](#generating-license-annotations)
-    - [Backend E2E tests](#running-e2e-tests-for-the-backend)
-- [App Center](#app-center-app)
-  - [Generate/Update Files from Templates](#generating-or-updating-files-from-templates)
-    - [Inst script](#inst)
-- [Known Limitations and Issues](#known-limitations-and-issues)
-  - [Limitations](#limitations)
-  - [Issue](#issues)
+[[TOC]]
+
+- [UCS@school User Management](#ucsschool-user-management)
+  - [Development](#development)
+    - [Prerequisites](#prerequisites)
+    - [Gitlab Pipeline](#gitlab-pipeline)
+      - [Integration Tests](#integration-tests)
+    - [Running commands in the development container](#running-commands-in-the-development-container)
+    - [Use pre-commit](#use-pre-commit)
+    - [Special tasks](#special-tasks)
+      - [Start development server](#start-development-server)
+      - [Reachable URLS](#reachable-urls)
+      - [Generating Backend Translations](#generating-backend-translations)
+      - [Start Cerbos server for development](#start-cerbos-server-for-development)
+      - [Start live server for the manual](#start-live-server-for-the-manual)
+      - [Cleanup the environment](#cleanup-the-environment)
+      - [Generating license annotations](#generating-license-annotations)
+      - [Running unit tests for the Backend](#running-unit-tests-for-the-backend)
+      - [Running e2e tests for the Backend](#running-e2e-tests-for-the-backend)
+      - [Running product tests](#running-product-tests)
+  - [QA Checklist](#qa-checklist)
+    - [Technical QA](#technical-qa)
+    - [Functional QA](#functional-qa)
+    - [Before merge](#before-merge)
+    - [After Merge](#after-merge)
+  - [App Center App](#app-center-app)
+    - [Generating or updating files from templates](#generating-or-updating-files-from-templates)
+      - [Inst script](#inst-script)
+  - [Known Limitations and Issues](#known-limitations-and-issues)
+    - [Limitations](#limitations)
+    - [Issues](#issues)
 
 ## Development
 
@@ -39,7 +50,7 @@ You must have at least Docker version 25.
 
 ### Gitlab Pipeline
 
-#### integration-tests
+#### Integration Tests
 
 The `integration-tests` job is a manual job that has to be started and succeed in order to merge any MR that contains changes
 to the source code or the appcenter setup.
@@ -368,7 +379,7 @@ Functional QA focuses on the user using the User Management UI.
 
 ### Generating or updating files from templates
 
-#### inst
+#### Inst script
 
 The `inst` file is generated from a template, `templates/inst.tmpl`, by embedding
 some scripts in it. To do so, either because the template has changed or because
