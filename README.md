@@ -127,6 +127,8 @@ To start the development server you have to execute the [dev_run.sh script](dev/
 dev/dev_run.sh task dev-server
 ```
 
+Make sure that the `.env` is up-to-date: `cp dev/.env.example dev/.env`
+
 For Keycloak to work properly in the dev-server, you need to access the routes with the hostname
 `user-management-proxy`. This means your browser needs to be able to resolve this hostname.
 One way to achieve this, would be adapting your `/etc/hosts`:
@@ -137,7 +139,8 @@ echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
 
 #### Reachable URLS
 
-The frontend page is served by the API at http://user-management-proxy/univention/ucsschool/user-management/ui/
+The frontend page is served by the API at http://user-management-proxy/univention/ucsschool/user-management/ui/ .
+Use "dev:univention" for the login at the frontend page.
 
 The API can be accessed at http://user-management-proxy/univention/ucsschool/user-management/bff/docs
 
