@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 from typing import TYPE_CHECKING, Any
 
 import grpc
@@ -18,6 +19,7 @@ from cerbos.request.v1 import request_pb2  # pyright: ignore[reportMissingTypeSt
 from cerbos.response.v1 import response_pb2  # pyright: ignore[reportMissingTypeStubs]
 from cerbos.sdk.model import CerbosTypeError
 from google.protobuf import struct_pb2
+from port_loader import EnvSettingsProvider
 
 from user_management_bff.adapters.permissions import (
     CerbosPermissionsAdapter,
@@ -62,6 +64,28 @@ def _struct_fields(attrs: dict[str, Any]) -> MessageMap[str, struct_pb2.Value]:
 )
 def test_ucsschool_roles_to_cerbos_roles(role_strings: list[str], expected: list[dict[str, str]]):
     assert ucsschool_roles_to_cerbos_roles(role_strings) == expected
+
+
+@pytest.mark.asyncio
+async def test_cerbos_permissions_adapter_settings_resolve_via_env_settings_provider(
+    mocker: MockerFixture,
+):
+    # Regression test for univention/dev/libraries/port-loader#3: this module uses
+    # `from __future__ import annotations`, so CerbosPermissionsAdapterSettings' fields only
+    # resolve correctly if get_adapter_settings() resolves the deferred (PEP 563) annotations
+    # back to real types instead of trusting dataclasses.Field.type raw.
+    mocker.patch.dict(
+        os.environ,
+        {
+            "CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET": "cerbos.example.org:3593",
+            "CERBOS_PERMISSIONS_ADAPTER__REQUEST_TIMEOUT": "20",
+            "CERBOS_PERMISSIONS_ADAPTER__TLS_VERIFY": "0",
+        },
+    )
+    settings = await EnvSettingsProvider().get_adapter_settings(CerbosPermissionsAdapterSettings)
+    assert settings.cerbos_target == "cerbos.example.org:3593"
+    assert settings.request_timeout == 20
+    assert settings.tls_verify is False
 
 
 class TestCerbosPermissionsAdapter:

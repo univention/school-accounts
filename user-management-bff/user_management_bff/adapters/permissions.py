@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 import asyncio
 import datetime
 import json
@@ -116,7 +118,7 @@ class CerbosPermissionsAdapter(
         return attr
 
     @staticmethod
-    def _role_strings_for_target_object(target_object: "TargetObject") -> list[str]:
+    def _role_strings_for_target_object(target_object: TargetObject) -> list[str]:
         if target_object.type == TargetObjectType.SCHOOL:
             return [f"school:school:{target_object.id}"]  # made up role, just for the policy
         elif target_object.type == TargetObjectType.SCHOOL_CLASS:
@@ -127,7 +129,7 @@ class CerbosPermissionsAdapter(
         return roles if isinstance(roles, list) else []
 
     @staticmethod
-    def _resolve_target_object(target: "Target") -> "TargetObject":
+    def _resolve_target_object(target: Target) -> TargetObject:
         resolved = target.old_target if target.old_target is not None else target.new_target
         if resolved is None:
             raise ValueError("Target must have at least one of old_target/new_target set.")
@@ -136,13 +138,13 @@ class CerbosPermissionsAdapter(
     @staticmethod
     def _attrs_to_struct_fields(
         attrs: Mapping[str, _StructValue],
-    ) -> "MessageMap[str, struct_pb2.Value]":
+    ) -> MessageMap[str, struct_pb2.Value]:
         struct = struct_pb2.Struct()
         struct.update(attrs)
         return struct.fields
 
     @staticmethod
-    def _user_to_principal(user: "User") -> engine_pb2.Principal:
+    def _user_to_principal(user: User) -> engine_pb2.Principal:
         return engine_pb2.Principal(
             id=user.id,
             roles=[_PRINCIPAL_ROLE],
@@ -157,7 +159,7 @@ class CerbosPermissionsAdapter(
         )
 
     @staticmethod
-    def _target_object_to_resource(target_object: "TargetObject") -> engine_pb2.Resource:
+    def _target_object_to_resource(target_object: TargetObject) -> engine_pb2.Resource:
         """
         Convert a TargetObject to a Cerbos Resource, which is the wire format the Cerbos PDP
         understands. The Resource's "old" attribute is a dict of sanitized TargetObject
@@ -187,7 +189,7 @@ class CerbosPermissionsAdapter(
 
     @staticmethod
     def _check_resources_response_to_permissions_dict(
-        response: "CheckResourcesResponse",
+        response: CheckResourcesResponse,
     ) -> dict[str, list[Permission]]:
         return {
             result.resource.id: [
@@ -234,9 +236,7 @@ class CerbosPermissionsAdapter(
             self._client = None
 
     @override
-    async def get_permissions(
-        self, actor: "User", targets: list["Target"]
-    ) -> dict[str, list[Permission]]:
+    async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
         if not targets:
             return {}
         resources = [
@@ -299,9 +299,7 @@ class FilePermissionsAdapter(
             self._data = json.load(fd)
 
     @override
-    async def get_permissions(
-        self, actor: "User", targets: list["Target"]
-    ) -> dict[str, list[Permission]]:
+    async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
         logger.debug("Fetching actor permissions from the Guardian", actor_id=actor.id)
         permission_data = {}
         for target in targets:

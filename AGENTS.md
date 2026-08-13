@@ -298,23 +298,31 @@ optional:
   `from user_management_bff.lang import _`) so they flow into the translation catalog — see next
   section for the follow-up step this requires.
 
-**Type-only imports go under `if TYPE_CHECKING:`** — not gated by a specific tool, but treat as
-required, since getting it wrong is a real runtime bug rather than a lint nit. An import used
-exclusively inside type annotations — never instantiated/called, never a base class, never in an
-`isinstance`/`except` clause, and never the right-hand side of a module-level
-`X: TypeAlias = ...` assignment — belongs in the `if TYPE_CHECKING:` block, not as a top-level
-import. Whether that requires quoting the annotation depends on the file:
+**Type-only imports go under `if TYPE_CHECKING:`, paired with `from __future__ import
+annotations`** — not gated by a specific tool, but treat as required, since getting it wrong is a
+real runtime bug rather than a lint nit. Add `from __future__ import annotations` at the top of
+every new or touched module (as most `tests/` files and `adapters/permissions.py` already do), so
+annotations are deferred/stringified automatically. An import used exclusively inside type
+annotations — never instantiated/called, never a base class, never in an `isinstance`/`except`
+clause, and never the right-hand side of a module-level `X: TypeAlias = ...` assignment — belongs
+in the `if TYPE_CHECKING:` block, not as a top-level import; with the future import present, none
+of these annotations need quoting anymore (no `-> "SomeType"`).
 
-- Without `from __future__ import annotations` at the top, annotations are evaluated eagerly at
-  `def`/class time, so any annotation referencing a `TYPE_CHECKING`-only name must be a quoted
-  string, e.g. `-> "SomeType"` (see `adapters/permissions.py`'s `_attrs_to_struct_fields`, whose
-  return type references `MessageMap` this way).
-- With `from __future__ import annotations` present (as in most `tests/` files), all annotations
-  are deferred/stringified automatically — no quoting needed.
+- Some older files still lack `from __future__ import annotations`, in which case any annotation
+  referencing a `TYPE_CHECKING`-only name must be a quoted string, e.g. `-> "SomeType"` — bring a
+  file onto the future-import form when you touch it rather than adding more quoting to it.
+  `adapters/permissions.py` used to be one of these, worked around this way because
+  `port_loader`'s `EnvSettingsProvider` read `dataclasses.Field.type` raw and broke under deferred
+  annotations (`univention/dev/libraries/port-loader#3`) — fixed upstream, so this is no longer a
+  reason to avoid the future import.
 - Don't move a name that's genuinely evaluated at runtime — e.g. the RHS of a module-level
   `TypeAlias`, a decorator, a base class, an `except`/`isinstance` target, or anything actually
-  constructed/called in a method body. That raises `NameError` at import time once `TYPE_CHECKING`
-  is `False`, not just a type-checker complaint.
+  constructed/called in a method body — into `TYPE_CHECKING`, and don't drop its quotes either:
+  `from __future__ import annotations` only defers annotation positions (`def`/variable
+  annotations), not arbitrary expressions, so a self-referential `TypeAlias` like
+  `adapters/permissions.py`'s `_StructValue: TypeAlias = ... | Mapping[str, "_StructValue"]` still
+  needs its own quoting regardless of the future import. Moving such a name into `TYPE_CHECKING` or
+  unquoting it raises `NameError` at import/definition time, not just a type-checker complaint.
 
 Non-mandatory but consistently observed in current code: dataclasses (not classes) for view
 models/data bundles in `presentation.py`; ports/adapters named `<Noun>Port` / `<Adapter><Noun>Adapter`;
