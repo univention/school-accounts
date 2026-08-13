@@ -15,7 +15,6 @@ from .base import KelvinPersistenceBaseAdapter
 
 
 class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersistenceBaseAdapter):
-
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         async with self.kelvin_session as session:
             kelvin_work_groups = WorkGroupResource(session=session).search(school=school)
@@ -35,7 +34,6 @@ class FileWorkGroupsPersistenceAdapterSettings:
 
 
 class FileWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, AsyncConfiguredAdapterMixin):
-
     class Config:
         alias = "file"
         cached = True

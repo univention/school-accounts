@@ -7,6 +7,7 @@ view models the Jinja templates iterate over. This keeps permission resolution
 and display formatting out of the templates without reintroducing a
 representation port/adapter.
 """
+
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Protocol, TypeVar

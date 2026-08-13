@@ -288,11 +288,7 @@ async def test_get_user_add_config(access_token, base_url, kelvin_school_class_f
             lambda x: not isinstance(x, list) and x["props"]["name"] == "school_classes",
             response.json()["pages"][0]["fieldsets"][0]["rows"],
         )
-    )[
-        "props"
-    ][
-        "rows"
-    ]
+    )["props"]["rows"]
 
 
 @pytest.mark.asyncio
@@ -346,11 +342,7 @@ async def test_get_user_edit_config(
             lambda x: isinstance(x, dict) and x["props"]["name"] == "school_classes",
             response.json()["pages"][0]["fieldsets"][0]["rows"],
         )
-    )[
-        "props"
-    ][
-        "rows"
-    ]
+    )["props"]["rows"]
 
 
 @pytest.mark.asyncio

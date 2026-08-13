@@ -34,7 +34,6 @@ class SchoolsPersistencePort(ABC):
 
 
 class SchoolClassesPersistencePort(ABC):
-
     @abstractmethod
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         """
@@ -43,7 +42,6 @@ class SchoolClassesPersistencePort(ABC):
 
 
 class WorkGroupsPersistencePort(ABC):
-
     @abstractmethod
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         """
@@ -52,7 +50,6 @@ class WorkGroupsPersistencePort(ABC):
 
 
 class FastAPIAuthenticationPort(ABC):
-
     @abstractmethod
     async def get_authentication_dependency(
         self,

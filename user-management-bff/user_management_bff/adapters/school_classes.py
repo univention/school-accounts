@@ -15,7 +15,6 @@ from .base import KelvinPersistenceBaseAdapter
 
 
 class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
-
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         async with self.kelvin_session as session:
             kelvin_school_classes = SchoolClassResource(session=session).search(school=school)

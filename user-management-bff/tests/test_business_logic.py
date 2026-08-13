@@ -6,6 +6,7 @@ These call ``business_logic.*`` directly using the real file-based adapters
 obtained from the configured ``ADAPTER_REGISTRY`` (the registry is configured by
 the app startup that the session-scoped ``test_client`` fixture triggers).
 """
+
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, patch
 

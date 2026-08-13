@@ -9,6 +9,7 @@ identifier for permission checks plus the data required for logout and silent
 token refresh. Downstream calls (Kelvin/Guardian) use the service account and
 never the user's access token, so the access token is not retained.
 """
+
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -90,7 +91,6 @@ class CookieSessionAuthenticationAdapterSettings:
 class CookieSessionAuthenticationAdapter(
     FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin[CookieSessionAuthenticationAdapterSettings]
 ):
-
     class Config:
         alias: str = "cookie_session"
         cached: bool = True
@@ -300,7 +300,6 @@ class CookieSessionAuthenticationAdapter(
 
 
 class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
-
     class Config:
         alias = "always_authenticated"
         cached = True
@@ -316,7 +315,6 @@ class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
 
 
 class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
-
     class Config:
         alias: str = "never_authenticated"
         cached: bool = True

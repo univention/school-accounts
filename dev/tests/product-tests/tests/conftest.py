@@ -28,7 +28,9 @@ def page_login(page: Page) -> Callable[[str, str], Page]:
             page.get_by_label("Username or email").fill(username)
             page.get_by_label("Password", exact=True).fill(password)
             page.get_by_label("Password", exact=True).press("Enter")
-        expect(page.get_by_role("heading", name="Users (schools)")).to_be_visible(timeout=10000)
+        expect(page.get_by_role("heading", name="Users (schools)")).to_be_visible(
+            timeout=10000
+        )
 
         return page
 
@@ -51,7 +53,9 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="session")
 def kelvin_url(base_url, pytestconfig):
-    kelvin_url = pytestconfig.getoption("kelvin_url", default=urlparse(base_url).hostname)
+    kelvin_url = pytestconfig.getoption(
+        "kelvin_url", default=urlparse(base_url).hostname
+    )
     return kelvin_url
 
 

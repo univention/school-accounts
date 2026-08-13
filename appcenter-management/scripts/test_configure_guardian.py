@@ -4,7 +4,6 @@
 
 """Script to test the configuration of guardian for the user-management app."""
 
-
 import requests
 import sys
 from functools import lru_cache
@@ -61,14 +60,20 @@ def test_capabilities_ucsschool_user_management():
     app_name = "ucsschool-user-management"
     namespace_name = "user-management"
 
-    capabilities = get_capabilities(app_name, namespace_name, "super-admin_ucsschool-user-management")
+    capabilities = get_capabilities(
+        app_name, namespace_name, "super-admin_ucsschool-user-management"
+    )
     assert capabilities["capability"]["role"] == {
         "app_name": "ucsschool-user-management",
         "name": "super-admin",
         "namespace_name": "user-management",
     }, "wrong role"
-    assert capabilities["capability"]["app_name"] == "ucsschool-user-management", "wrong app_name"
-    assert sorted(capabilities["capability"]["permissions"], key=itemgetter("name")) == sorted(
+    assert (
+        capabilities["capability"]["app_name"] == "ucsschool-user-management"
+    ), "wrong app_name"
+    assert sorted(
+        capabilities["capability"]["permissions"], key=itemgetter("name")
+    ) == sorted(
         [
             {
                 "app_name": "ucsschool-user-management",

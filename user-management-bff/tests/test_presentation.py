@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 """Unit tests for the presentation view-model builders."""
+
 import pytest
 
 from user_management_bff import presentation

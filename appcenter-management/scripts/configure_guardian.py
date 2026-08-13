@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 """Script to create the necessary Guardian objects fot the User management App."""
+
 import base64
 import json
 from pathlib import Path
@@ -43,7 +44,9 @@ def get_token():
     while True:
         attempt += 1
         try:
-            response = requests.post(KEYCLOAK_URL, data=data, headers=headers, timeout=TIMEOUT)
+            response = requests.post(
+                KEYCLOAK_URL, data=data, headers=headers, timeout=TIMEOUT
+            )
             response.raise_for_status()
         except requests.exceptions.HTTPError:
             if attempt > 5:
@@ -78,7 +81,10 @@ def create_app(app_name, display_name):
     headers = generate_headers()
     data = {"name": app_name, "display_name": display_name}
     response = requests.post(
-        f"{GUARDIAN_MANAGEMENT_URL}/apps/register", headers=headers, json=data, timeout=TIMEOUT
+        f"{GUARDIAN_MANAGEMENT_URL}/apps/register",
+        headers=headers,
+        json=data,
+        timeout=TIMEOUT,
     )
     handle_status_code(response)
     print(f"App '{app_name}' created:", response.json())
@@ -88,7 +94,10 @@ def create_namespace(app_name, namespace_name):
     headers = generate_headers()
     data = {"name": namespace_name}
     response = requests.post(
-        f"{GUARDIAN_MANAGEMENT_URL}/namespaces/{app_name}", headers=headers, json=data, timeout=TIMEOUT
+        f"{GUARDIAN_MANAGEMENT_URL}/namespaces/{app_name}",
+        headers=headers,
+        json=data,
+        timeout=TIMEOUT,
     )
     handle_status_code(response)
     print(f"Namespace '{namespace_name}' created:", response.json())
@@ -121,7 +130,13 @@ def create_permission(app_name, namespace_name, permission_name, display_name):
 
 
 def create_condition(
-    app_name, namespace_name, condition_name, display_name, documentation, code, parameters=None
+    app_name,
+    namespace_name,
+    condition_name,
+    display_name,
+    documentation,
+    code,
+    parameters=None,
 ):
     headers = generate_headers()
     if parameters is None:
@@ -144,7 +159,14 @@ def create_condition(
 
 
 def create_role_capability_mapping(
-    name, display_name, app_name, namespace_name, role, permissions, conditions=None, relation="AND"
+    name,
+    display_name,
+    app_name,
+    namespace_name,
+    role,
+    permissions,
+    conditions=None,
+    relation="AND",
 ):
     headers = generate_headers()
     if conditions is None:
@@ -242,7 +264,9 @@ def main():
 
     print("Creating Permissions")
     for permission_name, display_name in permissions:
-        create_permission(app_name, default_namespace_name, permission_name, display_name)
+        create_permission(
+            app_name, default_namespace_name, permission_name, display_name
+        )
 
     print("Creating Role-Capability-Mappings")
     create_role_capability_mapping(
@@ -250,7 +274,11 @@ def main():
         f"super-admin has all permissions in {app_name}:{default_namespace_name}",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "super-admin"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "super-admin",
+        },
         [permission[0] for permission in permissions],
     )
     for role in ("student", "teacher", "staff", "school_admin"):
@@ -259,7 +287,11 @@ def main():
             f"{role} can read their own fields",
             app_name,
             default_namespace_name,
-            {"app_name": app_name, "namespace_name": default_namespace_name, "name": role},
+            {
+                "app_name": app_name,
+                "namespace_name": default_namespace_name,
+                "name": role,
+            },
             [
                 f"read-{attr_name}"
                 for attr_name in (
@@ -289,7 +321,11 @@ def main():
             f"{role} can use school groups they are a member of as search filter",
             app_name,
             default_namespace_name,
-            {"app_name": app_name, "namespace_name": default_namespace_name, "name": role},
+            {
+                "app_name": app_name,
+                "namespace_name": default_namespace_name,
+                "name": role,
+            },
             ["use-as-filter"],
             conditions=[
                 {
@@ -305,7 +341,11 @@ def main():
         "school_admin can use school groups of their schools as search filter",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "school_admin",
+        },
         ["use-as-filter"],
     )
     create_role_capability_mapping(
@@ -313,7 +353,11 @@ def main():
         "Teachers can read student fields",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "teacher",
+        },
         [
             f"read-{attr_name}"
             for attr_name in (
@@ -346,7 +390,11 @@ def main():
         "Teachers can write students passwords and work groups that are in the same class",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "teacher"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "teacher",
+        },
         ["write-password", "write-work_groups"],
         conditions=[
             {
@@ -374,7 +422,11 @@ def main():
         "Create Users (school level permission)",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "school_admin",
+        },
         [
             "create-user",
         ],
@@ -397,7 +449,11 @@ def main():
         "Create Users within same school",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "school_admin",
+        },
         [
             *[
                 f"write-{attr_name}"
@@ -458,7 +514,11 @@ def main():
         "Administrate (edit,delete) users (teachers, students, staff) in same school.",
         app_name,
         default_namespace_name,
-        {"app_name": app_name, "namespace_name": default_namespace_name, "name": "school_admin"},
+        {
+            "app_name": app_name,
+            "namespace_name": default_namespace_name,
+            "name": "school_admin",
+        },
         [
             *[
                 f"write-{attr_name}"

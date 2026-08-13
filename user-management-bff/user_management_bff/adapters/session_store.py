@@ -7,6 +7,7 @@ runs as today and needs no extra infrastructure. A Redis/DB-backed adapter can
 be slotted in behind :class:`SessionStorePort` when horizontal scaling is
 required, without touching the rest of the application.
 """
+
 import secrets
 import sys
 
@@ -20,7 +21,6 @@ else:
 
 
 class InMemorySessionStoreAdapter(SessionStorePort):
-
     class Config:
         alias: str = "in_memory"
         cached: bool = True

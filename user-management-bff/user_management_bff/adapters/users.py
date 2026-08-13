@@ -17,7 +17,6 @@ from .base import KelvinPersistenceBaseAdapter
 
 
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
-
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
         return User(
             id=kelvin_user.name,
@@ -45,7 +44,8 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             return [
                 self._user_from_kelvin_user(kelvin_user)
                 async for kelvin_user in kelvin_users
-                if (
+                if
+                (
                     # No filtering
                     ((school_classes is None) and (work_groups is None))
                     # user is in a school class
