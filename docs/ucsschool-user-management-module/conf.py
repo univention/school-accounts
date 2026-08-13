@@ -38,8 +38,13 @@ def read_version_from_ci() -> str:
 
     import yaml
 
+    class GitLabCILoader(yaml.SafeLoader):
+        """Loader that tolerates GitLab's custom tags, e.g. ``!reference``."""
+
+    GitLabCILoader.add_multi_constructor("!", lambda loader, suffix, node: None)
+
     with open("../../.gitlab-ci/gitlab-ci.yml", "r") as f:
-        ci = yaml.safe_load(f)
+        ci = yaml.load(f, Loader=GitLabCILoader)  # noqa: S506
         return ci.get("variables", {"DOC_TARGET_VERSION": "1.0"}).get(
             "DOC_TARGET_VERSION"
         )

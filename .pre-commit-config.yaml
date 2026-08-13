@@ -12,6 +12,8 @@ repos:
     - id: check-json
     - id: check-xml
     - id: check-yaml
+      # the GitLab CI config uses the custom "!reference" tag
+      args: [--unsafe]
     - id: check-toml
     - id: trailing-whitespace
       exclude: '^user-management-bff/user_management_bff/static/vendor/'

@@ -217,6 +217,11 @@ integration-tests:
     PACKAGES_TO_INSTALL: ""
     UCSSCHOOL_USER_MANAGEMENT_VERSION: $APP_VERSION
     SSH_KEY: $SSH_PRIVATE_KEY_TECH
+  script:
+    - !reference [.run_openstack_cfg, script]
+    # the test commands in the cfg file end in "|| true" so that the junit
+    # reports are still fetched from the VM, this fails the job instead
+    - dev/tests/parse_junit.py
   artifacts:
     when: always
     paths:
