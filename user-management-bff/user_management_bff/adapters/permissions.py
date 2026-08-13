@@ -21,7 +21,7 @@ from cerbos.sdk.grpc.utils import (  # pyright: ignore[reportMissingTypeStubs]
 from cerbos.sdk.model import CerbosTypeError
 from google.protobuf import struct_pb2
 from loguru import logger
-from port_loader import AsyncConfiguredAdapterMixin
+from port_loader import AsyncClosableAdapterMixin, AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
 
@@ -97,7 +97,9 @@ def ucsschool_roles_to_cerbos_roles(role_strings: list[str]) -> list[dict[str, s
 
 
 class CerbosPermissionsAdapter(
-    PermissionsPort, AsyncConfiguredAdapterMixin[CerbosPermissionsAdapterSettings]
+    PermissionsPort,
+    AsyncConfiguredAdapterMixin[CerbosPermissionsAdapterSettings],
+    AsyncClosableAdapterMixin,
 ):
     class Config:
         alias: str = "cerbos"
@@ -225,6 +227,7 @@ class CerbosPermissionsAdapter(
     async def configure(self, settings: CerbosPermissionsAdapterSettings):
         self._settings = settings
 
+    @override
     async def close(self) -> None:
         if self._client is not None:
             await self._client.close()

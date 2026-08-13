@@ -15,12 +15,7 @@ from port_loader import AsyncAdapterSettingsProvider
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 
-from .adapter_registry import (
-    ADAPTER_REGISTRY,
-    configure_registry,
-    initialize_adapters,
-    shutdown_adapters,
-)
+from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
 from .constants import (
     AUTH_LOGIN_PATH,
     CORS_ALLOWED_ORIGINS,
@@ -58,7 +53,7 @@ async def lifespan(_fastapi_app: FastAPI):
 
         traceback.print_exc()
     yield
-    await shutdown_adapters(ADAPTER_REGISTRY)
+    await ADAPTER_REGISTRY.aclose()
 
 
 app = FastAPI(
