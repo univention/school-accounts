@@ -7,7 +7,7 @@ include:
       - kaniko.yml
   - project: 'univention/dev/docs/sphinx-docker'
     file: 'pipeline/sphinx.yml'
-  - project: univention/dev/internal/ucsschool-ci-utils
+  - project: univention/dev/tooling/ci-components
     file: fragments/openstack.yaml
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.12.0
     inputs:
