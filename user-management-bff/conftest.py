@@ -4,7 +4,7 @@
 import pytest
 
 
-def pytest_addoption(parser: pytest.Parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--base_url", action="store")
     parser.addoption("--cerbos_url", action="store")
     parser.addoption("--kelvin_url", action="store")
