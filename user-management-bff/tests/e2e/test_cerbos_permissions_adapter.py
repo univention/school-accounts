@@ -24,7 +24,14 @@ from user_management_bff.models import (
 )
 
 
-def _user(user_id: str, *, roles: list[str], school_classes: dict[str, list[str]] | None = None) -> User:
+def _user(
+    user_id: str,
+    *,
+    roles: list[str],
+    school_classes: dict[str, list[str]] | None = None,
+    schools: list[str] | None = None,
+    work_groups: dict[str, list[str]] | None = None,
+) -> User:
     return User(
         id=user_id,
         attributes=UserAttributes(
@@ -32,9 +39,9 @@ def _user(user_id: str, *, roles: list[str], school_classes: dict[str, list[str]
             first_name="First",
             username=user_id,
             disabled=False,
-            schools=[],
+            schools=schools or [],
             school_classes=school_classes or {},
-            work_groups={},
+            work_groups=work_groups or {},
             roles=roles,
         ),
     )
@@ -55,6 +62,22 @@ def _school_class_target(target_id: str, *, school: str) -> Target:
     return Target(
         old_target=TargetObject(
             id=target_id, type=TargetObjectType.SCHOOL_CLASS, attributes={"school": school}
+        ),
+        new_target=None,
+    )
+
+
+def _school_target(target_id: str) -> Target:
+    return Target(
+        old_target=TargetObject(id=target_id, type=TargetObjectType.SCHOOL, attributes={}),
+        new_target=None,
+    )
+
+
+def _work_group_target(target_id: str, *, school: str) -> Target:
+    return Target(
+        old_target=TargetObject(
+            id=target_id, type=TargetObjectType.WORK_GROUP, attributes={"school": school}
         ),
         new_target=None,
     )
@@ -122,15 +145,20 @@ async def test_school_admin_resets_passwords_in_school_except_another_school_adm
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_staff_reads_teacher_data_but_cannot_reset_password(
+async def test_staff_reads_other_staff_not_teacher_and_cannot_reset_password(
     cerbos_adapter: CerbosPermissionsAdapter,
 ):
     grace = _user("grace", roles=["staff:school:school1"])
     permissions = await cerbos_adapter.get_permissions(
-        grace, [_user_target("teacher1", roles=["teacher:school:school1"])]
+        grace,
+        [
+            _user_target("staff1", roles=["staff:school:school1"]),
+            _user_target("teacher1", roles=["teacher:school:school1"]),
+        ],
     )
-    assert Permission.read_birthday in permissions["teacher1"]
-    assert Permission.write_password not in permissions["teacher1"]
+    assert Permission.read_birthday in permissions["staff1"]
+    assert Permission.write_password not in permissions["staff1"]
+    assert permissions["teacher1"] == []
 
 
 @pytest.mark.e2e
@@ -146,3 +174,46 @@ async def test_school_class_filter_scoped_to_own_class(cerbos_adapter: CerbosPer
     )
     assert permissions["1a"] == [Permission.use_as_filter]
     assert permissions["1b"] == []
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_school_admin_class_filter_scoped_to_own_school(
+    cerbos_adapter: CerbosPermissionsAdapter,
+):
+    dave = _user("dave", roles=["school_admin:school:school1"])
+    permissions = await cerbos_adapter.get_permissions(
+        dave,
+        [
+            _school_class_target("1a", school="school1"),
+            _school_class_target("2a", school="school2"),
+        ],
+    )
+    assert permissions["1a"] == [Permission.use_as_filter]
+    assert permissions["2a"] == []
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_school_filter_scoped_to_enrolled_school(cerbos_adapter: CerbosPermissionsAdapter):
+    bob = _user("bob", roles=["student:school:school1"], schools=["school1"])
+    permissions = await cerbos_adapter.get_permissions(
+        bob, [_school_target("school1"), _school_target("school2")]
+    )
+    assert permissions["school1"] == [Permission.use_as_filter]
+    assert permissions["school2"] == []
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_work_group_filter_scoped_to_own_group(cerbos_adapter: CerbosPermissionsAdapter):
+    bob = _user("bob", roles=[], work_groups={"school1": ["chess-club"]})
+    permissions = await cerbos_adapter.get_permissions(
+        bob,
+        [
+            _work_group_target("chess-club", school="school1"),
+            _work_group_target("art-club", school="school1"),
+        ],
+    )
+    assert permissions["chess-club"] == [Permission.use_as_filter]
+    assert permissions["art-club"] == []
