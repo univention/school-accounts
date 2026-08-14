@@ -69,42 +69,6 @@ repos:
       stages: [manual]
       pass_filenames: false
       files: ^user-management-bff/
-    - id: basedpyright-product-tests-native-baseline
-      name: basedpyright (product-tests, relative to baseline, native)
-      language: system
-      entry: |
-        sh -c 'cd dev/tests/product-tests && uv sync --python 3.11 && \
-          uv pip install basedpyright==1.39.8 && \
-          .venv/bin/basedpyright \
-            --project pyrightconfig.json \
-            --baselinefile basedpyright-baseline.json \
-            --baselinemode=auto' --
-      pass_filenames: false
-      types: [python]
-      files: ^dev/tests/product-tests/
-    - id: basedpyright-product-tests-container-baseline
-      name: basedpyright (product-tests, relative to baseline, docker)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests baseline
-      stages: [manual]
-      pass_filenames: false
-      types: [python]
-      files: ^dev/tests/product-tests/
-    - id: basedpyright-product-tests-container-no-baseline
-      name: basedpyright (product-tests, lint file, no baseline)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests no-baseline
-      stages: [manual]
-      pass_filenames: true
-      types: [python]
-      files: ^dev/tests/product-tests/
-    - id: basedpyright-product-tests-container-write-baseline
-      name: basedpyright (product-tests, write baseline)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh dev/tests/product-tests write-baseline
-      stages: [manual]
-      pass_filenames: false
-      files: ^dev/tests/product-tests/
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:

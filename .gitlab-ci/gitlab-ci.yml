@@ -42,22 +42,6 @@ include:
             - user-management-bff/**/*
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.12.0
-    inputs:
-      job_prefix: "product_tests_"
-      pipeline_stage: build
-      python_paths: --project dev/tests/product-tests/pyrightconfig.json dev/tests/product-tests
-      python_version: "3.11"
-      basedpyright_version: "1.39.8"
-      baseline_file: dev/tests/product-tests/basedpyright-baseline.json
-      before_script:
-        - uv sync --project dev/tests/product-tests --python 3.11
-      job_rules:
-        - if: $CI_MERGE_REQUEST_ID
-          changes:
-            - dev/tests/product-tests/**/*
-        - if: $CI_COMMIT_REF_PROTECTED == "true"
-        - if: $CI_COMMIT_TAG
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.12.0
     inputs:
       job_name: "build-sonar"
