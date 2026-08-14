@@ -42,3 +42,4 @@ class TestKelvinPersistenceBaseAdapter:
         assert adapter.kelvin_session.host == dummy_settings.url
         assert adapter.kelvin_session.username == dummy_settings.username
         assert adapter.kelvin_session.password == dummy_settings.password
+        assert adapter.kelvin_session.api_version == "v2"

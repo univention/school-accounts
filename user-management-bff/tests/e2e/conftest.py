@@ -75,8 +75,7 @@ async def kelvin_user_deletion(
     async with Session(**kelvin_credentials) as session:
         for username in to_delete:
             try:
-                # UserResource.get() returns the unresolved KelvinObjectType TypeVar.
-                user = cast(KelvinUser, await UserResource(session=session).get(name=username))
+                user = await UserResource(session=session).get(name=username)
                 await user.delete()
             except NoObject:
                 pass
@@ -131,10 +130,7 @@ async def kelvin_school_class_deletion(
     async with Session(**kelvin_credentials) as session:
         for school, name in to_delete:
             try:
-                # SchoolClassResource.get() returns the unresolved KelvinObjectType TypeVar.
-                school_class = cast(
-                    SchoolClass, await SchoolClassResource(session=session).get(school=school, name=name)
-                )
+                school_class = await SchoolClassResource(session=session).get(school=school, name=name)
                 await school_class.delete()
             except NoObject:
                 pass
@@ -174,7 +170,7 @@ def get_kelvin_user(
 ) -> Callable[[str], Coroutine[Any, Any, KelvinUser]]:
     async def _get_kelvin_user(username: str) -> KelvinUser:
         async with Session(**kelvin_credentials) as session:
-            return cast(KelvinUser, await UserResource(session=session).get(name=username))
+            return await UserResource(session=session).get(name=username)
 
     return _get_kelvin_user
 

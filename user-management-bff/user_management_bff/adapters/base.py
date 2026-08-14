@@ -10,6 +10,10 @@ from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
 from ucsschool.kelvin.client import Session
 
+# this app supports the Kelvin v2 API only, so the version is pinned here.
+# The client library still defaults to v1
+KELVIN_API_VERSION = "v2"
+
 
 @dataclass
 class KelvinPersistenceAdapterSettings:
@@ -44,5 +48,6 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
             self._settings.username,
             self._settings.password,
             self._settings.url,
+            api_version=KELVIN_API_VERSION,
             verify=os.environ.get("SSL_CERT_FILE"),
         )
