@@ -17,12 +17,6 @@ class TestKelvinPersistenceBaseAdapter:
     def adapter(self) -> DummyAdapter:
         return DummyAdapter()
 
-    @pytest.fixture
-    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
-        return KelvinPersistenceAdapterSettings(
-            url="https://test.com", username="test", password="password"
-        )
-
     def test_get_settings_cls(self):
         assert KelvinPersistenceBaseAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
 

@@ -16,6 +16,7 @@ def _record(**overrides: object) -> SessionRecord:
         expires_at=datetime(2999, 1, 1, tzinfo=timezone.utc),
         refresh_token="rt",
         id_token="idt",
+        csrf_token="csrf-token",
     )
     return base.model_copy(update=overrides)
 

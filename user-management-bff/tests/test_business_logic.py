@@ -7,6 +7,8 @@ obtained from the configured ``ADAPTER_REGISTRY`` (the registry is configured by
 the app startup that the session-scoped ``test_client`` fixture triggers).
 """
 
+import asyncio
+import sys
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,13 +17,23 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 
+if sys.version_info >= (3, 12):  # pragma: no cover
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 from user_management_bff import business_logic, presentation
 from user_management_bff.adapter_registry import ADAPTER_REGISTRY
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
+from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.business_logic import get_schools
-from user_management_bff.errors import NoSchoolUserError, ObjectNotFoundError
+from user_management_bff.errors import (
+    NoSchoolUserError,
+    ObjectNotFoundError,
+    PasswordResetRejectedError,
+)
 from user_management_bff.lang import _
-from user_management_bff.models import Permission, Target, User, UsersGetRequest
+from user_management_bff.models import Permission, Target, User, UserAttributes, UsersGetRequest
 from user_management_bff.ports import (
     PermissionsPort,
     SchoolClassesPersistencePort,
@@ -29,6 +41,7 @@ from user_management_bff.ports import (
     UsersPersistencePort,
     WorkGroupsPersistencePort,
 )
+from user_management_bff.presentation import PasswordResetOutcomeCode
 
 # The actor id supplied by AlwaysAuthenticatedAdapter in the test environment.
 ACTOR_ID = "dev"
@@ -260,3 +273,259 @@ async def test_get_users_partial_visibility(ports: Ports, mocker: MockerFixture)
     view = presentation.build_user_list(result, "en")
     # The username cell is the third column and is always readable.
     assert [row.cells[2].text for row in view.rows] == ["firstname.lastname"]
+
+
+# ---------------------------------------------------------------------------
+# set_passwords
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_set_passwords_success(ports: Ports, mocker: MockerFixture):
+    # set_password is mocked here (rather than exercising the real File adapter write)
+    # since ports.users points at the shared tests/data/users.json fixture - a real
+    # write here would need its own cleanup. The write path itself is covered at the
+    # adapter level (tests/adapters/test_users.py); this test is about orchestration.
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock)
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id(
+            {"test_user1": [Permission.write_password], "test_user2": [Permission.write_password]}
+        ),
+    )
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "new-password", "en"
+    )
+    assert {outcome.target_id: outcome.outcome for outcome in result.outcomes} == {
+        "test_user1": PasswordResetOutcomeCode.success,
+        "test_user2": PasswordResetOutcomeCode.success,
+    }
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_denies_permission_per_user_without_aborting_others(
+    ports: Ports, mocker: MockerFixture
+):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock
+    )
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_password]}),
+    )
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "new-password", "en"
+    )
+    assert {outcome.target_id: outcome.outcome for outcome in result.outcomes} == {
+        "test_user1": PasswordResetOutcomeCode.success,
+        "test_user2": PasswordResetOutcomeCode.permission_denied,
+    }
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_actor_can_include_self(ports: Ports, mocker: MockerFixture):
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock)
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id(
+            {ACTOR_ID: [Permission.write_password], "test_user1": [Permission.write_password]}
+        ),
+    )
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, [ACTOR_ID, "test_user1"], "new-password", "en"
+    )
+    assert {outcome.target_id: outcome.outcome for outcome in result.outcomes} == {
+        ACTOR_ID: PasswordResetOutcomeCode.success,
+        "test_user1": PasswordResetOutcomeCode.success,
+    }
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_partial_failure_returns_per_user_outcomes(
+    ports: Ports, mocker: MockerFixture
+):
+    target_ids = ["test_user1", "test_user2", "test_user3"]
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({tid: [Permission.write_password] for tid in target_ids}),
+    )
+
+    async def _set_password(identifier: str, _password: str) -> None:
+        if identifier == "test_user2":
+            raise ObjectNotFoundError(identifier="test_user2")
+        if identifier == "test_user3":
+            raise PasswordResetRejectedError(identifier="test_user3", message="policy violation")
+
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", side_effect=_set_password
+    )
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, target_ids, "new-password", "en"
+    )
+    outcomes_by_id = {outcome.target_id: outcome for outcome in result.outcomes}
+    assert outcomes_by_id["test_user1"].outcome == PasswordResetOutcomeCode.success
+    assert outcomes_by_id["test_user2"].outcome == PasswordResetOutcomeCode.not_found
+    assert outcomes_by_id["test_user3"].outcome == PasswordResetOutcomeCode.rejected
+    assert outcomes_by_id["test_user3"].reason == "policy violation"
+    assert set_password_mock.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_missing_target_returns_not_found_outcome_without_aborting_others(
+    ports: Ports, mocker: MockerFixture
+):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock
+    )
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_password]}),
+    )
+    result = await business_logic.set_passwords(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "NON_EXISTENT"],
+        "new-password",
+        "en",
+    )
+    assert [outcome.outcome for outcome in result.outcomes] == [
+        PasswordResetOutcomeCode.success,
+        PasswordResetOutcomeCode.not_found,
+    ]
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_unexpected_fetch_error_still_aborts_whole_request(
+    ports: Ports, mocker: MockerFixture
+):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock
+    )
+    original_get_user = FileUsersPersistenceAdapter.get_user
+
+    async def _get_user(identifier: str) -> User:
+        if identifier == "test_user1":
+            raise RuntimeError("Kelvin is unreachable")
+        return await original_get_user(ports.users, identifier)  # pyright: ignore[reportArgumentType]
+
+    mocker.patch.object(FileUsersPersistenceAdapter, "get_user", side_effect=_get_user)
+    with pytest.raises(RuntimeError, match="Kelvin is unreachable"):
+        await business_logic.set_passwords(
+            ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "new-password", "en"
+        )
+    set_password_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_preserves_request_order_across_outcome_kinds(
+    ports: Ports, mocker: MockerFixture
+):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_password]}),
+    )
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock)
+    result = await business_logic.set_passwords(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["NON_EXISTENT", "test_user2", "test_user1"],
+        "new-password",
+        "en",
+    )
+    assert [outcome.target_id for outcome in result.outcomes] == [
+        "NON_EXISTENT",
+        "test_user2",
+        "test_user1",
+    ]
+    assert [outcome.outcome for outcome in result.outcomes] == [
+        PasswordResetOutcomeCode.not_found,
+        PasswordResetOutcomeCode.permission_denied,
+        PasswordResetOutcomeCode.success,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_deduplicates_target_ids(ports: Ports, mocker: MockerFixture):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_password]}),
+    )
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=AsyncMock
+    )
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user1"], "new-password", "en"
+    )
+    assert [outcome.target_id for outcome in result.outcomes] == ["test_user1"]
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_empty_target_ids_returns_no_outcomes(ports: Ports, mocker: MockerFixture):
+    get_permissions_mock = mocker.patch.object(FilePermissionsAdapter, "get_permissions")
+    get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, [], "new-password", "en"
+    )
+    assert result.outcomes == []
+    get_permissions_mock.assert_not_called()
+    get_user_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_bounds_concurrency(mocker: MockerFixture):
+    class _ConcurrencyTrackingUsersAdapter(UsersPersistencePort):
+        def __init__(self) -> None:
+            self.current: int = 0
+            self.high_water_mark: int = 0
+
+        @override
+        async def get_users(
+            self, school: str, school_classes: list[str], work_groups: list[str]
+        ) -> list[User]:
+            raise NotImplementedError
+
+        @override
+        async def get_user(self, identifier: str) -> User:
+            return User(
+                id=identifier,
+                attributes=UserAttributes(
+                    last_name="L",
+                    first_name="F",
+                    username=identifier,
+                    disabled=False,
+                    schools=[],
+                    school_classes={},
+                    work_groups={},
+                    roles=[],
+                ),
+            )
+
+        @override
+        async def set_password(self, identifier: str, password: str) -> None:
+            self.current += 1
+            self.high_water_mark = max(self.high_water_mark, self.current)
+            await asyncio.sleep(0)
+            self.current -= 1
+
+    users_adapter = _ConcurrencyTrackingUsersAdapter()
+    target_ids = [f"target-{i}" for i in range(10)]
+    permissions_mock = mocker.MagicMock(spec=PermissionsPort)
+    permissions_mock.get_permissions.side_effect = _permissions_by_id(
+        {tid: [Permission.write_password] for tid in target_ids}
+    )
+    mocker.patch.object(business_logic, "PASSWORD_RESET_MAX_CONCURRENCY", 3)
+    await business_logic.set_passwords(
+        users_adapter, permissions_mock, ACTOR_ID, target_ids, "new-password", "en"
+    )
+    assert users_adapter.high_water_mark <= 3
+    assert users_adapter.high_water_mark > 1

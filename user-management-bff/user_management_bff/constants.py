@@ -17,6 +17,18 @@ AUTH_LOGIN_PATH = "/auth/login"
 AUTH_CALLBACK_PATH = "/auth/callback"
 AUTH_LOGOUT_PATH = "/auth/logout"
 
+# Request header carrying the per-session CSRF token on mutating (unsafe) UI
+# requests. The submit form sends it via htmx hx-headers; the server compares
+# it against the token bound to the session.
+CSRF_HEADER_NAME = "X-CSRF-Token"
+
+# Selecting a whole class and resetting its password must not create a burst of
+# concurrent writes against Kelvin. Bounds how many set_password/get_user calls
+# one bulk submission has in flight at once.
+PASSWORD_RESET_MAX_CONCURRENCY = int(
+    os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY", "5")
+)
+
 
 # Secret for Starlette's SessionMiddleware, which holds the transient OAuth
 # state (CSRF `state` + PKCE `code_verifier`) between the login redirect and the

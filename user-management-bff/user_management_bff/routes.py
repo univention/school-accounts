@@ -24,9 +24,11 @@ from .constants import (
     AUTH_CALLBACK_PATH,
     AUTH_LOGIN_PATH,
     AUTH_LOGOUT_PATH,
+    CSRF_HEADER_NAME,
     FRONTEND_PREFIX,
     TEMPLATES_DIR,
 )
+from .errors import PermissionsError
 from .lang import _, get_lang
 from .models import UsersGetRequest
 from .ports import (
@@ -336,4 +338,34 @@ async def users_group_options(
         # fragment does not need to know which value is currently selected.
         selected_group="",
         query=q,
+    )
+
+
+@router.post("/users/password-reset", response_class=HTMLResponse)
+async def users_password_reset(
+    request: Request,
+    actor: ActorDep,
+    auth: AuthDep,
+    users_adapter: UsersAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
+) -> HTMLResponse:
+    """Set one password for every selected user (bulk reset).
+
+    Renders a summary toast plus a plain per-target outcome list.
+    """
+    lang = get_lang(request)
+    if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
+        raise PermissionsError(
+            _("Invalid or missing security token. Please reload the page and try again.", lang=lang)
+        )
+    form = await request.form()
+    target_ids = [str(v) for v in form.getlist("user_id")]
+    password = str(form.get("password", ""))
+    result = await business_logic.set_passwords(
+        users_adapter, permissions_adapter, actor, target_ids, password, lang
+    )
+    message, variant = presentation.build_password_reset_summary(result, lang)
+    rows = presentation.build_password_reset_outcome_rows(result, lang)
+    return render(
+        request, "fragments/password_reset_result.html", message=message, variant=variant, rows=rows
     )

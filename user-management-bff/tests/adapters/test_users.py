@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
-from ucsschool.kelvin.client import NoObject
+from ucsschool.kelvin.client import InvalidRequest, NoObject
 
 import user_management_bff.adapters.users
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -17,7 +17,7 @@ from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
 )
-from user_management_bff.errors import ObjectNotFoundError
+from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
 from user_management_bff.models import User, UserAttributes
 
 
@@ -25,12 +25,6 @@ class TestKelvinUsersPersistenceAdapter:
     @pytest.fixture
     def adapter(self) -> KelvinUsersPersistenceAdapter:
         return KelvinUsersPersistenceAdapter()
-
-    @pytest.fixture
-    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
-        return KelvinPersistenceAdapterSettings(
-            url="https://test.com", username="test", password="password"
-        )
 
     @pytest.fixture
     def make_kelvin_user_from_data(self, mocker: MockerFixture) -> Callable[[dict[str, Any]], MagicMock]:
@@ -242,6 +236,70 @@ class TestKelvinUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
+
+    @pytest.mark.asyncio
+    async def test_set_password_success(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(return_value=kelvin_user)
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        await adapter.set_password("test_user1", "new-password")
+        assert kelvin_user.password == "new-password"
+        kelvin_user.save.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_password_not_found(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                raise NoObject()
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
+            await adapter.set_password("test_user1", "new-password")
+        assert exc_info.value.identifier == "test_user1"
+
+    @pytest.mark.asyncio
+    async def test_set_password_rejected(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(side_effect=InvalidRequest(reason="policy violation"))
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(PasswordResetRejectedError) as exc_info:
+            await adapter.set_password("test_user1", "new-password")
+        assert exc_info.value.identifier == "test_user1"
+        assert exc_info.value.message == "policy violation"
 
 
 class TestFileUsersPersistenceAdapter:
@@ -466,4 +524,31 @@ class TestFileUsersPersistenceAdapter:
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("NON_EXISTENT")
+        assert exc_info.value.identifier == "NON_EXISTENT"
+
+    @pytest.mark.asyncio
+    async def test_set_password_success(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        await adapter.set_password("dev", "new-password")
+        result = await adapter.get_user("dev")
+        assert result == User(
+            id="dev",
+            attributes=UserAttributes(
+                last_name="User",
+                first_name="Dev",
+                username="dev",
+                disabled=False,
+                schools=["school1"],
+                school_classes={"school1": ["1a", "2b"]},
+                work_groups={},
+                roles=["teacher:school:school1"],
+                password="new-password",
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_set_password_not_found(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
+            await adapter.set_password("NON_EXISTENT", "new-password")
         assert exc_info.value.identifier == "NON_EXISTENT"

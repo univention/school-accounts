@@ -231,3 +231,74 @@ def test_build_user_list_skips_users_without_permissions():
     )
     view = presentation.build_user_list(data, "en")
     assert view.rows == []
+
+
+def test_build_password_reset_summary_all_succeeded():
+    data = presentation.PasswordResetResultData(
+        outcomes=[
+            presentation.PasswordResetOutcome(
+                target_id="user1", outcome=presentation.PasswordResetOutcomeCode.success
+            ),
+            presentation.PasswordResetOutcome(
+                target_id="user2", outcome=presentation.PasswordResetOutcomeCode.success
+            ),
+        ]
+    )
+    message, variant = presentation.build_password_reset_summary(data, "en")
+    assert message == "Password reset for 2 of 2 users."
+    assert variant == "success"
+
+
+def test_build_password_reset_summary_partial_failure():
+    data = presentation.PasswordResetResultData(
+        outcomes=[
+            presentation.PasswordResetOutcome(
+                target_id="user1", outcome=presentation.PasswordResetOutcomeCode.success
+            ),
+            presentation.PasswordResetOutcome(
+                target_id="user2", outcome=presentation.PasswordResetOutcomeCode.permission_denied
+            ),
+        ]
+    )
+    message, variant = presentation.build_password_reset_summary(data, "en")
+    assert message == "Password reset for 1 of 2 users."
+    assert variant == "error"
+
+
+@pytest.mark.parametrize(
+    "code,expected_label",
+    [
+        (presentation.PasswordResetOutcomeCode.success, "Success"),
+        (presentation.PasswordResetOutcomeCode.permission_denied, "Permission denied"),
+        (presentation.PasswordResetOutcomeCode.not_found, "User not found"),
+        (presentation.PasswordResetOutcomeCode.rejected, "Rejected"),
+    ],
+)
+def test_build_password_reset_outcome_rows_labels(
+    code: presentation.PasswordResetOutcomeCode, expected_label: str
+):
+    data = presentation.PasswordResetResultData(
+        outcomes=[presentation.PasswordResetOutcome(target_id="user1", outcome=code)]
+    )
+    rows = presentation.build_password_reset_outcome_rows(data, "en")
+    assert rows == [
+        presentation.PasswordResetOutcomeRow(target_id="user1", label=expected_label, reason=None)
+    ]
+
+
+def test_build_password_reset_outcome_rows_carries_reason():
+    data = presentation.PasswordResetResultData(
+        outcomes=[
+            presentation.PasswordResetOutcome(
+                target_id="user1",
+                outcome=presentation.PasswordResetOutcomeCode.rejected,
+                reason="Password too short",
+            )
+        ]
+    )
+    rows = presentation.build_password_reset_outcome_rows(data, "en")
+    assert rows == [
+        presentation.PasswordResetOutcomeRow(
+            target_id="user1", label="Rejected", reason="Password too short"
+        )
+    ]

@@ -1,19 +1,26 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
+import sys
 from dataclasses import dataclass, field
 from typing import Type
 
+import aiofiles
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
-from ucsschool.kelvin.client import NoObject, UserResource
+from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
-from ..errors import ObjectNotFoundError
+from ..errors import ObjectNotFoundError, PasswordResetRejectedError
 from ..models import User, UserAttributes
 from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter
+
+if sys.version_info >= (3, 12):  # pragma: no cover
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
@@ -79,6 +86,23 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
                 raise ObjectNotFoundError(identifier=identifier) from exc
 
+    @override
+    async def set_password(self, identifier: str, password: str) -> None:
+        async with self.kelvin_session as session:
+            try:
+                kelvin_user = await UserResource(session=session).get(name=identifier)
+            except NoObject as exc:
+                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+                raise ObjectNotFoundError(identifier=identifier) from exc
+            kelvin_user.password = password
+            try:
+                await kelvin_user.save()
+            except InvalidRequest as exc:
+                logger.error(
+                    "Kelvin rejected the password change.", user_id=identifier, error=exc.reason
+                )
+                raise PasswordResetRejectedError(identifier=identifier, message=exc.reason) from exc
+
 
 @dataclass
 class FileUsersPersistenceAdapterSettings:
@@ -101,18 +125,18 @@ class FileUsersPersistenceAdapter(
     ) -> Type[FileUsersPersistenceAdapterSettings]:  # pragma: no cover
         return FileUsersPersistenceAdapterSettings
 
-    def _reload_data(self):
-        with open(self.settings.source, "r") as fd:
-            self._data = json.load(fd)
+    async def _reload_data(self):
+        async with aiofiles.open(self.settings.source, "r") as fd:
+            self._data = json.loads(await fd.read())
 
     async def configure(self, settings: FileUsersPersistenceAdapterSettings):
         self.settings = settings
-        self._reload_data()
+        await self._reload_data()
 
     async def get_users(
         self, school: str, school_classes: list[str] | None, work_groups: list[str] | None
     ) -> list[User]:
-        self._reload_data()
+        await self._reload_data()
         if school_classes is None:
             school_classes = []
         if work_groups is None:
@@ -147,9 +171,20 @@ class FileUsersPersistenceAdapter(
         return data
 
     async def get_user(self, identifier: str) -> User:
-        self._reload_data()
+        await self._reload_data()
         try:
             user = next(user for user in self._data if user["id"] == identifier)
             return User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
         except StopIteration:
             raise ObjectNotFoundError(identifier=identifier)
+
+    @override
+    async def set_password(self, identifier: str, password: str) -> None:
+        await self._reload_data()
+        for user_data in self._data:
+            if user_data["id"] == identifier:
+                user_data["attributes"]["password"] = password
+                async with aiofiles.open(self.settings.source, "w") as fd:
+                    await fd.write(json.dumps(self._data))
+                return
+        raise ObjectNotFoundError(identifier=identifier)

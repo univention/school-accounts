@@ -25,3 +25,18 @@ class NoSchoolUserError(PermissionsError):
 
 
 class NotAuthenticatedError(BaseError): ...
+
+
+class PasswordResetRejectedError(BaseError):
+    """The target system refused to change a user's password for this user.
+
+    Distinct from PermissionsError: the actor is authorized to attempt the
+    change (write-password already checked) - the target system rejects the
+    value or the operation itself, e.g. a Kelvin/UDM password-policy
+    violation. ``message`` is the target system's own (already-sanitized)
+    rejection reason and must never contain the password.
+    """
+
+    def __init__(self, identifier: str, message: str):
+        super().__init__(message)
+        self.identifier: str = identifier

@@ -26,12 +26,6 @@ class TestKelvinSchoolsPersistenceAdapter:
         return KelvinSchoolsPersistenceAdapter()
 
     @pytest.fixture
-    def dummy_settings(self) -> KelvinPersistenceAdapterSettings:
-        return KelvinPersistenceAdapterSettings(
-            url="https://test.com", username="test", password="password"
-        )
-
-    @pytest.fixture
     def make_kelvin_school_from_data(
         self, mocker: MockerFixture
     ) -> Callable[[dict[str, str]], MagicMock]:

@@ -10,6 +10,7 @@ representation port/adapter.
 
 from collections.abc import Collection
 from dataclasses import dataclass, field
+from enum import StrEnum, auto
 from typing import Protocol, TypeVar
 
 from .lang import _
@@ -45,6 +46,37 @@ class UserListData:
 @dataclass
 class SchoolsData:
     schools: list[School]
+
+
+class PasswordResetOutcomeCode(StrEnum):
+    success = auto()
+    permission_denied = auto()
+    not_found = auto()
+    rejected = auto()
+
+
+@dataclass
+class PasswordResetOutcome:
+    target_id: str
+    outcome: PasswordResetOutcomeCode
+    # Only ever set for ``rejected`` - the target system's own (pre-sanitized)
+    # rejection reason. Never a translated string: the other codes carry no
+    # dynamic detail, so they're conveyed by ``outcome`` alone.
+    reason: str | None = None
+
+
+@dataclass
+class PasswordResetResultData:
+    outcomes: list[PasswordResetOutcome]
+
+
+@dataclass
+class PasswordResetOutcomeRow:
+    target_id: str
+    label: str
+    # The target system's own (pre-sanitized) rejection reason - see
+    # ``PasswordResetOutcome.reason``. Never translated, unlike ``label``.
+    reason: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -306,3 +338,42 @@ def build_user_list(data: UserListData, lang: str) -> UserListView:
         ]
         rows.append(Row(cells=cells))
     return UserListView(columns=list_columns(lang), rows=rows)
+
+
+def build_password_reset_summary(data: PasswordResetResultData, lang: str) -> tuple[str, str]:
+    """Summarize a bulk password reset as a single toast message + variant.
+
+    Interim rendering only - the UI issue for this feature replaces this with a
+    per-user result region once its confirmation-dialog dependency exists.
+    """
+    succeeded = sum(
+        1 for outcome in data.outcomes if outcome.outcome == PasswordResetOutcomeCode.success
+    )
+    total = len(data.outcomes)
+    message = _("Password reset for {succeeded} of {total} users.", lang=lang).format(
+        succeeded=succeeded, total=total
+    )
+    variant = "success" if succeeded == total else "error"
+    return message, variant
+
+
+def build_password_reset_outcome_rows(
+    data: PasswordResetResultData, lang: str
+) -> list[PasswordResetOutcomeRow]:
+    """Per-target detail rows shown below the summary toast.
+
+    Interim rendering only, same as ``build_password_reset_summary`` - the UI
+    issue for this feature replaces this with a real per-user result region.
+    """
+    labels = {
+        PasswordResetOutcomeCode.success: _("Success", lang=lang),
+        PasswordResetOutcomeCode.permission_denied: _("Permission denied", lang=lang),
+        PasswordResetOutcomeCode.not_found: _("User not found", lang=lang),
+        PasswordResetOutcomeCode.rejected: _("Rejected", lang=lang),
+    }
+    return [
+        PasswordResetOutcomeRow(
+            target_id=outcome.target_id, label=labels[outcome.outcome], reason=outcome.reason
+        )
+        for outcome in data.outcomes
+    ]

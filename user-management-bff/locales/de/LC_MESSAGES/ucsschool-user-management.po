@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-29 21:47+0200\n"
+"POT-Creation-Date: 2026-08-20 11:21+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
-"Last-Translator: UCS@school Maintainers <ucsschool-"
-"maintainers@univention.de>\n"
+"Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
+"de>\n"
 "Language-Team: UCS@school Maintainers <ucsschool-maintainers@univention.de>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
@@ -30,6 +30,12 @@ msgstr "Deaktiviert"
 msgid "First name"
 msgstr "Vorname"
 
+msgid ""
+"Invalid or missing security token. Please reload the page and try again."
+msgstr ""
+"Ungültiges oder fehlendes Sicherheitstoken. Bitte laden Sie die Seite neu "
+"und versuchen Sie es erneut."
+
 msgid "Invalid request."
 msgstr "Ungültige Anfrage."
 
@@ -45,16 +51,32 @@ msgstr "Nicht authentifiziert."
 msgid "Object not found"
 msgstr "Objekt nicht gefunden"
 
+#, python-brace-format
+msgid "Password reset for {succeeded} of {total} users."
+msgstr "Passwort für {succeeded} von {total} Benutzern zurückgesetzt."
+
+msgid "Permission denied"
+msgstr "Zugriff verweigert"
+
+msgid "Rejected"
+msgstr "Abgelehnt"
+
 msgid "Roles"
 msgstr "Rollen"
 
 msgid "Schools"
 msgstr "Schulen"
 
+msgid "Success"
+msgstr "Erfolg"
+
 #, python-brace-format
 msgid "The logged in user '{user}' is not a valid UCS@school user."
-msgstr "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
-"Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer"
+msgstr ""
+"Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
+
+msgid "User not found"
+msgstr "Benutzer nicht gefunden"
 
 msgid "Username"
 msgstr "Benutzername"
@@ -159,9 +181,6 @@ msgstr "Arbeitsgruppen"
 
 #~ msgid "Work groups of the user"
 #~ msgstr "Arbeitsgruppen des Benutzers"
-
-#~ msgid "You do not have the permission to create this user."
-#~ msgstr "Sie sind nicht berechtigt, diesen Benutzer anzulegen."
 
 #~ msgid "You do not have the permission to edit this user."
 #~ msgstr "Sie sind nicht berechtigt, diesen Benutzer zu bearbeiten."

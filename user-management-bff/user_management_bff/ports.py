@@ -27,6 +27,16 @@ class UsersPersistencePort(ABC):
         Raises an ObjectNotFoundError, if the user could not be found.
         """
 
+    @abstractmethod
+    async def set_password(self, identifier: str, password: str) -> None:  # pragma: no cover
+        """
+        Set ``password`` as the new password for the user identified by ``identifier``.
+
+        Raises an ObjectNotFoundError, if the user could not be found, or a
+        PasswordResetRejectedError, if the target system refuses the new password
+        for this specific user (e.g. a Kelvin/UDM password-policy violation).
+        """
+
 
 class SchoolsPersistencePort(ABC):
     @abstractmethod
@@ -105,6 +115,28 @@ class FastAPIAuthenticationPort(ABC):
         The default implementation simply redirects to the application shell.
         """
         return RedirectResponse(FRONTEND_PREFIX, status_code=303)
+
+    # Async is required by the authentication port contract.
+    async def issue_csrf_token(self, _request: Request) -> str:  # NOSONAR(S7503)
+        """Return the CSRF token to embed in this session's mutating forms.
+
+        An empty string means the adapter does not use CSRF protection (the
+        dev/test doubles), so the template renders no meaningful token.
+        """
+        return ""
+
+    # Async is required by the authentication port contract.
+    async def check_csrf(  # NOSONAR(S7503)
+        self,
+        _request: Request,
+        _submitted: str | None,
+    ) -> bool:
+        """Whether ``submitted`` matches the CSRF token bound to the session.
+
+        The default (no-CSRF) adapters accept any request; adapters that keep a
+        real session override this to reject a missing or mismatched token.
+        """
+        return True
 
 
 class SessionStorePort(ABC):

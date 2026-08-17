@@ -57,6 +57,7 @@ class SessionRecord(BaseModel):
     expires_at: datetime.datetime
     refresh_token: str | None = None
     id_token: str | None = None
+    csrf_token: str
 
 
 class School(BaseModel):

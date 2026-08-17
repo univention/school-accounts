@@ -12,6 +12,7 @@ never the user's access token, so the access token is not retained.
 
 from __future__ import annotations
 
+import secrets
 import sys
 from collections.abc import Coroutine
 from dataclasses import dataclass, field
@@ -215,6 +216,7 @@ class CookieSessionAuthenticationAdapter(
             expires_at=self._token_expiry(token),
             refresh_token=token.get("refresh_token"),
             id_token=token.get("id_token"),
+            csrf_token=secrets.token_urlsafe(32),
         )
         store = await self._session_store()
         session_id = await store.create(record)
@@ -304,6 +306,31 @@ class CookieSessionAuthenticationAdapter(
     async def get_authenticated_id(self, request: Request) -> str:
         store = await self._session_store()
         return await self._authenticate(request, store)
+
+    @staticmethod
+    def verify_csrf(submitted: str | None, record: SessionRecord) -> bool:
+        if not submitted:
+            return False
+        return secrets.compare_digest(submitted, record.csrf_token)
+
+    async def _current_record(self, request: Request) -> SessionRecord | None:
+        session_id = self._read_cookie(request)
+        if session_id is None:
+            return None
+        store = await self._session_store()
+        return await store.get(session_id)
+
+    @override
+    async def issue_csrf_token(self, request: Request) -> str:
+        record = await self._current_record(request)
+        return record.csrf_token if record is not None else ""
+
+    @override
+    async def check_csrf(self, request: Request, submitted: str | None) -> bool:
+        record = await self._current_record(request)
+        if record is None:
+            return False
+        return self.verify_csrf(submitted, record)
 
 
 @dataclass

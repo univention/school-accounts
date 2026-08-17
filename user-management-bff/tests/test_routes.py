@@ -7,11 +7,15 @@ from typing import Any, Callable, Coroutine, Generator
 
 import pytest
 from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 from user_management_bff.adapters.authentication import NeverAuthenticatedAdapter
+from user_management_bff.adapters.permissions import FilePermissionsAdapter
+from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
+from user_management_bff.errors import ObjectNotFoundError
 from user_management_bff.main import app
 from user_management_bff.ports import FastAPIAuthenticationPort
 from user_management_bff.routes import auth_port
@@ -45,6 +49,25 @@ class _StubAuth(FastAPIAuthenticationPort):
     @override
     async def logout(self, request: Request) -> Response:
         return RedirectResponse("https://kc/logout", status_code=303)
+
+
+class _CsrfRejectAuth(FastAPIAuthenticationPort):
+    """Auth adapter double whose CSRF check always rejects."""
+
+    @override
+    async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
+        async def _dep(request: Request) -> str:
+            return await self.get_authenticated_id(request)
+
+        return _dep
+
+    @override
+    async def get_authenticated_id(self, request: Request) -> str:
+        return "dev"
+
+    @override
+    async def check_csrf(self, request: Request, submitted: str | None) -> bool:
+        return False
 
 
 @pytest.fixture
@@ -291,3 +314,68 @@ def test_protected_route_htmx_redirect_when_unauthenticated(
     response = test_client.get(FRONTEND_PREFIX, headers={"HX-Request": "true"}, follow_redirects=False)
     assert response.status_code == 200
     assert AUTH_LOGIN_PATH in response.headers["HX-Redirect"]
+
+
+def test_password_reset_rejects_missing_csrf_token(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    override_auth(_CsrfRejectAuth())
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "test_user1", "password": "new-password"},
+    )
+    assert response.status_code == 403
+    assert "security token" in response.text
+
+
+def test_password_reset_happy_path(test_client: TestClient, mocker: MockerFixture):
+    # set_password is mocked to avoid a real write against the shared
+    # tests/data/users.json fixture; the write path itself is covered at the
+    # adapter level (tests/adapters/test_users.py).
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock)
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert "2 of 2" in response.text
+    assert 'variant="success"' in response.text
+    assert 'data-target-id="test_user1"' in response.text
+    assert 'data-target-id="test_user2"' in response.text
+    assert "Success" in response.text
+
+
+def test_password_reset_permission_denied(test_client: TestClient, mocker: MockerFixture):
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "test_user1", "password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert "0 of 1" in response.text
+    assert 'variant="error"' in response.text
+
+
+def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerFixture):
+    async def _set_password(identifier: str, _password: str) -> None:
+        if identifier == "test_user2":
+            raise ObjectNotFoundError(identifier="test_user2")
+
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", side_effect=_set_password)
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert "1 of 2" in response.text
+    assert 'variant="error"' in response.text
+
+
+def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "NON_EXISTENT", "password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert "0 of 1" in response.text
+    assert 'variant="error"' in response.text
