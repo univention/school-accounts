@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 include:
-  - project: univention/infrastructure/docker-services
-    file:
-      - kaniko.yml
   - project: 'univention/dev/docs/sphinx-docker'
     file: 'pipeline/sphinx.yml'
   - project: univention/dev/tooling/ci-components
@@ -23,6 +20,44 @@ include:
         - job: build_appcenter_files
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.12.0
+    inputs:
+      job_name: "build_dev_image"
+      stage: prepare
+      # The development image is built for every pipeline, because the test jobs
+      # run in it.
+      job_rules:
+        - when: on_success
+      build_context: "$CI_PROJECT_DIR/dev"
+      image_name: "$DEV_IMAGE_NAME"
+      registry_image: "$CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME"
+      image_tag: "$DEV_IMAGE_TAG"
+      image_tag_env_name: "DEV_IMAGE_TAG"
+      build_args: |
+        commit=$CI_COMMIT_SHA
+        date=$CI_JOB_STARTED_AT
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.12.0
+    inputs:
+      job_name: "build_docker_image_user_management"
+      stage: prepare
+      image_name: "ucsschool-user-management"
+      registry_image: "$CI_REGISTRY_IMAGE/ucsschool-user-management"
+      # Tag the released image with the plain version, without the tag prefix
+      # that triggers the release pipeline.
+      tag_prefix: "release-"
+      # Keep the build cache in the project registry, also for the tag pipeline
+      # that pushes the image itself to the public registry.
+      cache_image: "$CI_REGISTRY_IMAGE/ucsschool-user-management/cache"
+      job_rules:
+        - if: "$CI_COMMIT_TAG"
+          variables:
+            REGISTRY: "artifacts.software-univention.de"
+            REGISTRY_IMAGE: "$REGISTRY/ucsschool/ucsschool-user-management"
+        - if: $CI_MERGE_REQUEST_ID
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      build_args: |
+        commit=$CI_COMMIT_SHA
+        date=$CI_JOB_STARTED_AT
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.12.0
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
@@ -73,15 +108,12 @@ stages:
   - integration_test
   - cleanup
 
+# The buildkit component has no input for the runner tags.
 build_dev_image:
-  stage: prepare
-  needs: []
   tags: ["dae-m"]
-  extends: .kaniko
-  variables:
-    KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/dev"
-    IMAGE_TAG: $DEV_IMAGE_TAG
-    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME/cache
+
+build_docker_image_user_management:
+  tags: ["dae-m"]
 
 build_appcenter_files:
   stage: prepare
@@ -214,22 +246,6 @@ integration-tests:
       - "*_kelvin_http.log"
     reports:
       junit: "*junit.xml"
-
-build_docker_image_user_management:
-  stage: prepare
-  tags: ["dae-m"]
-  rules:
-    - if: "$CI_COMMIT_TAG"
-      variables:
-        REGISTRY: "artifacts.software-univention.de"
-        REGISTRY_IMAGE: "$REGISTRY/ucsschool/ucsschool-user-management"
-    - if: $CI_MERGE_REQUEST_ID
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  extends: .kaniko
-  variables:
-    KANIKO_BUILD_CONTEXT: "$CI_PROJECT_DIR/"
-    CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/ucsschool-user-management
-    KANIKO_ARGS: --build-arg commit="$CI_COMMIT_SHA" --build-arg date="$CI_JOB_STARTED_AT" --skip-unused-stages --cache=true --cache-repo=$CI_REGISTRY_IMAGE/cache
 
 docs-linkcheck:
   extends: .sphinx-linkcheck-template
