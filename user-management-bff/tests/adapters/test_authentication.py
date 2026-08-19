@@ -12,6 +12,7 @@ from pytest_mock import MockerFixture
 import user_management_bff.adapters.authentication as authentication
 from user_management_bff.adapters.authentication import (
     AlwaysAuthenticatedAdapter,
+    AlwaysAuthenticatedAdapterSettings,
     CookieSessionAuthenticationAdapter,
     CookieSessionAuthenticationAdapterSettings,
     NeverAuthenticatedAdapter,
@@ -478,6 +479,17 @@ class TestAlwaysAuthenticatedAdapter:
         response = await adapter.logout(mocker.Mock())
         assert response.status_code == 303
         assert response.headers["location"] == FRONTEND_PREFIX
+
+    def test_get_settings_cls(self, adapter: AlwaysAuthenticatedAdapter):
+        assert adapter.get_settings_cls() is AlwaysAuthenticatedAdapterSettings
+
+    @pytest.mark.asyncio
+    async def test_configure_overrides_the_default_actor(
+        self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
+    ):
+        await adapter.configure(AlwaysAuthenticatedAdapterSettings(actor_id="demo_teacher"))
+        assert await adapter.get_authenticated_id(mocker.Mock()) == "demo_teacher"
+        assert await (await adapter.get_authentication_dependency())() == "demo_teacher"
 
 
 class TestNeverAuthenticatedAdapter:

@@ -10,6 +10,8 @@ token refresh. Downstream calls (Kelvin/Guardian) use the service account and
 never the user's access token, so the access token is not retained.
 """
 
+from __future__ import annotations
+
 import sys
 from collections.abc import Coroutine
 from dataclasses import dataclass, field
@@ -304,19 +306,46 @@ class CookieSessionAuthenticationAdapter(
         return await self._authenticate(request, store)
 
 
-class AlwaysAuthenticatedAdapter(FastAPIAuthenticationPort):
-    class Config:
-        alias = "always_authenticated"
-        cached = True
+@dataclass
+class AlwaysAuthenticatedAdapterSettings:
+    actor_id: str = field(
+        default="dev",
+        metadata={SETTINGS_NAME_METADATA: "always_authenticated_adapter.actor_id"},
+    )
 
+
+class AlwaysAuthenticatedAdapter(
+    FastAPIAuthenticationPort, AsyncConfiguredAdapterMixin[AlwaysAuthenticatedAdapterSettings]
+):
+    class Config:
+        alias: str = "always_authenticated"
+        cached: bool = True
+
+    def __init__(self) -> None:
+        # Usable un-configured (e.g. instantiated directly in a test) - defaults
+        # to the same "dev" actor `configure()` would land on with no env override.
+        self._settings: AlwaysAuthenticatedAdapterSettings = AlwaysAuthenticatedAdapterSettings()
+
+    @classmethod
+    @override
+    def get_settings_cls(cls) -> type[AlwaysAuthenticatedAdapterSettings]:
+        return AlwaysAuthenticatedAdapterSettings
+
+    @override
+    async def configure(self, settings: AlwaysAuthenticatedAdapterSettings) -> None:
+        self._settings = settings
+
+    @override
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
-        async def _dep():
-            return "dev"
+        # Async is required by the authentication port contract
+        async def _dep() -> str:  # NOSONAR(S7503)
+            return self._settings.actor_id
 
         return _dep
 
+    @override
     async def get_authenticated_id(self, request: Request) -> str:
-        return "dev"
+        return self._settings.actor_id
 
 
 class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
@@ -324,11 +353,13 @@ class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
         alias: str = "never_authenticated"
         cached: bool = True
 
+    @override
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
         def _dep():
             raise NotAuthenticatedError(_("Never authenticated."))
 
         return _dep
 
+    @override
     async def get_authenticated_id(self, request: Request) -> str:
         raise NotAuthenticatedError(_("Never authenticated."))

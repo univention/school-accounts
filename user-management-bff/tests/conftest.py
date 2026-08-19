@@ -44,6 +44,7 @@ def patch_env():
     os.environ["USER_MANAGEMENT__ADAPTER__AUTHENTICATION"] = (
         "user_management_bff.adapters.authentication:AlwaysAuthenticatedAdapter"
     )
+    os.environ["ALWAYS_AUTHENTICATED_ADAPTER__ACTOR_ID"] = "dev"
     os.environ["USER_MANAGEMENT__ADAPTER__SESSION_STORE"] = (
         "user_management_bff.adapters.session_store:InMemorySessionStoreAdapter"
     )
