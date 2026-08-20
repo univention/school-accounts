@@ -269,6 +269,15 @@ class CerbosPermissionsAdapter(
                 raise PermissionsError(str(result)) from result
             if isinstance(result, BaseException):
                 raise result
+            # Only the join key is logged here, not any decision detail itself - Cerbos assigns
+            # one call_id per check_resources call and reuses it for its own access/decision log
+            # entries (see dev/docker-compose.yaml's audit.* flags), so this is enough to find the
+            # full evaluation trace (matched policies, effective derived roles) there when needed.
+            logger.debug(
+                "Cerbos check completed - see Cerbos's own decision log for the full evaluation trace.",
+                actor_id=actor.id,
+                cerbos_call_id=result.cerbos_call_id,
+            )
             permissions.update(self._check_resources_response_to_permissions_dict(result))
         return permissions
 

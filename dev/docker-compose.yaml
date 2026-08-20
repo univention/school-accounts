@@ -53,6 +53,14 @@ services:
       # Watch for changes so editing a policy file takes effect live, without restarting the container.
       - "--set=storage.disk.watchForChanges=true"
       - "--set=telemetry.disabled=true"
+      # Decision logs go to this container's stdout by default once enabled (audit.file.path
+      # defaults to "stdout") - lets `docker compose logs cerbos` show the full evaluation trace
+      # (matched policies, effective derived roles) for a call_id logged by the BFF adapter's
+      # CerbosPermissionsAdapter.get_permissions.
+      # Production Cerbos Guardian installed via Univention App Center supports this setting via
+      # (boolean) UCR variable: `guardian/cerbos/audit-logging/enabled`.
+      - "--set=audit.enabled=true"
+      - "--set=audit.backend=file"
   proxy:
     image: traefik:v2.11
     container_name: ucsschool-user-management-proxy
