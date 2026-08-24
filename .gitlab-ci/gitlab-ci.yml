@@ -14,7 +14,7 @@ include:
       changelog_link: "https://docs.software-univention.de/ucsschool-user-management-module/${APP_VERSION}/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#ucsschool"
-      ucs_base_version: "5.0"
+      ucs_base_version: "5.2"
       additional_update_appcenter_needs:
         - job: build_docker_image_user_management
         - job: build_appcenter_files
@@ -121,7 +121,7 @@ build_appcenter_files:
     - cd appcenter-management
     - ./scripts/generate-preinst
     - mkdir ../__appcenter
-    - cp compose.jinja configure_host inst ini.jinja preinst README_UPDATE_DE README_UPDATE_EN settings uinst ../__appcenter
+    - cp compose.jinja configure configure_host inst ini.jinja preinst README_UPDATE_DE README_UPDATE_EN settings uinst ../__appcenter
   artifacts:
     paths:
       - __appcenter

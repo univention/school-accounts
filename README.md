@@ -57,7 +57,7 @@ to the source code or the appcenter setup.
 If you manually start a job by clicking on its name, instead of the play button, you can overwrite the jobs variables.
 The following variables are important:
 
-- TARGET_VERSION=5.0-7: The UCS version the tests should run under.
+- TARGET_VERSION=5.2-6: The UCS version the tests should run under.
 - KVM_SERVER=soft-test03.knut.univention.de: The KVM host to use for the tests.
 - TERMINATE_INSTANCE=true: If the variable is set, the VMs are not automatically terminated.
 
