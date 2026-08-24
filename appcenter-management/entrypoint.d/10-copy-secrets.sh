@@ -25,6 +25,12 @@ mkdir -p -m 711 /run/secrets
 install -m 400 -o appuser -g appuser /etc/machine.secret /run/secrets/machine.secret
 install -m 400 -o appuser -g appuser /etc/machine.user /run/secrets/machine.user
 
+# Written by the preinst before this container exists, so it is always there.
+# set read permissions for appuser
+install -m 400 -o appuser -g appuser \
+    /var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret \
+    /run/secrets/session.secret
+
 CLIENT_SECRET=/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret
 if [[ -f "$CLIENT_SECRET" ]]; then
     # set read permissions for appuser

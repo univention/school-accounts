@@ -22,10 +22,20 @@ mkdir -p $CONF_DIR
 # without needing to be wired in here by name.
 /%POLICIES%/
 
-# create cookie secret
-# TODO(2026-08-04, jlai): Adjust the secret if we want to continue using session cookies
-ucsschool_user_management_secret_path="/var/lib/univention-appcenter/apps/ucsschool-user-management/conf"
-echo "change-me" >> "$ucsschool_user_management_secret_path/session.secret"
+# Secret that signs the authenticated session cookie and the transient
+# OAuth-state cookie.
+SESSION_SECRET_FILE="$CONF_DIR/session.secret"
+if [ -s "$SESSION_SECRET_FILE" ]; then
+	echo "Using existing session secret in $SESSION_SECRET_FILE"
+else
+	echo "Generating session secret in $SESSION_SECRET_FILE"
+	# The container reads it via /run/secrets (see entrypoint.d/10-copy-secrets.sh),
+	touch "$SESSION_SECRET_FILE"
+	chmod 640 "$SESSION_SECRET_FILE"
+	# prevent "unable to write 'random state'" because $HOME is not set
+	export RANDFILE=/.rnd
+	openssl rand -hex 32 > "$SESSION_SECRET_FILE"
+fi
 
 # ucsschool-user-management-ui keycloak client config
 ucsschool_user_management_ui_client_path="$CONF_DIR/ucsschool-user-management_client_ui.json"
