@@ -143,10 +143,13 @@ repos:
                 |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]js$\
                 |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]css$\
                 "
+      language_version: python3.11
     - id: reuse
       alias: reuse-lint
       stages: [manual]
+      language_version: python3.11
     - id: reuse-lint-file
+      language_version: python3.11
 - repo: local
   hooks:
     - id: cerbos-policy-check-docker
