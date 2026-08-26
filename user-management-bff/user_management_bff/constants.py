@@ -29,6 +29,14 @@ PASSWORD_RESET_MAX_CONCURRENCY = int(
     os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY", "5")
 )
 
+# A bulk submission is a single synchronous request/response cycle with no
+# background job or streaming: each target costs multiple Kelvin round-trips
+# (fetch + fetch + write), so an unbounded selection risks a client/proxy
+# timeout with no partial-progress feedback. Rejected as a whole-request
+# validation error (PasswordResetRequestError.too_many_targets) rather than
+# silently truncated.
+PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS", "200"))
+
 
 # Secret for Starlette's SessionMiddleware, which holds the transient OAuth
 # state (CSRF `state` + PKCE `code_verifier`) between the login redirect and the

@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from loguru import logger
 
-from .constants import PASSWORD_RESET_MAX_CONCURRENCY
+from .constants import PASSWORD_RESET_MAX_CONCURRENCY, PASSWORD_RESET_MAX_TARGETS
 from .errors import NoSchoolUserError, ObjectNotFoundError, PasswordResetRejectedError
 from .lang import _
 from .models import (
@@ -262,6 +262,16 @@ async def set_passwords(
     )
     if not deduped_ids:
         return PasswordResetResultData(outcomes=[], request_error=PasswordResetRequestError.no_targets)
+    if len(deduped_ids) > PASSWORD_RESET_MAX_TARGETS:
+        logger.warning(
+            "Rejected a bulk password reset: selection exceeds the maximum target count.",
+            actor_id=actor_id,
+            target_count=len(deduped_ids),
+            max_targets=PASSWORD_RESET_MAX_TARGETS,
+        )
+        return PasswordResetResultData(
+            outcomes=[], request_error=PasswordResetRequestError.too_many_targets
+        )
     if not password:
         logger.warning(
             "Rejected a bulk password reset: no password was supplied.",

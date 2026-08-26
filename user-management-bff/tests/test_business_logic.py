@@ -500,6 +500,29 @@ async def test_set_passwords_empty_password_is_rejected_without_any_writes(
 
 
 @pytest.mark.asyncio
+async def test_set_passwords_too_many_targets_is_rejected_without_any_writes(
+    ports: Ports, mocker: MockerFixture
+):
+    get_permissions_mock = mocker.patch.object(FilePermissionsAdapter, "get_permissions")
+    get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
+    set_password_mock = mocker.patch.object(FileUsersPersistenceAdapter, "set_password")
+    mocker.patch.object(business_logic, "PASSWORD_RESET_MAX_TARGETS", 2)
+    result = await business_logic.set_passwords(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "test_user2", "test_user3"],
+        "new-password",
+        "en",
+    )
+    assert result.outcomes == []
+    assert result.request_error == presentation.PasswordResetRequestError.too_many_targets
+    get_permissions_mock.assert_not_called()
+    get_user_mock.assert_not_called()
+    set_password_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_set_passwords_bounds_concurrency(mocker: MockerFixture):
     class _ConcurrencyTrackingUsersAdapter(UsersPersistencePort):
         def __init__(self) -> None:

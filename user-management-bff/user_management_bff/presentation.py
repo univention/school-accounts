@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Protocol, TypeVar
 
+from .constants import PASSWORD_RESET_MAX_TARGETS
 from .lang import _
 from .models import (
     AttributeAccess,
@@ -65,6 +66,7 @@ class PasswordResetRequestError(StrEnum):
 
     no_targets = auto()
     empty_password = auto()
+    too_many_targets = auto()
 
 
 @dataclass
@@ -364,6 +366,13 @@ def build_password_reset_summary(data: PasswordResetResultData, lang: str) -> tu
         return _("Select at least one user before resetting passwords.", lang=lang), "error"
     if data.request_error == PasswordResetRequestError.empty_password:
         return _("A new password is required.", lang=lang), "error"
+    if data.request_error == PasswordResetRequestError.too_many_targets:
+        return (
+            _("Select at most {max_targets} users at once.", lang=lang).format(
+                max_targets=PASSWORD_RESET_MAX_TARGETS
+            ),
+            "error",
+        )
     succeeded = sum(
         1 for outcome in data.outcomes if outcome.outcome == PasswordResetOutcomeCode.success
     )

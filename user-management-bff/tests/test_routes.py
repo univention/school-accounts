@@ -407,6 +407,25 @@ def test_password_reset_no_users_selected_shows_error(test_client: TestClient):
     assert "Select at least one user" in response.text
 
 
+def test_password_reset_too_many_targets_is_refused(test_client: TestClient, mocker: MockerFixture):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
+    )
+    mocker.patch("user_management_bff.business_logic.PASSWORD_RESET_MAX_TARGETS", 2)
+    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_MAX_TARGETS", 2)
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={
+            "user_id": ["test_user1", "test_user2", "test_user3"],
+            "password": "new-password",
+        },
+    )
+    assert response.status_code == 200
+    assert 'variant="error"' in response.text
+    assert "Select at most 2 users at once" in response.text
+    set_password_mock.assert_not_called()
+
+
 def test_password_reset_empty_password_is_refused(test_client: TestClient, mocker: MockerFixture):
     set_password_mock = mocker.patch.object(
         FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock

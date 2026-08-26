@@ -42,6 +42,10 @@ print(kelvin_url, end='')@!@
       # Bounds how many concurrent set_password/get_user calls a bulk password reset has in
       # flight against Kelvin at once. 5 matches the app default.
       USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY: "5"
+      # Rejects a bulk password reset outright once the (deduplicated) selection exceeds this
+      # many users, since the request is a single synchronous call with no background job.
+      # 200 matches the app default.
+      USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS: "200"
 @!@
 ucr = configRegistry
 keycloak_url = ucr.get('guardian-management-ui/oauth/keycloak-uri')

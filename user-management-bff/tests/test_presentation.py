@@ -3,6 +3,7 @@
 """Unit tests for the presentation view-model builders."""
 
 import pytest
+from pytest_mock import MockerFixture
 
 from user_management_bff import presentation
 from user_management_bff.models import (
@@ -280,6 +281,16 @@ def test_build_password_reset_summary_empty_password():
     )
     message, variant = presentation.build_password_reset_summary(data, "en")
     assert message == "A new password is required."
+    assert variant == "error"
+
+
+def test_build_password_reset_summary_too_many_targets(mocker: MockerFixture):
+    mocker.patch.object(presentation, "PASSWORD_RESET_MAX_TARGETS", 100)
+    data = presentation.PasswordResetResultData(
+        outcomes=[], request_error=presentation.PasswordResetRequestError.too_many_targets
+    )
+    message, variant = presentation.build_password_reset_summary(data, "en")
+    assert message == "Select at most 100 users at once."
     assert variant == "error"
 
 

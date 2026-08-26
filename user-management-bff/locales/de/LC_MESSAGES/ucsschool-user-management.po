@@ -73,6 +73,10 @@ msgstr "Schulen"
 msgid "Select at least one user before resetting passwords."
 msgstr "Wählen Sie mindestens einen Benutzer aus, bevor Sie Passwörter zurücksetzen."
 
+#, python-brace-format
+msgid "Select at most {max_targets} users at once."
+msgstr "Wählen Sie höchstens {max_targets} Benutzer auf einmal aus."
+
 msgid "Success"
 msgstr "Erfolg"
 
