@@ -477,8 +477,26 @@ async def test_set_passwords_empty_target_ids_returns_no_outcomes(ports: Ports, 
         ports.users, ports.permissions, ACTOR_ID, [], "new-password", "en"
     )
     assert result.outcomes == []
+    assert result.request_error == presentation.PasswordResetRequestError.no_targets
     get_permissions_mock.assert_not_called()
     get_user_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_empty_password_is_rejected_without_any_writes(
+    ports: Ports, mocker: MockerFixture
+):
+    get_permissions_mock = mocker.patch.object(FilePermissionsAdapter, "get_permissions")
+    get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
+    set_password_mock = mocker.patch.object(FileUsersPersistenceAdapter, "set_password")
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "", "en"
+    )
+    assert result.outcomes == []
+    assert result.request_error == presentation.PasswordResetRequestError.empty_password
+    get_permissions_mock.assert_not_called()
+    get_user_mock.assert_not_called()
+    set_password_mock.assert_not_called()
 
 
 @pytest.mark.asyncio

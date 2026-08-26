@@ -379,3 +379,44 @@ def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
     assert response.status_code == 200
     assert "0 of 1" in response.text
     assert 'variant="error"' in response.text
+
+
+def test_password_reset_no_users_selected_shows_error(test_client: TestClient):
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert 'variant="error"' in response.text
+    assert "Password reset for" not in response.text
+    assert "Select at least one user" in response.text
+
+
+def test_password_reset_empty_password_is_refused(test_client: TestClient, mocker: MockerFixture):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
+    )
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "test_user1", "password": ""},
+    )
+    assert response.status_code == 200
+    assert 'variant="error"' in response.text
+    assert "A new password is required" in response.text
+    set_password_mock.assert_not_called()
+
+
+def test_password_reset_missing_password_field_is_refused(
+    test_client: TestClient, mocker: MockerFixture
+):
+    set_password_mock = mocker.patch.object(
+        FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
+    )
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "test_user1"},
+    )
+    assert response.status_code == 200
+    assert 'variant="error"' in response.text
+    assert "A new password is required" in response.text
+    set_password_mock.assert_not_called()

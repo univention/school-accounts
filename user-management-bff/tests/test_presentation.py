@@ -265,6 +265,24 @@ def test_build_password_reset_summary_partial_failure():
     assert variant == "error"
 
 
+def test_build_password_reset_summary_no_targets_selected():
+    data = presentation.PasswordResetResultData(
+        outcomes=[], request_error=presentation.PasswordResetRequestError.no_targets
+    )
+    message, variant = presentation.build_password_reset_summary(data, "en")
+    assert message == "Select at least one user before resetting passwords."
+    assert variant == "error"
+
+
+def test_build_password_reset_summary_empty_password():
+    data = presentation.PasswordResetResultData(
+        outcomes=[], request_error=presentation.PasswordResetRequestError.empty_password
+    )
+    message, variant = presentation.build_password_reset_summary(data, "en")
+    assert message == "A new password is required."
+    assert variant == "error"
+
+
 @pytest.mark.parametrize(
     "code,expected_label",
     [

@@ -29,6 +29,7 @@ from .ports import (
 from .presentation import (
     PasswordResetOutcome,
     PasswordResetOutcomeCode,
+    PasswordResetRequestError,
     PasswordResetResultData,
     SchoolsData,
     UserListData,
@@ -260,7 +261,16 @@ async def set_passwords(
         target_count=len(deduped_ids),
     )
     if not deduped_ids:
-        return PasswordResetResultData(outcomes=[])
+        return PasswordResetResultData(outcomes=[], request_error=PasswordResetRequestError.no_targets)
+    if not password:
+        logger.warning(
+            "Rejected a bulk password reset: no password was supplied.",
+            actor_id=actor_id,
+            target_count=len(deduped_ids),
+        )
+        return PasswordResetResultData(
+            outcomes=[], request_error=PasswordResetRequestError.empty_password
+        )
 
     actor = await get_actor(actor_id, users_adapter, lang)
     targets_by_id, outcomes_list = await _fetch_targets(users_adapter, deduped_ids)

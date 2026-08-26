@@ -55,6 +55,18 @@ class PasswordResetOutcomeCode(StrEnum):
     rejected = auto()
 
 
+class PasswordResetRequestError(StrEnum):
+    """A whole-request validation failure - distinct from a per-target outcome.
+
+    Set instead of populating ``outcomes`` at all, since neither case is
+    resolvable per-target: no targets were even selected, or the one password
+    that would apply to every target is missing.
+    """
+
+    no_targets = auto()
+    empty_password = auto()
+
+
 @dataclass
 class PasswordResetOutcome:
     target_id: str
@@ -68,6 +80,7 @@ class PasswordResetOutcome:
 @dataclass
 class PasswordResetResultData:
     outcomes: list[PasswordResetOutcome]
+    request_error: PasswordResetRequestError | None = None
 
 
 @dataclass
@@ -346,6 +359,10 @@ def build_password_reset_summary(data: PasswordResetResultData, lang: str) -> tu
     Interim rendering only - the UI issue for this feature replaces this with a
     per-user result region once its confirmation-dialog dependency exists.
     """
+    if data.request_error == PasswordResetRequestError.no_targets:
+        return _("Select at least one user before resetting passwords.", lang=lang), "error"
+    if data.request_error == PasswordResetRequestError.empty_password:
+        return _("A new password is required.", lang=lang), "error"
     succeeded = sum(
         1 for outcome in data.outcomes if outcome.outcome == PasswordResetOutcomeCode.success
     )
