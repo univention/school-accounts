@@ -454,3 +454,9 @@ def test_password_reset_missing_password_field_is_refused(
     assert 'variant="error"' in response.text
     assert "A new password is required" in response.text
     set_password_mock.assert_not_called()
+
+
+def test_password_reset_csrf_token_debug_returns_session_token(test_client: TestClient):
+    response = test_client.get(f"{FRONTEND_PREFIX}/users/password-reset/csrf-token")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")

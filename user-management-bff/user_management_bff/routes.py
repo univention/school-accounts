@@ -14,7 +14,7 @@ from functools import partial
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse, Response
 
@@ -354,6 +354,11 @@ async def users_password_reset(
     Renders a summary toast plus a plain per-target outcome list.
     """
     lang = get_lang(request)
+    # TODO(#213): no template calls auth.issue_csrf_token() yet, so nothing embeds
+    # the token into this form's request - check_csrf() below will reject every
+    # submission from CookieSessionAuthenticationAdapter until #213's UI sends
+    # X-CSRF-Token. Wire issue_csrf_token() into the selection/confirmation UI,
+    # don't loosen this check.
     if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
         raise PermissionsError(
             _("Invalid or missing security token. Please reload the page and try again.", lang=lang)
@@ -369,3 +374,15 @@ async def users_password_reset(
     return render(
         request, "fragments/password_reset_result.html", message=message, variant=variant, rows=rows
     )
+
+
+# TEMPORARY manual-QA aid for #212, remove once #213 embeds the CSRF token into a
+# real page (see the TODO on users_password_reset above). Lets a logged-in tester
+# read their own session's CSRF token without a UI, so they can copy it into a
+# manual X-CSRF-Token header when exercising POST /users/password-reset by hand -
+# e.g. on a deployed instance where the AlwaysAuthenticatedAdapter isn't an option.
+@router.get("/users/password-reset/csrf-token", response_class=PlainTextResponse)
+async def password_reset_csrf_token_debug(
+    request: Request, _actor: ActorDep, auth: AuthDep
+) -> PlainTextResponse:
+    return PlainTextResponse(await auth.issue_csrf_token(request))
