@@ -33,8 +33,10 @@ class PasswordResetRejectedError(BaseError):
     Distinct from PermissionsError: the actor is authorized to attempt the
     change (write-password already checked) - the target system rejects the
     value or the operation itself, e.g. a Kelvin/UDM password-policy
-    violation. ``message`` is the target system's own (already-sanitized)
-    rejection reason and must never contain the password.
+    violation. ``message`` is the target system's own rejection reason -
+    the adapter raising this guarantees it's a plain string, but its content
+    is otherwise unvetted (not translated, not length-bounded, not otherwise
+    checked) and must never contain the password.
     """
 
     def __init__(self, identifier: str, message: str):

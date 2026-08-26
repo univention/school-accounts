@@ -15,7 +15,7 @@ from user_management_bff.adapters.authentication import NeverAuthenticatedAdapte
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
-from user_management_bff.errors import ObjectNotFoundError
+from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
 from user_management_bff.main import app
 from user_management_bff.ports import FastAPIAuthenticationPort
 from user_management_bff.routes import auth_port
@@ -369,6 +369,21 @@ def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerF
     assert response.status_code == 200
     assert "1 of 2" in response.text
     assert 'variant="error"' in response.text
+
+
+def test_password_reset_rejected_reason_is_wrapped_with_translated_label(
+    test_client: TestClient, mocker: MockerFixture
+):
+    async def _set_password(identifier: str, _password: str) -> None:
+        raise PasswordResetRejectedError(identifier=identifier, message="policy violation")
+
+    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", side_effect=_set_password)
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset",
+        data={"user_id": "test_user1", "password": "new-password"},
+    )
+    assert response.status_code == 200
+    assert "Reason: policy violation" in response.text
 
 
 def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from typing_extensions import override
 from ucsschool.kelvin.client import InvalidRequest, NoObject
 
 import user_management_bff.adapters.users
@@ -300,6 +301,65 @@ class TestKelvinUsersPersistenceAdapter:
             await adapter.set_password("test_user1", "new-password")
         assert exc_info.value.identifier == "test_user1"
         assert exc_info.value.message == "policy violation"
+
+    @pytest.mark.asyncio
+    async def test_set_password_rejected_stringifies_non_string_reason(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        # InvalidRequest's own stub types `reason` as `str`, but it's really just
+        # `resp_json["detail"]` off the wire - untyped at the source, so a shape like
+        # this is a real possibility the stub doesn't capture.
+        raw_reason = [{"loc": ["body", "password"], "msg": "bad"}]
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(
+            side_effect=InvalidRequest(reason=raw_reason)  # pyright: ignore[reportArgumentType]
+        )
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(PasswordResetRejectedError) as exc_info:
+            await adapter.set_password("test_user1", "new-password")
+        assert exc_info.value.message == str(raw_reason)
+
+    @pytest.mark.asyncio
+    async def test_set_password_rejected_falls_back_to_empty_reason_if_str_raises(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        class _Unstringifiable:
+            @override
+            def __str__(self) -> str:
+                raise RuntimeError("cannot stringify")
+
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(
+            side_effect=InvalidRequest(
+                reason=_Unstringifiable()  # pyright: ignore[reportArgumentType]
+            )
+        )
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
+        await adapter.configure(dummy_settings)
+        with pytest.raises(PasswordResetRejectedError) as exc_info:
+            await adapter.set_password("test_user1", "new-password")
+        assert exc_info.value.message == ""
 
 
 class TestFileUsersPersistenceAdapter:

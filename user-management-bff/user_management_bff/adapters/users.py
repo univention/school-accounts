@@ -23,6 +23,25 @@ else:
     from typing_extensions import override
 
 
+def _safe_rejection_reason(raw: object) -> str:
+    """Kelvin's ``InvalidRequest.reason`` is untyped (``resp_json['detail']`` as-is) - normalize
+    whatever shape it has into the plain string ``PasswordResetRejectedError.message`` promises,
+    since it flows straight into a rendered toast. Content is otherwise untouched (raw backend
+    text, unbounded length) - a known limitation; replacing this with proper, translatable error
+    codes is tracked in univention/dev/education/user-management#229."""
+    if isinstance(raw, str):
+        return raw
+    try:
+        return str(raw)
+    except Exception as exc:
+        logger.warning(
+            "Could not convert Kelvin's rejection reason to a string.",
+            raw_type=type(raw).__name__,
+            error=exc,
+        )
+        return ""
+
+
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
         return User(
@@ -101,7 +120,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 logger.error(
                     "Kelvin rejected the password change.", user_id=identifier, error=exc.reason
                 )
-                raise PasswordResetRejectedError(identifier=identifier, message=exc.reason) from exc
+                raise PasswordResetRejectedError(
+                    identifier=identifier, message=_safe_rejection_reason(exc.reason)
+                ) from exc
 
 
 @dataclass

@@ -71,8 +71,9 @@ class PasswordResetRequestError(StrEnum):
 class PasswordResetOutcome:
     target_id: str
     outcome: PasswordResetOutcomeCode
-    # Only ever set for ``rejected`` - the target system's own (pre-sanitized)
-    # rejection reason. Never a translated string: the other codes carry no
+    # Only ever set for ``rejected`` - the target system's own rejection reason,
+    # normalized to a plain string by the adapter but otherwise unvetted (not
+    # length-bounded). Never a translated string: the other codes carry no
     # dynamic detail, so they're conveyed by ``outcome`` alone.
     reason: str | None = None
 
@@ -87,8 +88,8 @@ class PasswordResetResultData:
 class PasswordResetOutcomeRow:
     target_id: str
     label: str
-    # The target system's own (pre-sanitized) rejection reason - see
-    # ``PasswordResetOutcome.reason``. Never translated, unlike ``label``.
+    # The target system's own rejection reason - see ``PasswordResetOutcome.reason``.
+    # Never translated, unlike ``label``.
     reason: str | None = None
 
 
