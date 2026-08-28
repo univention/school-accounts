@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import json
 import os
+from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import MagicMock
@@ -20,31 +21,13 @@ from user_management_bff.adapters.users import (
 )
 from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
 from user_management_bff.models import User, UserAttributes
+from user_management_bff.ports import UsersPersistencePort
 
 
 class TestKelvinUsersPersistenceAdapter:
     @pytest.fixture
     def adapter(self) -> KelvinUsersPersistenceAdapter:
         return KelvinUsersPersistenceAdapter()
-
-    @pytest.fixture
-    def make_kelvin_user_from_data(self, mocker: MockerFixture) -> Callable[[dict[str, Any]], MagicMock]:
-        def _make_kelvin_user_from_data(user_data: dict[str, Any]) -> MagicMock:
-            kelvin_user = mocker.MagicMock()
-            kelvin_user.name = user_data["id"]
-            kelvin_user.lastname = user_data["attributes"]["last_name"]
-            kelvin_user.firstname = user_data["attributes"]["first_name"]
-            kelvin_user.schools = user_data["attributes"]["schools"]
-            kelvin_user.school_classes = user_data["attributes"]["school_classes"]
-            kelvin_user.workgroups = user_data["attributes"]["work_groups"]
-            kelvin_user.ucsschool_roles = user_data["attributes"]["roles"]
-            kelvin_user.disabled = user_data["attributes"]["disabled"]
-            kelvin_user.email = user_data["attributes"].get("email", None)
-            kelvin_user.birthday = user_data["attributes"].get("birthday", None)
-            kelvin_user.expiration_date = user_data["attributes"].get("expiration_date", None)
-            return kelvin_user
-
-        return _make_kelvin_user_from_data
 
     def test_get_settings_cls(self):
         assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
@@ -612,3 +595,169 @@ class TestFileUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.set_password("NON_EXISTENT", "new-password")
         assert exc_info.value.identifier == "NON_EXISTENT"
+
+# ---------------------------------------------------------------------------
+# UsersPersistencePort contract: one matrix, run against every implementation.
+#
+# It speaks only the port's own signature -- plain lists -- so an empty list is
+# the only way to say "no group filter". That is the exact call issue #230 got
+# wrong, and it is unrepresentable in the adapters' own test classes above as
+# long as those keep passing whatever each implementation happens to tolerate.
+# ---------------------------------------------------------------------------
+
+CONTRACT_SCHOOL = "school1"
+
+CONTRACT_USERS: list[dict[str, Any]] = [
+    {
+        "id": "student.aiko",
+        "attributes": {
+            "disabled": False,
+            "first_name": "Aiko",
+            "last_name": "Tan",
+            "roles": ["student:school:school1"],
+            "schools": ["school1"],
+            "school_classes": {"school1": ["1a"]},
+            "work_groups": {"school1": ["w1"]},
+            "username": "student.aiko",
+        },
+    },
+    {
+        "id": "student.bruno",
+        "attributes": {
+            "disabled": False,
+            "first_name": "Bruno",
+            "last_name": "Alves",
+            "roles": ["student:school:school1"],
+            "schools": ["school1"],
+            "school_classes": {"school1": ["1b"]},
+            "work_groups": {},
+            "username": "student.bruno",
+        },
+    },
+    {
+        # A school member with no classes at all -- normal for staff, and the
+        # case that used to raise KeyError in the file adapter.
+        "id": "staff.novak",
+        "attributes": {
+            "disabled": False,
+            "first_name": "Novak",
+            "last_name": "Kraus",
+            "roles": ["staff:school:school1"],
+            "schools": ["school1"],
+            "school_classes": {},
+            "work_groups": {},
+            "username": "staff.novak",
+        },
+    },
+    {
+        # Another school reusing the same class and work group names, so a
+        # filter that ignores the school boundary is caught.
+        "id": "student.carla",
+        "attributes": {
+            "disabled": False,
+            "first_name": "Carla",
+            "last_name": "Moser",
+            "roles": ["student:school:school2"],
+            "schools": ["school2"],
+            "school_classes": {"school2": ["1a"]},
+            "work_groups": {"school2": ["w1"]},
+            "username": "student.carla",
+        },
+    },
+]
+
+EVERYONE_IN_CONTRACT_SCHOOL = ["staff.novak", "student.aiko", "student.bruno"]
+
+
+@pytest.fixture(params=["file", "kelvin"])
+def users_adapter(
+    request: pytest.FixtureRequest,
+    tmpdir: Path,
+    dummy_settings: KelvinPersistenceAdapterSettings,
+    patch_kelvin_resource: Callable[[Any, str, Any], None],
+    make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+) -> Callable[[], Coroutine[Any, Any, UsersPersistencePort]]:
+    """Configure one implementation of UsersPersistencePort over CONTRACT_USERS."""
+
+    async def _file() -> UsersPersistencePort:
+        source = tmpdir / "contract_users.json"
+        with open(source, "w") as fd:
+            json.dump(CONTRACT_USERS, fd)
+        adapter = FileUsersPersistenceAdapter()
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=str(source)))
+        return adapter
+
+    async def _kelvin() -> UsersPersistencePort:
+        class MockUserResource:
+            async def search(self, *_args: Any, school: str = "", **_kwargs: Any):
+                # Kelvin applies ?school= itself, so the adapter is not credited
+                # with work the real service does for it.
+                for user_data in CONTRACT_USERS:
+                    if school in user_data["attributes"]["schools"]:
+                        yield make_kelvin_user_from_data(user_data)
+
+            async def get(self, *_args: Any, name: str = "", **_kwargs: Any):
+                for user_data in CONTRACT_USERS:
+                    if user_data["id"] == name:
+                        return make_kelvin_user_from_data(user_data)
+                raise NoObject()
+
+        patch_kelvin_resource(user_management_bff.adapters.users, "UserResource", MockUserResource())
+        adapter = KelvinUsersPersistenceAdapter()
+        await adapter.configure(dummy_settings)
+        return adapter
+
+    return _file if request.param == "file" else _kelvin
+
+
+@pytest.mark.parametrize(
+    "school_classes,work_groups,expected_ids",
+    [
+        pytest.param([], [], EVERYONE_IN_CONTRACT_SCHOOL, id="empty-lists-keep-everyone"),
+        pytest.param(["1a"], [], ["student.aiko"], id="by-school-class"),
+        pytest.param(["1b"], [], ["student.bruno"], id="by-other-school-class"),
+        pytest.param([], ["w1"], ["student.aiko"], id="by-work-group"),
+        pytest.param(["1b"], ["w1"], ["student.aiko", "student.bruno"], id="class-or-work-group"),
+        pytest.param(["9z"], ["w9"], [], id="no-match"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_get_users_group_filter_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+    school_classes: list[str],
+    work_groups: list[str],
+    expected_ids: list[str],
+):
+    adapter = await users_adapter()
+    result = await adapter.get_users(
+        CONTRACT_SCHOOL, school_classes=school_classes, work_groups=work_groups
+    )
+    assert sorted(user.id for user in result) == expected_ids
+
+
+@pytest.mark.asyncio
+async def test_get_users_unknown_school_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    adapter = await users_adapter()
+    assert await adapter.get_users("NON_EXISTENT", school_classes=[], work_groups=[]) == []
+
+
+@pytest.mark.asyncio
+async def test_get_user_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    adapter = await users_adapter()
+    assert await adapter.get_user("staff.novak") == User(
+        id="staff.novak", attributes=UserAttributes(**CONTRACT_USERS[2]["attributes"])
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_user_unknown_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    adapter = await users_adapter()
+    with pytest.raises(ObjectNotFoundError) as exc_info:
+        await adapter.get_user("NON_EXISTENT")
+    assert exc_info.value.identifier == "NON_EXISTENT"

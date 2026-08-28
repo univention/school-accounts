@@ -25,6 +25,18 @@ class TestKelvinSchoolClassesPersistenceAdapter:
     def adapter(self) -> KelvinSchoolClassesPersistenceAdapter:
         return KelvinSchoolClassesPersistenceAdapter()
 
+    @pytest.fixture
+    def make_kelvin_school_from_data(
+        self, mocker: MockerFixture
+    ) -> Callable[[dict[str, str]], MagicMock]:
+        def _make_kelvin_school_from_data(school_data: dict[str, str]) -> MagicMock:
+            kelvin_school = mocker.MagicMock()
+            kelvin_school.name = school_data["id"]
+            kelvin_school.description = school_data["display_name"]
+            return kelvin_school
+
+        return _make_kelvin_school_from_data
+
     def test_get_settings_cls(self):
         assert (
             KelvinSchoolClassesPersistenceAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
