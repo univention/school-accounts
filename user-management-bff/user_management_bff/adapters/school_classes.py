@@ -3,7 +3,6 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -45,13 +44,13 @@ class FileSchoolClassesPersistenceAdapter(
         cached: bool = True
 
     def __init__(self):
-        self._data = {}
+        self._data: dict[str, list[str]] = {}
 
     @classmethod
     @override
     def get_settings_cls(
         cls,
-    ) -> Type[FileSchoolClassesPersistenceAdapterSettings]:  # pragma: no cover
+    ) -> type[FileSchoolClassesPersistenceAdapterSettings]:  # pragma: no cover
         return FileSchoolClassesPersistenceAdapterSettings
 
     @override
@@ -63,5 +62,7 @@ class FileSchoolClassesPersistenceAdapter(
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         return [
             SchoolClass(id=school_class, display_name=school_class, school=school)
-            for school_class in self._data[school]
+            # A school with no entry has no groups; the Kelvin adapter returns an
+            # empty list for that, so this one must not raise KeyError instead.
+            for school_class in self._data.get(school, [])
         ]

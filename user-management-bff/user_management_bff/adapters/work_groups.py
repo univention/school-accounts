@@ -3,7 +3,6 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Type
 
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -41,12 +40,12 @@ class FileWorkGroupsPersistenceAdapter(
         cached = True
 
     def __init__(self):
-        self._data = {}
+        self._data: dict[str, list[str]] = {}
 
     @classmethod
     def get_settings_cls(
         cls,
-    ) -> Type[FileWorkGroupsPersistenceAdapterSettings]:  # pragma: no cover
+    ) -> type[FileWorkGroupsPersistenceAdapterSettings]:  # pragma: no cover
         return FileWorkGroupsPersistenceAdapterSettings
 
     async def configure(self, settings: FileWorkGroupsPersistenceAdapterSettings):
@@ -56,5 +55,7 @@ class FileWorkGroupsPersistenceAdapter(
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         return [
             WorkGroup(id=work_group, display_name=work_group, school=school)
-            for work_group in self._data[school]
+            # A school with no entry has no groups; the Kelvin adapter returns an
+            # empty list for that, so this one must not raise KeyError instead.
+            for work_group in self._data.get(school, [])
         ]
