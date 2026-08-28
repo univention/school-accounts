@@ -1,14 +1,13 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-import json
 import sys
 from dataclasses import dataclass, field
-from typing import Any
 
 import aiofiles
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from pydantic import TypeAdapter
 from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
@@ -21,6 +20,12 @@ if sys.version_info >= (3, 12):  # pragma: no cover
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
+
+
+# The source file already holds the domain shape, so it is parsed with the domain
+# model rather than unpacked by hand. That keeps the loaded data typed all the way
+# through instead of handing ``Any`` to every UserAttributes field.
+_STORED_USERS = TypeAdapter(list[User])
 
 
 def _safe_rejection_reason(raw: object) -> str:
@@ -149,8 +154,7 @@ class FileUsersPersistenceAdapter(
         cached = True
 
     def __init__(self):
-        # The source file holds a JSON array of users in the domain shape.
-        self._data: list[dict[str, Any]] = []
+        self._data: list[User] = []
 
     @classmethod
     def get_settings_cls(
@@ -158,9 +162,9 @@ class FileUsersPersistenceAdapter(
     ) -> type[FileUsersPersistenceAdapterSettings]:  # pragma: no cover
         return FileUsersPersistenceAdapterSettings
 
-    async def _reload_data(self):
-        async with aiofiles.open(self.settings.source, "r") as fd:
-            self._data = json.loads(await fd.read())
+    async def _reload_data(self) -> None:
+        async with aiofiles.open(self.settings.source, "rb") as fd:
+            self._data = _STORED_USERS.validate_json(await fd.read())
 
     async def configure(self, settings: FileUsersPersistenceAdapterSettings):
         self.settings = settings
@@ -170,14 +174,9 @@ class FileUsersPersistenceAdapter(
         self, school: str, school_classes: list[str], work_groups: list[str]
     ) -> list[User]:
         await self._reload_data()
-        # Parse before filtering, so the ``Any`` that json.load() hands back stops
-        # at the model boundary instead of leaking into the shared predicate.
-        users = [
-            User(id=user["id"], attributes=UserAttributes(**user["attributes"])) for user in self._data
-        ]
         return [
             user
-            for user in users
+            for user in self._data
             if school in user.attributes.schools
             and _in_selected_group(
                 school,
@@ -191,18 +190,17 @@ class FileUsersPersistenceAdapter(
     async def get_user(self, identifier: str) -> User:
         await self._reload_data()
         try:
-            user = next(user for user in self._data if user["id"] == identifier)
-            return User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
+            return next(user for user in self._data if user.id == identifier)
         except StopIteration:
             raise ObjectNotFoundError(identifier=identifier)
 
     @override
     async def set_password(self, identifier: str, password: str) -> None:
         await self._reload_data()
-        for user_data in self._data:
-            if user_data["id"] == identifier:
-                user_data["attributes"]["password"] = password
-                async with aiofiles.open(self.settings.source, "w") as fd:
-                    await fd.write(json.dumps(self._data))
+        for user in self._data:
+            if user.id == identifier:
+                user.attributes.password = password
+                async with aiofiles.open(self.settings.source, "wb") as fd:
+                    await fd.write(_STORED_USERS.dump_json(self._data))
                 return
         raise ObjectNotFoundError(identifier=identifier)

@@ -366,12 +366,29 @@ class TestFileUsersPersistenceAdapter:
 
     @pytest.mark.asyncio
     async def test_configure(self, adapter: FileUsersPersistenceAdapter, tmpdir: Path):
+        # The whole file is validated on load, so this needs a valid user record.
         data_file = tmpdir / "test_data.json"
-        data = {"foo": "bar"}
+        data: list[dict[str, Any]] = [
+            {
+                "attributes": {
+                    "disabled": False,
+                    "first_name": "firstname",
+                    "last_name": "lastname",
+                    "roles": ["teacher:school:test_school1"],
+                    "schools": ["test_school1"],
+                    "school_classes": {"test_school1": ["1a"]},
+                    "username": "firstname.lastname",
+                    "work_groups": {},
+                },
+                "id": "test_user1",
+            }
+        ]
         with open(data_file, "w") as fd:
             json.dump(data, fd)
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=str(data_file)))
-        assert adapter._data == data
+        assert adapter._data == [
+            User(id=user["id"], attributes=UserAttributes(**user["attributes"])) for user in data
+        ]
 
     @pytest.mark.parametrize(
         "school,school_classes,work_groups,expected_users",
@@ -572,6 +589,7 @@ class TestFileUsersPersistenceAdapter:
     @pytest.mark.asyncio
     async def test_set_password_success(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
         await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        stored_before = len(json.load(open(users_json)))
         await adapter.set_password("dev", "new-password")
         result = await adapter.get_user("dev")
         assert result == User(
@@ -588,6 +606,9 @@ class TestFileUsersPersistenceAdapter:
                 password="new-password",
             ),
         )
+        # set_password rewrites the whole store through dump_json, so every other
+        # record has to survive the write, not just the one that changed.
+        assert len(json.load(open(users_json))) == stored_before
 
     @pytest.mark.asyncio
     async def test_set_password_not_found(self, adapter: FileUsersPersistenceAdapter, users_json: Any):
@@ -595,6 +616,7 @@ class TestFileUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.set_password("NON_EXISTENT", "new-password")
         assert exc_info.value.identifier == "NON_EXISTENT"
+
 
 # ---------------------------------------------------------------------------
 # UsersPersistencePort contract: one matrix, run against every implementation.
