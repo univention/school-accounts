@@ -8,6 +8,15 @@ services:
       dockerfile: dev/Dockerfile
       context: ../
     container_name: ucsschool-user-management-install_deps
+    environment: &uv-project-environment
+      # The repo is bind-mounted at /src here, but lives at a different absolute path on the host
+      # (and in the dev container), and uv bakes absolute interpreter paths into the venv's
+      # console-script shebangs. Sharing one `.venv` across both therefore breaks whichever side
+      # did not build it last -- e.g. `uv run uvicorn` failing with "Failed to spawn: `uvicorn`".
+      # Give the compose stack its own environment directory. Same reasoning as
+      # docker/pre_commit/run-basedpyright.sh, but a distinct directory so a basedpyright run
+      # cannot re-sync the environment of a running dev server.
+      UV_PROJECT_ENVIRONMENT: /src/user-management-bff/.compose_venv
     command: ["dev/scripts/install_deps.sh"]
     profiles:
       - clean-profile
@@ -25,6 +34,7 @@ services:
     image: ucsschool-user-management-dev:latest
     build: *docker-build
     container_name: ucsschool-user-management-run_command
+    environment: *uv-project-environment
     command: [ "echo", "'You should provide a command.'" ]
     profiles:
       - clean-profile
@@ -83,6 +93,7 @@ services:
     image: ucsschool-user-management-dev:latest
     build: *docker-build
     container_name: ucsschool-user-management-keycloak_provisioning
+    environment: *uv-project-environment
     command: ["dev/scripts/provision_keycloak.sh"]
     profiles:
       - clean-profile
@@ -130,6 +141,7 @@ services:
     image: ucsschool-user-management-dev:latest
     build: *docker-build
     container_name: ucsschool-user-management-bff
+    environment: *uv-project-environment
     command:
       - "uv"
       - "run"

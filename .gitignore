@@ -12,6 +12,7 @@ _build/
 dev/local
 .idea
 **/.container_venv/
+**/.compose_venv/
 .gitlab-ci-local/
 basedpyright-code-quality.json
 
