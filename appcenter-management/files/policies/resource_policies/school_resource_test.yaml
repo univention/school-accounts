@@ -14,19 +14,30 @@ principals:
     id: bob
     roles: ["ucsschool:user"]
     attr:
+      cerbos_roles: []
       schools: ["school1"]
+      school_classes: {}
+      work_groups: {}
 
-  # A school_admin is enrolled like any other user: the actor attributes carry
-  # both the schools list and cerbos_roles (see _user_to_actor, which dumps all
-  # of UserAttributes). The school filter is deliberately role-agnostic - being
-  # a school_admin grants nothing extra here.
+  alice_student_only_school1:
+    id: alice
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: student, context: school1}
+      schools: ["school1"]
+      school_classes: {}
+      work_groups: {}
+
   dave_school_admin_school1:
     id: dave
     roles: ["ucsschool:user"]
     attr:
-      schools: ["school1"]
       cerbos_roles:
         - {name: school_admin, context: school1}
+      schools: ["school1"]
+      school_classes: {}
+      work_groups: {}
 
 resources:
   school1:
@@ -74,6 +85,21 @@ tests:
         actions:
           use-as-filter: EFFECT_ALLOW
       - principal: dave_school_admin_school1
+        resource: school2
+        actions:
+          use-as-filter: EFFECT_DENY
+
+  - name: a student-only user can still use their own school as a filter
+    input:
+      principals: [alice_student_only_school1]
+      resources: [school1, school2]
+      actions: [use-as-filter]
+    expected:
+      - principal: alice_student_only_school1
+        resource: school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: alice_student_only_school1
         resource: school2
         actions:
           use-as-filter: EFFECT_DENY

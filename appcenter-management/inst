@@ -9,7 +9,7 @@
 #
 
 # shellcheck disable=SC2034
-VERSION=3
+VERSION=4
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1

@@ -1,10 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Scope note: the only write capability currently required anywhere is
-# resetting a password. There is no create/edit/delete-user requirement
-# right now, so those capabilities aren't modeled here
-#
 # yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
 
 apiVersion: api.cerbos.dev/v1
@@ -13,6 +9,9 @@ resourcePolicy:
   resource: "ucsschool:user"
   importDerivedRoles:
     - ucsschool_derived_roles
+  constants:
+    import:
+      - ucsschool_password_reset
   variables:
     local:
       teacher_of_student_in_same_class: >-
@@ -24,16 +23,55 @@ resourcePolicy:
             r_role.name == "student" &&
             r_role.context == p_role.context
           ) &&
+          "school_classes" in P.attr &&
           p_role.context in P.attr.school_classes &&
+          "school_classes" in R.attr.old &&
           p_role.context in R.attr.old.school_classes &&
           hasIntersection(
             P.attr.school_classes[p_role.context],
             R.attr.old.school_classes[p_role.context]
           )
         )
+      guardian_of_ward: >-
+        "legal_guardians" in R.attr.old &&
+        P.id in R.attr.old.legal_guardians
+      principal_holds_a_non_student_role: >-
+        P.attr.cerbos_roles.exists(p_role, p_role.name != "student")
+      is_self: R.id == P.id
+      principal_may_reset_every_resource_role: >-
+        size(R.attr.old.cerbos_roles) > 0 &&
+        R.attr.old.cerbos_roles.all(
+          r_role,
+          r_role.name in C.password_reset_matrix &&
+          P.attr.cerbos_roles.exists(
+            p_role,
+            p_role.name in C.password_reset_matrix[r_role.name] &&
+            R.attr.old.cerbos_roles.exists(
+              enrolment,
+              enrolment.context == p_role.context
+            ) &&
+            size(C.password_reset_matrix[r_role.name][p_role.name]) > 0 &&
+            C.password_reset_matrix[r_role.name][p_role.name].all(
+              relation,
+              relation == "same_school" || (
+                relation == "same_class" &&
+                "school_classes" in P.attr &&
+                p_role.context in P.attr.school_classes &&
+                "school_classes" in R.attr.old &&
+                p_role.context in R.attr.old.school_classes &&
+                hasIntersection(
+                  P.attr.school_classes[p_role.context],
+                  R.attr.old.school_classes[p_role.context]
+                )
+              )
+            )
+          )
+        )
+      resource_is_student_only: >-
+        size(R.attr.old.cerbos_roles) > 0 &&
+        R.attr.old.cerbos_roles.all(r_role, r_role.name == "student")
   rules:
-    # A user may read their own data.
-    - name: self_read_data
+    - name: non_student_reads_own_data
       actions:
         - read-last_name
         - read-first_name
@@ -49,9 +87,10 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - self
-    # A teacher may read all data of, and reset the password of, a student
-    # sharing a class with them in their own school.
-    - name: teachers_of_students_in_same_class
+      condition:
+        match:
+          expr: variables.principal_holds_a_non_student_role
+    - name: teachers_read_students_in_same_class
       actions:
         - read-last_name
         - read-first_name
@@ -64,15 +103,15 @@ resourcePolicy:
         - read-email
         - read-birthday
         - read-expiration_date
-        - write-password
       effect: EFFECT_ALLOW
       derivedRoles:
         - teacher
+      # No !is_self guard, deliberately: a teacher is never student-only, so
+      # non_student_reads_own_data already grants this exact action list on their
+      # own record. A guard here would restrict nothing.
       condition:
         match:
           expr: variables.teacher_of_student_in_same_class
-    # A school_admin may read all data of every user in their own school,
-    # including other school_admins.
     - name: school_admin_reads_users_in_same_school
       actions:
         - read-last_name
@@ -89,21 +128,7 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - school_admin
-    # A school_admin may reset the password of any user in their own
-    # school who is not a school_admin.
-    # Uses a NOT-school_admin check rather than an allow-list of roles
-    - name: school_admin_resets_passwords_in_same_school
-      actions:
-        - write-password
-      effect: EFFECT_ALLOW
-      derivedRoles:
-        - school_admin
-      condition:
-        match:
-          expr: "!R.attr.old.cerbos_roles.exists(r, r.name == 'school_admin')"
-    # Staff may read the same fields as a teacher, but only of other staff in
-    # their own school - the traditional UCS@school behaviour.
-    - name: staff_reads_staff_in_same_school
+    - name: legal_guardian_reads_ward
       actions:
         - read-last_name
         - read-first_name
@@ -117,17 +142,27 @@ resourcePolicy:
         - read-birthday
         - read-expiration_date
       effect: EFFECT_ALLOW
-      derivedRoles:
-        - staff
+      roles:
+        - "ucsschool:user"
       condition:
         match:
           expr: >-
-            P.attr.cerbos_roles.exists(
-              p_role,
-              p_role.name == "staff" &&
-              R.attr.old.cerbos_roles.exists(
-                r_role,
-                r_role.name == "staff" &&
-                r_role.context == p_role.context
+            variables.guardian_of_ward &&
+            !variables.is_self
+    - name: password_reset
+      actions:
+        - write-password
+      effect: EFFECT_ALLOW
+      roles:
+        - "ucsschool:user"
+      condition:
+        match:
+          expr: >-
+            !variables.is_self &&
+            (
+              variables.principal_may_reset_every_resource_role ||
+              (
+                variables.guardian_of_ward &&
+                variables.resource_is_student_only
               )
             )

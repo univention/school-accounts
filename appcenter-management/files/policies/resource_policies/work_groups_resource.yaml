@@ -11,7 +11,8 @@ resourcePolicy:
     - ucsschool_derived_roles
   rules:
     # Any ucsschool user may use a work_group they're a member of as a search filter.
-    - actions:
+    - name: member_filters_by_own_work_group
+      actions:
         - use-as-filter
       effect: EFFECT_ALLOW
       roles:
@@ -25,7 +26,8 @@ resourcePolicy:
               R.attr.old.school == school && R.id in groups
             )
     # A school_admin may filter by any work_group in their own school.
-    - actions:
+    - name: school_admin_filters_by_any_work_group_in_own_school
+      actions:
         - use-as-filter
       effect: EFFECT_ALLOW
       derivedRoles:

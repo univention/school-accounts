@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Cerbos policy tests for school_user_resource.yaml, run via `cerbos compile`
-# (not shipped in the LDAP bundle - Cerbos ignores *_test.yaml as policies).
+# (never shipped - generate-preinst filters *_test.yaml out of the bundle).
 #
 # yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/TestSuite.schema.json
 
@@ -40,15 +40,73 @@ principals:
       cerbos_roles:
         - {name: school_admin, context: school1}
 
-  grace_staff_school1:
-    id: grace
+  # The only school_admin at school2. Without one, every school_admin assertion
+  # in this suite ran from school1's point of view, so "a user is resettable by
+  # the admin of the school they are enrolled in" was only ever tested by its
+  # failures.
+  paul_school_admin_school2:
+    id: paul
     roles: ["ucsschool:user"]
     attr:
       cerbos_roles:
-        - {name: staff, context: school1}
+        - {name: school_admin, context: school2}
 
-  # Teaches at school1. At school2 she is enrolled as a student herself, in
-  # class 9z - the same class frank attends.
+  # A guardian as the directory service presents one: enrolled in her wards'
+  # school, holding legal_guardian there. The role grants her nothing - no cell
+  # names it as a principal role - but it makes her own password resettable there.
+  mallory_legal_guardian:
+    id: mallory
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: legal_guardian, context: school2}
+
+  # A guardian who is also employed at that school. Staff grants nothing over
+  # other users either, so this principal is here to show that the second role
+  # adds no capability over the ward - and that it does not take one away.
+  nadia_staff_and_guardian_school2:
+    id: nadia
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: staff, context: school2}
+        - {name: legal_guardian, context: school2}
+
+  # A guardian who is also a student, at another school than the ward. His
+  # legal_guardian role takes him out of the student-only set, so unlike a plain
+  # student he reads his own record.
+  oscar_student_school1_guardian_school2:
+    id: oscar
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: student, context: school1}
+        - {name: legal_guardian, context: school2}
+
+  # Genuinely no role at all: a bug upstream rather than a shape the directory
+  # service produces, which is exactly why it is pinned - such a user must come
+  # out with no permissions at all, not with the ones a non-student gets.
+  quinn_without_roles:
+    id: quinn
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles: []
+
+  # A teacher who also carries the student role in the class she teaches, the
+  # shape a role assigned by mistake produces. She is the only principal for whom
+  # the teacher rule matches her own record, which is what makes the self guard
+  # observable at all.
+  judy_teacher_and_student_school1:
+    id: judy
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+        - {name: student, context: school1}
+      school_classes:
+        school1: ["1a"]
+
+  # Teaches at school1; at school2 she is a student herself, in frank's class 9z.
   eve_teacher_school1_student_school2:
     id: eve
     roles: ["ucsschool:user"]
@@ -70,9 +128,17 @@ principals:
       school_classes:
         school2: ["9z"]
 
-  # A double role. UCS@school's TeachersAndStaff carries both teacher:school:X
-  # and staff:school:X, so this arrives as two cerbos_roles entries rather than
-  # a single "teacher_and_staff" role.
+  # Staff at school1, no other role - the doc grants staff nothing over other
+  # users but keeps the self-read that every non-student-only user has.
+  grace_staff_school1:
+    id: grace
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: staff, context: school1}
+
+  # UCS@school's TeachersAndStaff carries both teacher:school:X and
+  # staff:school:X, so it arrives as two cerbos_roles entries, not one role.
   ida_teacher_and_staff_school1:
     id: ida2
     roles: ["ucsschool:user"]
@@ -82,6 +148,47 @@ principals:
         - {name: staff, context: school1}
       school_classes:
         school1: ["1a"]
+
+  # Holds a role no cell of the reset matrix mentions, and shares class 1a with
+  # the students of school1 - the principal side of "a role the table has never
+  # seen grants nothing", which the resource side already pins via yannick.
+  #
+  # not_a_real_role is deliberately a name the directory service will never
+  # issue. Anything plausible - school_principal, say - could become a default
+  # role later, and these two tests would then be asserting something false
+  # about a real role instead of about an unknown one.
+  victor_holding_an_unknown_role:
+    id: victor
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: not_a_real_role, context: school1}
+      school_classes:
+        school1: ["1a"]
+
+  # Teaches class 1a at school1 and administers school2: two hats in two schools,
+  # neither of them a school_admin role at school1. The principal that separates
+  # authority by role name from authority by school - with names alone, her
+  # school2 hat covered every staff, teacher and legal_guardian entry at school1
+  # as well, and she reached the users school1's own school_admin is meant to keep.
+  rita_teacher_school1_admin_school2:
+    id: rita
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: teacher, context: school1}
+        - {name: school_admin, context: school2}
+      school_classes:
+        school1: ["1a"]
+
+principalGroups:
+  # bob teaches zoe's class, dave administers her school1 enrolment, mallory is
+  # her guardian: one principal per route into the write-password rule.
+  every_reset_route:
+    principals:
+      - bob_teacher_school1
+      - dave_school_admin_school1
+      - mallory_legal_guardian
 
 resources:
   alice_self:
@@ -151,17 +258,171 @@ resources:
         cerbos_roles:
           - {name: staff, context: school1}
 
-  existing_staff_school2:
-    id: staff3
+  bob_self:
+    id: bob
     kind: "ucsschool:user"
     attr:
       app_name: ucsschool-user-management
       old:
         cerbos_roles:
-          - {name: staff, context: school2}
+          - {name: teacher, context: school1}
+        school_classes:
+          school1: ["1a"]
 
-  # A student at both schools. At school1 he shares no class with eve; the only
-  # class they share is 9z at school2, where eve is a student herself.
+  dave_self:
+    id: dave
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: school_admin, context: school1}
+
+  # judy's own record, with no legal_guardians entry naming herself: nobody is
+  # their own guardian. The matrix still reaches it - she teaches the class she
+  # attends - so is_self is what stops the reset.
+  judy_self:
+    id: judy
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: teacher, context: school1}
+          - {name: student, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # At school2. The relationship needs no shared school context: the rule reads
+  # legal_guardians alone, not where either side holds a role.
+  ward_of_mallory:
+    id: ward1
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+        legal_guardians: ["mallory"]
+
+  # oscar's ward. He is enrolled as a student himself, at another school.
+  ward_of_oscar:
+    id: ward3
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+        legal_guardians: ["oscar"]
+
+  ward_of_someone_else:
+    id: ward2
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+        legal_guardians: ["trent"]
+
+  eve_self:
+    id: eve
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: teacher, context: school1}
+          - {name: student, context: school2}
+        school_classes:
+          school2: ["9z"]
+
+  mallory_self:
+    id: mallory
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: legal_guardian, context: school2}
+
+  quinn_self:
+    id: quinn
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles: []
+
+  oscar_self:
+    id: oscar
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: legal_guardian, context: school2}
+
+  grace_self:
+    id: grace
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: staff, context: school1}
+
+  # One account, two schools: a student at school1 - in bob's class 1a and
+  # within dave's reach as school1's admin - who is a school_admin at school2.
+  # Nobody may reset this password, by any route.
+  zoe_student_school1_admin_school2:
+    id: zoe
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: school_admin, context: school2}
+        school_classes:
+          school1: ["1a"]
+        legal_guardians: ["mallory"]
+
+  # zoe with the blocking role taken away and nothing else changed: a student in
+  # bob's class at school1, in dave's school, with mallory as guardian. One user
+  # all three routes reach, which is what makes it a control.
+  student_class1a_ward_of_mallory:
+    id: control
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+        school_classes:
+          school1: ["1a"]
+        legal_guardians: ["mallory"]
+
+  # Same three routes as zoe, but the blocking role is one this policy has never
+  # heard of: authority has to deny it, where a check for school_admin alone
+  # would have let it through.
+  yannick_student_school1_unknown_role:
+    id: yannick
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: not_a_real_role, context: school1}
+        school_classes:
+          school1: ["1a"]
+        legal_guardians: ["mallory"]
+
+  # A student at both schools. The only class he shares with eve is 9z at
+  # school2, where eve is a student herself.
   frank_student_school1_and_school2:
     id: frank
     kind: "ucsschool:user"
@@ -174,23 +435,220 @@ resources:
         school_classes:
           school2: ["9z"]
 
+  existing_teacher_school2:
+    id: teacher2
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: teacher, context: school2}
+
+  # The same teacher role at school2 as existing_teacher_school2, plus a school1
+  # enrolment. That one enrolment is all dave's school_admin role needs: authority
+  # asks only that he hold it at one of the resource's schools, and the teacher
+  # cell then covers the school2 role too. The reset hands over a teaching account
+  # at a school dave has no role in, which is what authority being per role name
+  # rather than per school amounts to.
+  student_school1_who_teaches_at_school2:
+    id: teacher3
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: teacher, context: school2}
+
+  # A ward the directory service gave no school role at all. Their guardian reads
+  # them - guardianship looks at no roles on either side - but cannot reset the
+  # password, because no role at all is not the student role.
+  ward_of_mallory_without_roles:
+    id: ward4
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles: []
+        legal_guardians: ["mallory"]
+
+  # A ward who is a teacher, at a school their guardian has no role in.
+  ward_of_mallory_teacher:
+    id: ward5
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: teacher, context: school2}
+        legal_guardians: ["mallory"]
+
+  # A ward who is a student, plus one role that is not - enough to take the
+  # guardian's password reset away, and the smallest case that does.
+  ward_of_mallory_student_and_staff:
+    id: ward6
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+          - {name: staff, context: school1}
+        legal_guardians: ["mallory"]
+
+  # nadia's ward, a student at the school nadia is enrolled in.
+  ward_of_nadia:
+    id: ward8
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+        legal_guardians: ["nadia"]
+
+  # A parent employed at school1: staff, plus the legal_guardian role the
+  # directory service gives every guardian.
+  staff_who_is_also_a_parent:
+    id: parentstaff
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: staff, context: school1}
+          - {name: legal_guardian, context: school1}
+
+  # A student in bob's class who is a guardian himself.
+  student_class1a_who_is_also_a_parent:
+    id: parentpupil
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: legal_guardian, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # Staff at school1 who is also enrolled as a student in bob's own class. Every
+  # relationship of the student/teacher cell holds for the student half.
+  staff_who_is_a_student_in_class1a:
+    id: staffpupil
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: staff, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # Staff and nothing else, but listed in bob's class, so every relationship of
+  # the student/teacher cell would hold if staff were reachable by a teacher.
+  pure_staff_listed_in_class1a:
+    id: staffonly
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: staff, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # The same for a parent who is nothing else.
+  pure_parent_listed_in_class1a:
+    id: parentonly
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: legal_guardian, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # A pupil in bob's class who also teaches. Only a school_admin may reset a
+  # teacher.
+  student_in_class1a_who_also_teaches:
+    id: pupilteacher
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: teacher, context: school1}
+        school_classes:
+          school1: ["1a"]
+
+  # A ward who is a student twice over. Still a student and nothing else, so the
+  # guardian keeps the reset - resource_is_student_only is all() over the roles,
+  # not a size() == 1 check.
+  ward_of_mallory_two_schools:
+    id: ward7
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school1}
+          - {name: student, context: school2}
+        legal_guardians: ["mallory"]
+
+  # Is a student at school2, in a class that happens to carry the same name as
+  # bob's class at school1 - class names are per school and repeat across them.
+  # The staff role at school1 is what gives school1's administrator a pair that
+  # binds, while bob has none.
+  zack_student_school2_staff_school1:
+    id: zack
+    kind: "ucsschool:user"
+    attr:
+      app_name: ucsschool-user-management
+      old:
+        cerbos_roles:
+          - {name: student, context: school2}
+          - {name: staff, context: school1}
+        school_classes:
+          school2: ["1a"]
+
 tests:
-  - name: self can read own data, not someone else's
+  - name: a non-student can read own data, not someone else's, and can't reset their own password
     input:
-      principals: [alice_student_school1]
-      resources: [alice_self, student_school2]
-      actions: [read-first_name, read-disabled]
+      principals: [bob_teacher_school1]
+      resources: [bob_self, student_school2]
+      actions: [read-first_name, read-disabled, write-password]
     expected:
-      - principal: alice_student_school1
-        resource: alice_self
+      - principal: bob_teacher_school1
+        resource: bob_self
         actions:
           read-first_name: EFFECT_ALLOW
           read-disabled: EFFECT_ALLOW
-      - principal: alice_student_school1
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
         resource: student_school2
         actions:
           read-first_name: EFFECT_DENY
           read-disabled: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  - name: a student can not even read their own data
+    input:
+      principals: [alice_student_school1]
+      resources: [alice_self]
+      actions: [read-first_name, read-disabled, read-email, read-roles, write-password]
+    expected:
+      - principal: alice_student_school1
+        resource: alice_self
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-roles: EFFECT_DENY
+          write-password: EFFECT_DENY
 
   - name: teacher reads and resets the password of a student sharing their class, not just their school
     input:
@@ -218,6 +676,16 @@ tests:
           write-password: EFFECT_DENY
       - principal: carol_teacher_school2
         resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          read-disabled: EFFECT_DENY
+          write-password: EFFECT_DENY
+      # carol teaches at school2 but the directory service gave her no classes
+      # at all, so she has no school_classes attribute. The only assertion that
+      # reaches the class comparison with that attribute absent - without it the
+      # teacher rule denied by raising "no such key" rather than by deciding.
+      - principal: carol_teacher_school2
+        resource: student_school2
         actions:
           read-first_name: EFFECT_DENY
           read-disabled: EFFECT_DENY
@@ -282,82 +750,96 @@ tests:
         actions:
           write-password: EFFECT_DENY
 
-  - name: staff reads the same data as a teacher for staff in their own school, not other roles or another school, and can't reset passwords
+  # Which records a guardian may touch, not which attributes - the attribute set
+  # is pinned by "every read rule grants the same eleven attributes" below.
+  - name: a legal guardian reads and resets their own wards only
     input:
-      principals: [grace_staff_school1]
-      resources:
-        - existing_staff_school1
-        - existing_staff_school2
-        - existing_teacher_school1
-        - existing_school_admin_school1
-        - student_school1_class1a
-        - student_school2
-      actions: [read-first_name, read-last_name, read-disabled, read-email, read-birthday, write-password]
+      principals: [mallory_legal_guardian]
+      resources: [ward_of_mallory, ward_of_someone_else, student_school1_class1b]
+      actions: [read-first_name, read-email, write-password]
     expected:
-      - principal: grace_staff_school1
-        resource: existing_staff_school1
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory
         actions:
           read-first_name: EFFECT_ALLOW
-          read-last_name: EFFECT_ALLOW
-          read-disabled: EFFECT_ALLOW
           read-email: EFFECT_ALLOW
-          read-birthday: EFFECT_ALLOW
-          write-password: EFFECT_DENY
-      # Staff at another school, even though both are staff.
-      - principal: grace_staff_school1
-        resource: existing_staff_school2
+          write-password: EFFECT_ALLOW
+      # ward_of_someone_else names a different guardian; student_school1_class1b
+      # has no legal_guardians key at all, which the guardian_of_ward key check
+      # must turn into a plain deny rather than an evaluation error.
+      - principal: mallory_legal_guardian
+        resources: [ward_of_someone_else, student_school1_class1b]
         actions:
           read-first_name: EFFECT_DENY
-          read-last_name: EFFECT_DENY
-          read-disabled: EFFECT_DENY
           read-email: EFFECT_DENY
-          read-birthday: EFFECT_DENY
-          write-password: EFFECT_DENY
-      - principal: grace_staff_school1
-        resource: existing_teacher_school1
-        actions:
-          read-first_name: EFFECT_DENY
-          read-last_name: EFFECT_DENY
-          read-disabled: EFFECT_DENY
-          read-email: EFFECT_DENY
-          read-birthday: EFFECT_DENY
-          write-password: EFFECT_DENY
-      - principal: grace_staff_school1
-        resource: existing_school_admin_school1
-        actions:
-          read-first_name: EFFECT_DENY
-          read-last_name: EFFECT_DENY
-          read-disabled: EFFECT_DENY
-          read-email: EFFECT_DENY
-          read-birthday: EFFECT_DENY
-          write-password: EFFECT_DENY
-      - principal: grace_staff_school1
-        resource: student_school1_class1a
-        actions:
-          read-first_name: EFFECT_DENY
-          read-last_name: EFFECT_DENY
-          read-disabled: EFFECT_DENY
-          read-email: EFFECT_DENY
-          read-birthday: EFFECT_DENY
-          write-password: EFFECT_DENY
-      - principal: grace_staff_school1
-        resource: student_school2
-        actions:
-          read-first_name: EFFECT_DENY
-          read-last_name: EFFECT_DENY
-          read-disabled: EFFECT_DENY
-          read-email: EFFECT_DENY
-          read-birthday: EFFECT_DENY
           write-password: EFFECT_DENY
 
-  # Regression: the teacher rule's three checks - the actor teaches at S, the
-  # resource is a student at S, both share a class within S - must all bind the
-  # same S. Evaluated independently they bound different schools: eve's teacher
-  # role at school1 satisfied the first two checks (frank is a student at
-  # school1), while the class check was satisfied by class 9z at *school2*,
-  # where eve is only a student herself. She must share a class with frank at
-  # school1 to gain anything over him there.
-  - name: the teacher rule must not combine a teacher role at one school with a shared class at another
+  # The only test where is_self decides the outcome: the student/teacher cell
+  # matches judy's teacher role against her own student role. Her teacher role
+  # also keeps her out of the student-only set, so she still reads herself.
+  - name: a teacher who is a student in their own class can not reset their own password
+    input:
+      principals: [judy_teacher_and_student_school1]
+      resources: [judy_self]
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: judy_teacher_and_student_school1
+        resource: judy_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  - name: a teacher who is a student at another school can read their own data
+    input:
+      principals: [eve_teacher_school1_student_school2]
+      resources: [eve_self]
+      actions: [read-first_name, read-email, read-roles, write-password]
+    expected:
+      - principal: eve_teacher_school1_student_school2
+        resource: eve_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          read-roles: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # A user with no school role at all is a bug upstream, not a shape the
+  # directory service produces. They get nothing: not their own record, and
+  # nothing over anyone else. principal_holds_a_non_student_role is what denies
+  # the self-read - an empty role list must not read as "not a student".
+  - name: a user with no school role at all gets no permissions
+    input:
+      principals: [quinn_without_roles]
+      resources: [quinn_self, student_school1_class1a, ward_of_mallory]
+      actions: [read-first_name, read-email, read-roles, write-password]
+    expected:
+      - principal: quinn_without_roles
+        resources: [quinn_self, student_school1_class1a, ward_of_mallory]
+        actions:
+          read-first_name: EFFECT_DENY
+          read-email: EFFECT_DENY
+          read-roles: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  - name: a school_admin can read but not reset their own password
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [dave_self]
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: dave_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # Regression: the student/teacher cell's checks - principal teaches at S, the
+  # resource is a student at S, both share a class within S - must bind the same S.
+  # Evaluated independently, eve's teacher role at school1 combined with the
+  # class she shares with frank at school2, where she is a student herself.
+  - name: the student/teacher cell must not combine a teacher role at one school with a shared class at another
     input:
       principals: [eve_teacher_school1_student_school2]
       resources: [frank_student_school1_and_school2]
@@ -385,21 +867,18 @@ tests:
           read-birthday: EFFECT_ALLOW
           write-password: EFFECT_ALLOW
 
-  # The double-role exception, which needs no rule of its own: ida is
-  # teacher_and_staff, so the teacher rule covers the student in her class and
-  # the staff rule covers her staff colleague. A plain teacher would be denied
-  # the colleague, and plain staff would be denied the student.
-  - name: a teacher_and_staff user gets the union of both rules
+  - name: a teacher_and_staff user gets the teacher rule only, the staff role adds nothing
     input:
       principals: [ida_teacher_and_staff_school1]
       resources: [existing_staff_school1, student_school1_class1a, existing_teacher_school1]
       actions: [read-first_name, read-birthday, write-password]
     expected:
+      # A staff colleague, which the removed staff rule used to cover.
       - principal: ida_teacher_and_staff_school1
         resource: existing_staff_school1
         actions:
-          read-first_name: EFFECT_ALLOW
-          read-birthday: EFFECT_ALLOW
+          read-first_name: EFFECT_DENY
+          read-birthday: EFFECT_DENY
           write-password: EFFECT_DENY
       - principal: ida_teacher_and_staff_school1
         resource: student_school1_class1a
@@ -407,10 +886,616 @@ tests:
           read-first_name: EFFECT_ALLOW
           read-birthday: EFFECT_ALLOW
           write-password: EFFECT_ALLOW
-      # A teacher colleague is neither a student in her class nor staff.
       - principal: ida_teacher_and_staff_school1
         resource: existing_teacher_school1
         actions:
           read-first_name: EFFECT_DENY
           read-birthday: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # The protection is a condition on the grant, not a DENY rule, so it has to
+  # hold for every route into it: bob teaches zoe's class, dave administers her
+  # school1 enrolment, mallory is her guardian. school_admin has no matrix key.
+  # Reads are deliberately untouched.
+  - name: nobody resets the password of a user who is a school_admin at another school
+    input:
+      principalGroups: [every_reset_route]
+      resources: [zoe_student_school1_admin_school2]
+      actions: [read-first_name, write-password]
+    expected:
+      - principalGroups: [every_reset_route]
+        resource: zoe_student_school1_admin_school2
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # Authority, not the school_admin name, is what blocks the reset: a role no
+  # cell of the matrix mentions denies all three routes just the same, while the
+  # reads the other rules grant stay untouched.
+  - name: nobody resets the password of a user holding a role the matrix does not mention
+    input:
+      principalGroups: [every_reset_route]
+      resources: [yannick_student_school1_unknown_role]
+      actions: [read-first_name, write-password]
+    expected:
+      - principalGroups: [every_reset_route]
+        resource: yannick_student_school1_unknown_role
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # The control for the two cases above, and the reason the fixture exists: one
+  # user that all three routes reach, identical to zoe and yannick except for the
+  # blocking role. Take that role away and the password comes back, so the deny
+  # is what does the work rather than something incidental to the fixture.
+  - name: the same three principals do reset the password once the blocking role is gone
+    input:
+      principalGroups: [every_reset_route]
+      resources: [student_class1a_ward_of_mallory]
+      actions: [write-password]
+    expected:
+      - principalGroups: [every_reset_route]
+        resource: student_class1a_ward_of_mallory
+        actions:
+          write-password: EFFECT_ALLOW
+
+  # A role counts towards authority only at a school the target is enrolled in.
+  # rita administers school2, and none of these four users holds anything at
+  # school2, so at school1 she is a teacher and nothing more. The first three are
+  # her own pupils in class 1a - every relationship of the student/teacher cell
+  # holds for them - and their second role reserves them for school1's
+  # school_admin all the same. The colleague is out of reach for want of a pair
+  # that binds, which was already true before the school test existed.
+  - name: a teacher who administers another school does not reach their own school's staff, parents and colleagues
+    input:
+      principals: [rita_teacher_school1_admin_school2]
+      resources:
+        - student_class1a_who_is_also_a_parent
+        - staff_who_is_a_student_in_class1a
+        - student_in_class1a_who_also_teaches
+        - existing_teacher_school1
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: rita_teacher_school1_admin_school2
+        resources:
+          - student_class1a_who_is_also_a_parent
+          - staff_who_is_a_student_in_class1a
+          - student_in_class1a_who_also_teaches
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      # The colleague is not in her class, so she does not read them either.
+      - principal: rita_teacher_school1_admin_school2
+        resource: existing_teacher_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # The same principal keeps everything her two hats do reach, which is why the
+  # school test asks that her authority touch the resource rather than the role
+  # entry. Her teacher hat reaches her own class at school1 and her school_admin
+  # hat reaches school2. eve teaches at school1 and is a student at school2: her
+  # teacher role sits at a school where rita administers nothing, yet rita
+  # administers a school eve is enrolled in, so the reset holds - and zack is the
+  # same shape with staff in place of teacher. Denying either would mean a
+  # school_admin loses their own users the moment they are given a role elsewhere.
+  - name: the same teacher and school_admin keeps every reset their two roles do reach
+    input:
+      principals: [rita_teacher_school1_admin_school2]
+      resources:
+        - student_school1_class1a
+        - student_school2
+        - eve_self
+        - zack_student_school2_staff_school1
+      actions: [write-password]
+    expected:
+      - principal: rita_teacher_school1_admin_school2
+        resources:
+          - student_school1_class1a
+          - student_school2
+          - eve_self
+          - zack_student_school2_staff_school1
+        actions:
+          write-password: EFFECT_ALLOW
+
+  # "Staff ... Like every user who holds a role other than student, they can
+  # read their own data" - the only spec statement about staff that isn't
+  # covered by the teacher_and_staff case above.
+  - name: a staff user reads their own data and gets nothing over other users
+    input:
+      principals: [grace_staff_school1]
+      resources: [grace_self, student_school1_class1a, existing_teacher_school1]
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: grace_staff_school1
+        resource: grace_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          read-email: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: grace_staff_school1
+        resource: existing_teacher_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          read-email: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # A student-only guardian cannot exist: every guardian holds legal_guardian,
+  # which is itself a second role. The consequence shows on oscar's own record -
+  # a plain student cannot read it, he can, because the self-read asks whether he
+  # holds any role that is not student.
+  - name: a guardian who is also a student reads their ward, and their own record
+    input:
+      principals: [oscar_student_school1_guardian_school2]
+      resources: [ward_of_oscar, oscar_self]
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: oscar_student_school1_guardian_school2
+        resource: ward_of_oscar
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: oscar_student_school1_guardian_school2
+        resource: oscar_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+  # exists() over the resource's roles, not all(): frank is a student at both
+  # schools, dave administers only school1, and the reset stays allowed through
+  # that school.
+  - name: a school_admin resets the password of a user who is also enrolled at another school
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [frank_student_school1_and_school2]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: frank_student_school1_and_school2
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # The reads ignore the ward's roles; the reset does not. Each ward below keeps
+  # the full read set and loses the password: no role at all (which is why
+  # resource_is_student_only calls size()), a teacher, and a student who is also
+  # staff somewhere - one extra role is enough.
+  - name: a legal guardian reads every ward, but resets only a student ward's password
+    input:
+      principals: [mallory_legal_guardian]
+      resources:
+        - ward_of_mallory
+        - ward_of_mallory_without_roles
+        - ward_of_mallory_teacher
+        - ward_of_mallory_student_and_staff
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory_without_roles
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory_teacher
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory_student_and_staff
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # The narrower guardian route is not a narrower rule: a ward who is a student
+  # at two schools is still a student and nothing else, so the reset stays. Only
+  # a role that is not "student" takes it away.
+  - name: a legal guardian resets the password of a ward enrolled at two schools
+    input:
+      principals: [mallory_legal_guardian]
+      resources: [ward_of_mallory_two_schools]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: mallory_legal_guardian
+        resource: ward_of_mallory_two_schools
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # The principal side of authority: victor shares class 1a with the student,
+  # so every relationship in the student/teacher cell would hold - but the
+  # matrix has no cell keyed by his role, and absence denies.
+  - name: a principal holding a role the reset matrix does not mention gets nothing
+    input:
+      principals: [victor_holding_an_unknown_role]
+      resources: [student_school1_class1a]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: victor_holding_an_unknown_role
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # There is no student/student cell. alice shares school1 with the resource, and
+  # the guardian route is the only thing that ever gives her a reset.
+  - name: a student resets no password of a fellow student in their school
+    input:
+      principals: [alice_student_school1]
+      resources: [student_school1_class1a]
+      actions: [write-password]
+    expected:
+      - principal: alice_student_school1
+        resource: student_school1_class1a
+        actions:
+          write-password: EFFECT_DENY
+
+  # Both relationships of a cell must hold between the *same* pair of role
+  # entries. Class names repeat across schools: bob teaches 1a at school1, zack
+  # attends a 1a at school2, so same_class alone would grant it and only
+  # same_school binds the pair.
+  #
+  # dave is the control, and shows the other half: authority is context free, so
+  # he may reset both of zack's role names, and the staff role he administers at
+  # school1 supplies the pair that binds. The school2 enrolment neither grants
+  # nor blocks anything.
+  - name: a teacher resets no password of a student whose class only shares its name
+    input:
+      principals: [bob_teacher_school1, dave_school_admin_school1]
+      resources: [zack_student_school2_staff_school1]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: bob_teacher_school1
+        resource: zack_student_school2_staff_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: dave_school_admin_school1
+        resource: zack_student_school2_staff_school1
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # Per-pair context binding on the school_admin route, for a resource role other
+  # than student: dave administers school1, the teacher role is at school2.
+  - name: a school_admin resets no password of a teacher at another school
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [existing_teacher_school2]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: existing_teacher_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # The contrast to the test above: same principal, same foreign teacher role, and
+  # a school1 enrolment the only difference. The ALLOW is deliberate - it is the
+  # rule the manual states, that once the resource is enrolled at a school the
+  # principal holds the listed role in, the role covers every role the resource
+  # holds wherever they hold it. Pinned here because this is the shape where that
+  # rule costs the most, and nothing else in the suite asserts it.
+  - name: a school_admin resets a teacher at another school once that teacher is enrolled in theirs
+    input:
+      principals: [dave_school_admin_school1]
+      resources: [student_school1_who_teaches_at_school2]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: student_school1_who_teaches_at_school2
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # The teacher/same-class relationship is written twice - as
+  # teacher_of_student_in_same_class for the reads, as the student/teacher cell
+  # for the reset - because a CEL variable takes no parameters and cannot be
+  # called under the matrix's role loop. Nothing but this test keeps the two in
+  # step, so every student below pins both actions to the same answer. The one
+  # deliberate divergence is the role protection, two tests above.
+  - name: a teacher's read set and reset set are the same students
+    input:
+      principals: [bob_teacher_school1, heidi_teacher_school1_and_school2]
+      resources:
+        - student_school1_class1a
+        - student_school1_class1b
+        - student_school2
+        - frank_student_school1_and_school2
+        - zack_student_school2_staff_school1
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: bob_teacher_school1
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: bob_teacher_school1
+        resource: student_school1_class1b
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: frank_student_school1_and_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: zack_student_school2_staff_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: heidi_teacher_school1_and_school2
+        resource: student_school1_class1a
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: heidi_teacher_school1_and_school2
+        resource: student_school1_class1b
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: heidi_teacher_school1_and_school2
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      - principal: heidi_teacher_school1_and_school2
+        resource: frank_student_school1_and_school2
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: heidi_teacher_school1_and_school2
+        resource: zack_student_school2_staff_school1
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # A guardian employed at her ward's school. Staff grants nothing over other
+  # users, so both the reads and the reset come from the guardianship, and
+  # another student at that school stays out of reach.
+  - name: a guardian enrolled in their ward's school gets the guardian grants and no more
+    input:
+      principals: [nadia_staff_and_guardian_school2]
+      resources: [ward_of_nadia, student_school2]
+      actions: [read-first_name, read-email, write-password]
+    expected:
+      - principal: nadia_staff_and_guardian_school2
+        resource: ward_of_nadia
+        actions:
+          read-first_name: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: nadia_staff_and_guardian_school2
+        resource: student_school2
+        actions:
+          read-first_name: EFFECT_DENY
+          read-email: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # Regression: legal_guardian must be a matrix key, or every parent's password
+  # would be protected from their own school_admin too - the check is all() over
+  # the resource's roles and every guardian holds the role. Being a key does not
+  # make it reachable by a teacher; only the school_admin cell does that.
+  - name: being a parent does not protect a password from the school_admin
+    input:
+      principals: [dave_school_admin_school1, bob_teacher_school1]
+      resources: [staff_who_is_also_a_parent, student_class1a_who_is_also_a_parent]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: staff_who_is_also_a_parent
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: student_class1a_who_is_also_a_parent
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      # A pupil in bob's class, but also a guardian, which only a school_admin may
+      # reset. The reads are untouched.
+      - principal: bob_teacher_school1
+        resource: student_class1a_who_is_also_a_parent
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      # Not a student at all, so the teacher route never reaches them.
+      - principal: bob_teacher_school1
+        resource: staff_who_is_also_a_parent
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+
+  # The other half: a guardian's own password is resettable by the school_admin
+  # of the school they are enrolled in, and by nobody else. mallory holds
+  # legal_guardian at school2, so school1's administrator has no route to her.
+  - name: a school_admin resets a parent's password only in their own school
+    input:
+      principals: [dave_school_admin_school1, mallory_legal_guardian]
+      resources: [mallory_self]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: mallory_self
+        actions:
+          read-first_name: EFFECT_DENY
+          write-password: EFFECT_DENY
+      # Her own record, so the self guard applies whatever else is true.
+      - principal: mallory_legal_guardian
+        resource: mallory_self
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+
+  # A teacher may reset students, so staff and legal_guardian put their holder out
+  # of reach - whether the person is only that, or a pupil in the teacher's own
+  # class as well. Granting nothing does not make a role freely resettable.
+  - name: a teacher resets no password of a staff member or a guardian
+    input:
+      principals: [bob_teacher_school1]
+      resources:
+        - staff_who_is_a_student_in_class1a
+        - pure_staff_listed_in_class1a
+        - pure_parent_listed_in_class1a
+      actions: [read-first_name, write-password]
+    expected:
+      # Reads are unaffected throughout: this pupil is in bob's class.
+      - principal: bob_teacher_school1
+        resource: staff_who_is_a_student_in_class1a
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: pure_staff_listed_in_class1a
+        actions:
+          write-password: EFFECT_DENY
+      - principal: bob_teacher_school1
+        resource: pure_parent_listed_in_class1a
+        actions:
+          write-password: EFFECT_DENY
+
+  # The school_admin reaches all three, through same_school on each cell.
+  - name: a school_admin resets staff and parents in their own school
+    input:
+      principals: [dave_school_admin_school1]
+      resources:
+        - staff_who_is_a_student_in_class1a
+        - pure_staff_listed_in_class1a
+        - pure_parent_listed_in_class1a
+      actions: [write-password]
+    expected:
+      - principal: dave_school_admin_school1
+        resource: staff_who_is_a_student_in_class1a
+        actions:
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: pure_staff_listed_in_class1a
+        actions:
+          write-password: EFFECT_ALLOW
+      - principal: dave_school_admin_school1
+        resource: pure_parent_listed_in_class1a
+        actions:
+          write-password: EFFECT_ALLOW
+
+  # The same for a second role that is not student: only a school_admin may reset
+  # a teacher, so a pupil who also teaches is out of bob's reach even though the
+  # student/teacher cell matches them perfectly.
+  - name: a teacher resets no password of a pupil in their class who also teaches
+    input:
+      principals: [bob_teacher_school1, dave_school_admin_school1]
+      resources: [student_in_class1a_who_also_teaches]
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: bob_teacher_school1
+        resource: student_in_class1a_who_also_teaches
+        actions:
+          # The read rule is unchanged: they are a student in bob's class.
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_DENY
+      - principal: dave_school_admin_school1
+        resource: student_in_class1a_who_also_teaches
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+
+  # Every read rule grants the same eleven attributes, and until this test only
+  # the guardian rule had them pinned - read-first_name stood in for the set
+  # everywhere else, so six of the eleven could be dropped from the teacher, the
+  # school_admin and the self rule without a single failure.
+  #
+  # zoe is readable by all three of the reset routes at once, so one expectation
+  # covers the teacher, school_admin and guardian rules; bob's own record covers
+  # the self rule, and dave reading it covers school_admin a second way.
+  - name: every read rule grants the same eleven attributes
+    input:
+      principalGroups: [every_reset_route]
+      resources: [zoe_student_school1_admin_school2, bob_self]
+      actions:
+        - read-last_name
+        - read-first_name
+        - read-disabled
+        - read-activated
+        - read-schools
+        - read-school_classes
+        - read-work_groups
+        - read-roles
+        - read-email
+        - read-birthday
+        - read-expiration_date
+    expected:
+      - principalGroups: [every_reset_route]
+        resource: zoe_student_school1_admin_school2
+        actions:
+          read-last_name: EFFECT_ALLOW
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+          read-activated: EFFECT_ALLOW
+          read-schools: EFFECT_ALLOW
+          read-school_classes: EFFECT_ALLOW
+          read-work_groups: EFFECT_ALLOW
+          read-roles: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          read-expiration_date: EFFECT_ALLOW
+      - principals: [bob_teacher_school1, dave_school_admin_school1]
+        resource: bob_self
+        actions:
+          read-last_name: EFFECT_ALLOW
+          read-first_name: EFFECT_ALLOW
+          read-disabled: EFFECT_ALLOW
+          read-activated: EFFECT_ALLOW
+          read-schools: EFFECT_ALLOW
+          read-school_classes: EFFECT_ALLOW
+          read-work_groups: EFFECT_ALLOW
+          read-roles: EFFECT_ALLOW
+          read-email: EFFECT_ALLOW
+          read-birthday: EFFECT_ALLOW
+          read-expiration_date: EFFECT_ALLOW
+
+  # The school_admin route seen from the other school. Every other school_admin
+  # assertion here runs from school1, so this is the only test that shows an
+  # administrator reaching a user - and being turned away - from school2.
+  # mallory holds legal_guardian at school2, which is what makes her resettable
+  # there and nowhere else.
+  - name: a school_admin reaches users in their own school only, seen from school2
+    input:
+      principals: [paul_school_admin_school2]
+      resources:
+        - mallory_self
+        - ward_of_mallory
+        - existing_teacher_school1
+        - student_school1_class1a
+      actions: [read-first_name, write-password]
+    expected:
+      - principal: paul_school_admin_school2
+        resources: [mallory_self, ward_of_mallory]
+        actions:
+          read-first_name: EFFECT_ALLOW
+          write-password: EFFECT_ALLOW
+      # No role at school2, so no pair binds and the reads have no derived role.
+      - principal: paul_school_admin_school2
+        resources: [existing_teacher_school1, student_school1_class1a]
+        actions:
+          read-first_name: EFFECT_DENY
           write-password: EFFECT_DENY

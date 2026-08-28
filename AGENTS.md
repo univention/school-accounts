@@ -106,6 +106,34 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   now hardcodes `CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'`, a bare `host:port` gRPC
   target rather than a URL, with no UCR variable/App Center setting behind it and no OAuth2 step
   anymore.
+- **Cerbos policies are additive**: every rule in `appcenter-management/files/policies/` is
+  `EFFECT_ALLOW`. Never add an `EFFECT_DENY` rule. A restriction is an extra condition on each
+  grant it limits, so a rule granting reads and `write-password` over the same set gets split in
+  two when only the write side is restricted. Phrase the condition positively, as the allow list
+  of values that pass rather than a negated probe for the one to block, so an unforeseen value
+  fails the check instead of slipping through. The cost is that a restriction is restated on
+  every grant it applies to, and each copy needs its own test — dropping one must fail
+  `cerbos compile`.
+- **Who may reset whose password is data, not rules**: one `write-password` rule, driven by the
+  `password_reset_matrix` table in `files/policies/constants/password_reset_constants.yaml`
+  (resource role → principal role → the relationships required between those two role entries).
+  Adding a role driven route is an edit to that table. Inside the policies use Cerbos's words,
+  `resource` and `principal`, not the BFF's `Target`/`actor` — the adapter is where the two
+  vocabularies meet. A reset needs a cell for *every* role its resource holds
+  (`variables.principal_may_reset_every_resource_role`) and one pair of role entries that
+  satisfies its relationships (`variables.matrix_binds_a_role_pair`). Authority is per role name
+  and context free; the binding supplies the context. So an absent role protects its holder's
+  password from everyone (`school_admin`, and anything the directory service invents), and a role
+  only a `school_admin` may reset puts its holder out of a teacher's reach even when they are
+  also a student in that teacher's class. `legal_guardian` is a key because every guardian holds
+  it, so leaving it out would protect every parent's password from their own `school_admin` too;
+  keying it to `school_admin` alone is deliberate, and puts a pupil who is a guardian out of
+  their teacher's reach. Relationship *names* are data, their implementations are the
+  `relation == "…" && <expr>` chain — a relationship is a predicate over the pair of entries, and
+  a CEL variable takes no parameters. Keep that chain lazy: a `{name: <expr>}[relation]` lookup
+  builds the map eagerly and errors on principals lacking an optional attribute. Authority is
+  `all()` over the resource's roles and the binding is `exists()`; swapping either breaks a
+  pinned test.
 - Which adapter backs each port is selected only via `USER_MANAGEMENT__ADAPTER__*` env vars
   (`dev/.env.example` documents all of them); never gate adapter choice on anything else.
 

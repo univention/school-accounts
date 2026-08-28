@@ -14,6 +14,9 @@ principals:
     id: bob
     roles: ["ucsschool:user"]
     attr:
+      cerbos_roles: []
+      schools: ["school1"]
+      school_classes: {}
       work_groups:
         school1: ["chess-club"]
 
@@ -21,6 +24,9 @@ principals:
     id: carol
     roles: ["ucsschool:user"]
     attr:
+      cerbos_roles: []
+      schools: ["school1"]
+      school_classes: {}
       work_groups:
         school1: ["art-club"]
 
@@ -30,6 +36,9 @@ principals:
     attr:
       cerbos_roles:
         - {name: school_admin, context: school1}
+      schools: ["school1"]
+      school_classes: {}
+      work_groups: {}
 
 resources:
   chess_club_school1:

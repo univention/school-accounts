@@ -7,11 +7,10 @@ apiVersion: api.cerbos.dev/v1
 resourcePolicy:
   version: "default"
   resource: "ucsschool:school"
-  importDerivedRoles:
-    - ucsschool_derived_roles
   rules:
     # Any ucsschool user enrolled in a school may use it as a search filter.
-    - actions:
+    - name: enrolled_user_filters_by_school
+      actions:
         - use-as-filter
       effect: EFFECT_ALLOW
       roles:

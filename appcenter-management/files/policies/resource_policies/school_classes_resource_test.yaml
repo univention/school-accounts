@@ -14,15 +14,32 @@ principals:
     id: bob
     roles: ["ucsschool:user"]
     attr:
+      cerbos_roles: []
+      schools: ["school1"]
       school_classes:
         school1: ["1a"]
+      work_groups: {}
 
   carol_member_of_1b:
     id: carol
     roles: ["ucsschool:user"]
     attr:
+      cerbos_roles: []
+      schools: ["school1"]
       school_classes:
         school1: ["1b"]
+      work_groups: {}
+
+  alice_student_only_school1:
+    id: alice
+    roles: ["ucsschool:user"]
+    attr:
+      cerbos_roles:
+        - {name: student, context: school1}
+      schools: ["school1"]
+      school_classes:
+        school1: ["1a"]
+      work_groups: {}
 
   dave_school_admin_school1:
     id: dave
@@ -30,6 +47,9 @@ principals:
     attr:
       cerbos_roles:
         - {name: school_admin, context: school1}
+      schools: ["school1"]
+      school_classes: {}
+      work_groups: {}
 
 resources:
   class_1a_school1:
@@ -79,6 +99,21 @@ tests:
         actions:
           use-as-filter: EFFECT_ALLOW
       - principal: dave_school_admin_school1
+        resource: class_2a_school2
+        actions:
+          use-as-filter: EFFECT_DENY
+
+  - name: a student-only user can still use their own class as a filter
+    input:
+      principals: [alice_student_only_school1]
+      resources: [class_1a_school1, class_2a_school2]
+      actions: [use-as-filter]
+    expected:
+      - principal: alice_student_only_school1
+        resource: class_1a_school1
+        actions:
+          use-as-filter: EFFECT_ALLOW
+      - principal: alice_student_only_school1
         resource: class_2a_school2
         actions:
           use-as-filter: EFFECT_DENY

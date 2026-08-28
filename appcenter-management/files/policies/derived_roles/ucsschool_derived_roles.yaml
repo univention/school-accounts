@@ -32,20 +32,6 @@ derivedRoles:
               ) &&
               p_role.name == "teacher"
             )
-    # True when the principal has a "staff" role in the resource's school.
-    - name: staff
-      parentRoles: ["ucsschool:user"]
-      condition:
-        match:
-          expr: >-
-            P.attr.cerbos_roles.exists(
-              p_role,
-              R.attr.old.cerbos_roles.exists(
-                r_role,
-                p_role.context == r_role.context
-              ) &&
-              p_role.name == "staff"
-            )
     # True when the principal has a "school_admin" role in the resource's school.
     - name: school_admin
       parentRoles: [ "ucsschool:user" ]
