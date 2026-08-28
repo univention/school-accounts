@@ -3,7 +3,7 @@
 import json
 import sys
 from dataclasses import dataclass, field
-from typing import Type
+from typing import Any
 
 import aiofiles
 from loguru import logger
@@ -42,6 +42,32 @@ def _safe_rejection_reason(raw: object) -> str:
         return ""
 
 
+def _in_selected_group(
+    school: str,
+    school_classes: list[str],
+    work_groups: list[str],
+    user_classes: dict[str, list[str]],
+    user_work_groups: dict[str, list[str]],
+) -> bool:
+    """Decide whether the group filter keeps a user of ``school``.
+
+    No selection means no filter. The UI's single-select control can only ever
+    send one of the two lists, but the port's signature admits both, so
+    membership in either one is enough to keep a user.
+
+    Every implementation of ``UsersPersistencePort`` shares this one predicate on
+    purpose: the two adapters used to carry a reading of the filter arguments
+    each, and they disagreed - the Kelvin one treated only ``None`` as "no
+    filter" while the caller always sends empty lists.
+    """
+    if not school_classes and not work_groups:
+        return True
+    return bool(
+        set(school_classes).intersection(user_classes.get(school, ()))
+        or set(work_groups).intersection(user_work_groups.get(school, ()))
+    )
+
+
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
         return User(
@@ -64,7 +90,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         )
 
     async def get_users(
-        self, school: str, school_classes: list[str] | None, work_groups: list[str] | None
+        self, school: str, school_classes: list[str], work_groups: list[str]
     ) -> list[User]:
         # TODO dont filter here, let Kelvin filter by passing classes and workgroups to `.search` method
         async with self.kelvin_session as session:
@@ -72,27 +98,12 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             return [
                 self._user_from_kelvin_user(kelvin_user)
                 async for kelvin_user in kelvin_users
-                if
-                (
-                    # No filtering
-                    ((school_classes is None) and (work_groups is None))
-                    # user is in a school class
-                    or (
-                        (school in kelvin_user.school_classes and school_classes is not None)
-                        and any(
-                            [
-                                school_class in kelvin_user.school_classes[school]
-                                for school_class in school_classes
-                            ]
-                        )
-                    )
-                    # user is in a workgroup
-                    or (
-                        (school in kelvin_user.workgroups and work_groups is not None)
-                        and any(
-                            [work_group in kelvin_user.workgroups[school] for work_group in work_groups]
-                        )
-                    )
+                if _in_selected_group(
+                    school,
+                    school_classes=school_classes,
+                    work_groups=work_groups,
+                    user_classes=kelvin_user.school_classes or {},
+                    user_work_groups=kelvin_user.workgroups or {},
                 )
             ]
 
@@ -138,12 +149,13 @@ class FileUsersPersistenceAdapter(
         cached = True
 
     def __init__(self):
-        self._data = {}
+        # The source file holds a JSON array of users in the domain shape.
+        self._data: list[dict[str, Any]] = []
 
     @classmethod
     def get_settings_cls(
         cls,
-    ) -> Type[FileUsersPersistenceAdapterSettings]:  # pragma: no cover
+    ) -> type[FileUsersPersistenceAdapterSettings]:  # pragma: no cover
         return FileUsersPersistenceAdapterSettings
 
     async def _reload_data(self):
@@ -155,41 +167,26 @@ class FileUsersPersistenceAdapter(
         await self._reload_data()
 
     async def get_users(
-        self, school: str, school_classes: list[str] | None, work_groups: list[str] | None
+        self, school: str, school_classes: list[str], work_groups: list[str]
     ) -> list[User]:
         await self._reload_data()
-        if school_classes is None:
-            school_classes = []
-        if work_groups is None:
-            work_groups = []
-        data = [
-            User(id=user["id"], attributes=UserAttributes(**user["attributes"]))
-            for user in self._data
-            if (
-                school in user["attributes"]["schools"]
-                and (
-                    (not school_classes and not work_groups)
-                    or (
-                        any(
-                            [
-                                school_class in user["attributes"]["school_classes"][school]
-                                for school_class in school_classes
-                            ]
-                        )
-                        or (
-                            school in user["attributes"]["work_groups"]
-                            and any(
-                                [
-                                    work_group in user["attributes"]["work_groups"][school]
-                                    for work_group in work_groups
-                                ]
-                            )
-                        )
-                    )
-                )
+        # Parse before filtering, so the ``Any`` that json.load() hands back stops
+        # at the model boundary instead of leaking into the shared predicate.
+        users = [
+            User(id=user["id"], attributes=UserAttributes(**user["attributes"])) for user in self._data
+        ]
+        return [
+            user
+            for user in users
+            if school in user.attributes.schools
+            and _in_selected_group(
+                school,
+                school_classes=school_classes,
+                work_groups=work_groups,
+                user_classes=user.attributes.school_classes,
+                user_work_groups=user.attributes.work_groups,
             )
         ]
-        return data
 
     async def get_user(self, identifier: str) -> User:
         await self._reload_data()

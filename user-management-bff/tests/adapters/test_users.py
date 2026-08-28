@@ -173,7 +173,7 @@ class TestKelvinUsersPersistenceAdapter:
         mock_user_resource = mocker.MagicMock(return_value=MockUserResource())
         monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", mock_user_resource)
         await adapter.configure(dummy_settings)
-        result = await adapter.get_users("school1", school_classes=None, work_groups=None)
+        result = await adapter.get_users("school1", school_classes=[], work_groups=[])
         assert result == [
             User(id=user_data["id"], attributes=UserAttributes(**user_data["attributes"]))
             for user_data in input_data
@@ -465,8 +465,8 @@ class TestFileUsersPersistenceAdapter:
             ),
             (
                 "test_school2",
-                None,
-                None,
+                [],
+                [],
                 [
                     {
                         "attributes": {
@@ -502,7 +502,7 @@ class TestFileUsersPersistenceAdapter:
             (
                 "test_school2",
                 ["3c"],
-                None,
+                [],
                 [
                     {
                         "attributes": {
@@ -524,7 +524,7 @@ class TestFileUsersPersistenceAdapter:
             ),
             (
                 "test_school2",
-                None,
+                [],
                 ["w1a"],
                 [
                     {
@@ -549,8 +549,8 @@ class TestFileUsersPersistenceAdapter:
         self,
         adapter: FileUsersPersistenceAdapter,
         school: str,
-        school_classes: list[str] | None,
-        work_groups: list[str] | None,
+        school_classes: list[str],
+        work_groups: list[str],
         expected_users: list[dict[str, Any]],
         users_json: Any,
     ):
