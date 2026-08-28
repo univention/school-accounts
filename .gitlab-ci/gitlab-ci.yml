@@ -6,7 +6,7 @@ include:
     file: 'pipeline/sphinx.yml'
   - project: univention/dev/tooling/ci-components
     file: fragments/openstack.yaml
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.16.2
     inputs:
       app_id: "ucsschool-user-management"
       mail_sender: "ucsschool-maintainers@univention.de"
@@ -20,7 +20,7 @@ include:
         - job: build_appcenter_files
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
     inputs:
       job_name: "build_dev_image"
       stage: prepare
@@ -36,7 +36,7 @@ include:
       build_args: |
         commit=$CI_COMMIT_SHA
         date=$CI_JOB_STARTED_AT
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
     inputs:
       job_name: "build_docker_image_user_management"
       stage: prepare
@@ -58,10 +58,10 @@ include:
       build_args: |
         commit=$CI_COMMIT_SHA
         date=$CI_JOB_STARTED_AT
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.16.2
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.16.2
     inputs:
       job_prefix: "bff_"
       pipeline_stage: build
@@ -77,7 +77,7 @@ include:
             - user-management-bff/**/*
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.12.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.16.2
     inputs:
       job_name: "build-sonar"
       stage: build
