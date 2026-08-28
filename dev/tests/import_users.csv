@@ -4,3 +4,4 @@
 "school1","staff","Alex","Admin","","A school admin.","+99-882-970784","alex.admin@school1.ucsschool.test"
 "school2","student","Laura","Student","school2-1a","A student.","+05-288-340356","laura.student@school2.ucsschool.test"
 "school1","staff","Armin","Staff","","A staff member.","+99-882-970785","armin.staff@school1.ucsschool.test"
+"school1","legal_guardian","Petra","Parent","","A legal guardian of max.student.","+99-882-970786","petra.parent@school1.ucsschool.test"

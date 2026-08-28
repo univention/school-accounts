@@ -538,6 +538,9 @@
       "disabled": false,
       "first_name": "Oskar",
       "last_name": "Wagner",
+      "legal_guardians": [
+        "petra.wagner"
+      ],
       "roles": [
         "student:school:goethe-gymnasium-berlin"
       ],
@@ -555,6 +558,32 @@
       }
     },
     "id": "oskar.wagner"
+  },
+  {
+    "attributes": {
+      "birthday": "1983-06-19",
+      "disabled": false,
+      "email": "petra.wagner@goethe-gymnasium-berlin.de",
+      "first_name": "Petra",
+      "last_name": "Wagner",
+      "legal_wards": [
+        "oskar.wagner"
+      ],
+      "roles": [
+        "legal_guardian:school:goethe-gymnasium-berlin"
+      ],
+      "school_classes": {
+        "goethe-gymnasium-berlin": []
+      },
+      "schools": [
+        "goethe-gymnasium-berlin"
+      ],
+      "username": "petra.wagner",
+      "work_groups": {
+        "goethe-gymnasium-berlin": []
+      }
+    },
+    "id": "petra.wagner"
   },
   {
     "attributes": {

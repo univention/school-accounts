@@ -8,12 +8,8 @@
 # the same policy decisions end to end.
 
 import pytest
-import pytest_asyncio
 
-from user_management_bff.adapters.permissions import (
-    CerbosPermissionsAdapter,
-    CerbosPermissionsAdapterSettings,
-)
+from user_management_bff.adapters.permissions import CerbosPermissionsAdapter
 from user_management_bff.models import (
     Permission,
     Target,
@@ -89,13 +85,6 @@ def _work_group_target(target_id: str, *, school: str) -> Target:
         ),
         new_target=None,
     )
-
-
-@pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
-async def cerbos_adapter(cerbos_url: str) -> CerbosPermissionsAdapter:
-    adapter = CerbosPermissionsAdapter()
-    await adapter.configure(CerbosPermissionsAdapterSettings(cerbos_target=cerbos_url, tls_verify=False))
-    return adapter
 
 
 @pytest.mark.e2e

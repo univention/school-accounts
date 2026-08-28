@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 from __future__ import annotations
 
+from dataclasses import dataclass
 from os import getenv
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
@@ -10,6 +11,16 @@ import pytest_asyncio
 from authlib.integrations.requests_client import OAuth2Session
 from ucsschool.kelvin.client import NoObject, SchoolClass, SchoolClassResource, Session, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
+
+from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
+from user_management_bff.adapters.permissions import (
+    CerbosPermissionsAdapter,
+    CerbosPermissionsAdapterSettings,
+)
+from user_management_bff.adapters.school_classes import KelvinSchoolClassesPersistenceAdapter
+from user_management_bff.adapters.schools import KelvinSchoolsPersistenceAdapter
+from user_management_bff.adapters.users import KelvinUsersPersistenceAdapter
+from user_management_bff.adapters.work_groups import KelvinWorkGroupsPersistenceAdapter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Coroutine
@@ -22,6 +33,16 @@ class KelvinCredentials(TypedDict):
     username: str
     password: str
     host: str
+
+
+@dataclass
+class KelvinPorts:
+    """The Kelvin-backed persistence adapters, ready to hand to `business_logic`."""
+
+    users: KelvinUsersPersistenceAdapter
+    schools: KelvinSchoolsPersistenceAdapter
+    school_classes: KelvinSchoolClassesPersistenceAdapter
+    work_groups: KelvinWorkGroupsPersistenceAdapter
 
 
 @pytest.fixture(scope="session")
@@ -94,6 +115,7 @@ def kelvin_user_factory(
         roles: list[str],
         school_classes: dict[str, list[str]] | None = None,
         work_groups: dict[str, list[str]] | None = None,
+        legal_guardians: list[str] | None = None,
     ) -> KelvinUser:
         first_name = faker.first_name()
         last_name = faker.last_name()
@@ -108,6 +130,8 @@ def kelvin_user_factory(
                 roles=roles,
                 school_classes=school_classes if school_classes is not None else {},
                 work_groups=work_groups if work_groups is not None else {},
+                # Kelvin rejects this on anything but a student, and caps it at 4.
+                legal_guardians=legal_guardians if legal_guardians is not None else [],
                 session=session,
             )
             result = cast(KelvinUser, await user.save())
@@ -175,25 +199,57 @@ def get_kelvin_user(
     return _get_kelvin_user
 
 
+def _kelvin_secret(name: str) -> str:
+    """Read a KELVIN_PERSISTENCE_ADAPTER__ setting from the env or its _FILE variant."""
+    value = getenv(f"KELVIN_PERSISTENCE_ADAPTER__{name}")
+    if not value:
+        path = getenv(f"KELVIN_PERSISTENCE_ADAPTER__{name}_FILE")
+        assert path, f"KELVIN_PERSISTENCE_ADAPTER__{name}(_FILE) must be set"
+        with open(path) as f:
+            value = f.read().strip()
+    return value
+
+
+@pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+async def cerbos_adapter(cerbos_url: str) -> CerbosPermissionsAdapter:
+    adapter = CerbosPermissionsAdapter()
+    await adapter.configure(CerbosPermissionsAdapterSettings(cerbos_target=cerbos_url, tls_verify=False))
+    return adapter
+
+
 @pytest.fixture
-def kelvin_session() -> Session:
-    username = getenv("KELVIN_PERSISTENCE_ADAPTER__USERNAME")
-    if not username:
-        username_file = getenv("KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE")
-        assert username_file, "KELVIN_PERSISTENCE_ADAPTER__USERNAME(_FILE) must be set"
-        with open(username_file) as f:
-            username = f.read().strip()
-    password = getenv("KELVIN_PERSISTENCE_ADAPTER__PASSWORD")
-    if not password:
-        password_file = getenv("KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE")
-        assert password_file, "KELVIN_PERSISTENCE_ADAPTER__PASSWORD(_FILE) must be set"
-        with open(password_file) as f:
-            password = f.read().strip()
+def kelvin_adapter_settings() -> KelvinPersistenceAdapterSettings:
+    """The settings the app itself runs the Kelvin adapters with, read from its env."""
     host = getenv("KELVIN_PERSISTENCE_ADAPTER__URL")
     assert host, "KELVIN_PERSISTENCE_ADAPTER__URL must be set"
+    return KelvinPersistenceAdapterSettings(
+        url=host,
+        username=_kelvin_secret("USERNAME"),
+        password=_kelvin_secret("PASSWORD"),
+    )
+
+
+@pytest.fixture
+def kelvin_session(kelvin_adapter_settings: KelvinPersistenceAdapterSettings) -> Session:
     return Session(
-        username=username,
-        password=password,
-        host=host,
+        username=kelvin_adapter_settings.username,
+        password=kelvin_adapter_settings.password,
+        host=kelvin_adapter_settings.url,
         verify=getenv("SSL_CERT_FILE"),
+    )
+
+
+@pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+async def kelvin_ports(
+    kelvin_adapter_settings: KelvinPersistenceAdapterSettings,
+) -> KelvinPorts:
+    """The persistence adapters `business_logic` is driven with in production."""
+    users = KelvinUsersPersistenceAdapter()
+    schools = KelvinSchoolsPersistenceAdapter()
+    school_classes = KelvinSchoolClassesPersistenceAdapter()
+    work_groups = KelvinWorkGroupsPersistenceAdapter()
+    for adapter in (users, schools, school_classes, work_groups):
+        await adapter.configure(kelvin_adapter_settings)
+    return KelvinPorts(
+        users=users, schools=schools, school_classes=school_classes, work_groups=work_groups
     )
