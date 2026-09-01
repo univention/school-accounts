@@ -8,8 +8,8 @@ ENV UV_PROJECT_ENVIRONMENT="/venv"
 ENV UV_VERSION=0.11.21
 RUN apt-get update && \
     apt-get --assume-yes --verbose-versions --no-install-recommends install \
-        python3-pip \
-        git && \
+        git \
+        python3-pip && \
     rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 RUN pip install uv=="$UV_VERSION"

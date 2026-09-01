@@ -9,62 +9,64 @@ EXPOSE 8000
 ENV UV_VERSION=0.11.21
 
 RUN apt-get update && \
-    apt-get install -y sudo \
+    apt-get install -y --no-install-recommends \
     curl \
     gettext \
     git \
-    python3-pip \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libdbus-1-3 \
-    libatk1.0-0 \
+    libasound2 \
     libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxcb1 \
-    libxkbcommon0 \
+    libatk1.0-0 \
+    libatomic1 \
     libatspi2.0-0 \
+    libcairo-gobject2 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libegl1 \
+    libenchant-2-2 \
+    libevdev2 \
+    libevent-2.1-7 \
+    libffi8 \
+    libgbm1 \
+    libgdk-pixbuf2.0-0 \
+    libgles2 \
+    libglib2.0-0 \
+    libglx0 \
+    libgtk-3-0 \
+    libgudev-1.0-0 \
+    libharfbuzz-icu0 \
+    libharfbuzz0b \
+    libhyphen0 \
+    libicu72 \
+    libjson-glib-1.0-0 \
+    libnspr4 \
+    libnss3 \
+    libopus0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libsecret-1-0 \
+    libwebp7 \
+    libwebpdemux2 \
+    libwebpmux3 \
+    libwoff1 \
     libx11-6 \
+    libx11-xcb1 \
+    libx264-164 \
+    libxcb1 \
     libxcomposite1 \
+    libxcursor1 \
     libxdamage1 \
     libxext6 \
     libxfixes3 \
+    libxkbcommon0 \
     libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libx11-xcb1 \
-    libxcursor1 \
-    libgtk-3-0 \
-    libgdk-pixbuf2.0-0 \
-    libpangocairo-1.0-0 \
-    libcairo-gobject2 \
-    libicu72 \
-    libatomic1 \
     libxslt1.1 \
-    libwoff1 \
-    libevent-2.1-7 \
-    libopus0 \
-    libwebpdemux2 \
-    libharfbuzz0b \
-    libwebpmux3 \
-    libwebp7 \
-    libjson-glib-1.0-0 \
-    libenchant-2-2 \
-    libsecret-1-0 \
-    libegl1 \
-    libglx0 \
-    libgudev-1.0-0 \
-    libffi8 \
-    libevdev2 \
-    libgles2 \
-    libx264-164 \
-    libharfbuzz-icu0 \
-    libhyphen0 \
-    libasound2 && \
+    python3-pip \
+    sudo && \
+    rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
-    pip install uv==$UV_VERSION pre-commit==3.6.0 reuse==2.1.0 python-keycloak
+    pip install pre-commit==3.6.0 python-keycloak reuse==2.1.0 uv=="$UV_VERSION"
 ENV PROJECT_DIR="/src"
 ENV PYTHONPYCACHEPREFIX=$PROJECT_DIR/.cache/cpython
 ENV UV_CACHE_DIR=$PROJECT_DIR/.cache/uv
