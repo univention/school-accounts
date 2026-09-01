@@ -85,7 +85,9 @@ POLICIES_DIR="$SCRIPTS_DIR/policies"
 BUNDLE_TAR="$(mktemp --suffix=.tar)"
 tar -C "$POLICIES_DIR" -cf "$BUNDLE_TAR" . || die
 
-# TODO(2026-08-04, jlai): pacakgeversion can not contain '/' -> check if joinscript version is enough
+# VERSION as packageversion never needs a bump: an equal version still writes the new --data,
+# only a strictly newer registered one is refused.
+# Do not replace it with the app version: the UDM syntax is DebianPackageVersion.
 . /usr/share/univention-lib/all.sh &&
 ucs_registerLDAPExtension "$@" \
     --name ucsschool-user-management-policies \
