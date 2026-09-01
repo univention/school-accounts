@@ -3,8 +3,9 @@
 """Tests for the UI router (shell + interactive-login routes)."""
 
 import sys
-from typing import Any, Callable, Coroutine, Generator
+from typing import Any, Callable, Coroutine, Generator, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
@@ -223,6 +224,48 @@ def test_users_search_renders_results(test_client: TestClient):
     assert "<u-badge" in body  # activated status badge
     # The searched school is preselected on the school list (deep-link friendly).
     assert 'value="school1" selected' in body
+
+
+def _users_page(test_client: TestClient, accept_language: str, **params: str) -> str:
+    # Starlette annotates TestClient against httpx2, which this project does not
+    # install, so every httpx type in its signature resolves to Unknown. The cast
+    # confines that to one call site instead of leaking into every assertion.
+    response = cast(
+        httpx.Response,
+        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users",
+            params=params,
+            headers={"Accept-Language": accept_language},
+        ),
+    )
+    assert response.status_code == 200
+    return response.text
+
+
+def test_german_accept_language_renders_german_template_strings(test_client: TestClient):
+    """Every string asserted here lives in a Jinja template, not in Python."""
+    body = _users_page(test_client, "de-DE,de;q=0.9")
+    assert '<html lang="de"' in body
+    assert "<title>UCS@school Benutzerverwaltung</title>" in body  # base.html
+    assert "Benutzerverwaltung</u-page-header>" in body  # macros/layout.html
+    assert "Zum dunklen Design wechseln" in body  # macros/layout.html
+    assert "Klassen &amp; Arbeitsgruppen" in body  # fragments/user_filters.html, escaped "&"
+    assert "Alle Klassen und Arbeitsgruppen" in body  # fragments/group_options.html
+    assert "Schulen filtern" in body  # pages/user_list.html
+
+
+def test_german_accept_language_translates_runtime_composed_role_msgids(test_client: TestClient):
+    """The role label reaches `_()` through a variable, so only `N_` markers extract it."""
+    body = _users_page(test_client, "de", school="school1")
+    assert "Lehrer (School 1)" in body
+    assert "Teacher (School 1)" not in body
+
+
+def test_english_accept_language_still_renders_english(test_client: TestClient):
+    body = _users_page(test_client, "en-GB,en")
+    assert '<html lang="en"' in body
+    assert "<title>UCS@school User Management</title>" in body
+    assert "Benutzerverwaltung" not in body
 
 
 @pytest.mark.parametrize("group", ["school_class:1a", "work_group:w1a"])
