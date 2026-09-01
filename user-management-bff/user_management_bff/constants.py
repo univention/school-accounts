@@ -59,4 +59,8 @@ SESSION_COOKIE_SECURE = os.environ.get("USER_MANAGEMENT__SESSION_COOKIE_SECURE",
 )
 
 LANGUAGES = ["en", "de"]
+
+# English is the msgid language, so this default resolves without a catalog.
+DEFAULT_LANGUAGE = "en"
+
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))

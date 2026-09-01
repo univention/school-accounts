@@ -8,7 +8,12 @@ from typing import cast
 
 from fastapi import Request
 
-from user_management_bff.constants import APP_NAME, LANGUAGES, PROJECT_DIR
+from user_management_bff.constants import (
+    APP_NAME,
+    DEFAULT_LANGUAGE,
+    LANGUAGES,
+    PROJECT_DIR,
+)
 
 
 @cache
@@ -23,17 +28,27 @@ def gettext_instances() -> dict[str, gettext.GNUTranslations]:
     }
 
 
-@cache
 def lang_from_accept_header(header: str) -> str:
-    return header.split(",", 1)[0].split("-", 1)[0] if header else "de"
+    """Return the first supported language the client asked for.
+
+    Empty, absent and unsupported headers all resolve to ``DEFAULT_LANGUAGE``.
+    The result is always in ``LANGUAGES``, so it is safe both as a catalog key
+    and as ``<html lang>``. Quality values are ignored; tag order decides.
+    """
+    for tag in header.split(","):
+        code = tag.split(";", 1)[0].strip().split("-", 1)[0].lower()
+        if code in LANGUAGES:
+            return code
+    return DEFAULT_LANGUAGE
 
 
 def get_lang(request: Request) -> str:
-    return lang_from_accept_header(request.headers.get("Accept-Language", "en"))
+    return lang_from_accept_header(request.headers.get("Accept-Language", ""))
 
 
-def _(s: str, lang: str = "en") -> str:
+def _(s: str, lang: str = DEFAULT_LANGUAGE) -> str:
     if lang not in LANGUAGES:
-        lang = "en"
+        lang = DEFAULT_LANGUAGE
     gi = gettext_instances()
     return gi[lang].gettext(s)
+
