@@ -6,7 +6,7 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from user_management_bff.constants import DEFAULT_LANGUAGE
-from user_management_bff.lang import _, get_lang, lang_from_accept_header
+from user_management_bff.lang import N_, _, get_lang, lang_from_accept_header
 
 
 @pytest.mark.parametrize(
@@ -16,6 +16,10 @@ from user_management_bff.lang import _, get_lang, lang_from_accept_header
 def test_translation_smoke_test(lang: str | None, expected_translation: str):
     translated = _("Classes", lang=lang)  # pyright: ignore[reportArgumentType]
     assert translated == expected_translation
+
+
+def test_noop_marker_returns_the_literal_unchanged():
+    assert N_("Student") == "Student"
 
 
 @pytest.mark.parametrize(

@@ -6,11 +6,11 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-26 12:36+0000\n"
+"Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
+"POT-Creation-Date: 2026-09-01 14:23+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
-"Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
-"de>\n"
+"Last-Translator: UCS@school Maintainers <ucsschool-"
+"maintainers@univention.de>\n"
 "Language-Team: UCS@school Maintainers <ucsschool-maintainers@univention.de>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
@@ -24,11 +24,23 @@ msgstr "Ein neues Passwort ist erforderlich."
 msgid "Activated"
 msgstr "Aktiviert"
 
+msgid "All classes and work groups"
+msgstr "Alle Klassen und Arbeitsgruppen"
+
 msgid "Classes"
 msgstr "Klassen"
 
+msgid "Classes & Work Groups"
+msgstr "Klassen & Arbeitsgruppen"
+
 msgid "Deactivated"
 msgstr "Deaktiviert"
+
+msgid "Filter classes and work groups"
+msgstr "Klassen und Arbeitsgruppen filtern"
+
+msgid "Filter schools"
+msgstr "Schulen filtern"
 
 msgid "First name"
 msgstr "Vorname"
@@ -45,8 +57,20 @@ msgstr "Ungültige Anfrage."
 msgid "Last name"
 msgstr "Nachname"
 
+msgid "Legal Guardian"
+msgstr "Erziehungsberechtigter"
+
 msgid "Never authenticated."
 msgstr "Nie authentifiziert."
+
+msgid "No classes or work groups found."
+msgstr "Keine Klassen oder Arbeitsgruppen gefunden."
+
+msgid "No schools found."
+msgstr "Keine Schulen gefunden."
+
+msgid "No users found."
+msgstr "Keine Benutzer gefunden."
 
 msgid "Not authenticated"
 msgstr "Nicht authentifiziert."
@@ -61,29 +85,63 @@ msgstr "Passwort für {succeeded} von {total} Benutzern zurückgesetzt."
 msgid "Permission denied"
 msgstr "Zugriff verweigert"
 
+msgid "Reason"
+msgstr "Grund"
+
 msgid "Rejected"
 msgstr "Abgelehnt"
 
 msgid "Roles"
 msgstr "Rollen"
 
+msgid "School"
+msgstr "Schule"
+
+msgid "School Admin"
+msgstr "Schuladmin"
+
 msgid "Schools"
 msgstr "Schulen"
 
+msgid "Select a school first."
+msgstr "Wählen Sie zuerst eine Schule aus."
+
 msgid "Select at least one user before resetting passwords."
-msgstr "Wählen Sie mindestens einen Benutzer aus, bevor Sie Passwörter zurücksetzen."
+msgstr ""
+"Wählen Sie mindestens einen Benutzer aus, bevor Sie Passwörter zurücksetzen."
 
 #, python-brace-format
 msgid "Select at most {max_targets} users at once."
 msgstr "Wählen Sie höchstens {max_targets} Benutzer auf einmal aus."
 
+msgid "Staff"
+msgstr "Mitarbeiter"
+
+msgid "Student"
+msgstr "Schüler"
+
 msgid "Success"
 msgstr "Erfolg"
+
+msgid "Switch to dark theme"
+msgstr "Zum dunklen Design wechseln"
+
+msgid "Switch to light theme"
+msgstr "Zum hellen Design wechseln"
+
+msgid "Teacher"
+msgstr "Lehrer"
 
 #, python-brace-format
 msgid "The logged in user '{user}' is not a valid UCS@school user."
 msgstr ""
 "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
+
+msgid "UCS@school User Management"
+msgstr "UCS@school Benutzerverwaltung"
+
+msgid "User Management"
+msgstr "Benutzerverwaltung"
 
 msgid "User not found"
 msgstr "Benutzer nicht gefunden"
@@ -141,12 +199,6 @@ msgstr "Arbeitsgruppen"
 #~ msgid "Roles of the user"
 #~ msgstr "Rollen des Benutzers"
 
-#~ msgid "School"
-#~ msgstr "Schule"
-
-#~ msgid "School Admin"
-#~ msgstr "Schuladmin"
-
 #~ msgid "School class"
 #~ msgstr "Schulklasse"
 
@@ -158,15 +210,6 @@ msgstr "Arbeitsgruppen"
 
 #~ msgid "School of the user"
 #~ msgstr "Schule des Benutzers"
-
-#~ msgid "Staff"
-#~ msgstr "Mitarbeiter"
-
-#~ msgid "Student"
-#~ msgstr "Schüler"
-
-#~ msgid "Teacher"
-#~ msgstr "Lehrer"
 
 #~ msgid "The user has to be in a school class."
 #~ msgstr "Der Benutzer muss sich in einer Schulklasse befinden."

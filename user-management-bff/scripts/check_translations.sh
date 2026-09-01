@@ -6,39 +6,46 @@
 set -e
 
 SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
-TRANSLATIONS_PATH="$(cd "$SCRIPTS_PATH/.." && pwd)/locales/de/LC_MESSAGES"
+BFF_PATH="$(cd "$SCRIPTS_PATH/.." && pwd)"
+TRANSLATIONS_PATH="$BFF_PATH/locales/de/LC_MESSAGES"
 APP_ID="ucsschool-user-management"
+POT="$TRANSLATIONS_PATH/$APP_ID.pot"
+PO="$TRANSLATIONS_PATH/$APP_ID.po"
+
+trap 'rm -f "$POT"' EXIT
 
 echo "Verifying translations..."
 
-# Note: Encountered problems when working with xgettext 0.24
-# and f-strings -> Moved to old style `.format()` for that case
-if [ ! -f "$TRANSLATIONS_PATH/$APP_ID.pot" ]; then
-    find user-management-bff -name "*.py" \
-        -not -path "*/site-packages/*" \
-        -not -path "*/.venv/*" | \
-        xargs xgettext \
-            --language Python \
-            --from-code=UTF-8 \
-            --keyword=_:1 \
-            --keyword=translate \
-            --no-location \
-            -k \
-            -o "$TRANSLATIONS_PATH/$APP_ID.pot"
-    msgmerge -F --update --backup off "$TRANSLATIONS_PATH/$APP_ID.po" \
-        "$TRANSLATIONS_PATH/$APP_ID.pot" > /dev/null
+# pybabel extracts, gettext merges and compiles. pybabel is the only extractor
+# that reads Jinja, so one mapping covers `*.py` and the `{{ _("...") }}` literals
+# in `templates/`. `pybabel update` is deliberately not used for the merge: it
+# rewrites the PO header on every run, leaving the catalog dirty and failing this
+# check spuriously.
+#
+# --msgid-bugs-address: msgmerge copies the field from the template, so leaving it
+# unset writes Babel's "EMAIL@ADDRESS" placeholder into the catalog.
+uv run --project "$BFF_PATH" --frozen pybabel --quiet extract \
+    --mapping-file "$BFF_PATH/babel.cfg" \
+    --msgid-bugs-address "ucsschool-maintainers@univention.de" \
+    --no-location \
+    --sort-output \
+    -o "$POT" \
+    "$BFF_PATH/user_management_bff"
+msgmerge --quiet -F --update --backup off "$PO" "$POT"
+
+# `^msgid "[^"]` skips the PO header, whose msgid is the empty string.
+# --no-wrap: msgattrib re-wraps long entries, emitting a bare `msgid ""` whose text
+# sits on continuation lines the anchored grep cannot see.
+if msgattrib --no-wrap --only-fuzzy --no-obsolete "$PO" | grep -q '^msgid "[^"]'; then
+    echo "Fuzzy strings! Review them in $PO and run this script again"
+    exit 1
+fi
+if msgattrib --no-wrap --untranslated --no-obsolete "$PO" | grep -q '^msgid "[^"]'; then
+    echo "Untranslated strings! Translate them in $PO and run this script again"
+    exit 1
 fi
 
-rm "$TRANSLATIONS_PATH/$APP_ID.pot"
-
-grep -q fuzzy $TRANSLATIONS_PATH/$APP_ID.po && \
-    (echo "Fuzzy strings! Review them in $TRANSLATIONS_PATH/$APP_ID.po and run this script again"; exit 1)
-
-sed -f "$SCRIPTS_PATH/check_translations.sed" "$TRANSLATIONS_PATH/$APP_ID.po" |
-    grep -B 1 -A 1 '^msgstr ""' && \
-    (echo "Untranslated strings! Translate them in $TRANSLATIONS_PATH/$APP_ID.po and run this script again"; exit 1)
-
 echo "Compiling translations..."
-$SCRIPTS_PATH/translate.sh
+"$SCRIPTS_PATH/translate.sh"
 
 echo "Success!"

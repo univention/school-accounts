@@ -52,3 +52,11 @@ def _(s: str, lang: str = DEFAULT_LANGUAGE) -> str:
     gi = gettext_instances()
     return gi[lang].gettext(s)
 
+
+def N_(s: str) -> str:
+    """Mark a literal for extraction without translating it.
+
+    For msgids only ever looked up through a variable, so that ``pybabel
+    extract`` still sees the literal. gettext's conventional no-op marker.
+    """
+    return s

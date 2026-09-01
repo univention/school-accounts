@@ -214,6 +214,23 @@ def test_build_user_list_full_access():
     assert cells[7].kind == "boolean" and cells[7].activated is True and cells[7].text == "Activated"
 
 
+@pytest.mark.parametrize(
+    "role,lang,expected",
+    [
+        ("student:school:school1", "de", "Schüler (School 1)"),
+        ("teacher:school:school1", "de", "Lehrer (School 1)"),
+        ("staff:school:school1", "de", "Mitarbeiter (School 1)"),
+        ("school_admin:school:school1", "de", "Schuladmin (School 1)"),
+        ("legal_guardian:school:school1", "de", "Erziehungsberechtigter (School 1)"),
+        ("teacher:school:school1", "en", "Teacher (School 1)"),
+    ],
+)
+def test_role_cell_is_translated(role: str, lang: str, expected: str):
+    data = _list_data(_user(roles=[role]), list(Permission))
+    view = presentation.build_user_list(data, lang)
+    assert view.rows[0].cells[3].items == [expected]
+
+
 def test_build_user_list_hidden_cells_and_deactivated():
     user = _user(disabled=True, school_classes={}, work_groups={}, roles=[])
     view = presentation.build_user_list(_list_data(user, [Permission.read_last_name]), "en")

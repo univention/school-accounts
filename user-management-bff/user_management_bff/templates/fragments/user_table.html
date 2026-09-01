@@ -2,7 +2,7 @@
 SPDX-FileCopyrightText: 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 #}
-{% import "macros/user_table.html" as table %}
+{% import "macros/user_table.html" as table with context %}
 {% if view.rows %}
 <u-vstack gap="md">
   <u-table sticky-header>

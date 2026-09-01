@@ -14,7 +14,7 @@ from enum import StrEnum, auto
 from typing import Protocol, TypeVar
 
 from .constants import PASSWORD_RESET_MAX_TARGETS
-from .lang import _
+from .lang import N_, _
 from .models import (
     AttributeAccess,
     Permission,
@@ -192,10 +192,21 @@ def _format_work_group(
     return f"{work_group.display_name} ({school.display_name})"
 
 
+# Literals, not derived from the role id: a computed msgid is invisible to extraction.
+_ROLE_LABELS = {
+    "student": N_("Student"),
+    "teacher": N_("Teacher"),
+    "staff": N_("Staff"),
+    "school_admin": N_("School Admin"),
+    "legal_guardian": N_("Legal Guardian"),
+}
+
+
 def _format_role(schools: list[School], role: str, lang: str) -> str:
     school = _find_by_id(schools, role.rsplit(":", 1)[1])
-    role_str = role.replace("_", " ").split(":", 1)[0].title()
-    return f"{_(role_str, lang=lang)} ({school.display_name})"
+    role_id = role.split(":", 1)[0]
+    label = _ROLE_LABELS.get(role_id, role_id.replace("_", " ").title())
+    return f"{_(label, lang=lang)} ({school.display_name})"
 
 
 def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Cell:
