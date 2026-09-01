@@ -22,9 +22,8 @@ else:
     from typing_extensions import override
 
 
-# The source file already holds the domain shape, so it is parsed with the domain
-# model rather than unpacked by hand. That keeps the loaded data typed all the way
-# through instead of handing ``Any`` to every UserAttributes field.
+# The source file already holds the domain shape, so parse it as such instead of
+# handing ``Any`` to every UserAttributes field.
 _STORED_USERS = TypeAdapter(list[User])
 
 
@@ -56,14 +55,9 @@ def _in_selected_group(
 ) -> bool:
     """Decide whether the group filter keeps a user of ``school``.
 
-    No selection means no filter. The UI's single-select control can only ever
-    send one of the two lists, but the port's signature admits both, so
-    membership in either one is enough to keep a user.
-
-    Every implementation of ``UsersPersistencePort`` shares this one predicate on
-    purpose: the two adapters used to carry a reading of the filter arguments
-    each, and they disagreed - the Kelvin one treated only ``None`` as "no
-    filter" while the caller always sends empty lists.
+    No selection means no filter; otherwise membership in either list is enough.
+    Shared by every ``UsersPersistencePort`` implementation so the adapters cannot
+    drift apart on how they read the filter arguments again.
     """
     if not school_classes and not work_groups:
         return True
@@ -97,7 +91,8 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
     async def get_users(
         self, school: str, school_classes: list[str], work_groups: list[str]
     ) -> list[User]:
-        # TODO dont filter here, let Kelvin filter by passing classes and workgroups to `.search` method
+        # TODO(ucsschool-kelvin-rest-api#149) dont filter here, let Kelvin filter by passing classes
+        #   and workgroups to `.search` method
         async with self.kelvin_session as session:
             kelvin_users = UserResource(session=session).search(school=school)
             return [
