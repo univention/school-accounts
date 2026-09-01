@@ -8,6 +8,7 @@ the app startup that the session-scoped ``test_client`` fixture triggers).
 """
 
 import asyncio
+import re
 import sys
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -89,10 +90,10 @@ async def test_get_schools_actor_not_found(
     mocker: MockerFixture, users_get_not_found_mock: AsyncMock, lang: str
 ):
     user = "USER"
-    with pytest.raises(
-        NoSchoolUserError,
-        match=_(f"The logged in user '{user}' is not a valid UCS@school user.", lang=lang),
-    ) as exc_info:
+    expected = _("The logged in user '{user}' is not a valid UCS@school user.", lang=lang).format(
+        user=user
+    )
+    with pytest.raises(NoSchoolUserError, match=re.escape(expected)) as exc_info:
         await get_schools(mocker.AsyncMock(), mocker.AsyncMock(), users_get_not_found_mock, "USER", lang)
     assert exc_info.value.identifier == "USER"
 

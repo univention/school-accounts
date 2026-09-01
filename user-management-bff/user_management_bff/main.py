@@ -134,6 +134,8 @@ async def permissions_exception_handler(request: Request, exc: PermissionsError)
 
 # NoSchoolUserError subclasses PermissionsError; it keeps its own handler only so
 # the message can differ, but the rendering is the same toast/message treatment.
+# No `_()` here, unlike its neighbours: this message embeds the offending user id,
+# so it is translated and interpolated at the raise site.
 @app.exception_handler(NoSchoolUserError)
 async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError):
     return _html_error(request, exc.message, 403)

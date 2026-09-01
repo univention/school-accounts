@@ -48,9 +48,9 @@ async def get_actor(
         logger.error("Actor is not a valid UCS@school user.", actor_id=actor_id)
         raise NoSchoolUserError(
             _(
-                "The logged in user '{user}' is not a valid UCS@school user.".format(user=user),
+                "The logged in user '{user}' is not a valid UCS@school user.",
                 lang=lang,
-            ),
+            ).format(user=user),
             identifier=exc.identifier,
         ) from exc
 
