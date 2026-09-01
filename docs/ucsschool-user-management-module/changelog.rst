@@ -17,6 +17,9 @@ This section lists the changes to the User Management Module.
 * Add work groups as a new attribute to the list view.
 * Add school classes and work groups as filter options to the list view.
 * The capability ``teacher-set-password-students-in-same-class`` has been renamed to ``teacher-write_attribute-students-in-same-class``.
+* The user interface is now fully translated into German. Page title, header, theme toggle, filter
+  labels, empty-state messages and the role names in the list view were previously shown in English
+  regardless of the browser language.
 
 .. _release-0-1-1:
 

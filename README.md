@@ -170,6 +170,26 @@ from user_management_bff.lang import _
 some_string = _("This needs to be translated")
 ```
 
+In a Jinja template, use the `_` that `routes.render()` binds into the context:
+
+```jinja
+<title>{{ _("This needs to be translated") }}</title>
+```
+
+Extraction covers both: `pybabel extract` reads `*.py` and `templates/**.html`
+through `user-management-bff/babel.cfg`, so a literal left untranslated in a
+template fails the check the same way a Python one does.
+
+If the msgid is only ever reached through a variable, extraction cannot see the
+literal - mark it where it is defined and translate it at the point of use:
+
+```python
+from user_management_bff.lang import N_, _
+
+_ROLE_LABELS = {"student": N_("Student")}
+label = _(_ROLE_LABELS[role_id], lang=lang)
+```
+
 You can check existing translations and generate the compiled translations
 either by running `pre-commit`, or via a separate task:
 
@@ -186,7 +206,8 @@ Once all translation strings are resolved, you will receive a "Success!" message
 and it will compile the `.mo` translation files.
 
 If you want to generate the files manually outside of docker,
-you need to install gettext:
+you need `uv` (which supplies Babel from the `dev` dependency group) and gettext
+(`msgmerge`, `msgattrib` and `msgfmt`):
 
 ```shell
 sudo apt-get install -y gettext

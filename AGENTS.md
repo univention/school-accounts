@@ -46,7 +46,7 @@ user_management_bff/
   logging.py                 loguru configuration
   utils.py                  misc utils (currently just OAuth2 discovery via get_oauth2_settings)
   errors.py                 domain exceptions (PermissionsError, ObjectNotFoundError, ...)
-  lang.py                   gettext-based i18n; _() translation helper
+  lang.py                   gettext-based i18n; _() translation helper, N_() extraction marker
   templates/
     base.html                root layout: <head>, vendored asset tags, {% block body %}
     pages/                    full-page templates (user_list, message)
@@ -324,7 +324,15 @@ optional:
   the local `issue-reference` hook.
 - User-facing strings must be wrapped in `_()` from `user_management_bff.lang` (see
   `from user_management_bff.lang import _`) so they flow into the translation catalog — see next
-  section for the follow-up step this requires.
+  section for the follow-up step this requires. This applies to Jinja templates too: extraction
+  runs `pybabel extract` over `*.py` **and** `templates/**.html` via `user-management-bff/babel.cfg`,
+  so an untranslated `{{ _("...") }}` fails the check exactly like a Python one.
+- A msgid that is only ever reached through a variable (a role label looked up by id, say) is
+  invisible to extraction. Mark the literal with `N_()` where it is defined — see `_ROLE_LABELS` in
+  `presentation.py` — and call `_()` on the looked-up value.
+- Call `.format()` on the **result** of `_()`, never on the msgid inside the call: interpolating
+  first means the lookup key is the interpolated string, which never matches a catalog entry and
+  silently stays English.
 
 **Type-only imports go under `if TYPE_CHECKING:`, paired with `from __future__ import
 annotations`** — not gated by a specific tool, but treat as required, since getting it wrong is a
@@ -445,7 +453,7 @@ no access token is stored) rather than restating what the code does.
 - Adding a new adapter/persistence branch by checking an env var directly in `business_logic.py` or
   `routes.py` instead of adding it to `AdapterSelection`/`adapter_registry.py`.
 - Leaving a new `_()`-wrapped string untranslated — CI's translation check (and `task translate`
-  locally) will fail the build, not just warn.
+  locally) will fail the build, not just warn. Templates are covered by that check too.
 - Forgetting that CI requires **100% coverage** on any file not explicitly listed in
   `[tool.coverage.run] omit` — an uncovered branch in new code fails `bff-test`/`bff-coverage`, not
   just a manually-run local suite.
