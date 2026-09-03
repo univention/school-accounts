@@ -23,12 +23,19 @@ The |UASUMM| can be installed on a
 Before installing the User Management module, the following prerequisites are needed:
 
 * :external+uv-school-manual:ref:`UCS@school <introduction>` is installed and configured in the domain.
-* The Guardian (``univention-guardian``) is installed and configured in the domain.
+* The Guardian (``univention-guardian``) is installed and configured
+  on the same system as the |UASUMM|.
   See the :external+uv-guardian-manual:ref:`Guardian Manual <installation>` for further instructions.
-* The :external+uv-school-kelvin:doc:`Kelvin Rest API <index>` is installed and configured on the same node.
+* The :external+uv-school-kelvin:doc:`Kelvin Rest API <index>` is installed and configured
+  in the domain. By default, the |UASUMM| expects the Kelvin REST API on the same system.
+  If the Kelvin REST API runs on a different system,
+  set the :envvar:`ucsschool-user-management/kelvin/url` variable to its URL.
+* Keycloak is installed and configured in the domain as the identity provider.
+  For more information about installing Keycloak,
+  see the :external+uv-keycloak:ref:`Univention Keycloak app documentation <app-installation>`.
 
 To install the |UASUMM| from the command line,
-run the following command on the backup server:
+run the following command:
 
 .. code-block:: bash
    :caption: Install |UASUMM| apps from command line

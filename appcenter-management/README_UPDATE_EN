@@ -1,4 +1,9 @@
 <h1>Changelog</h1>
+<h2>v0.2.0 (XXXX-XX-XX)</h2>
+<ul>
+    <li>The app requires the Guardian on the same system, and the Kelvin REST API and Keycloak in the domain.</li>
+</ul>
+
 <h2>v0.1.1 (2024-04-29)</h2>
 <ul>
     <li>Fix a bug, where users without school classes could cause errors in the backend.</li>
