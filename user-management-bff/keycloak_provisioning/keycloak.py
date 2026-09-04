@@ -10,6 +10,7 @@ from typing import Any, Optional
 from keycloak import (
     KeycloakAdmin,
     KeycloakError,
+    KeycloakGetError,
     KeycloakOpenIDConnection,
 )
 from w3lib.url import canonicalize_url
@@ -28,10 +29,15 @@ def convert_keycloak_error():
     try:
         yield
     except KeycloakError as exc:
+        # Keycloak uses "error" on some endpoints, "errorMessage" on others.
         try:
-            raise KeycloakClientError(json.loads(exc.error_message)["error"])
-        except (JSONDecodeError, KeyError):
+            body = json.loads(exc.error_message)
+        except (JSONDecodeError, TypeError):
             raise exc
+        for key in ("error", "errorMessage"):
+            if key in body:
+                raise KeycloakClientError(body[key])
+        raise exc
 
 
 class KeycloakClient:
@@ -54,6 +60,16 @@ class KeycloakClient:
                 verify=login_credentials.secure,
             )
 
+    def realm_exists(self, realm_name: str) -> bool:
+        with convert_keycloak_error():
+            try:
+                self.keycloak_admin.get_realm(realm_name)
+            except KeycloakGetError as exc:
+                if exc.response_code != 404:
+                    raise
+                return False
+            return True
+
     def create_realm(
         self,
         realm_name: str,
@@ -61,9 +77,13 @@ class KeycloakClient:
         realm_data: Optional[dict[str, Any]] = None,
     ):
         realm_data = realm_data or {}
+        # Never `create_realm(skip_exists=True)`: it matches the 409 body against a
+        # hardcoded list holding only "Realm test already exists", else TypeError.
+        if ignore_exists and self.realm_exists(realm_name):
+            return
         with convert_keycloak_error():
             self.keycloak_admin.create_realm(
-                payload={"realm": realm_name, "enabled": True, **realm_data}, skip_exists=ignore_exists
+                payload={"realm": realm_name, "enabled": True, **realm_data}
             )
 
     def create_user(self, username: str, password: str, ignore_exists: bool = False):

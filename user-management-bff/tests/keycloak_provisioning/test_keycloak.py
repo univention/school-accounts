@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 from copy import copy
+from typing import cast
+from unittest.mock import MagicMock
 
 import pytest
 from keycloak import (
@@ -16,6 +18,15 @@ from pytest_mock import MockerFixture
 import keycloak_provisioning.keycloak
 from keycloak_provisioning.keycloak import KeycloakClient, KeycloakClientError, get_keycloak_client
 from keycloak_provisioning.models import LoginCredentials
+
+
+def admin_mock(client: KeycloakClient) -> MagicMock:
+    """The mocked ``KeycloakAdmin`` behind the client, typed as the mock it is.
+
+    ``KeycloakClient.keycloak_admin`` is declared as the real class, so reaching
+    for ``side_effect`` or ``assert_*`` through it is an attribute error.
+    """
+    return cast("MagicMock", client.keycloak_admin)
 
 
 class TestKeycloakClient:
@@ -54,24 +65,65 @@ class TestKeycloakClient:
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_realm(self, client_instance: KeycloakClient, ignore_exists: bool):
+        admin_mock(client_instance).get_realm.side_effect = KeycloakGetError("nope", response_code=404)
         client_instance.create_realm("REALM", ignore_exists=ignore_exists)
-        client_instance.keycloak_admin.create_realm.assert_called_once_with(
+        admin_mock(client_instance).create_realm.assert_called_once_with(
             payload={"realm": "REALM", "enabled": True},
-            skip_exists=ignore_exists,
         )
 
+    def test_create_realm_is_idempotent_when_ignoring_existing(self, client_instance: KeycloakClient):
+        """A second provisioning run must not fail on an already-created realm."""
+        client_instance.create_realm("REALM", ignore_exists=True)
+        admin_mock(client_instance).get_realm.assert_called_once_with("REALM")
+        admin_mock(client_instance).create_realm.assert_not_called()
+
+    def test_create_realm_still_errors_on_conflict_without_ignore_exists(
+        self, client_instance: KeycloakClient
+    ):
+        admin_mock(client_instance).create_realm.side_effect = KeycloakPostError(
+            '{"errorMessage": "Realm REALM already exists"}'
+        )
+        with pytest.raises(KeycloakClientError, match="Realm REALM already exists"):
+            client_instance.create_realm("REALM")
+
+    def test_realm_exists_is_false_when_keycloak_has_no_such_realm(
+        self, client_instance: KeycloakClient
+    ):
+        admin_mock(client_instance).get_realm.side_effect = KeycloakGetError("nope", response_code=404)
+        assert client_instance.realm_exists("REALM") is False
+
+    @pytest.mark.parametrize("response_code", [401, 403, 500, None])
+    def test_realm_exists_propagates_a_non_404_error(
+        self, client_instance: KeycloakClient, response_code: int | None
+    ):
+        """A refused or half-started Keycloak must not read as a missing realm."""
+        admin_mock(client_instance).get_realm.side_effect = KeycloakGetError(
+            '{"error": "THIS IS THE MESSAGE!"}', response_code=response_code
+        )
+        with pytest.raises(KeycloakClientError, match="THIS IS THE MESSAGE!"):
+            client_instance.realm_exists("REALM")
+
+    def test_create_realm_does_not_swallow_a_non_404_probe_error(self, client_instance: KeycloakClient):
+        """The probe failing must abort the run, not fall through to a create."""
+        admin_mock(client_instance).get_realm.side_effect = KeycloakGetError(
+            '{"error": "THIS IS THE MESSAGE!"}', response_code=401
+        )
+        with pytest.raises(KeycloakClientError, match="THIS IS THE MESSAGE!"):
+            client_instance.create_realm("REALM", ignore_exists=True)
+        admin_mock(client_instance).create_realm.assert_not_called()
+
     def test_create_realm_with_extra_data(self, client_instance: KeycloakClient):
+        admin_mock(client_instance).get_realm.side_effect = KeycloakGetError("nope", response_code=404)
         client_instance.create_realm("REALM", realm_data={"requiredActions": []})
-        client_instance.keycloak_admin.create_realm.assert_called_once_with(
+        admin_mock(client_instance).create_realm.assert_called_once_with(
             payload={"realm": "REALM", "enabled": True, "requiredActions": []},
-            skip_exists=False,
         )
 
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_user(self, client_instance: KeycloakClient, ignore_exists: bool):
         client_instance.create_user("username", "password", ignore_exists)
 
-        client_instance.keycloak_admin.create_user.assert_called_once_with(
+        admin_mock(client_instance).create_user.assert_called_once_with(
             payload={
                 "username": "username",
                 "enabled": True,
@@ -83,7 +135,7 @@ class TestKeycloakClient:
     @pytest.mark.parametrize("ignore_exists", [True, False])
     def test_create_client(self, client_instance: KeycloakClient, ignore_exists: bool):
         client_instance.create_client({}, ignore_exists)
-        client_instance.keycloak_admin.create_client.assert_called_once_with(
+        admin_mock(client_instance).create_client.assert_called_once_with(
             payload={}, skip_exists=ignore_exists
         )
 
@@ -139,8 +191,8 @@ class TestKeycloakClient:
             "a": 1,
             "redirectUris": ["duplicate_r", "server_r", "old_r", "old_r1", "old_r2"],
         }
-        client_instance.keycloak_admin.get_client = mocker.Mock(return_value=client_test_data)
-        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="test_id")
+        admin_mock(client_instance).get_client = mocker.Mock(return_value=client_test_data)
+        admin_mock(client_instance).get_client_id = mocker.Mock(return_value="test_id")
         client_instance.modify_client(
             "test_id",
             append_redirect_urls=append_redirect_urls,
@@ -155,7 +207,7 @@ class TestKeycloakClient:
             updated_client_test_data["redirectUris"] = sorted(
                 list(set(client_test_data["redirectUris"]).difference(remove_redirect_urls))
             )
-        client_instance.keycloak_admin.update_client.assert_called_once_with(
+        admin_mock(client_instance).update_client.assert_called_once_with(
             "test_id",
             payload=updated_client_test_data,
         )
