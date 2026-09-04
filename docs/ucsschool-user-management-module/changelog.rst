@@ -26,6 +26,8 @@ This section lists the changes to the User Management Module.
 * The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
   ignored if still set.
 * Add work groups as a new attribute to the list view.
+* Reset the password of one or more selected users from the list view, with a confirmation
+  dialog stating who is affected and per-user results.
 * Add school classes and work groups as filter options to the list view.
 * The capability ``teacher-set-password-students-in-same-class`` has been renamed to ``teacher-write_attribute-students-in-same-class``.
 * The user interface is now fully translated into German. Page title, header, theme toggle, filter

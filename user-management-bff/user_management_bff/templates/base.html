@@ -7,6 +7,9 @@ SPDX-License-Identifier: AGPL-3.0-only
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {# Dropping `style`: settling restores the server's attributes on a swapped-in
+       element, stripping the inline layout u-form writes for itself. #}
+    <meta name="htmx-config" content='{"attributesToSettle": ["class", "width", "height"]}' />
     <title>{{ _("UCS@school User Management") }}</title>
     {# Render-blocking so the theme tokens/utilities and the :not(:defined) rule
        apply before first paint (no flash of unstyled content). The marker

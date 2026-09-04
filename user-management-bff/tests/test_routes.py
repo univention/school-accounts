@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Tests for the UI router (shell + interactive-login routes)."""
 
+import re
 import sys
 from typing import Any, Callable, Coroutine, Generator, cast
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -19,8 +21,9 @@ from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
 from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
 from user_management_bff.main import app
+from user_management_bff.models import Permission
 from user_management_bff.ports import FastAPIAuthenticationPort
-from user_management_bff.routes import auth_port, render
+from user_management_bff.routes import auth_port, render_static
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -57,6 +60,27 @@ class _NamedAuth(_StubAuth):
     @override
     async def get_display_name(self, request: Request) -> str:
         return "Mina Teacher"
+
+
+class _CsrfIssuingAuth(FastAPIAuthenticationPort):
+    """Auth adapter double issuing a known, recognisable CSRF token."""
+
+    TOKEN: str = "token-from-the-session"
+
+    @override
+    async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
+        async def _dep(request: Request) -> str:
+            return await self.get_authenticated_id(request)
+
+        return _dep
+
+    @override
+    async def get_authenticated_id(self, request: Request) -> str:
+        return "dev"
+
+    @override
+    async def issue_csrf_token(self, request: Request) -> str:
+        return self.TOKEN
 
 
 class _CsrfRejectAuth(FastAPIAuthenticationPort):
@@ -128,11 +152,13 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert 'hx-trigger="u-search delay:300ms"' in body
     # The cascade listens for the school list's u-change now that its own hx-get
     # is spent on item search.
-    assert 'hx-trigger="u-change from:#school-list"' in body
+    assert 'hx-trigger="u-change[filterChanged(event)] from:#school-list"' in body
     # Sidebar next to the results column, both stretched to full height.
     assert 'align="stretch"' in body and 'basis="sm"' in body
-    # Changing either list searches immediately; there is no submit button.
-    assert 'hx-trigger="u-change delay:100ms"' in body
+    # Changing either list searches immediately; there is no submit button. Both
+    # triggers are guarded: the list select fires u-change on a click that re-picks
+    # the active item too, and refetching would discard the selection.
+    assert 'hx-trigger="u-change[filterChanged(event)] delay:100ms"' in body
     assert 'type="submit"' not in body[body.index("<u-form") : body.index("</u-form>")]
     # The combined list carries an explicit reset option, preselected while no
     # class or work group is chosen.
@@ -145,6 +171,7 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # The cascade (school -> filters) must not inherit the form's select/push-url,
     # or its fragment response would blank out the dependent filters.
     assert 'hx-disinherit="hx-select hx-push-url"' in body
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users"
     # Empty results table (column headers only) rendered on initial load.
     assert "<u-table empty" in body
 
@@ -268,6 +295,26 @@ def test_german_accept_language_translates_runtime_composed_role_msgids(test_cli
     assert "Teacher (School 1)" not in body
 
 
+def test_german_accept_language_renders_the_password_reset_dialog_in_german(
+    test_client: TestClient,
+):
+    """The dialog is rendered from its own fragment, so the page-level test above
+    never reaches it - and an unextracted string there fails silently in English."""
+    response = test_client.post(
+        f"{FRONTEND_PREFIX}/users/password-reset/confirm",
+        data={"user_id": "test_user1"},
+        headers={"Accept-Language": "de"},
+    )
+    assert response.status_code == 200
+    body = response.text
+    assert "Passwort zurücksetzen" in body  # heading
+    assert "Neues Passwort" in body  # the password field's label
+    assert "Passwort setzen" in body  # the submit
+    assert "Abbrechen" in body
+    assert "Setzt die Passwörter zurück für" in body  # the confirmation gate
+    assert "Set password" not in body
+
+
 def test_english_accept_language_still_renders_english(test_client: TestClient):
     body = _users_page(test_client, "en-GB,en")
     assert '<html lang="en"' in body
@@ -370,7 +417,7 @@ def test_header_falls_back_to_the_actor_id(test_client: TestClient):
 
 def test_a_page_rendered_without_an_actor_has_no_logout_button():
     scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "query_string": b""}
-    body = bytes(render(Request(scope), "pages/message.html", message="Nope").body)
+    body = bytes(render_static(Request(scope), "pages/message.html", message="Nope").body)
     assert b"auth/logout" not in body
 
 
@@ -392,14 +439,36 @@ def test_protected_route_htmx_redirect_when_unauthenticated(
     assert AUTH_LOGIN_PATH in response.headers["HX-Redirect"]
 
 
-def test_password_reset_rejects_missing_csrf_token(
+def test_error_toast_is_not_swapped_out_of_band(
     test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
 ):
+    """The global handler retargets the whole fragment, so an oob swap would double it."""
     override_auth(_CsrfRejectAuth())
     response = test_client.post(
         f"{FRONTEND_PREFIX}/users/password-reset",
         data={"user_id": "test_user1", "password": "new-password"},
+        headers={"HX-Request": "true"},
     )
+    assert response.headers["HX-Retarget"] == "#toast-region"
+    assert "hx-swap-oob" not in response.text
+
+
+@pytest.mark.parametrize(
+    "path,data",
+    [
+        ("/users/password-reset", {"user_id": "test_user1", "password": "new-password"}),
+        ("/users/password-reset/confirm", {"user_id": "test_user1"}),
+    ],
+)
+def test_unsafe_routes_reject_a_missing_csrf_token(
+    test_client: TestClient,
+    override_auth: Callable[[FastAPIAuthenticationPort], None],
+    path: str,
+    data: dict[str, str],
+):
+    """Every unsafe method carries the token, including the one that only renders."""
+    override_auth(_CsrfRejectAuth())
+    response = test_client.post(f"{FRONTEND_PREFIX}{path}", data=data)
     assert response.status_code == 403
     assert "security token" in response.text
 
@@ -416,9 +485,33 @@ def test_password_reset_happy_path(test_client: TestClient, mocker: MockerFixtur
     assert response.status_code == 200
     assert "2 of 2" in response.text
     assert 'variant="success"' in response.text
-    assert 'data-target-id="test_user1"' in response.text
-    assert 'data-target-id="test_user2"' in response.text
-    assert "Success" in response.text
+    # All-succeeded is the toast's job; nothing is listed per user.
+    assert 'data-target-id="' not in response.text
+    # htmx inserts an OOB element's *children*, so the wrapper carries the attribute.
+    assert re.search(r'<div hx-swap-oob="beforeend:#toast-region">\s*<u-toast-item', response.text)
+
+
+def test_password_reset_never_echoes_the_password(
+    test_client: TestClient, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """The one value in this flow that must not survive into a response."""
+    secret = "n0t-in-the-response"  # noqa: S105
+    patch_set_password({})
+    response = _post_reset(test_client, ["test_user1", "test_user2"], secret)
+    assert response.status_code == 200
+    assert secret not in response.text
+    assert secret not in str(response.headers)
+
+
+def test_password_reset_never_echoes_a_rejected_password(
+    test_client: TestClient, rejecting_set_password: Callable[[str | Callable[[str], str]], MagicMock]
+):
+    """Not even on the failure path, where the backend's reason is rendered."""
+    secret = "n0t-in-the-response"  # noqa: S105
+    rejecting_set_password("policy violation")
+    response = _post_reset(test_client, "test_user1", secret)
+    assert "policy violation" in response.text
+    assert secret not in response.text
 
 
 def test_password_reset_permission_denied(test_client: TestClient, mocker: MockerFixture):
@@ -447,19 +540,53 @@ def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerF
     assert 'variant="error"' in response.text
 
 
-def test_password_reset_rejected_reason_is_wrapped_with_translated_label(
+
+
+
+
+def test_password_reset_differing_reasons_stay_in_the_result_list(
+    test_client: TestClient, rejecting_set_password: Callable[[str | Callable[[str], str]], MagicMock]
+):
+    """Reasons that differ per user are about the users, not the password."""
+    rejecting_set_password(lambda identifier: f"rejected {identifier}")
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "new-password")
+    assert "HX-Retarget" not in response.headers
+    assert "Rejected" in response.text
+    assert "rejected test_user1" in response.text and "rejected test_user2" in response.text
+
+
+def test_password_reset_a_partial_success_stays_in_the_result_list(
+    test_client: TestClient, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """One success means the password worked, so the failure is that user's."""
+    patch_set_password(
+        {"test_user2": PasswordResetRejectedError(identifier="test_user2", message="Password too short")}
+    )
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "new-password")
+    assert "HX-Retarget" not in response.headers
+    assert "1 of 2" in response.text
+    assert "Password too short" in response.text
+
+
+def test_password_reset_narrows_the_selection_to_what_failed(
     test_client: TestClient, mocker: MockerFixture
 ):
-    async def _set_password(identifier: str, _password: str) -> None:
-        raise PasswordResetRejectedError(identifier=identifier, message="policy violation")
+    """Successful accounts are done, but the failures stay ticked so a retry does
+    not mean hunting them down in the table again."""
+
+    async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
+        if identifier == "test_user2":
+            raise ObjectNotFoundError(identifier="test_user2")
 
     mocker.patch.object(FileUsersPersistenceAdapter, "set_password", side_effect=_set_password)
     response = test_client.post(
         f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": "test_user1", "password": "new-password"},
+        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
     )
-    assert response.status_code == 200
-    assert "Reason: policy violation" in response.text
+    assert 'data-target-id="test_user2"' in response.text
+    assert 'data-target-id="test_user1"' not in response.text
+
+
 
 
 def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
@@ -532,7 +659,159 @@ def test_password_reset_missing_password_field_is_refused(
     set_password_mock.assert_not_called()
 
 
-def test_password_reset_csrf_token_debug_returns_session_token(test_client: TestClient):
-    response = test_client.get(f"{FRONTEND_PREFIX}/users/password-reset/csrf-token")
+def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
+    """A new filter is a new selection: the filter form does not send the ticked ids,
+    and a request naming them anyway gets a list with nothing selected."""
+    body = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "user_id": ["user1", "elsewhere"]}
+    ).text
+    filter_form, selection_form = body.split('id="selection-form"', 1)
+    assert "hx-include" not in filter_form
+    rows = selection_form[selection_form.index("<u-tbody>") : selection_form.index("</u-tbody>")]
+    assert "checked" not in rows
+    assert '<input type="hidden" name="user_id"' not in selection_form
+
+
+def test_only_the_posting_form_sends_the_csrf_token(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    """The filter form only ever GETs, and htmx inherits hx-headers, so declaring the
+    token any higher would attach it to every safe request on the page."""
+    override_auth(_CsrfIssuingAuth())
+    body = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"}).text
+    filter_form, selection_form = body.split('id="selection-form"', 1)
+    assert f'{{"X-CSRF-Token": "{_CsrfIssuingAuth.TOKEN}"}}' in selection_form
+    assert "hx-headers" not in filter_form
+
+
+def test_users_list_pushed_url_keeps_the_group_filter(test_client: TestClient):
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "school_class:1a"}
+    )
+    assert response.headers["HX-Push-Url"] == (
+        f"{FRONTEND_PREFIX}/users?school=school1&group=school_class%3A1a"
+    )
+
+
+def test_password_reset_confirm_renders_the_dialog(test_client: TestClient):
+    response = _post_confirm(test_client, ["test_user1", "test_user2"])
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/plain")
+    body = response.text
+    assert re.search(r'<dialog\s+id="password-reset-dialog"', body)
+    assert "following 2 accounts" in body
+    assert '<input type="hidden" name="user_id" value="test_user1" />' in body
+    assert '<input type="hidden" name="user_id" value="test_user2" />' in body
+    # new-password so the browser cannot offer the actor's own credentials.
+    assert 'autocomplete="new-password"' in body
+
+
+def test_render_puts_the_sessions_csrf_token_in_the_dialog(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    """The token comes from render(), so a form only has to name {{ csrf_token }}."""
+    override_auth(_CsrfIssuingAuth())
+    response = _post_confirm(test_client, "test_user1")
+    assert f'{{"X-CSRF-Token": "{_CsrfIssuingAuth.TOKEN}"}}' in response.text
+
+
+def test_password_reset_confirm_does_not_promise_a_list_it_will_not_render(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """Above PASSWORD_RESET_NAMED_LIMIT no names are rendered, so the sentence must
+    not end on a colon - between that limit and the bulk threshold nothing follows it."""
+    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_NAMED_LIMIT", 1)
+    response = _post_confirm(test_client, ["test_user1", "test_user2"])
+    body = response.text
+    assert "will be set for 2 accounts." in body
+    assert "the following" not in body
+
+
+def test_password_reset_confirm_warns_about_a_role_spanning_selection(test_client: TestClient):
+    """test_user1 is a teacher, test_user4 a school admin - disjoint roles."""
+    response = _post_confirm(test_client, ["test_user1", "test_user4"])
+    body = response.text
+    assert "Several roles in one selection" in body
+
+
+
+
+def test_password_reset_confirm_reports_accounts_it_may_not_reset(
+    test_client: TestClient, mocker: MockerFixture
+):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        return_value={"test_user1": [Permission.write_password]},
+    )
+    response = _post_confirm(test_client, ["test_user1", "test_user2"])
+    assert "not yours to reset" in response.text
+
+
+def test_password_reset_confirm_with_nothing_resettable_offers_only_a_close(
+    test_client: TestClient, mocker: MockerFixture
+):
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
+    response = _post_confirm(test_client, "test_user1")
+    body = response.text
+    assert "None of the selected accounts" in body
+    assert 'name="password"' not in body
+
+
+def _lower_the_reset_limit(mocker: MockerFixture, limit: int) -> None:
+    """Lower the ceiling on how many accounts one reset may name.
+
+    A route crosses both modules and each reads the constant at call time, so
+    patching only one leaves the other enforcing the real limit.
+    """
+    mocker.patch("user_management_bff.business_logic.PASSWORD_RESET_MAX_TARGETS", limit)
+    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_MAX_TARGETS", limit)
+
+
+def _post_reset(
+    test_client: TestClient,
+    user_id: str | list[str],
+    password: str | None = "new-password",
+    **extra: str,
+) -> httpx.Response:
+    """Submit the reset form. ``password=None`` omits the field entirely, which is a
+    different request from submitting it empty."""
+    data: dict[str, str | list[str]] = {"user_id": user_id, **extra}
+    if password is not None:
+        data["password"] = password
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/password-reset", data=data
+        ),
+    )
+
+
+def _post_confirm(test_client: TestClient, user_id: str | list[str]) -> httpx.Response:
+    """Ask for the confirmation dialog over a selection."""
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/password-reset/confirm", data={"user_id": user_id}
+        ),
+    )
+
+
+def test_a_refused_password_reopens_the_dialog_over_the_selection_the_write_resolved(
+    test_client: TestClient,
+    mocker: MockerFixture,
+    rejecting_set_password: Callable[[str | Callable[[str], str]], MagicMock],
+):
+    """Nothing was written and every attempt failed alike, so the password is at fault
+    and its reason belongs on the field. Re-rendering the dialog must then cost nothing:
+    the write already read every target and asked Cerbos about all of them."""
+    rejecting_set_password("Password too short")
+    permissions_spy = mocker.spy(FilePermissionsAdapter, "get_permissions")
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "short")
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#password-reset-dialog-region"
+    assert 'error="Password too short"' in response.text
+    assert "<dialog" in response.text
+    assert 'value="test_user1"' in response.text and 'value="test_user2"' in response.text
+    assert permissions_spy.call_count == 1

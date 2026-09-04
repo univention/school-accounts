@@ -3,26 +3,78 @@ SPDX-FileCopyrightText: 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 #}
 {% import "macros/user_table.html" as table with context %}
-{% if view.rows %}
-<u-vstack gap="md">
-  <u-table sticky-header>
-    <u-tr slot="header">
-      {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
-    </u-tr>
-    <u-tbody>
-      {% for row in view.rows %}
-      <u-tr>
-        {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
+{# Its own form because u-checkbox is form-associated - its value reaches htmx only
+   through a form's FormData. Alpine sits on the u-vstack: u-form warns on unknown attributes. #}
+{# u-button's spinner is a Lit property; hx-indicator (a class) cannot reach it. #}
+<u-form
+  id="selection-form"
+  grow
+  hx-post="{{ frontend_prefix }}/users/password-reset/confirm"
+  hx-target="#password-reset-dialog-region"
+  hx-swap="innerHTML"
+  hx-headers='{"X-CSRF-Token": {{ csrf_token | tojson }}}'
+  hx-on::before-request="this.querySelector('u-button[type=submit]').loading = true"
+  hx-on::after-request="this.querySelector('u-button[type=submit]').loading = false"
+>
+  <u-vstack gap="md" grow x-data="selection">
+    {# Outside the scrolling region, so the button stays reachable. #}
+    <u-hstack justify="between" align="center">
+      <span aria-live="polite">
+        <span x-show="selected === 0">{{ _("No users selected") }}</span>
+        {# In a data attribute, not inline: a `| tojson` string starts with a
+           double quote, which closes the attribute and leaves x-text empty. #}
+        <span
+          x-show="selected > 0"
+          data-template="{{ _('{count} users selected') }}"
+          x-text="$el.dataset.template.replace('{count}', selected)"
+        ></span>
+      </span>
+      <u-button type="submit" variant="primary" x-bind:disabled="selected === 0">
+        {{ _("Reset password") }}
+      </u-button>
+    </u-hstack>
+
+    <u-vstack grow scroll>
+    {% if view.rows %}
+    <u-table sticky-header>
+      <u-tr slot="header">
+        <u-th>
+          <label for="select-all">
+            <u-checkbox id="select-all" x-ref="all" x-on:change="toggleAll($event.target.checked)"></u-checkbox>
+            <span class="sr-only">{{ _("Select all resettable users on this page") }}</span>
+          </label>
+        </u-th>
+        {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
       </u-tr>
-      {% endfor %}
-    </u-tbody>
-  </u-table>
-</u-vstack>
-{% else %}
-<u-table empty sticky-header>
-  <u-tr slot="header">
-    {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
-  </u-tr>
-  <span slot="empty">{{ _('No users found.') }}</span>
-</u-table>
-{% endif %}
+      <u-tbody>
+        {% for row in view.rows %}
+        <u-tr>
+          <u-td>
+            {% if row.selectable %}
+            <label for="select-{{ row.id }}">
+              <u-checkbox
+                id="select-{{ row.id }}"
+                name="user_id"
+                value="{{ row.id }}"
+                x-on:change="sync()"
+              ></u-checkbox>
+              <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
+            </label>
+            {% endif %}
+          </u-td>
+          {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
+        </u-tr>
+        {% endfor %}
+      </u-tbody>
+    </u-table>
+    {% else %}
+    <u-table empty sticky-header>
+      <u-tr slot="header">
+        {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
+      </u-tr>
+      <span slot="empty">{{ _('No users found.') }}</span>
+    </u-table>
+    {% endif %}
+    </u-vstack>
+  </u-vstack>
+</u-form>

@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+import asyncio
 import sys
 from dataclasses import dataclass, field
+from typing import cast
 
 import aiofiles
 from loguru import logger
@@ -27,14 +29,25 @@ else:
 _STORED_USERS = TypeAdapter(list[User])
 
 
+def _udm_messages(raw: object) -> list[str]:
+    """The ``msg`` of every entry in a UDM error payload, in order; empty for any other shape."""
+    entries = cast("list[object]", raw) if isinstance(raw, list) else [raw]
+    return [
+        str(cast("dict[str, object]", entry)["msg"])
+        for entry in entries
+        if isinstance(entry, dict) and cast("dict[str, object]", entry).get("msg")
+    ]
+
+
 def _safe_rejection_reason(raw: object) -> str:
-    """Kelvin's ``InvalidRequest.reason`` is untyped (``resp_json['detail']`` as-is) - normalize
-    whatever shape it has into the plain string ``PasswordResetRejectedError.message`` promises,
-    since it flows straight into a rendered toast. Content is otherwise untouched (raw backend
-    text, unbounded length) - a known limitation; replacing this with proper, translatable error
-    codes is tracked in univention/dev/education/user-management#229."""
+    """Normalize Kelvin's untyped ``InvalidRequest.reason`` into the plain string promised.
+
+    Only UDM's ``msg`` entries survive; anything else is stringified whole, untouched.
+    Stable error codes: user-management#231. Translating the text: #229."""
     if isinstance(raw, str):
         return raw
+    if messages := _udm_messages(raw):
+        return " ".join(messages)
     try:
         return str(raw)
     except Exception as exc:
@@ -150,6 +163,9 @@ class FileUsersPersistenceAdapter(
 
     def __init__(self):
         self._data: list[User] = []
+        # "wb" truncates, so concurrent whole-file read-modify-writes raced.
+        # Serialising is enough for a single-process dev/test stand-in.
+        self._write_lock = asyncio.Lock()
 
     @classmethod
     def get_settings_cls(
@@ -191,11 +207,12 @@ class FileUsersPersistenceAdapter(
 
     @override
     async def set_password(self, identifier: str, password: str) -> None:
-        await self._reload_data()
-        for user in self._data:
-            if user.id == identifier:
-                user.attributes.password = password
-                async with aiofiles.open(self.settings.source, "wb") as fd:
-                    await fd.write(_STORED_USERS.dump_json(self._data))
-                return
+        async with self._write_lock:
+            await self._reload_data()
+            for user in self._data:
+                if user.id == identifier:
+                    user.attributes.password = password
+                    async with aiofiles.open(self.settings.source, "wb") as fd:
+                        await fd.write(_STORED_USERS.dump_json(self._data))
+                    return
         raise ObjectNotFoundError(identifier=identifier)

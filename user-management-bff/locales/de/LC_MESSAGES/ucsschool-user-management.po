@@ -21,11 +21,22 @@ msgstr ""
 msgid "A new password is required."
 msgstr "Ein neues Passwort ist erforderlich."
 
+#, python-brace-format
+msgid "A new password will be set for the following {count} accounts:"
+msgstr "Für die folgenden {count} Konten wird ein neues Passwort gesetzt:"
+
+#, python-brace-format
+msgid "A new password will be set for {count} accounts."
+msgstr "Für {count} Konten wird ein neues Passwort gesetzt."
+
 msgid "Activated"
 msgstr "Aktiviert"
 
 msgid "All classes and work groups"
 msgstr "Alle Klassen und Arbeitsgruppen"
+
+msgid "Cancel"
+msgstr "Abbrechen"
 
 msgid "Classes"
 msgstr "Klassen"
@@ -33,8 +44,24 @@ msgstr "Klassen"
 msgid "Classes & Work Groups"
 msgstr "Klassen & Arbeitsgruppen"
 
+msgid "Close"
+msgstr "Schließen"
+
 msgid "Deactivated"
 msgstr "Deaktiviert"
+
+msgid ""
+"Different roles are usually reset separately — most of the time a filter is "
+"too wide, or one box too many is ticked."
+msgstr ""
+"Unterschiedliche Rollen werden üblicherweise getrennt zurückgesetzt – meist "
+"ist ein Filter zu weit gefasst oder ein Kästchen zu viel angehakt."
+
+msgid "Dismiss"
+msgstr "Schließen"
+
+msgid "Enter password…"
+msgstr "Passwort eingeben…"
 
 msgid "Filter classes and work groups"
 msgstr "Klassen und Arbeitsgruppen filtern"
@@ -63,6 +90,9 @@ msgstr "Erziehungsberechtigter"
 msgid "Never authenticated."
 msgstr "Nie authentifiziert."
 
+msgid "New password"
+msgstr "Neues Passwort"
+
 msgid "No classes or work groups found."
 msgstr "Keine Klassen oder Arbeitsgruppen gefunden."
 
@@ -71,6 +101,13 @@ msgstr "Keine Schulen gefunden."
 
 msgid "No users found."
 msgstr "Keine Benutzer gefunden."
+
+msgid "No users selected"
+msgstr "Keine Benutzer ausgewählt"
+
+msgid "None of the selected accounts can have their password reset by you."
+msgstr ""
+"Sie dürfen für keines der ausgewählten Konten das Passwort zurücksetzen."
 
 msgid "Not authenticated"
 msgstr "Nicht authentifiziert."
@@ -85,11 +122,14 @@ msgstr "Passwort für {succeeded} von {total} Benutzern zurückgesetzt."
 msgid "Permission denied"
 msgstr "Zugriff verweigert"
 
-msgid "Reason"
-msgstr "Grund"
-
 msgid "Rejected"
 msgstr "Abgelehnt"
+
+msgid "Reset password"
+msgstr "Passwort zurücksetzen"
+
+msgid "Resets the passwords of"
+msgstr "Setzt die Passwörter zurück für"
 
 msgid "Roles"
 msgstr "Rollen"
@@ -106,6 +146,9 @@ msgstr "Schulen"
 msgid "Select a school first."
 msgstr "Wählen Sie zuerst eine Schule aus."
 
+msgid "Select all resettable users on this page"
+msgstr "Alle zurücksetzbaren Benutzer auf dieser Seite auswählen"
+
 msgid "Select at least one user before resetting passwords."
 msgstr ""
 "Wählen Sie mindestens einen Benutzer aus, bevor Sie Passwörter zurücksetzen."
@@ -114,14 +157,21 @@ msgstr ""
 msgid "Select at most {max_targets} users at once."
 msgstr "Wählen Sie höchstens {max_targets} Benutzer auf einmal aus."
 
+#, python-brace-format
+msgid "Select {name}"
+msgstr "{name} auswählen"
+
+msgid "Set password"
+msgstr "Passwort setzen"
+
+msgid "Several roles in one selection — this is rarely intended"
+msgstr "Mehrere Rollen in einer Auswahl – das ist selten beabsichtigt"
+
 msgid "Staff"
 msgstr "Mitarbeiter"
 
 msgid "Student"
 msgstr "Schüler"
-
-msgid "Success"
-msgstr "Erfolg"
 
 msgid "Switch to dark theme"
 msgstr "Zum dunklen Design wechseln"
@@ -133,9 +183,24 @@ msgid "Teacher"
 msgstr "Lehrer"
 
 #, python-brace-format
+msgid "The limit of mass action items is set to {limit}."
+msgstr "Das Limit für Massenaktionen liegt bei {limit}."
+
+#, python-brace-format
 msgid "The logged in user '{user}' is not a valid UCS@school user."
 msgstr ""
 "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
+
+msgid "The password could not be reset for these accounts:"
+msgstr "Für diese Konten konnte das Passwort nicht zurückgesetzt werden:"
+
+msgid ""
+"This affects entire classes or year groups. Afterwards every one of these "
+"people can only log in with the new password. Please double-check."
+msgstr ""
+"Das betrifft ganze Klassen oder Jahrgänge. Danach können sich alle diese "
+"Personen nur noch mit dem neuen Passwort anmelden. Bitte prüfen Sie das "
+"genau."
 
 msgid "UCS@school User Management"
 msgstr "UCS@school Benutzerverwaltung"
@@ -154,6 +219,21 @@ msgstr "Arbeitsgruppen"
 
 msgid "logout"
 msgstr "abmelden"
+
+#, python-brace-format
+msgid "{count} accounts at once — mass action"
+msgstr "{count} Konten auf einmal – Massenaktion"
+
+#, python-brace-format
+msgid ""
+"{count} of the selected accounts are not yours to reset and were left out."
+msgstr ""
+"Für {count} der ausgewählten Konten dürfen Sie das Passwort nicht "
+"zurücksetzen; sie wurden ausgelassen."
+
+#, python-brace-format
+msgid "{count} users selected"
+msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "A student must be member of at least one school class."
 #~ msgstr "Ein Schüler muss Mitglied mindestens einer Schulklasse sein."
@@ -190,11 +270,11 @@ msgstr "abmelden"
 #~ msgid "Last name of the user"
 #~ msgstr "Nachname des Benutzers"
 
-#~ msgid "Password"
-#~ msgstr "Passwort"
-
 #~ msgid "Password of the user"
 #~ msgstr "Benutzerpasswort"
+
+#~ msgid "Reason"
+#~ msgstr "Grund"
 
 #~ msgid "Role"
 #~ msgstr "Rolle"
@@ -214,6 +294,9 @@ msgstr "abmelden"
 #~ msgid "School of the user"
 #~ msgstr "Schule des Benutzers"
 
+#~ msgid "Success"
+#~ msgstr "Erfolg"
+
 #~ msgid "The user has to be in a school class."
 #~ msgstr "Der Benutzer muss sich in einer Schulklasse befinden."
 
@@ -222,6 +305,9 @@ msgstr "abmelden"
 
 #~ msgid "User detail"
 #~ msgstr "Benutzerdetails"
+
+#~ msgid "User has to change the password at the next login"
+#~ msgstr "Benutzer muss das Passwort bei der nächsten Anmeldung ändern"
 
 #~ msgid "User info"
 #~ msgstr "Benutzerinformation"

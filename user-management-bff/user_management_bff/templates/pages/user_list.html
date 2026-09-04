@@ -16,17 +16,13 @@ SPDX-License-Identifier: AGPL-3.0-only
          both columns to their content height. #}
       <u-hstack gap="lg" align="stretch" grow>
         <u-vstack basis="sm">
-          {# Picking anything searches straight away — there is no submit button.
-             ``u-change`` bubbles out of both list selects, so listening on the
-             form itself keeps working when the cascade replaces the group
-             control. The delay is required, not cosmetic: the list select
-             publishes its new form value in a Lit update, which lands after the
-             synchronously dispatched event, so serialising immediately would
-             send the previous selection. #}
+          {# The delay is required, not cosmetic: a list select publishes its new
+             form value in a Lit update, one tick after the event, so serialising
+             immediately would send the previous selection. #}
           <u-form
             grow
             hx-get="{{ frontend_prefix }}/users"
-            hx-trigger="u-change delay:100ms"
+            hx-trigger="u-change[filterChanged(event)] delay:100ms"
             hx-target="#results-region"
             hx-select="#results-region"
             hx-swap="outerHTML"
@@ -51,15 +47,14 @@ SPDX-License-Identifier: AGPL-3.0-only
               {% include "fragments/school_options.html" %}
             </u-list-select>
 
-            {# The school list select's single hx-get drives its own item search,
-               so the class/work-group cascade listens for its u-change from here.
-               Swapping this wrapper replaces the whole control, which is what
-               drops the previous school's selection. #}
+            {# Swapping this wrapper replaces the whole control, which is what
+               drops the previous school's group selection - u-list-select keeps
+               its value across an item swap. #}
             <u-vstack
               id="dependent-filters"
               grow
               hx-get="{{ frontend_prefix }}/users/filters"
-              hx-trigger="u-change from:#school-list"
+              hx-trigger="u-change[filterChanged(event)] from:#school-list"
               hx-target="this"
               hx-swap="innerHTML"
               hx-vals="js:{school: event.detail.value}"
@@ -70,12 +65,70 @@ SPDX-License-Identifier: AGPL-3.0-only
         </u-vstack>
 
         <u-vstack id="results-region" grow scroll>
+          {# innerHTML keeps this element, so its handler outlives every swap into it -
+             unlike a script in the swapped fragment. #}
+          <div id="password-reset-result" hx-on::after-swap="narrowSelectionToFailures(this)"></div>
           {% include "fragments/user_table.html" %}
         </u-vstack>
       </u-hstack>
     </u-vstack>
   </u-container>
 
+  {# Outside #results-region so a filter swap cannot tear an open dialog away. #}
+  <div id="password-reset-dialog-region"></div>
+
   {{ layout.toast() }}
 </u-page>
+
+<script>
+  // The list select fires u-change even when the click re-picks the active item, and
+  // refetching would throw the selection away. The pushed URL is the applied filter.
+  function filterChanged(event) {
+    const name = event.target.getAttribute("name")
+    // An absent group parameter is the all-groups option; an absent school is no school.
+    const unset = name === "group" ? "{{ all_groups_value }}" : ""
+    return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? unset)
+  }
+
+  // Leaves only the failures ticked, so a retry is one click. Empty = all succeeded.
+  function narrowSelectionToFailures(region) {
+    const failed = new Set(
+      Array.from(region.querySelectorAll("u-tr[data-target-id]"), (row) => row.dataset.targetId),
+    )
+    Alpine.$data(document.querySelector("#selection-form [x-data]")).keepOnly(failed)
+  }
+
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("selection", () => ({
+      // Written by sync(): Alpine only re-evaluates its own reactive values, so a
+      // getter over box.checked froze the count.
+      selected: 0,
+      boxes() {
+        return Array.from(this.$root.querySelectorAll("u-checkbox[name=user_id]"))
+      },
+      init() {
+        this.sync()
+      },
+      sync() {
+        const boxes = this.boxes()
+        const checked = boxes.filter((box) => box.checked)
+        this.selected = checked.length
+        for (const box of boxes) box.closest("u-tr").toggleAttribute("selected", box.checked)
+        // Absent when this filter matched no rows; the toolbar still renders.
+        if (this.$refs.all) {
+          this.$refs.all.checked = boxes.length > 0 && checked.length === boxes.length
+          this.$refs.all.indeterminate = checked.length > 0 && checked.length < boxes.length
+        }
+      },
+      toggleAll(on) {
+        for (const box of this.boxes()) box.checked = on
+        this.sync()
+      },
+      keepOnly(ids) {
+        for (const box of this.boxes()) box.checked = ids.has(box.value)
+        this.sync()
+      },
+    }))
+  })
+</script>
 {% endblock %}

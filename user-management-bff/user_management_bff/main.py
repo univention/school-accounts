@@ -34,7 +34,7 @@ from .errors import (
 )
 from .lang import _, get_lang
 from .logging import configure_logger
-from .routes import render, router
+from .routes import render_static, router
 from .session_middleware import SessionCookieMiddleware
 
 
@@ -124,11 +124,11 @@ app.include_router(router)
 # shared toast region), a full-page message otherwise.
 def _html_error(request: Request, message: str, status_code: int) -> Response:
     if request.headers.get("HX-Request") == "true":
-        response = render(request, "fragments/toast.html", message=message, variant="error")
+        response = render_static(request, "fragments/toast.html", message=message, variant="error")
         response.headers["HX-Retarget"] = "#toast-region"
         response.headers["HX-Reswap"] = "beforeend"
         return response
-    response = render(request, "pages/message.html", message=message)
+    response = render_static(request, "pages/message.html", message=message)
     response.status_code = status_code
     return response
 

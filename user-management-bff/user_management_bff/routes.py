@@ -12,10 +12,12 @@ or tear down that session.
 
 from functools import partial
 from typing import Annotated, cast
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import FormData
 from starlette.responses import RedirectResponse, Response
 
 from . import business_logic, presentation
@@ -86,17 +88,48 @@ async def current_actor(request: Request, auth: AuthDep) -> str:
 ActorDep = Annotated[str, Depends(current_actor)]
 
 
-def render(request: Request, name: str, **context: object) -> HTMLResponse:
-    """Render ``name`` with the request's language and translation helper bound.
+async def verified_csrf(request: Request, auth: AuthDep) -> None:
+    """Reject an unsafe request whose CSRF token is missing or wrong."""
+    if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
+        raise PermissionsError(
+            _(
+                "Invalid or missing security token. Please reload the page and try again.",
+                lang=get_lang(request),
+            )
+        )
 
-    Templates can call ``{{ _("text") }}`` (translated into the request language)
-    and read ``{{ lang }}``.
+
+CsrfDep = Annotated[None, Depends(verified_csrf)]
+
+
+def selected_ids(form: FormData) -> list[str]:
+    """The user ids the selection form submitted."""
+    return [str(value) for value in form.getlist("user_id")]
+
+
+def render_static(request: Request, name: str, **context: object) -> HTMLResponse:
+    """Render chrome that carries no form: the error toast and message page.
+
+    Issues no CSRF token on purpose: the exception handlers use this, and some
+    fire *because* authentication is unusable.
     """
     lang = get_lang(request)
     context.setdefault("lang", lang)
     context.setdefault("actor_name", getattr(request.state, "actor_name", ""))
     context["_"] = partial(_, lang=lang)
     return templates.TemplateResponse(request, name, context)
+
+
+async def render(
+    request: Request, name: str, auth: FastAPIAuthenticationPort, **context: object
+) -> HTMLResponse:
+    """Render ``name`` with the request's language, translation helper and CSRF token bound.
+
+    Templates get ``{{ _("text") }}``, ``{{ lang }}`` and ``{{ csrf_token }}``.
+    The token is issued here, not per route; ``render_static`` is the token-less path.
+    """
+    context.setdefault("csrf_token", await auth.issue_csrf_token(request))
+    return render_static(request, name, **context)
 
 
 @router.get(AUTH_LOGIN_PATH)
@@ -139,19 +172,14 @@ async def users_list(
     school_classes_adapter: SchoolClassesAdapterDep,
     work_groups_adapter: WorkGroupsAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
+    auth: AuthDep,
     school: str | None = None,
     group: str | None = None,
 ) -> HTMLResponse:
-    """Render the list view.
+    """Render the list view, empty or with ``school``/``group`` preselected as a deep link.
 
-    Without a ``school`` query parameter this is the empty landing page. When
-    ``school`` (and optionally ``group``) are present, the same page is rendered
-    with those filters preselected and the matching results already filled in, so
-    a searched URL is a shareable deep link. The search form pushes that URL via
-    ``hx-push-url`` while swapping only the results region.
-
-    ``group`` carries the combined class/work-group filter as a single
-    ``kind:id`` value, because both datasets share one single-select control.
+    ``group`` is a combined ``kind:id`` value because both datasets share one
+    single-select control.
     """
     lang = get_lang(request)
     schools = await business_logic.get_schools(
@@ -160,9 +188,10 @@ async def users_list(
     school_options = presentation.build_school_options(schools, selected=school or "")
 
     if school is None:
-        return render(
+        response = await render(
             request,
             "pages/user_list.html",
+            auth,
             schools=school_options,
             selected_school=None,
             selected_group=presentation.ALL_GROUPS,
@@ -170,6 +199,8 @@ async def users_list(
             query="",
             view=presentation.empty_user_list_view(lang),
         )
+        response.headers["HX-Push-Url"] = _push_url(None, presentation.ALL_GROUPS)
+        return response
 
     kind, item_id = presentation.split_group_value(group)
     # A deep link can outlive its school; only load the dependent filters for a
@@ -209,9 +240,10 @@ async def users_list(
         ),
         lang,
     )
-    return render(
+    response = await render(
         request,
         "pages/user_list.html",
+        auth,
         schools=school_options,
         selected_school=school,
         selected_group=selected_group,
@@ -219,6 +251,20 @@ async def users_list(
         query="",
         view=presentation.build_user_list(data, lang),
     )
+    response.headers["HX-Push-Url"] = _push_url(school, selected_group)
+    return response
+
+
+def _push_url(school: str | None, selected_group: str) -> str:
+    """The canonical, shareable URL for a filter state.
+
+    Set unconditionally as ``HX-Push-Url``, which htmx prefers over the request
+    URL - that is what drops the all-groups default from the address bar.
+    """
+    params = {"school": school} if school else {}
+    if selected_group != presentation.ALL_GROUPS:
+        params["group"] = selected_group
+    return f"{FRONTEND_PREFIX}/users" + (f"?{urlencode(params)}" if params else "")
 
 
 async def _group_sections(
@@ -251,6 +297,7 @@ async def users_filters(
     request: Request,
     school: str,
     actor: ActorDep,
+    auth: AuthDep,
     school_classes_adapter: SchoolClassesAdapterDep,
     work_groups_adapter: WorkGroupsAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
@@ -263,9 +310,10 @@ async def users_filters(
     previous school's selection.
     """
     lang = get_lang(request)
-    return render(
+    return await render(
         request,
         "fragments/user_filters.html",
+        auth,
         selected_school=school,
         # A fresh school starts unfiltered.
         selected_group=presentation.ALL_GROUPS,
@@ -291,6 +339,7 @@ async def users_filters(
 async def users_school_options(
     request: Request,
     actor: ActorDep,
+    auth: AuthDep,
     users_adapter: UsersAdapterDep,
     schools_adapter: SchoolsAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
@@ -301,9 +350,10 @@ async def users_school_options(
     schools = await business_logic.get_schools(
         schools_adapter, permissions_adapter, users_adapter, actor, lang
     )
-    return render(
+    return await render(
         request,
         "fragments/school_options.html",
+        auth,
         schools=presentation.build_school_options(schools, query=q),
     )
 
@@ -312,6 +362,7 @@ async def users_school_options(
 async def users_group_options(
     request: Request,
     actor: ActorDep,
+    auth: AuthDep,
     school_classes_adapter: SchoolClassesAdapterDep,
     work_groups_adapter: WorkGroupsAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
@@ -334,9 +385,10 @@ async def users_group_options(
             lang,
             query=q,
         )
-    return render(
+    return await render(
         request,
         "fragments/group_options.html",
+        auth,
         selected_school=school,
         group_sections=sections,
         # The element keeps its own selection across an item swap, so the
@@ -346,6 +398,48 @@ async def users_group_options(
     )
 
 
+async def _password_reset_dialog(
+    request: Request,
+    auth: FastAPIAuthenticationPort,
+    data: presentation.PasswordResetSelectionData,
+    password_error: str = "",
+) -> HTMLResponse:
+    """The confirmation dialog for a resolved selection, before and after a submit."""
+    return await render(
+        request,
+        "fragments/password_reset_dialog.html",
+        auth,
+        confirmation=presentation.build_password_reset_confirmation(data, get_lang(request)),
+        password_error=password_error,
+    )
+
+
+@router.post("/users/password-reset/confirm", response_class=HTMLResponse)
+async def users_password_reset_confirm(
+    request: Request,
+    actor: ActorDep,
+    auth: AuthDep,
+    users_adapter: UsersAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
+    _csrf: CsrfDep,
+) -> HTMLResponse:
+    """Render the confirmation dialog for the current selection.
+
+    POST despite reading nothing: the id list has no length ceiling and this is a
+    transient step, not a shareable URL. Every unsafe method carries the token.
+    """
+    lang = get_lang(request)
+    form = await request.form()
+    data = await business_logic.get_password_reset_selection(
+        users_adapter,
+        permissions_adapter,
+        actor,
+        selected_ids(form),
+        lang,
+    )
+    return await _password_reset_dialog(request, auth, data)
+
+
 @router.post("/users/password-reset", response_class=HTMLResponse)
 async def users_password_reset(
     request: Request,
@@ -353,41 +447,41 @@ async def users_password_reset(
     auth: AuthDep,
     users_adapter: UsersAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
+    _csrf: CsrfDep,
 ) -> HTMLResponse:
     """Set one password for every selected user (bulk reset).
 
-    Renders a summary toast plus a plain per-target outcome list.
+    Renders a summary toast plus a per-target outcome list.
     """
     lang = get_lang(request)
-    # TODO(#213): no template calls auth.issue_csrf_token() yet, so nothing embeds
-    # the token into this form's request - check_csrf() below will reject every
-    # submission from CookieSessionAuthenticationAdapter until #213's UI sends
-    # X-CSRF-Token. Wire issue_csrf_token() into the selection/confirmation UI,
-    # don't loosen this check.
-    if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
-        raise PermissionsError(
-            _("Invalid or missing security token. Please reload the page and try again.", lang=lang)
-        )
     form = await request.form()
-    target_ids = [str(v) for v in form.getlist("user_id")]
-    password = str(form.get("password", ""))
     result = await business_logic.set_passwords(
-        users_adapter, permissions_adapter, actor, target_ids, password, lang
+        users_adapter,
+        permissions_adapter,
+        actor,
+        selected_ids(form),
+        str(form.get("password", "")),
+        lang,
     )
+    rejection = result.password_rejection
+    if rejection is not None and result.selection is not None:
+        # The password is what needs fixing, so keep the dialog and put the reason on
+        # the field. The write already resolved the selection; re-resolving costs a
+        # second round of Kelvin reads and a Cerbos batch for nothing.
+        response = await _password_reset_dialog(
+            request, auth, result.selection, password_error=rejection
+        )
+        response.headers["HX-Retarget"] = "#password-reset-dialog-region"
+        response.headers["HX-Reswap"] = "innerHTML"
+        return response
+
     message, variant = presentation.build_password_reset_summary(result, lang)
     rows = presentation.build_password_reset_outcome_rows(result, lang)
-    return render(
-        request, "fragments/password_reset_result.html", message=message, variant=variant, rows=rows
+    return await render(
+        request,
+        "fragments/password_reset_result.html",
+        auth,
+        message=message,
+        variant=variant,
+        rows=rows,
     )
-
-
-# TEMPORARY manual-QA aid for #212, remove once #213 embeds the CSRF token into a
-# real page (see the TODO on users_password_reset above). Lets a logged-in tester
-# read their own session's CSRF token without a UI, so they can copy it into a
-# manual X-CSRF-Token header when exercising POST /users/password-reset by hand -
-# e.g. on a deployed instance where the AlwaysAuthenticatedAdapter isn't an option.
-@router.get("/users/password-reset/csrf-token", response_class=PlainTextResponse)
-async def password_reset_csrf_token_debug(
-    request: Request, _actor: ActorDep, auth: AuthDep
-) -> PlainTextResponse:
-    return PlainTextResponse(await auth.issue_csrf_token(request))

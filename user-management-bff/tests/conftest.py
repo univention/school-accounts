@@ -3,10 +3,16 @@
 import os
 import subprocess
 from pathlib import Path
+from typing import Callable
+from unittest.mock import MagicMock
 
 import nest_asyncio
 import pytest
 from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
+
+from user_management_bff.adapters.users import FileUsersPersistenceAdapter
+from user_management_bff.errors import PasswordResetRejectedError
 
 nest_asyncio.apply()
 
@@ -69,3 +75,49 @@ def patch_env():
     yield
     os.environ.clear()
     os.environ.update(_environ)
+
+
+@pytest.fixture
+def patch_set_password(mocker: MockerFixture) -> Callable[[dict[str, Exception]], MagicMock]:
+    """Replace ``set_password`` with a double that writes nothing and fails by id.
+
+    The mapping is target id -> the error Kelvin would raise for it; any id not in
+    it succeeds, so ``patch_set_password({})`` is the all-succeed case. Nothing is
+    written either way: the users port points at the shared ``tests/data/users.json``
+    fixture, and the real write is covered in ``tests/adapters/test_users.py``.
+    """
+
+    def _install(failures: dict[str, Exception]) -> MagicMock:
+        async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
+            error = failures.get(identifier)
+            if error is not None:
+                raise error
+
+        return mocker.patch.object(
+            FileUsersPersistenceAdapter, "set_password", side_effect=_set_password
+        )
+
+    return _install
+
+
+@pytest.fixture
+def rejecting_set_password(
+    mocker: MockerFixture,
+) -> Callable[[str | Callable[[str], str]], MagicMock]:
+    """Patch ``set_password`` so that *every* attempt is rejected.
+
+    Failing alike is what tells the UI the password itself is at fault rather than
+    any one account, so it gets its own fixture. Pass a callable when the reason
+    names the user -- that is the case that must *not* be read as password-level.
+    """
+
+    def _install(reason: str | Callable[[str], str]) -> MagicMock:
+        async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
+            message = reason(identifier) if callable(reason) else reason
+            raise PasswordResetRejectedError(identifier=identifier, message=message)
+
+        return mocker.patch.object(
+            FileUsersPersistenceAdapter, "set_password", side_effect=_set_password
+        )
+
+    return _install

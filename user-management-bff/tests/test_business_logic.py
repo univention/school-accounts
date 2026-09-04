@@ -11,6 +11,7 @@ import asyncio
 import re
 import sys
 from dataclasses import dataclass
+from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -279,6 +280,21 @@ async def test_get_users_partial_visibility(ports: Ports, mocker: MockerFixture)
 # ---------------------------------------------------------------------------
 # set_passwords
 # ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_set_passwords_carries_the_selection_it_resolved(
+    ports: Ports,
+    mocker: MockerFixture,
+    patch_set_password: Callable[[dict[str, Exception]], MagicMock],
+):
+    """The dialog is re-rendered from this when a password is refused."""
+    patch_set_password({})
+    result = await business_logic.set_passwords(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "new-password", "en"
+    )
+    assert result.selection is not None
+    assert [user.id for user in result.selection.users] == ["test_user1"]
+
+
 @pytest.mark.asyncio
 async def test_set_passwords_success(ports: Ports, mocker: MockerFixture):
     # set_password is mocked here (rather than exercising the real File adapter write)
@@ -571,3 +587,54 @@ async def test_set_passwords_bounds_concurrency(mocker: MockerFixture):
     )
     assert users_adapter.high_water_mark <= 3
     assert users_adapter.high_water_mark > 1
+
+
+# ---------------------------------------------------------------------------
+# get_password_reset_selection - what the confirmation dialog states
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("target_ids", "expected_denied"),
+    [
+        # Only test_user1 is resettable, so the second id is dropped either way -
+        # what differs is whether dropping it counts against the actor.
+        pytest.param(["test_user1", "test_user2"], 1, id="denied-by-permission"),
+        pytest.param(["test_user1", "nonexistent"], 1, id="denied-by-not-existing"),
+        pytest.param(["test_user1", "test_user1"], 0, id="a-duplicate-is-not-a-denial"),
+    ],
+)
+async def test_password_reset_selection_keeps_only_resettable_users(
+    ports: Ports, mocker: MockerFixture, target_ids: list[str], expected_denied: int
+):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.write_password]}),
+    )
+    data = await business_logic.get_password_reset_selection(
+        ports.users, ports.permissions, ACTOR_ID, target_ids, "en"
+    )
+    assert [user.id for user in data.users] == ["test_user1"]
+    assert data.denied == expected_denied
+
+
+
+
+@pytest.mark.asyncio
+async def test_password_reset_selection_propagates_an_unexpected_fetch_error(
+    ports: Ports, mocker: MockerFixture
+):
+    """A missing user is an anticipated outcome; anything else is systemic."""
+    real_get_user = FileUsersPersistenceAdapter.get_user
+
+    async def _get_user(self: FileUsersPersistenceAdapter, identifier: str) -> User:
+        # The actor is let through, so the failure comes from the gather, not get_actor.
+        if identifier == ACTOR_ID:
+            return await real_get_user(self, identifier)
+        raise RuntimeError("kelvin is down")
+
+    mocker.patch.object(FileUsersPersistenceAdapter, "get_user", _get_user)
+    with pytest.raises(RuntimeError, match="kelvin is down"):
+        await business_logic.get_password_reset_selection(
+            ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "en"
+        )

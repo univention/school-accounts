@@ -8,12 +8,17 @@ and display formatting out of the templates without reintroducing a
 representation port/adapter.
 """
 
+from collections import Counter
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Protocol, TypeVar
 
-from .constants import PASSWORD_RESET_MAX_TARGETS
+from .constants import (
+    PASSWORD_RESET_BULK_THRESHOLD,
+    PASSWORD_RESET_MAX_TARGETS,
+    PASSWORD_RESET_NAMED_LIMIT,
+)
 from .lang import N_, _
 from .models import (
     AttributeAccess,
@@ -47,6 +52,18 @@ class UserListData:
 @dataclass
 class SchoolsData:
     schools: list[School]
+
+
+@dataclass
+class PasswordResetSelectionData:
+    """The selected users the actor may reset, plus how many were dropped.
+
+    ``denied`` is reported rather than silently omitted: the confirmation step
+    exists so the stated scope matches what the submit does.
+    """
+
+    users: list[User]
+    denied: int = 0
 
 
 class PasswordResetOutcomeCode(StrEnum):
@@ -84,6 +101,24 @@ class PasswordResetOutcome:
 class PasswordResetResultData:
     outcomes: list[PasswordResetOutcome]
     request_error: PasswordResetRequestError | None = None
+    # What the write resolved, so re-rendering the dialog costs no second resolution.
+    selection: PasswordResetSelectionData | None = None
+
+    @property
+    def password_rejection(self) -> str | None:
+        """The reason, when every attempted write failed for the same one.
+
+        One reason shared by every attempt is about the password, so it belongs on the
+        field. A heuristic until the backend carries stable error codes (#231).
+        """
+        if any(outcome.outcome is PasswordResetOutcomeCode.success for outcome in self.outcomes):
+            return None
+        reasons = {
+            outcome.reason
+            for outcome in self.outcomes
+            if outcome.outcome is PasswordResetOutcomeCode.rejected
+        }
+        return reasons.pop() if len(reasons) == 1 else None
 
 
 @dataclass
@@ -129,13 +164,55 @@ class Cell:
 
 @dataclass
 class Row:
+    id: str
     cells: list[Cell]
+    # Accessible name for the checkbox; not indexed out of ``cells``, so reordering
+    # a column cannot relabel the control.
+    label: str = ""
+    selectable: bool = False
 
 
 @dataclass
 class UserListView:
     columns: list[Column]
     rows: list[Row]
+
+
+@dataclass
+class PasswordResetAccount:
+    """One named account in the confirmation dialog."""
+
+    name: str
+    username: str
+
+
+@dataclass
+class RoleTally:
+    label: str
+    # A dual-role user counts under both, so tallies can exceed the total.
+    count: int
+
+
+@dataclass
+class PasswordResetConfirmation:
+    target_ids: list[str]
+    accounts: list[PasswordResetAccount]
+    role_tallies: list[RoleTally]
+    denied: int = 0
+    # Quoted in the mass-action warning: the most one reset will accept.
+    limit: int = PASSWORD_RESET_MAX_TARGETS
+
+    @property
+    def count(self) -> int:
+        return len(self.target_ids)
+
+    @property
+    def mixed_roles(self) -> bool:
+        return len(self.role_tallies) > 1
+
+    @property
+    def bulk(self) -> bool:
+        return self.count > PASSWORD_RESET_BULK_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +279,27 @@ _ROLE_LABELS = {
 }
 
 
+def _display_name(user: User) -> str:
+    """A person's name for labels and dialogs, falling back to the username."""
+    return f"{user.attributes.first_name} {user.attributes.last_name}".strip() or (
+        user.attributes.username
+    )
+
+
+def role_key(role: str) -> str:
+    """The bare role name of a ``<role>:<context>:<id>`` string (``student``)."""
+    return role.split(":", 1)[0]
+
+
+def _role_label(role: str, lang: str) -> str:
+    """A translated label for a role; an unlisted one degrades to its title-cased key."""
+    key = role_key(role)
+    return _(_ROLE_LABELS.get(key, key.replace("_", " ").title()), lang=lang)
+
+
 def _format_role(schools: list[School], role: str, lang: str) -> str:
     school = _find_by_id(schools, role.rsplit(":", 1)[1])
-    role_id = role.split(":", 1)[0]
-    label = _ROLE_LABELS.get(role_id, role_id.replace("_", " ").title())
-    return f"{_(label, lang=lang)} ({school.display_name})"
+    return f"{_role_label(role, lang)} ({school.display_name})"
 
 
 def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Cell:
@@ -363,8 +456,48 @@ def build_user_list(data: UserListData, lang: str) -> UserListView:
             ),
             _boolean_cell("activated", not attributes.disabled, permissions, lang),
         ]
-        rows.append(Row(cells=cells))
+        rows.append(
+            Row(
+                id=user.id,
+                cells=cells,
+                label=_display_name(user),
+                selectable=Permission.write_password in permissions,
+            )
+        )
     return UserListView(columns=list_columns(lang), rows=rows)
+
+
+def build_password_reset_confirmation(
+    data: PasswordResetSelectionData, lang: str
+) -> PasswordResetConfirmation:
+    """Build the confirmation dialog's view model for a selection.
+
+    Names every account up to ``PASSWORD_RESET_NAMED_LIMIT`` and tallies the roles,
+    so the dialog can state the scope before it can be submitted.
+    """
+    # Deduped per user: one role in two schools counts once, two roles count twice.
+    tallies = Counter(
+        key
+        for user in data.users
+        for key in dict.fromkeys(role_key(role) for role in user.attributes.roles)
+    )
+
+    accounts: list[PasswordResetAccount] = []
+    if len(data.users) <= PASSWORD_RESET_NAMED_LIMIT:
+        accounts = [
+            PasswordResetAccount(name=_display_name(user), username=user.attributes.username)
+            for user in data.users
+        ]
+    return PasswordResetConfirmation(
+        target_ids=[user.id for user in data.users],
+        accounts=accounts,
+        # Sorted so the mixed-roles warning names the dominant role first.
+        role_tallies=sorted(
+            (RoleTally(label=_role_label(role, lang), count=count) for role, count in tallies.items()),
+            key=lambda tally: (-tally.count, tally.label),
+        ),
+        denied=data.denied,
+    )
 
 
 def build_password_reset_summary(data: PasswordResetResultData, lang: str) -> tuple[str, str]:
@@ -398,13 +531,12 @@ def build_password_reset_summary(data: PasswordResetResultData, lang: str) -> tu
 def build_password_reset_outcome_rows(
     data: PasswordResetResultData, lang: str
 ) -> list[PasswordResetOutcomeRow]:
-    """Per-target detail rows shown below the summary toast.
+    """The failures of a bulk reset, one row each, with their reason.
 
-    Interim rendering only, same as ``build_password_reset_summary`` - the UI
-    issue for this feature replaces this with a real per-user result region.
+    Failures only: the toast carries "reset N of M", and listing successes buries
+    the rows that need acting on. Empty means everything succeeded.
     """
     labels = {
-        PasswordResetOutcomeCode.success: _("Success", lang=lang),
         PasswordResetOutcomeCode.permission_denied: _("Permission denied", lang=lang),
         PasswordResetOutcomeCode.not_found: _("User not found", lang=lang),
         PasswordResetOutcomeCode.rejected: _("Rejected", lang=lang),
@@ -414,4 +546,5 @@ def build_password_reset_outcome_rows(
             target_id=outcome.target_id, label=labels[outcome.outcome], reason=outcome.reason
         )
         for outcome in data.outcomes
+        if outcome.outcome != PasswordResetOutcomeCode.success
     ]

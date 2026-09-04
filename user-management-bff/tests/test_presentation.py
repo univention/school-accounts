@@ -6,6 +6,10 @@ import pytest
 from pytest_mock import MockerFixture
 
 from user_management_bff import presentation
+from user_management_bff.constants import (
+    PASSWORD_RESET_BULK_THRESHOLD,
+    PASSWORD_RESET_NAMED_LIMIT,
+)
 from user_management_bff.models import (
     AttributeAccess,
     Permission,
@@ -314,7 +318,6 @@ def test_build_password_reset_summary_too_many_targets(mocker: MockerFixture):
 @pytest.mark.parametrize(
     "code,expected_label",
     [
-        (presentation.PasswordResetOutcomeCode.success, "Success"),
         (presentation.PasswordResetOutcomeCode.permission_denied, "Permission denied"),
         (presentation.PasswordResetOutcomeCode.not_found, "User not found"),
         (presentation.PasswordResetOutcomeCode.rejected, "Rejected"),
@@ -330,6 +333,22 @@ def test_build_password_reset_outcome_rows_labels(
     assert rows == [
         presentation.PasswordResetOutcomeRow(target_id="user1", label=expected_label, reason=None)
     ]
+
+
+def test_build_password_reset_outcome_rows_omit_successes():
+    """Successes are the toast's job; the list is what still needs acting on."""
+    data = presentation.PasswordResetResultData(
+        outcomes=[
+            presentation.PasswordResetOutcome(
+                target_id="user1", outcome=presentation.PasswordResetOutcomeCode.success
+            ),
+            presentation.PasswordResetOutcome(
+                target_id="user2", outcome=presentation.PasswordResetOutcomeCode.not_found
+            ),
+        ]
+    )
+    rows = presentation.build_password_reset_outcome_rows(data, "en")
+    assert [row.target_id for row in rows] == ["user2"]
 
 
 def test_build_password_reset_outcome_rows_carries_reason():
@@ -348,3 +367,94 @@ def test_build_password_reset_outcome_rows_carries_reason():
             target_id="user1", label="Rejected", reason="Password too short"
         )
     ]
+
+
+def _selection(*users: User, denied: int = 0):
+    return presentation.PasswordResetSelectionData(users=list(users), denied=denied)
+
+
+def test_build_user_list_carries_the_row_id_and_marks_it_selectable():
+    view = presentation.build_user_list(
+        _list_data(_user(), [Permission.read_last_name, Permission.write_password]), "en"
+    )
+    assert [row.id for row in view.rows] == ["u1"]
+    assert view.rows[0].selectable is True
+    assert view.rows[0].label == "Kim Klein"
+
+
+def test_build_user_list_row_without_write_password_is_not_selectable():
+    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en")
+    assert view.rows[0].selectable is False
+
+
+def test_build_password_reset_confirmation_names_a_small_selection():
+    confirmation = presentation.build_password_reset_confirmation(_selection(_user()), "en")
+    assert confirmation.count == 1
+    assert confirmation.target_ids == ["u1"]
+    assert [(a.name, a.username) for a in confirmation.accounts] == [("Kim Klein", "kim")]
+
+
+def test_build_password_reset_confirmation_falls_back_to_the_username_without_a_name():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(_user(first_name="", last_name="")), "en"
+    )
+    assert confirmation.accounts[0].name == "kim"
+
+
+def test_build_password_reset_confirmation_stops_naming_above_the_limit():
+    users = [
+        User(id=f"u{i}", attributes=_user().attributes) for i in range(PASSWORD_RESET_NAMED_LIMIT + 1)
+    ]
+    confirmation = presentation.build_password_reset_confirmation(_selection(*users), "en")
+    assert confirmation.count == PASSWORD_RESET_NAMED_LIMIT + 1
+    assert confirmation.accounts == []
+
+
+def test_build_password_reset_confirmation_tallies_roles_largest_first():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(
+            _user(roles=["student:school:school1"]),
+            User(
+                id="u2",
+                attributes=_user(roles=["student:school:school1"]).attributes,
+            ),
+            User(id="u3", attributes=_user(roles=["teacher:school:school1"]).attributes),
+        ),
+        "en",
+    )
+    assert [(t.label, t.count) for t in confirmation.role_tallies] == [("Student", 2), ("Teacher", 1)]
+    assert confirmation.mixed_roles is True
+
+
+def test_build_password_reset_confirmation_counts_a_dual_role_user_under_both():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(_user(roles=["teacher:school:school1", "student:school:school2"])), "en"
+    )
+    assert {t.label: t.count for t in confirmation.role_tallies} == {"Teacher": 1, "Student": 1}
+
+
+def test_build_password_reset_confirmation_counts_one_role_in_two_schools_once():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(_user(roles=["teacher:school:school1", "teacher:school:school2"])), "en"
+    )
+    assert [(t.label, t.count) for t in confirmation.role_tallies] == [("Teacher", 1)]
+    assert confirmation.mixed_roles is False
+
+
+def test_build_password_reset_confirmation_translates_role_labels():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(_user(roles=["teacher:school:school1"])), "de"
+    )
+    assert confirmation.role_tallies[0].label == "Lehrer"
+
+
+@pytest.mark.parametrize(
+    "count,escalated",
+    [(PASSWORD_RESET_BULK_THRESHOLD, False), (PASSWORD_RESET_BULK_THRESHOLD + 1, True)],
+)
+def test_build_password_reset_confirmation_escalates_only_above_the_threshold(
+    count: int, escalated: bool
+):
+    """A whole class is the feature's normal case, not an escalation."""
+    users = [User(id=f"u{i}", attributes=_user().attributes) for i in range(count)]
+    assert presentation.build_password_reset_confirmation(_selection(*users), "en").bulk is escalated

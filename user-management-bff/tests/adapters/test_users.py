@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+import asyncio
 import json
 import os
 from collections.abc import Coroutine
@@ -286,17 +287,26 @@ class TestKelvinUsersPersistenceAdapter:
         assert exc_info.value.message == "policy violation"
 
     @pytest.mark.asyncio
-    async def test_set_password_rejected_stringifies_non_string_reason(
+    @pytest.mark.parametrize(
+        ("raw_reason", "expected"),
+        [
+            ([{"loc": ["body", "password"], "msg": "bad", "type": "UdmError"}], "bad"),
+            ([{"msg": "first"}, {"msg": "second"}], "first second"),
+            ({"detail": "something else"}, "{'detail': 'something else'}"),
+        ],
+    )
+    async def test_set_password_rejected_reports_only_the_udm_msg(
         self,
         adapter: KelvinUsersPersistenceAdapter,
         dummy_settings: KelvinPersistenceAdapterSettings,
         monkeypatch: pytest.MonkeyPatch,
         mocker: MockerFixture,
+        raw_reason: object,
+        expected: str,
     ):
         # InvalidRequest's own stub types `reason` as `str`, but it's really just
         # `resp_json["detail"]` off the wire - untyped at the source, so a shape like
         # this is a real possibility the stub doesn't capture.
-        raw_reason = [{"loc": ["body", "password"], "msg": "bad"}]
         kelvin_user = mocker.MagicMock()
         kelvin_user.save = mocker.AsyncMock(
             side_effect=InvalidRequest(reason=raw_reason)  # pyright: ignore[reportArgumentType]
@@ -311,7 +321,7 @@ class TestKelvinUsersPersistenceAdapter:
         await adapter.configure(dummy_settings)
         with pytest.raises(PasswordResetRejectedError) as exc_info:
             await adapter.set_password("test_user1", "new-password")
-        assert exc_info.value.message == str(raw_reason)
+        assert exc_info.value.message == expected
 
     @pytest.mark.asyncio
     async def test_set_password_rejected_falls_back_to_empty_reason_if_str_raises(
@@ -609,6 +619,22 @@ class TestFileUsersPersistenceAdapter:
         # set_password rewrites the whole store through dump_json, so every other
         # record has to survive the write, not just the one that changed.
         assert len(json.load(open(users_json))) == stored_before
+
+    @pytest.mark.asyncio
+    async def test_concurrent_set_password_keeps_the_store_readable(
+        self, adapter: FileUsersPersistenceAdapter, users_json: Any
+    ):
+        """A bulk reset writes concurrently. Opening "wb" truncates the file, so
+        without serialising the read-modify-write another coroutine read it empty
+        and the whole request died on `Invalid JSON: EOF while parsing`."""
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        identifiers = [user.id for user in adapter._data]
+        assert len(identifiers) > 1
+
+        await asyncio.gather(*(adapter.set_password(uid, "concurrent-pw") for uid in identifiers))
+
+        stored = {user["id"]: user["attributes"].get("password") for user in json.load(open(users_json))}
+        assert stored == {uid: "concurrent-pw" for uid in identifiers}
 
     @pytest.mark.asyncio
     async def test_set_password_not_found(self, adapter: FileUsersPersistenceAdapter, users_json: Any):

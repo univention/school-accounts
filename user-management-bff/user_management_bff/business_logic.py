@@ -31,6 +31,7 @@ from .presentation import (
     PasswordResetOutcomeCode,
     PasswordResetRequestError,
     PasswordResetResultData,
+    PasswordResetSelectionData,
     SchoolsData,
     UserListData,
 )
@@ -191,33 +192,61 @@ async def get_work_groups(
     ]
 
 
-async def _fetch_targets(
+async def _fetch_users(
     users_adapter: UsersPersistencePort, target_ids: list[str]
-) -> tuple[dict[str, Target], list[PasswordResetOutcome]]:
+) -> tuple[dict[str, User], list[str]]:
+    """Fetch each id concurrently, returning what was found and what was missing.
+
+    ``return_exceptions=True``: without it gather propagates the first exception
+    while the other fetches keep running in the background.
+    """
     semaphore = asyncio.Semaphore(PASSWORD_RESET_MAX_CONCURRENCY)
 
-    async def _fetch(target_id: str) -> Target:
+    async def _fetch(target_id: str) -> User:
         async with semaphore:
-            return user_to_target(await users_adapter.get_user(target_id))
+            return await users_adapter.get_user(target_id)
 
-    # return_exceptions=True, then handle ourselves: without it, gather propagates
-    # the first exception while other in-flight fetches keep running in the background
-    # (mirrors CerbosPermissionsAdapter.get_permissions's rationale for the same pattern).
-    # A missing target is an anticipated, per-user outcome; anything else is systemic
-    # (e.g. a real connection error) and still aborts the whole call.
     results = await asyncio.gather(*(_fetch(tid) for tid in target_ids), return_exceptions=True)
-    targets: dict[str, Target] = {}
-    outcomes: list[PasswordResetOutcome] = []
+    found: dict[str, User] = {}
+    missing: list[str] = []
     for target_id, result in zip(target_ids, results, strict=False):
         if isinstance(result, ObjectNotFoundError):
-            outcomes.append(
-                PasswordResetOutcome(target_id=target_id, outcome=PasswordResetOutcomeCode.not_found)
-            )
+            missing.append(target_id)
         elif isinstance(result, BaseException):
             raise result
         else:
-            targets[target_id] = result
-    return targets, outcomes
+            found[target_id] = result
+    return found, missing
+
+
+async def get_password_reset_selection(
+    users_adapter: UsersPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    target_ids: list[str],
+    lang: str,
+) -> PasswordResetSelectionData:
+    """Resolve selected user ids into the users the actor may reset.
+
+    Applies the same permission rule as ``set_passwords``, so the dialog states
+    the scope the submit will act on.
+    """
+    deduped_ids = list(dict.fromkeys(target_ids))
+    actor = await get_actor(actor_id, users_adapter, lang)
+    # A vanished user is dropped here; the submit reports it as ``not_found``.
+    found, _missing = await _fetch_users(users_adapter, deduped_ids)
+    users = list(found.values())
+
+    permissions = await permissions_port.get_permissions(actor, [user_to_target(user) for user in users])
+    permitted = [user for user in users if Permission.write_password in permissions.get(user.id, [])]
+    denied = len(deduped_ids) - len(permitted)
+    logger.debug(
+        "Resolved a password reset selection for confirmation.",
+        actor_id=actor_id,
+        selected=len(deduped_ids),
+        resettable=len(permitted),
+    )
+    return PasswordResetSelectionData(users=permitted, denied=denied)
 
 
 async def _write_passwords(
@@ -283,14 +312,17 @@ async def set_passwords(
         )
 
     actor = await get_actor(actor_id, users_adapter, lang)
-    targets_by_id, outcomes_list = await _fetch_targets(users_adapter, deduped_ids)
-    outcomes: dict[str, PasswordResetOutcome] = {o.target_id: o for o in outcomes_list}
+    found, missing = await _fetch_users(users_adapter, deduped_ids)
+    outcomes: dict[str, PasswordResetOutcome] = {
+        tid: PasswordResetOutcome(target_id=tid, outcome=PasswordResetOutcomeCode.not_found)
+        for tid in missing
+    }
 
-    permissions = await permissions_port.get_permissions(actor, list(targets_by_id.values()))
-    permitted_ids = [
-        tid for tid in targets_by_id if Permission.write_password in permissions.get(tid, [])
-    ]
-    denied_ids = [tid for tid in targets_by_id if tid not in permitted_ids]
+    permissions = await permissions_port.get_permissions(
+        actor, [user_to_target(user) for user in found.values()]
+    )
+    permitted_ids = [tid for tid in found if Permission.write_password in permissions.get(tid, [])]
+    denied_ids = [tid for tid in found if tid not in permitted_ids]
     for tid in denied_ids:
         logger.warning(
             "Denied a password reset: actor lacks write-password on this target.",
@@ -304,4 +336,10 @@ async def set_passwords(
     for outcome in await _write_passwords(users_adapter, permitted_ids, password, actor_id):
         outcomes[outcome.target_id] = outcome
 
-    return PasswordResetResultData(outcomes=[outcomes[tid] for tid in deduped_ids])
+    return PasswordResetResultData(
+        outcomes=[outcomes[tid] for tid in deduped_ids],
+        selection=PasswordResetSelectionData(
+            users=[found[tid] for tid in permitted_ids],
+            denied=len(denied_ids),
+        ),
+    )
