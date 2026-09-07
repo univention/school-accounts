@@ -19,7 +19,11 @@ from user_management_bff.adapters.authentication import NeverAuthenticatedAdapte
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
-from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
+from user_management_bff.errors import (
+    ObjectNotFoundError,
+    PasswordChangeOnNextLoginUnsupportedError,
+    PasswordResetRejectedError,
+)
 from user_management_bff.main import app
 from user_management_bff.models import Permission
 from user_management_bff.ports import FastAPIAuthenticationPort
@@ -526,7 +530,7 @@ def test_password_reset_permission_denied(test_client: TestClient, mocker: Mocke
 
 
 def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerFixture):
-    async def _set_password(identifier: str, _password: str) -> None:
+    async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
         if identifier == "test_user2":
             raise ObjectNotFoundError(identifier="test_user2")
 
@@ -538,10 +542,6 @@ def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerF
     assert response.status_code == 200
     assert "1 of 2" in response.text
     assert 'variant="error"' in response.text
-
-
-
-
 
 
 def test_password_reset_differing_reasons_stay_in_the_result_list(
@@ -568,6 +568,21 @@ def test_password_reset_a_partial_success_stays_in_the_result_list(
     assert "Password too short" in response.text
 
 
+def test_password_reset_reports_an_account_that_cannot_be_forced_to_change_it(
+    test_client: TestClient, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """The password is left alone, so the account belongs in the failure list."""
+    patch_set_password(
+        {"test_user2": PasswordChangeOnNextLoginUnsupportedError(identifier="test_user2")}
+    )
+    response = _post_reset(test_client, ["test_user1", "test_user2"], change_on_next_login="on")
+    assert "HX-Retarget" not in response.headers
+    assert "1 of 2" in response.text
+    assert 'variant="error"' in response.text
+    assert 'data-target-id="test_user2"' in response.text
+    assert "the password was left unchanged" in response.text
+
+
 def test_password_reset_narrows_the_selection_to_what_failed(
     test_client: TestClient, mocker: MockerFixture
 ):
@@ -585,8 +600,6 @@ def test_password_reset_narrows_the_selection_to_what_failed(
     )
     assert 'data-target-id="test_user2"' in response.text
     assert 'data-target-id="test_user1"' not in response.text
-
-
 
 
 def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
@@ -733,6 +746,32 @@ def test_password_reset_confirm_warns_about_a_role_spanning_selection(test_clien
     assert "Several roles in one selection" in body
 
 
+@pytest.mark.parametrize("supported", [True, False])
+def test_password_reset_confirm_offers_change_on_next_login_only_when_supported(
+    test_client: TestClient, mocker: MockerFixture, supported: bool
+):
+    """Kelvin 422s an unmapped udm_property, which would fail the reset itself."""
+    mocker.patch.object(
+        FileUsersPersistenceAdapter,
+        "supports_password_change_on_next_login",
+        return_value=supported,
+    )
+    response = _post_confirm(test_client, ["test_user1"])
+    assert ('name="change_on_next_login"' in response.text) is supported
+
+
+def test_password_reset_forwards_change_on_next_login(test_client: TestClient, mocker: MockerFixture):
+    set_password = mocker.patch.object(FileUsersPersistenceAdapter, "set_password")
+    _post_reset(test_client, ["test_user1"], change_on_next_login="on")
+    set_password.assert_awaited_once_with("test_user1", "new-password", True)
+
+
+def test_password_reset_without_the_box_ticked_does_not_force_a_change(
+    test_client: TestClient, mocker: MockerFixture
+):
+    set_password = mocker.patch.object(FileUsersPersistenceAdapter, "set_password")
+    _post_reset(test_client, ["test_user1"], "new-password")
+    set_password.assert_awaited_once_with("test_user1", "new-password", False)
 
 
 def test_password_reset_confirm_reports_accounts_it_may_not_reset(

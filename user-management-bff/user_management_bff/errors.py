@@ -27,6 +27,18 @@ class NoSchoolUserError(PermissionsError):
 class NotAuthenticatedError(BaseError): ...
 
 
+class PasswordChangeOnNextLoginUnsupportedError(BaseError):
+    """The backend cannot force a password change at the next login for this user.
+
+    Raised before the write, so the password is left unchanged: sending a password
+    without the flag the actor asked for would silently do half the job.
+    """
+
+    def __init__(self, identifier: str):
+        super().__init__("Password change at the next login is not available.")
+        self.identifier: str = identifier
+
+
 class PasswordResetRejectedError(BaseError):
     """The target system refused to change a user's password for this user.
 

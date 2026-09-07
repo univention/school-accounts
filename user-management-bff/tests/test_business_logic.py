@@ -32,6 +32,7 @@ from user_management_bff.business_logic import get_schools
 from user_management_bff.errors import (
     NoSchoolUserError,
     ObjectNotFoundError,
+    PasswordChangeOnNextLoginUnsupportedError,
     PasswordResetRejectedError,
 )
 from user_management_bff.lang import _
@@ -337,7 +338,7 @@ async def test_set_passwords_denies_permission_per_user_without_aborting_others(
         "test_user1": PasswordResetOutcomeCode.success,
         "test_user2": PasswordResetOutcomeCode.permission_denied,
     }
-    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password", False)
 
 
 @pytest.mark.asyncio
@@ -370,7 +371,7 @@ async def test_set_passwords_partial_failure_returns_per_user_outcomes(
         side_effect=_permissions_by_id({tid: [Permission.write_password] for tid in target_ids}),
     )
 
-    async def _set_password(identifier: str, _password: str) -> None:
+    async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
         if identifier == "test_user2":
             raise ObjectNotFoundError(identifier="test_user2")
         if identifier == "test_user3":
@@ -388,6 +389,28 @@ async def test_set_passwords_partial_failure_returns_per_user_outcomes(
     assert outcomes_by_id["test_user3"].outcome == PasswordResetOutcomeCode.rejected
     assert outcomes_by_id["test_user3"].reason == "policy violation"
     assert set_password_mock.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_set_passwords_leaves_a_user_alone_whose_next_login_flag_cannot_be_set(
+    ports: Ports, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """The actor asked for both; a password without the flag is not what they asked for."""
+    patch_set_password(
+        {"test_user2": PasswordChangeOnNextLoginUnsupportedError(identifier="test_user2")}
+    )
+    result = await business_logic.set_passwords(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "test_user2"],
+        "new-password",
+        "en",
+        change_on_next_login=True,
+    )
+    by_id = {outcome.target_id: outcome.outcome for outcome in result.outcomes}
+    assert by_id["test_user1"] == PasswordResetOutcomeCode.success
+    assert by_id["test_user2"] == PasswordResetOutcomeCode.next_login_change_unsupported
 
 
 @pytest.mark.asyncio
@@ -414,7 +437,7 @@ async def test_set_passwords_missing_target_returns_not_found_outcome_without_ab
         PasswordResetOutcomeCode.success,
         PasswordResetOutcomeCode.not_found,
     ]
-    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password", False)
 
 
 @pytest.mark.asyncio
@@ -483,7 +506,7 @@ async def test_set_passwords_deduplicates_target_ids(ports: Ports, mocker: Mocke
         ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user1"], "new-password", "en"
     )
     assert [outcome.target_id for outcome in result.outcomes] == ["test_user1"]
-    set_password_mock.assert_awaited_once_with("test_user1", "new-password")
+    set_password_mock.assert_awaited_once_with("test_user1", "new-password", False)
 
 
 @pytest.mark.asyncio
@@ -569,7 +592,13 @@ async def test_set_passwords_bounds_concurrency(mocker: MockerFixture):
             )
 
         @override
-        async def set_password(self, identifier: str, password: str) -> None:
+        def supports_password_change_on_next_login(self) -> bool:
+            return True
+
+        @override
+        async def set_password(
+            self, identifier: str, password: str, change_on_next_login: bool = False
+        ) -> None:
             self.current += 1
             self.high_water_mark = max(self.high_water_mark, self.current)
             await asyncio.sleep(0)

@@ -28,13 +28,29 @@ class UsersPersistencePort(ABC):
         """
 
     @abstractmethod
-    async def set_password(self, identifier: str, password: str) -> None:  # pragma: no cover
+    async def set_password(
+        self, identifier: str, password: str, change_on_next_login: bool = False
+    ) -> None:  # pragma: no cover
         """
         Set ``password`` as the new password for the user identified by ``identifier``.
 
-        Raises an ObjectNotFoundError, if the user could not be found, or a
+        Pass ``change_on_next_login`` only when
+        ``supports_password_change_on_next_login`` reports True.
+
+        Raises an ObjectNotFoundError, if the user could not be found, a
         PasswordResetRejectedError, if the target system refuses the new password
-        for this specific user (e.g. a Kelvin/UDM password-policy violation).
+        for this specific user (e.g. a Kelvin/UDM password-policy violation), or a
+        PasswordChangeOnNextLoginUnsupportedError, if ``change_on_next_login`` was
+        asked for and the backend cannot carry it - the password is then left alone.
+        """
+
+    @abstractmethod
+    def supports_password_change_on_next_login(self) -> bool:  # pragma: no cover
+        """
+        Whether the backend can require a password change at the next login.
+
+        What the adapter currently knows, without I/O. False is the safe answer:
+        the caller then never sends the flag.
         """
 
 

@@ -195,6 +195,13 @@ msgid "The password could not be reset for these accounts:"
 msgstr "Für diese Konten konnte das Passwort nicht zurückgesetzt werden:"
 
 msgid ""
+"This account cannot be required to change its password at the next login, so "
+"the password was left unchanged."
+msgstr ""
+"Für dieses Konto kann keine Passwortänderung bei der nächsten Anmeldung "
+"erzwungen werden, daher wurde das Passwort nicht geändert."
+
+msgid ""
 "This affects entire classes or year groups. Afterwards every one of these "
 "people can only log in with the new password. Please double-check."
 msgstr ""
@@ -207,6 +214,9 @@ msgstr "UCS@school Benutzerverwaltung"
 
 msgid "User Management"
 msgstr "Benutzerverwaltung"
+
+msgid "User has to change the password at the next login"
+msgstr "Benutzer muss das Passwort bei der nächsten Anmeldung ändern"
 
 msgid "User not found"
 msgstr "Benutzer nicht gefunden"
@@ -305,9 +315,6 @@ msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "User detail"
 #~ msgstr "Benutzerdetails"
-
-#~ msgid "User has to change the password at the next login"
-#~ msgstr "Benutzer muss das Passwort bei der nächsten Anmeldung ändern"
 
 #~ msgid "User info"
 #~ msgstr "Benutzerinformation"

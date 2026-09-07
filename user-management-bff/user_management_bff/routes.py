@@ -462,6 +462,7 @@ async def users_password_reset(
         selected_ids(form),
         str(form.get("password", "")),
         lang,
+        change_on_next_login=bool(form.get("change_on_next_login")),
     )
     rejection = result.password_rejection
     if rejection is not None and result.selection is not None:

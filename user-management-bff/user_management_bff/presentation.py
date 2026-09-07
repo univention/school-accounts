@@ -64,6 +64,7 @@ class PasswordResetSelectionData:
 
     users: list[User]
     denied: int = 0
+    supports_change_on_next_login: bool = False
 
 
 class PasswordResetOutcomeCode(StrEnum):
@@ -71,6 +72,7 @@ class PasswordResetOutcomeCode(StrEnum):
     permission_denied = auto()
     not_found = auto()
     rejected = auto()
+    next_login_change_unsupported = auto()
 
 
 class PasswordResetRequestError(StrEnum):
@@ -199,6 +201,7 @@ class PasswordResetConfirmation:
     accounts: list[PasswordResetAccount]
     role_tallies: list[RoleTally]
     denied: int = 0
+    supports_change_on_next_login: bool = False
     # Quoted in the mass-action warning: the most one reset will accept.
     limit: int = PASSWORD_RESET_MAX_TARGETS
 
@@ -497,6 +500,7 @@ def build_password_reset_confirmation(
             key=lambda tally: (-tally.count, tally.label),
         ),
         denied=data.denied,
+        supports_change_on_next_login=data.supports_change_on_next_login,
     )
 
 
@@ -540,6 +544,11 @@ def build_password_reset_outcome_rows(
         PasswordResetOutcomeCode.permission_denied: _("Permission denied", lang=lang),
         PasswordResetOutcomeCode.not_found: _("User not found", lang=lang),
         PasswordResetOutcomeCode.rejected: _("Rejected", lang=lang),
+        PasswordResetOutcomeCode.next_login_change_unsupported: _(
+            "This account cannot be required to change its password at the next login, "
+            "so the password was left unchanged.",
+            lang=lang,
+        ),
     }
     return [
         PasswordResetOutcomeRow(

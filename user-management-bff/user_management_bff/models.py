@@ -32,6 +32,7 @@ class UserAttributes(BaseModel):
     legal_wards: list[str] = []
     legal_guardians: list[str] = []
     password: str | None = None
+    change_password_on_next_login: bool = False
     email: str | None = None
     birthday: datetime.date | None = None
     expiration_date: datetime.date | None = None

@@ -462,6 +462,16 @@
                 }
             }
         ],
+        "./tests/adapters/test_users.py": [
+            {
+                "code": "reportUnusedImport",
+                "range": {
+                    "startColumn": 19,
+                    "endColumn": 25,
+                    "lineCount": 1
+                }
+            }
+        ],
         "./tests/conftest.py": [
             {
                 "code": "reportMissingTypeStubs",

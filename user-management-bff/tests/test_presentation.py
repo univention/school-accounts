@@ -321,6 +321,11 @@ def test_build_password_reset_summary_too_many_targets(mocker: MockerFixture):
         (presentation.PasswordResetOutcomeCode.permission_denied, "Permission denied"),
         (presentation.PasswordResetOutcomeCode.not_found, "User not found"),
         (presentation.PasswordResetOutcomeCode.rejected, "Rejected"),
+        (
+            presentation.PasswordResetOutcomeCode.next_login_change_unsupported,
+            "This account cannot be required to change its password at the next login, "
+            "so the password was left unchanged.",
+        ),
     ],
 )
 def test_build_password_reset_outcome_rows_labels(

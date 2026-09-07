@@ -9,6 +9,7 @@ from typing import Any, Callable
 from unittest.mock import MagicMock
 
 import pytest
+from loguru import logger
 from pytest_mock import MockerFixture
 from typing_extensions import override
 from ucsschool.kelvin.client import InvalidRequest, NoObject
@@ -20,7 +21,11 @@ from user_management_bff.adapters.users import (
     FileUsersPersistenceAdapterSettings,
     KelvinUsersPersistenceAdapter,
 )
-from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
+from user_management_bff.errors import (
+    ObjectNotFoundError,
+    PasswordChangeOnNextLoginUnsupportedError,
+    PasswordResetRejectedError,
+)
 from user_management_bff.models import User, UserAttributes
 from user_management_bff.ports import UsersPersistencePort
 
@@ -243,6 +248,99 @@ class TestKelvinUsersPersistenceAdapter:
         await adapter.set_password("test_user1", "new-password")
         assert kelvin_user.password == "new-password"
         kelvin_user.save.assert_awaited_once()
+
+    @pytest.mark.parametrize(
+        ("configured", "expected"),
+        [({"pwdChangeNextLogin": "0", "title": "x"}, True), ({"title": "x"}, False), ({}, False)],
+    )
+    def test_change_on_next_login_support_is_learned_from_a_fetched_user(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+        configured: dict[str, str],
+        expected: bool,
+    ):
+        """Kelvin returns exactly its configured allowlist on every user."""
+        assert adapter.supports_password_change_on_next_login() is False
+        kelvin_user = make_kelvin_user_from_data(
+            {
+                "id": "test_user1",
+                "attributes": {
+                    "disabled": False,
+                    "first_name": "firstname",
+                    "last_name": "lastname",
+                    "roles": ["teacher:school:test_school1"],
+                    "schools": ["test_school1"],
+                    "school_classes": {},
+                    "username": "test_user1",
+                    "work_groups": {},
+                },
+            }
+        )
+        kelvin_user.udm_properties = configured
+        adapter._user_from_kelvin_user(kelvin_user)
+        assert adapter.supports_password_change_on_next_login() is expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("requested", "written"), [(True, True), (False, False)])
+    async def test_set_password_only_sends_the_udm_flag_when_it_is_requested(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        patch_kelvin_resource: Callable[[Any, str, Any], None],
+        mocker: MockerFixture,
+        requested: bool,
+        written: bool,
+    ):
+        """An unmapped property makes Kelvin 422 the whole request, password included."""
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(return_value=kelvin_user)
+        # A typed local: reading the dict back off the MagicMock would be untyped.
+        udm_properties: dict[str, object] = {}
+        kelvin_user.udm_properties = udm_properties
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        patch_kelvin_resource(user_management_bff.adapters.users, "UserResource", MockUserResource())
+        adapter._change_on_next_login_supported = True
+        await adapter.configure(dummy_settings)
+        await adapter.set_password("test_user1", "new-password", requested)
+        assert kelvin_user.password == "new-password"
+        assert udm_properties == ({"pwdChangeNextLogin": True} if written else {})
+
+    @pytest.mark.asyncio
+    async def test_set_password_skips_a_user_kelvin_cannot_force_to_change_it(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        patch_kelvin_resource: Callable[[Any, str, Any], None],
+        mocker: MockerFixture,
+        warning_records: list[str],
+    ):
+        """Half the job - a new password nobody is asked to change - is worse than none."""
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(return_value=kelvin_user)
+        kelvin_user.udm_properties = {"title": "x", "birthday": "2000-01-01"}
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        patch_kelvin_resource(user_management_bff.adapters.users, "UserResource", MockUserResource())
+        adapter._change_on_next_login_supported = False
+        await adapter.configure(dummy_settings)
+        with pytest.raises(PasswordChangeOnNextLoginUnsupportedError) as exc_info:
+            await adapter.set_password("test_user1", "new-password", True)
+        assert exc_info.value.identifier == "test_user1"
+        assert kelvin_user.password != "new-password"
+        kelvin_user.save.assert_not_awaited()
+        assert len(warning_records) == 1
+        assert "pwdChangeNextLogin" in warning_records[0]
+        assert "birthday,title" in warning_records[0]
+        assert "test_user1" in warning_records[0]
+        assert "new-password" not in warning_records[0]
 
     @pytest.mark.asyncio
     async def test_set_password_not_found(
@@ -595,6 +693,16 @@ class TestFileUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("NON_EXISTENT")
         assert exc_info.value.identifier == "NON_EXISTENT"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("requested", [True, False])
+    async def test_set_password_stores_change_on_next_login(
+        self, adapter: FileUsersPersistenceAdapter, users_json: Any, requested: bool
+    ):
+        await adapter.configure(FileUsersPersistenceAdapterSettings(source=users_json))
+        await adapter.set_password("dev", "new-password", requested)
+        stored = next(u for u in json.load(open(users_json)) if u["id"] == "dev")
+        assert stored["attributes"]["change_password_on_next_login"] is requested
 
     @pytest.mark.asyncio
     async def test_set_password_success(self, adapter: FileUsersPersistenceAdapter, users_json: Any):

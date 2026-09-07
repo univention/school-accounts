@@ -13,7 +13,11 @@ from pydantic import TypeAdapter
 from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
-from ..errors import ObjectNotFoundError, PasswordResetRejectedError
+from ..errors import (
+    ObjectNotFoundError,
+    PasswordChangeOnNextLoginUnsupportedError,
+    PasswordResetRejectedError,
+)
 from ..models import User, UserAttributes
 from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter
@@ -27,6 +31,9 @@ else:
 # The source file already holds the domain shape, so parse it as such instead of
 # handing ``Any`` to every UserAttributes field.
 _STORED_USERS = TypeAdapter(list[User])
+
+# Kelvin forwards it only when listed in mapped_udm_properties.json
+_UDM_CHANGE_ON_NEXT_LOGIN = "pwdChangeNextLogin"
 
 
 def _udm_messages(raw: object) -> list[str]:
@@ -81,7 +88,16 @@ def _in_selected_group(
 
 
 class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseAdapter):
+    _change_on_next_login_supported: bool = False
+
+    @override
+    def supports_password_change_on_next_login(self) -> bool:
+        return self._change_on_next_login_supported
+
     def _user_from_kelvin_user(self, kelvin_user: KelvinUser) -> User:
+        self._change_on_next_login_supported = _UDM_CHANGE_ON_NEXT_LOGIN in (
+            kelvin_user.udm_properties or {}
+        )
         return User(
             id=kelvin_user.name,
             attributes=UserAttributes(
@@ -130,14 +146,28 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 raise ObjectNotFoundError(identifier=identifier) from exc
 
     @override
-    async def set_password(self, identifier: str, password: str) -> None:
+    async def set_password(
+        self, identifier: str, password: str, change_on_next_login: bool = False
+    ) -> None:
         async with self.kelvin_session as session:
             try:
                 kelvin_user = await UserResource(session=session).get(name=identifier)
             except NoObject as exc:
                 logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
                 raise ObjectNotFoundError(identifier=identifier) from exc
+            if change_on_next_login and not self._change_on_next_login_supported:
+                logger.warning(
+                    "Kelvin does not map the property that forces a password change at "
+                    "the next login, so this password was not reset. Add it to Kelvin's "
+                    "mapped_udm_properties.json.",
+                    user_id=identifier,
+                    missing_udm_property=_UDM_CHANGE_ON_NEXT_LOGIN,
+                    udm_properties=",".join(sorted(kelvin_user.udm_properties)),
+                )
+                raise PasswordChangeOnNextLoginUnsupportedError(identifier=identifier)
             kelvin_user.password = password
+            if change_on_next_login:
+                kelvin_user.udm_properties[_UDM_CHANGE_ON_NEXT_LOGIN] = True
             try:
                 await kelvin_user.save()
             except InvalidRequest as exc:
@@ -206,12 +236,19 @@ class FileUsersPersistenceAdapter(
             raise ObjectNotFoundError(identifier=identifier)
 
     @override
-    async def set_password(self, identifier: str, password: str) -> None:
+    def supports_password_change_on_next_login(self) -> bool:
+        return True
+
+    @override
+    async def set_password(
+        self, identifier: str, password: str, change_on_next_login: bool = False
+    ) -> None:
         async with self._write_lock:
             await self._reload_data()
             for user in self._data:
                 if user.id == identifier:
                     user.attributes.password = password
+                    user.attributes.change_password_on_next_login = change_on_next_login
                     async with aiofiles.open(self.settings.source, "wb") as fd:
                         await fd.write(_STORED_USERS.dump_json(self._data))
                     return

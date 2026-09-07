@@ -20,10 +20,12 @@ Two rules the fakes here encode:
   Kelvin adapter used to get wrong.
 """
 
+from collections.abc import Iterator
 from typing import Any, Callable
 from unittest.mock import MagicMock
 
 import pytest
+from loguru import logger
 from pytest_mock import MockerFixture
 
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -109,3 +111,18 @@ def make_kelvin_group_from_data(mocker: MockerFixture) -> Callable[[str, str | N
         return kelvin_group
 
     return _make_kelvin_group_from_data
+
+
+@pytest.fixture
+def warning_records() -> Iterator[list[str]]:
+    """Collect WARNING-and-above log lines, message plus bound ``extra`` fields.
+
+    An adapter that silently drops part of a write has to say so in the log, so the
+    log line is the assertion - including what it must *not* carry, like a password.
+    """
+    records: list[str] = []
+    sink_id = logger.add(records.append, level="WARNING", format="{message} {extra}")
+    try:
+        yield records
+    finally:
+        logger.remove(sink_id)

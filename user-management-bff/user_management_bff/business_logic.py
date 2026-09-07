@@ -6,7 +6,12 @@ from collections import defaultdict
 from loguru import logger
 
 from .constants import PASSWORD_RESET_MAX_CONCURRENCY, PASSWORD_RESET_MAX_TARGETS
-from .errors import NoSchoolUserError, ObjectNotFoundError, PasswordResetRejectedError
+from .errors import (
+    NoSchoolUserError,
+    ObjectNotFoundError,
+    PasswordChangeOnNextLoginUnsupportedError,
+    PasswordResetRejectedError,
+)
 from .lang import _
 from .models import (
     Permission,
@@ -246,11 +251,19 @@ async def get_password_reset_selection(
         selected=len(deduped_ids),
         resettable=len(permitted),
     )
-    return PasswordResetSelectionData(users=permitted, denied=denied)
+    return PasswordResetSelectionData(
+        users=permitted,
+        denied=denied,
+        supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
+    )
 
 
 async def _write_passwords(
-    users_adapter: UsersPersistencePort, target_ids: list[str], password: str, actor_id: str
+    users_adapter: UsersPersistencePort,
+    target_ids: list[str],
+    password: str,
+    actor_id: str,
+    change_on_next_login: bool = False,
 ) -> list[PasswordResetOutcome]:
     semaphore = asyncio.Semaphore(PASSWORD_RESET_MAX_CONCURRENCY)
 
@@ -258,9 +271,11 @@ async def _write_passwords(
         async with semaphore:
             outcome, reason = PasswordResetOutcomeCode.success, None
             try:
-                await users_adapter.set_password(target_id, password)
+                await users_adapter.set_password(target_id, password, change_on_next_login)
             except ObjectNotFoundError:
                 outcome = PasswordResetOutcomeCode.not_found
+            except PasswordChangeOnNextLoginUnsupportedError:
+                outcome = PasswordResetOutcomeCode.next_login_change_unsupported
             except PasswordResetRejectedError as exc:
                 outcome, reason = PasswordResetOutcomeCode.rejected, exc.message
             logger.info(
@@ -282,6 +297,7 @@ async def set_passwords(
     target_ids: list[str],
     password: str,
     lang: str,
+    change_on_next_login: bool = False,
 ) -> PasswordResetResultData:
     deduped_ids = list(dict.fromkeys(target_ids))
     logger.debug(
@@ -333,7 +349,9 @@ async def set_passwords(
             target_id=tid, outcome=PasswordResetOutcomeCode.permission_denied
         )
 
-    for outcome in await _write_passwords(users_adapter, permitted_ids, password, actor_id):
+    for outcome in await _write_passwords(
+        users_adapter, permitted_ids, password, actor_id, change_on_next_login
+    ):
         outcomes[outcome.target_id] = outcome
 
     return PasswordResetResultData(
@@ -341,5 +359,6 @@ async def set_passwords(
         selection=PasswordResetSelectionData(
             users=[found[tid] for tid in permitted_ids],
             denied=len(denied_ids),
+            supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
         ),
     )
