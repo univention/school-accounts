@@ -35,10 +35,12 @@ user_management_bff/
   routes.py                 all UI routes (thin handlers), render() helper
   business_logic.py         domain rules + permission checks; no I/O of its own, calls only ports
   presentation.py           shapes business_logic results into template view models
-  ports.py                  abstract port interfaces (persistence, auth, permissions, session, ...)
+  ports.py                  abstract port interfaces (persistence, auth, permissions)
   adapter_registry.py       binds ports -> concrete adapter classes via env vars; port_dep() DI helper
   adapters/                 concrete adapters: Kelvin/File persistence, Guardian/File permissions,
-                             Keycloak cookie-session auth + dev/test auth doubles, in-memory sessions
+                             Keycloak cookie-session auth + dev/test auth doubles
+  session_cookie.py          encrypts/decrypts the self-contained session cookie (Fernet)
+  session_middleware.py      puts a refreshed session cookie onto the outgoing response
   models.py                 domain models (User, School, SessionRecord, Permission, UsersGetRequest, ...)
   constants.py               env-var-driven config: frontend prefix, auth paths, session-secret
                              loading, supported languages
@@ -152,11 +154,22 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   manually spawned background task/thread that outlives the request's async context.
 - **Sessions are three distinct concepts — don't conflate them**: Starlette's
   `SessionMiddleware` cookie holds only transient OAuth `state`/PKCE `code_verifier` during
-  login; the actual authenticated session lives behind `SessionStorePort`/
-  `InMemorySessionStoreAdapter` (`ports.py`, `adapters/`), keyed by an opaque ID in a separately
-  signed cookie; and `adapters/base.py`'s per-request `self.kelvin_session` is unrelated — just
-  the HTTP session used for a single Kelvin API call. A new adapter author searching for
-  "session" should be sure they're looking at the right one.
+  login; the authenticated session is the whole `SessionRecord`, encrypted into a second cookie
+  by `session_cookie.py` and stored nowhere on the server; and `adapters/base.py`'s per-request
+  `self.kelvin_session` is unrelated — just the HTTP session used for a single Kelvin API call. A
+  new adapter author searching for "session" should be sure they're looking at the right one.
+- **The authenticated session is stateless, deliberately.** There is no session store and no
+  `SessionStorePort` — every field travels in the cookie, so any gunicorn worker serves any
+  request and sessions survive a restart/app update as long as `session.secret` does. What that
+  costs is listed in `docs/.../configuration.rst`. Two traps when editing: bump
+  `session_cookie.COOKIE_VERSION` when `SessionRecord` changes shape, and write a refreshed
+  cookie through `request.state.pending_session` — `session_middleware.py` says why nothing
+  simpler works.
+- **`revoke.refresh.token: "false"` in the shipped UI client JSON is load-bearing.** Nothing
+  serializes the refresh, so two htmx requests that cross `expires_at` at the same time both
+  present the same refresh token; with Keycloak's rotation enabled one of them would be rejected
+  and force a spurious re-login. Turning rotation on needs refreshes coordinated across workers
+  first — the shared state this design does without.
 
 ## HTMX Request and Rendering Model
 
