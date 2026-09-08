@@ -112,7 +112,9 @@ async def auth_callback(request: Request, auth: AuthDep) -> Response:
     return await auth.complete_login(request)
 
 
-@router.api_route(AUTH_LOGOUT_PATH, methods=["GET", "POST"])
+# POST-only: `SameSite=lax` still sends the cookie on a top-level GET navigation, so a
+# cross-site link or a prefetcher could otherwise end the session.
+@router.post(AUTH_LOGOUT_PATH)
 async def logout(request: Request, auth: AuthDep) -> Response:
     """End the local session and redirect into Keycloak's RP-initiated logout."""
     return await auth.logout(request)

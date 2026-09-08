@@ -331,14 +331,21 @@ def test_callback_route(
     assert response.headers["location"].endswith("/done")
 
 
-@pytest.mark.parametrize("method", ["get", "post"])
 def test_logout_route(
-    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None], method: str
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
 ):
     override_auth(_StubAuth())
-    response = getattr(test_client, method)(f"{FRONTEND_PREFIX}/auth/logout", follow_redirects=False)
+    response = test_client.post(f"{FRONTEND_PREFIX}/auth/logout", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == "https://kc/logout"
+
+
+def test_logout_route_rejects_get(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    override_auth(_StubAuth())
+    response = test_client.get(f"{FRONTEND_PREFIX}/auth/logout", follow_redirects=False)
+    assert response.status_code == 405
 
 
 def test_protected_route_redirects_when_unauthenticated(
