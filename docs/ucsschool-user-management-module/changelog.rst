@@ -15,6 +15,8 @@ This section lists the changes to the User Management Module.
 ==================
 
 * Logging out now requires a ``POST`` to ``/auth/logout``; a ``GET`` is rejected.
+* The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
+  ignored if still set.
 * Add work groups as a new attribute to the list view.
 * Add school classes and work groups as filter options to the list view.
 * The capability ``teacher-set-password-students-in-same-class`` has been renamed to ``teacher-write_attribute-students-in-same-class``.

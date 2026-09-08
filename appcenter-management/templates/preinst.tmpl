@@ -22,8 +22,8 @@ mkdir -p $CONF_DIR
 # without needing to be wired in here by name.
 /%POLICIES%/
 
-# Secret that signs the authenticated session cookie and the transient
-# OAuth-state cookie.
+# Keys the encrypted session cookie and signs the OAuth-state cookie. Reusing
+# an existing file is what keeps sessions valid across an app update.
 SESSION_SECRET_FILE="$CONF_DIR/session.secret"
 if [ -s "$SESSION_SECRET_FILE" ]; then
 	echo "Using existing session secret in $SESSION_SECRET_FILE"
