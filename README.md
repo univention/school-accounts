@@ -419,6 +419,10 @@ cd appcenter-management
 - `school_admin` is not properly supported by Kelvin
 - Kelvin is currently not set up support multiple roles at different schools and will therefore produce false negatives when testing
 - `FileAdapters` are not behaving identical to Kelvin (this is wanted)
+- a session lives entirely in an encrypted cookie, which buys statelessness at three costs: an
+  individual session cannot be revoked before it expires, a session is valid only on the UCS system
+  that issued it (each host generates its own `session.secret`), and replacing that secret is the
+  only way to end every session at once
 
 ### Issues
 

@@ -27,6 +27,45 @@ User visibility in the list view can only be changed implicitly:
 The user of the |UASUMM| can see other users in the list view for which Cerbos
 has granted at least one permission.
 
+Sessions
+========
+
+After an interactive login, the |UASUMM| keeps the session entirely in an
+encrypted browser cookie. No session data is stored on the server, so every
+worker process of the app can serve any request, and a session survives both a
+restart of the app and an app update.
+
+The cookie is encrypted, not only signed, because it carries the tokens the app
+needs to renew the login against Keycloak without prompting the user again.
+The key is derived from a secret that the app generates once per host during
+installation, in
+:file:`/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret`.
+An update reuses an existing file and therefore keeps existing sessions valid.
+
+A session lasts at most eight hours. Renewing the tokens extends the login
+within that window but never beyond it, so after eight hours users log in again.
+
+This model has three limitations that administrators should know about:
+
+No revocation before expiry
+   The app cannot invalidate an individual session. A copy of the cookie keeps
+   working for the rest of the eight hours. Logging out shortens that: the copy
+   stops working once the app next renews the login against Keycloak, which
+   happens within the lifetime of an access token.
+
+One login per UCS system
+   Each host generates its own secret, so a session established on the
+   :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` is not valid on a
+   :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`, or the other way
+   round. Users log in once per system they use.
+
+Replacing the secret is the only way to end all sessions at once
+   Writing a new secret into the :file:`session.secret` file and restarting the
+   app ends every session on that host at once, for example with
+   :command:`openssl rand -hex 32 > session.secret`. Do not delete the file:
+   the app only generates it during installation and refuses to start without
+   it.
+
 App Settings
 ============
 

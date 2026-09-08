@@ -2,6 +2,10 @@
 <h2>v0.2.0 (XXXX-XX-XX)</h2>
 <ul>
     <li>The app requires the Guardian on the same system, and the Kelvin REST API and Keycloak in the domain.</li>
+    <li>Sessions are now kept in an encrypted browser cookie instead of in the memory of a single
+        process, so they survive a restart of the app and an app update.</li>
+    <li>A session now ends at the latest eight hours after the login, even if it is used
+        continuously.</li>
 </ul>
 
 <h2>v0.1.1 (2024-04-29)</h2>

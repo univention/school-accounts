@@ -14,6 +14,9 @@ This section lists the changes to the User Management Module.
 0.2.0 (XXXX-XX-XX)
 ==================
 
+* Sessions are now kept in an encrypted browser cookie instead of in the memory of a single
+  process, so they survive a restart of the app and an app update.
+* A session now ends at the latest eight hours after the login, even if it is used continuously.
 * Logging out now requires a ``POST`` to ``/auth/logout``; a ``GET`` is rejected.
 * The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
   ignored if still set.
