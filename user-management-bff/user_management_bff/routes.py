@@ -78,7 +78,9 @@ PermissionsAdapterDep = Annotated[PermissionsPort, Depends(permissions)]
 
 async def current_actor(request: Request, auth: AuthDep) -> str:
     """Resolve the authenticated actor id, or raise ``NotAuthenticatedError``."""
-    return await auth.get_authenticated_id(request)
+    actor = await auth.get_authenticated_id(request)
+    request.state.actor_name = await auth.get_display_name(request) or actor
+    return actor
 
 
 ActorDep = Annotated[str, Depends(current_actor)]
@@ -92,6 +94,7 @@ def render(request: Request, name: str, **context: object) -> HTMLResponse:
     """
     lang = get_lang(request)
     context.setdefault("lang", lang)
+    context.setdefault("actor_name", getattr(request.state, "actor_name", ""))
     context["_"] = partial(_, lang=lang)
     return templates.TemplateResponse(request, name, context)
 

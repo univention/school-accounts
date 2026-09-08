@@ -18,6 +18,7 @@ This section lists the changes to the User Management Module.
   process, so they survive a restart of the app and an app update.
 * A session now ends at the latest eight hours after the login, even if it is used continuously.
 * Logging out now requires a ``POST`` to ``/auth/logout``; a ``GET`` is rejected.
+* The page header shows the logged in user and a button that ends the session.
 * The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
   ignored if still set.
 * Add work groups as a new attribute to the list view.

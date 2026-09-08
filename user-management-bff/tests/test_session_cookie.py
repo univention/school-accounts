@@ -25,6 +25,7 @@ def _record(**overrides: object) -> SessionRecord:
     now = datetime.now(timezone.utc)
     base = SessionRecord(
         actor_id="mina.teacher",
+        display_name="Mina Teacher",
         sub="sub-1",
         kc_sid="kc-1",
         created_at=now,

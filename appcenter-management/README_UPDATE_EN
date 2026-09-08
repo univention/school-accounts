@@ -6,6 +6,7 @@
         process, so they survive a restart of the app and an app update.</li>
     <li>A session now ends at the latest eight hours after the login, even if it is used
         continuously.</li>
+    <li>The page header shows the logged in user and a button that ends the session.</li>
 </ul>
 
 <h2>v0.1.1 (2024-04-29)</h2>

@@ -55,6 +55,7 @@ class SessionRecord(BaseModel):
     """
 
     actor_id: str
+    display_name: str
     sub: str
     kc_sid: str | None = None
     created_at: datetime.datetime

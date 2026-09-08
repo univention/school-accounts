@@ -6,10 +6,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 {% macro page_header() %}
 <u-hstack justify="between" align="center">
   <u-page-header>{{ _("User Management") }}</u-page-header>
-  <u-theme-toggle
-    label-light="{{ _('Switch to light theme') }}"
-    label-dark="{{ _('Switch to dark theme') }}"
-  ></u-theme-toggle>
+  <u-hstack gap="sm" align="center">
+    {% if actor_name %}
+    {# Not hx-post: the 303 goes to Keycloak's cross-origin end_session_endpoint. #}
+    <form method="post" action="{{ frontend_prefix }}/auth/logout">
+      <u-button type="submit" variant="ghost" size="sm">
+        {{ actor_name }} ({{ _("logout") }})
+      </u-button>
+    </form>
+    {% endif %}
+    <u-theme-toggle
+      label-light="{{ _('Switch to light theme') }}"
+      label-dark="{{ _('Switch to dark theme') }}"
+    ></u-theme-toggle>
+  </u-hstack>
 </u-hstack>
 {% endmacro %}
 

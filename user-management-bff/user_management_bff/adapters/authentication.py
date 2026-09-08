@@ -71,6 +71,10 @@ class CookieSessionAuthenticationAdapterSettings:
         default="preferred_username",
         metadata={SETTINGS_NAME_METADATA: "cookie_session_authentication_adapter.identifier_claim"},
     )
+    display_name_claim: str = field(
+        default="name",
+        metadata={SETTINGS_NAME_METADATA: "cookie_session_authentication_adapter.display_name_claim"},
+    )
     scope: str = field(
         default="openid profile email",
         metadata={SETTINGS_NAME_METADATA: "cookie_session_authentication_adapter.scope"},
@@ -237,6 +241,7 @@ class CookieSessionAuthenticationAdapter(
             raise RuntimeError(error_msg)
         record = SessionRecord(
             actor_id=actor_id,
+            display_name=cast(str, claims.get(self.settings.display_name_claim) or actor_id),
             sub=claims.get("sub", ""),
             kc_sid=claims.get("sid"),
             created_at=self._now(),
@@ -364,6 +369,11 @@ class CookieSessionAuthenticationAdapter(
                 raise
             self._set_pending_session(request, record)
         return record.actor_id
+
+    @override
+    async def get_display_name(self, request: Request) -> str:
+        record = self._read_session(request)
+        return record.display_name if record is not None else ""
 
     @override
     async def apply_pending_session_cookie(self, request: Request, response: Response) -> None:

@@ -137,6 +137,7 @@ def session_cookie() -> dict[str, str]:
     now = datetime.now(timezone.utc)
     record = SessionRecord(
         actor_id="mina.teacher",
+        display_name="Mina Teacher",
         sub="sub-multiworker",
         kc_sid="kc-multiworker",
         created_at=now,

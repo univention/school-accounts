@@ -139,6 +139,11 @@ class FastAPIAuthenticationPort(ABC):
         return True
 
     # Async is required by the authentication port contract.
+    async def get_display_name(self, _request: Request) -> str:  # NOSONAR(S7503)
+        """Return a human-readable name for the user, or "" if the adapter knows none."""
+        return ""
+
+    # Async is required by the authentication port contract.
     async def apply_pending_session_cookie(  # NOSONAR(S7503)
         self,
         _request: Request,

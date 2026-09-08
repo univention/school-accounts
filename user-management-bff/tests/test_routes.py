@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
+from starlette.types import Scope
 
 from user_management_bff.adapters.authentication import NeverAuthenticatedAdapter
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
@@ -19,7 +20,7 @@ from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
 from user_management_bff.errors import ObjectNotFoundError, PasswordResetRejectedError
 from user_management_bff.main import app
 from user_management_bff.ports import FastAPIAuthenticationPort
-from user_management_bff.routes import auth_port
+from user_management_bff.routes import auth_port, render
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -50,6 +51,12 @@ class _StubAuth(FastAPIAuthenticationPort):
     @override
     async def logout(self, request: Request) -> Response:
         return RedirectResponse("https://kc/logout", status_code=303)
+
+
+class _NamedAuth(_StubAuth):
+    @override
+    async def get_display_name(self, request: Request) -> str:
+        return "Mina Teacher"
 
 
 class _CsrfRejectAuth(FastAPIAuthenticationPort):
@@ -126,7 +133,7 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert 'align="stretch"' in body and 'basis="sm"' in body
     # Changing either list searches immediately; there is no submit button.
     assert 'hx-trigger="u-change delay:100ms"' in body
-    assert 'type="submit"' not in body
+    assert 'type="submit"' not in body[body.index("<u-form") : body.index("</u-form>")]
     # The combined list carries an explicit reset option, preselected while no
     # class or work group is chosen.
     assert 'value="all" selected' in body
@@ -346,6 +353,25 @@ def test_logout_route_rejects_get(
     override_auth(_StubAuth())
     response = test_client.get(f"{FRONTEND_PREFIX}/auth/logout", follow_redirects=False)
     assert response.status_code == 405
+
+
+def test_header_logs_out_under_the_display_name(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    override_auth(_NamedAuth())
+    body = test_client.get(f"{FRONTEND_PREFIX}/users").text
+    assert f'<form method="post" action="{FRONTEND_PREFIX}/auth/logout">' in body
+    assert "Mina Teacher (logout)" in body
+
+
+def test_header_falls_back_to_the_actor_id(test_client: TestClient):
+    assert "dev (logout)" in test_client.get(f"{FRONTEND_PREFIX}/users").text
+
+
+def test_a_page_rendered_without_an_actor_has_no_logout_button():
+    scope: Scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "query_string": b""}
+    body = bytes(render(Request(scope), "pages/message.html", message="Nope").body)
+    assert b"auth/logout" not in body
 
 
 def test_protected_route_redirects_when_unauthenticated(

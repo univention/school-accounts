@@ -41,6 +41,7 @@ def _past() -> datetime:
 def _record(**overrides: object) -> SessionRecord:
     base = SessionRecord(
         actor_id="mina.teacher",
+        display_name="Mina Teacher",
         sub="sub-1",
         kc_sid="kc-1",
         created_at=_now(),
@@ -278,7 +279,12 @@ class TestCookieSessionAuthenticationAdapter:
     ):
         client.authorize_access_token = mocker.AsyncMock(
             return_value={
-                "userinfo": {"preferred_username": "mina.teacher", "sub": "SUB", "sid": "KCSID"},
+                "userinfo": {
+                    "preferred_username": "mina.teacher",
+                    "name": "Mina Teacher",
+                    "sub": "SUB",
+                    "sid": "KCSID",
+                },
                 "expires_at": int(_future().timestamp()),
                 "refresh_token": "RT",
                 "id_token": "IDT",
@@ -292,12 +298,32 @@ class TestCookieSessionAuthenticationAdapter:
         record = wired._cookie_codec.decode(raw)
         assert record is not None
         assert record.actor_id == "mina.teacher"
+        assert record.display_name == "Mina Teacher"
         assert record.sub == "SUB"
         assert record.kc_sid == "KCSID"
         assert record.refresh_token == "RT"
         assert record.id_token == "IDT"
         assert record.csrf_token
         assert record.created_at <= _now()
+
+    @pytest.mark.asyncio
+    async def test_complete_login_without_the_display_name_claim_shows_the_actor_id(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
+    ):
+        client.authorize_access_token = mocker.AsyncMock(
+            return_value={
+                "userinfo": {"preferred_username": "mina.teacher", "sub": "SUB"},
+                "expires_at": int(_future().timestamp()),
+            }
+        )
+        response = await wired.complete_login(self._request(mocker))
+        raw = _set_cookie_header(response)[wired.settings.cookie_name].value
+        record = wired._cookie_codec.decode(raw)
+        assert record is not None
+        assert record.display_name == "mina.teacher"
 
     @pytest.mark.asyncio
     async def test_complete_login_oauth_error(
@@ -509,6 +535,21 @@ class TestCookieSessionAuthenticationAdapter:
         _stub_refresh(mocker, client, {"expires_in": 3600, "id_token": "IDT2"}, claims)
         with pytest.raises(NotAuthenticatedError):
             await wired._refresh(_record(expires_at=_past()))
+
+    # --- display name ---------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_get_display_name_from_the_session(
+        self, wired: CookieSessionAuthenticationAdapter, mocker: MockerFixture
+    ):
+        request = self._request(mocker, cookies=self._cookie(wired, _record()))
+        assert await wired.get_display_name(request) == "Mina Teacher"
+
+    @pytest.mark.asyncio
+    async def test_get_display_name_without_a_session(
+        self, wired: CookieSessionAuthenticationAdapter, mocker: MockerFixture
+    ):
+        assert await wired.get_display_name(self._request(mocker)) == ""
 
     # --- handing the cookie to the response ---------------------------------------
 

@@ -185,11 +185,15 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 - `HX-Request` **is** checked, but only in the global error/redirect handling (`main.py:_html_error`,
   `not_authenticated_exception_handler`) and nowhere else — keep it that way; don't sprinkle
   `request.headers.get("HX-Request")` checks into individual route handlers.
-- **No mutating routes currently exist** — the app is read-only (search/list only, first-release
-  scope). When a mutating endpoint is reintroduced, a success response should return
+- **The UI is read-only apart from the password reset and the header's logout** (first-release
+  scope). When a mutating endpoint is added, a success response should return
   `Response(status_code=200, headers={"HX-Redirect": ...})` (which htmx follows client-side) rather
   than JSON or a raw redirect status, consistent with how `NotAuthenticatedError` already uses
   `HX-Redirect` below.
+- **The logout button is a plain `<form method="post">`, not htmx** (`macros/layout.html`). The
+  route answers 303 into Keycloak's cross-origin `end_session_endpoint`, which htmx cannot follow;
+  it needs a real browser navigation. `u-button type="submit"` submits it because the element is
+  form-associated.
 - **Auth failures** also render as HTML: `NotAuthenticatedError` → `HX-Redirect` to `/auth/login` for
   htmx requests, a normal 303 otherwise; any `PermissionsError` → a toast fragment retargeted at
   `#toast-region` (`HX-Retarget`/`HX-Reswap`) for htmx requests, a full `pages/message.html`
@@ -225,12 +229,14 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 
 ## Forms, Validation, and Mutations
 
-There are currently **no mutating routes** in the app — it is read-only (search/list only, this is
-the first-release scope; the previous user detail/edit view, its CSRF check, and its form-handling
-code were removed in the `drop unused code` refactor). Permission errors from `business_logic` are
-still raised as `PermissionsError` and turned into a 403 toast by the global handler — don't
-catch/render these manually in route handlers — but there is no form submission path to describe
-beyond that today.
+The UI is read-only apart from the password reset and the header's logout form (this is the
+first-release scope; the previous user detail/edit view and its form handling were removed in the
+`drop unused code` refactor). Permission errors from `business_logic` are still raised as
+`PermissionsError` and turned into a 403 toast by the global handler — don't catch/render these
+manually in route handlers.
+
+Logout needs no CSRF token: the route is POST-only and the session cookie is `SameSite=lax`, which
+already keeps a cross-site POST from carrying it.
 
 ## JavaScript and Asset Boundaries
 
