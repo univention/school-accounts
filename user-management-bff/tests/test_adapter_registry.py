@@ -8,16 +8,16 @@ from port_loader import (
 )
 
 from user_management_bff.adapter_registry import AdapterSelection, configure_registry, port_dep
-from user_management_bff.adapters.session_store import InMemorySessionStoreAdapter
+from user_management_bff.adapters.authentication import AlwaysAuthenticatedAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
-from user_management_bff.ports import SessionStorePort, UsersPersistencePort
+from user_management_bff.ports import FastAPIAuthenticationPort, UsersPersistencePort
 
 
 class TestAdapterSelection:
     def test_correct_test_selection(self):
         selection = AdapterSelection()
         assert selection.users_persistence == FileUsersPersistenceAdapter
-        assert selection.session_store == InMemorySessionStoreAdapter
+        assert selection.authentication == AlwaysAuthenticatedAdapter
 
 
 @pytest.mark.parametrize(
@@ -25,7 +25,7 @@ class TestAdapterSelection:
     [
         (AsyncAdapterSettingsProvider, EnvSettingsProvider),
         (UsersPersistencePort, FileUsersPersistenceAdapter),
-        (SessionStorePort, InMemorySessionStoreAdapter),
+        (FastAPIAuthenticationPort, AlwaysAuthenticatedAdapter),
     ],
 )
 @pytest.mark.asyncio

@@ -9,7 +9,7 @@ from fastapi import Request
 from starlette.responses import RedirectResponse, Response
 
 from .constants import FRONTEND_PREFIX
-from .models import Permission, School, SchoolClass, SessionRecord, Target, User, WorkGroup
+from .models import Permission, School, SchoolClass, Target, User, WorkGroup
 
 
 class UsersPersistencePort(ABC):
@@ -138,38 +138,18 @@ class FastAPIAuthenticationPort(ABC):
         """
         return True
 
+    # Async is required by the authentication port contract.
+    async def apply_pending_session_cookie(  # NOSONAR(S7503)
+        self,
+        _request: Request,
+        _response: Response,
+    ) -> None:
+        """Write back a session cookie the request refreshed, if any.
 
-class SessionStorePort(ABC):
-    """Storage for server-side authenticated sessions.
-
-    Sessions are keyed by an opaque session id (returned by :meth:`create`).
-    The ``kc_sid``/``sub`` lookups exist so sessions can be invalidated by the
-    identity provider (e.g. OIDC back-channel logout) without the cookie.
-    """
-
-    @abstractmethod
-    async def create(self, record: SessionRecord) -> str:  # pragma: no cover
-        """Persist a new session and return its opaque session id."""
-
-    @abstractmethod
-    async def get(self, session_id: str) -> SessionRecord | None:  # pragma: no cover
-        """Return the session for ``session_id``, or ``None`` if unknown."""
-
-    @abstractmethod
-    async def update(self, session_id: str, record: SessionRecord) -> None:  # pragma: no cover
-        """Replace the session record for an existing ``session_id``."""
-
-    @abstractmethod
-    async def delete(self, session_id: str) -> None:  # pragma: no cover
-        """Remove the session for ``session_id`` (no-op if unknown)."""
-
-    @abstractmethod
-    async def delete_by_kc_sid(self, kc_sid: str) -> None:  # pragma: no cover
-        """Remove every session belonging to the given Keycloak session id."""
-
-    @abstractmethod
-    async def delete_by_sub(self, sub: str) -> None:  # pragma: no cover
-        """Remove every session belonging to the given subject."""
+        Called by :class:`~user_management_bff.session_middleware.SessionCookieMiddleware`
+        once a response exists. Adapters that keep no cookie do nothing.
+        """
+        return None
 
 
 class PermissionsPort(ABC):

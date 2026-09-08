@@ -43,17 +43,21 @@ class User(BaseModel):
 
 
 class SessionRecord(BaseModel):
-    """A server-side authenticated session.
+    """An authenticated session, as carried by the encrypted session cookie.
 
     Holds only what the UI needs: the actor identifier used for permission
     checks plus the data required for logout and silent token refresh. The
     user's access token is deliberately not stored - downstream calls use the
     service account and identify the actor by ``actor_id``.
+
+    ``created_at`` bounds the session absolutely: refreshing moves
+    ``expires_at``, never this.
     """
 
     actor_id: str
     sub: str
     kc_sid: str | None = None
+    created_at: datetime.datetime
     expires_at: datetime.datetime
     refresh_token: str | None = None
     id_token: str | None = None

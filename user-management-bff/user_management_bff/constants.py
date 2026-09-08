@@ -58,6 +58,10 @@ SESSION_COOKIE_SECURE = os.environ.get("USER_MANAGEMENT__SESSION_COOKIE_SECURE",
     "yes",
 )
 
+# Scoped to the app's own routes so the session cookie - which carries the refresh and ID
+# tokens - is not sent to the other applications this host serves.
+SESSION_COOKIE_PATH = FRONTEND_PREFIX or "/"
+
 LANGUAGES = ["en", "de"]
 
 # English is the msgid language, so this default resolves without a catalog.

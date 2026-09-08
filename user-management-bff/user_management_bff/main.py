@@ -20,6 +20,7 @@ from .constants import (
     AUTH_LOGIN_PATH,
     CORS_ALLOWED_ORIGINS,
     FRONTEND_PREFIX,
+    SESSION_COOKIE_PATH,
     SESSION_COOKIE_SECURE,
     SESSION_MIDDLEWARE_SECRET,
     STATIC_DIR,
@@ -34,6 +35,7 @@ from .errors import (
 from .lang import _, get_lang
 from .logging import configure_logger
 from .routes import render, router
+from .session_middleware import SessionCookieMiddleware
 
 
 @asynccontextmanager
@@ -67,6 +69,10 @@ app = FastAPI(
 CORRELATION_ID_HEADER_NAME = "X-Request-ID"
 
 
+# Added first so it runs inside the correlation-id middleware below.
+app.add_middleware(SessionCookieMiddleware)
+
+
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next: RequestResponseEndpoint):
     """Add correlation id to request object and contextualize logger
@@ -98,13 +104,14 @@ if CORS_ALLOWED_ORIGINS:
 
 
 # Holds the transient OAuth state (`state` + PKCE `code_verifier`) between the
-# login redirect and the callback. The authenticated session itself lives
-# server-side behind SessionStorePort, keyed by a separate signed cookie.
+# login redirect and the callback. The authenticated session itself lives in a
+# separate, encrypted cookie owned by the authentication adapter.
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_MIDDLEWARE_SECRET,
     same_site="lax",
     https_only=SESSION_COOKIE_SECURE,
+    path=SESSION_COOKIE_PATH,
 )
 
 

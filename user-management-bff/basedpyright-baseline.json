@@ -444,80 +444,12 @@
                 }
             }
         ],
-        "./tests/adapters/test_authentication.py": [
-            {
-                "code": "reportUnknownArgumentType",
-                "range": {
-                    "startColumn": 46,
-                    "endColumn": 87,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 25,
-                    "endColumn": 38,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 25,
-                    "endColumn": 33,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 25,
-                    "endColumn": 35,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 72,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 72,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 51,
-                    "endColumn": 78,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./tests/adapters/test_schools.py": [
             {
                 "code": "reportUnknownMemberType",
                 "range": {
                     "startColumn": 15,
                     "endColumn": 28,
-                    "lineCount": 1
-                }
-            }
-        ],
-        "./tests/adapters/test_session_store.py": [
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 53,
                     "lineCount": 1
                 }
             }
@@ -1729,6 +1661,62 @@
                 "code": "reportUnknownMemberType",
                 "range": {
                     "startColumn": 15,
+                    "endColumn": 31,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 11,
+                    "endColumn": 31,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 11,
+                    "endColumn": 27,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownVariableType",
+                "range": {
+                    "startColumn": 4,
+                    "endColumn": 12,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 15,
+                    "endColumn": 30,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 11,
+                    "endColumn": 31,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownVariableType",
+                "range": {
+                    "startColumn": 4,
+                    "endColumn": 12,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 15,
                     "endColumn": 30,
                     "lineCount": 1
                 }
@@ -2404,14 +2392,6 @@
                 }
             },
             {
-                "code": "reportUnknownVariableType",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 55,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportExplicitAny",
                 "range": {
                     "startColumn": 45,
@@ -2440,14 +2420,6 @@
                 "range": {
                     "startColumn": 47,
                     "endColumn": 57,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 19,
-                    "endColumn": 46,
                     "lineCount": 1
                 }
             },
@@ -2504,46 +2476,6 @@
                 "range": {
                     "startColumn": 35,
                     "endColumn": 77,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 16,
-                    "endColumn": 42,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 8,
-                    "endColumn": 13,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 49,
-                    "endColumn": 54,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 33,
-                    "endColumn": 42,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 28,
-                    "endColumn": 37,
                     "lineCount": 1
                 }
             },
