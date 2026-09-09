@@ -7,26 +7,40 @@ from dataclasses import dataclass, field
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
+from typing_extensions import override
+from ucsschool.kelvin.client import WorkGroup as KelvinWorkGroup
 from ucsschool.kelvin.client import WorkGroupResource
 
 from ..models import WorkGroup
 from ..ports import WorkGroupsPersistencePort
-from .base import KelvinPersistenceBaseAdapter
+from .base import KelvinPersistenceBaseAdapter, fetch_each_by_name
 
 
 class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersistenceBaseAdapter):
+    @staticmethod
+    def _work_group(kelvin_work_group: KelvinWorkGroup, school: str) -> WorkGroup:
+        return WorkGroup(
+            id=kelvin_work_group.name,
+            display_name=kelvin_work_group.description or kelvin_work_group.name,
+            school=school,
+        )
+
+    @override
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         kelvin_work_groups = WorkGroupResource(session=self.kelvin_session).search(school=school)
-        work_groups = [
-            WorkGroup(
-                id=work_group.name,
-                display_name=work_group.description or work_group.name,
-                school=school,
-            )
-            async for work_group in kelvin_work_groups
-        ]
+        work_groups = [self._work_group(work_group, school) async for work_group in kelvin_work_groups]
         logger.debug("Fetched work groups from the Kelvin API.", school=school, count=len(work_groups))
         return work_groups
+
+    @override
+    async def get_work_groups_by_name(self, school: str, names: list[str]) -> list[WorkGroup]:
+        if not names:
+            return []
+        resource = WorkGroupResource(session=self.kelvin_session)
+        fetched = await fetch_each_by_name(
+            lambda name: resource.get(school=school, name=name), names, "work_group", school
+        )
+        return [self._work_group(work_group, school) for work_group in fetched]
 
 
 @dataclass
@@ -54,10 +68,20 @@ class FileWorkGroupsPersistenceAdapter(
         with open(settings.source, "r") as fd:
             self._data = json.load(fd)
 
+    @override
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         return [
             WorkGroup(id=work_group, display_name=work_group, school=school)
             # A school with no entry has no groups; the Kelvin adapter returns an
             # empty list for that, so this one must not raise KeyError instead.
             for work_group in self._data.get(school, [])
+        ]
+
+    @override
+    async def get_work_groups_by_name(self, school: str, names: list[str]) -> list[WorkGroup]:
+        known = set(self._data.get(school, []))
+        return [
+            WorkGroup(id=work_group, display_name=work_group, school=school)
+            for work_group in names
+            if work_group in known
         ]

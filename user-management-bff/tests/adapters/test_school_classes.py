@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.school_classes
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -80,6 +81,21 @@ class TestKelvinSchoolClassesPersistenceAdapter:
             SchoolClass(id=school_data["id"], display_name=school_data["display_name"], school="school1")
             for school_data in input_data
         ]
+
+    @pytest.mark.asyncio
+    async def test_get_school_classes_by_name_without_names_never_calls_kelvin(
+        self,
+        adapter: KelvinSchoolClassesPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        """No names, no request - not even a token: the port promises no I/O here."""
+        resource = mocker.MagicMock()
+        monkeypatch.setattr(user_management_bff.adapters.school_classes, "SchoolClassResource", resource)
+        await adapter.configure(dummy_settings)
+        assert await adapter.get_school_classes_by_name("school1", []) == []
+        resource.assert_not_called()
 
 
 class TestFileSchoolClassesPersistenceAdapter:
@@ -158,6 +174,13 @@ def school_classes_adapter(
                 for name in CONTRACT_SCHOOL_CLASSES.get(school, []):
                     yield make_kelvin_group_from_data(name, None)
 
+            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
+                # The real service answers a single-group URL with 404, which the
+                # client raises as NoObject.
+                if name not in CONTRACT_SCHOOL_CLASSES.get(school, []):
+                    raise NoObject(f"No group {name!r} in {school!r}.", status=404)
+                return make_kelvin_group_from_data(name, None)
+
         patch_kelvin_resource(
             user_management_bff.adapters.school_classes, "SchoolClassResource", MockResource()
         )
@@ -186,5 +209,33 @@ async def test_get_school_classes_contract(
     result = await adapter.get_school_classes(school)
     assert [group.id for group in result] == expected_ids
     # No description upstream, so the display name falls back to the name.
+    assert all(group.display_name == group.id for group in result)
+    assert all(group.school == school for group in result)
+
+
+@pytest.mark.parametrize(
+    "school,names,expected_ids",
+    [
+        pytest.param("school1", ["1a", "2b"], ["1a", "2b"], id="returns-the-named-groups"),
+        pytest.param("school1", ["2b"], ["2b"], id="returns-only-what-was-asked-for"),
+        pytest.param("school1", ["2b", "1a"], ["2b", "1a"], id="keeps-the-order-asked-for"),
+        # A group deleted between reading the user that references it and this
+        # lookup must not take the whole list down with it.
+        pytest.param("school1", ["1a", "GONE"], ["1a"], id="skips-an-unknown-name"),
+        pytest.param("school1", [], [], id="no-names-returns-nothing"),
+        pytest.param("school2", ["1a"], [], id="school-with-none-returns-nothing"),
+        pytest.param("NON_EXISTENT", ["1a"], [], id="unknown-school-returns-nothing"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_get_school_classes_by_name_contract(
+    school_classes_adapter: Callable[[], Coroutine[Any, Any, SchoolClassesPersistencePort]],
+    school: str,
+    names: list[str],
+    expected_ids: list[str],
+):
+    adapter = await school_classes_adapter()
+    result = await adapter.get_school_classes_by_name(school, names)
+    assert [group.id for group in result] == expected_ids
     assert all(group.display_name == group.id for group in result)
     assert all(group.school == school for group in result)

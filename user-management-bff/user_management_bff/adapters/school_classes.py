@@ -8,28 +8,43 @@ from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
+from ucsschool.kelvin.client import SchoolClass as KelvinSchoolClass
 from ucsschool.kelvin.client import SchoolClassResource
 
 from ..models import SchoolClass
 from ..ports import SchoolClassesPersistencePort
-from .base import KelvinPersistenceBaseAdapter
+from .base import KelvinPersistenceBaseAdapter, fetch_each_by_name
 
 
 class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
+    @staticmethod
+    def _school_class(kelvin_school_class: KelvinSchoolClass, school: str) -> SchoolClass:
+        return SchoolClass(
+            id=kelvin_school_class.name,
+            display_name=kelvin_school_class.description or kelvin_school_class.name,
+            school=school,
+        )
+
+    @override
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         kelvin_school_classes = SchoolClassResource(session=self.kelvin_session).search(school=school)
         school_classes = [
-            SchoolClass(
-                id=school_class.name,
-                display_name=school_class.description or school_class.name,
-                school=school,
-            )
-            async for school_class in kelvin_school_classes
+            self._school_class(school_class, school) async for school_class in kelvin_school_classes
         ]
         logger.debug(
             "Fetched school classes from the Kelvin API.", school=school, count=len(school_classes)
         )
         return school_classes
+
+    @override
+    async def get_school_classes_by_name(self, school: str, names: list[str]) -> list[SchoolClass]:
+        if not names:
+            return []
+        resource = SchoolClassResource(session=self.kelvin_session)
+        fetched = await fetch_each_by_name(
+            lambda name: resource.get(school=school, name=name), names, "school_class", school
+        )
+        return [self._school_class(school_class, school) for school_class in fetched]
 
 
 @dataclass
@@ -69,4 +84,13 @@ class FileSchoolClassesPersistenceAdapter(
             # A school with no entry has no groups; the Kelvin adapter returns an
             # empty list for that, so this one must not raise KeyError instead.
             for school_class in self._data.get(school, [])
+        ]
+
+    @override
+    async def get_school_classes_by_name(self, school: str, names: list[str]) -> list[SchoolClass]:
+        known = set(self._data.get(school, []))
+        return [
+            SchoolClass(id=school_class, display_name=school_class, school=school)
+            for school_class in names
+            if school_class in known
         ]

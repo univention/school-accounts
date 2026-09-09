@@ -81,13 +81,23 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 - **routes.py**: thin FastAPI handlers only. Auth via `Depends(current_actor)`, data access via
   `Depends(port_dep(SomePort))`. No permission logic of its own lives here. There are currently no
   mutating routes at all (see § Forms, Validation, and Mutations).
+- **Group lookups come in two sizes, and neither is optional**: `get_school_classes(school)` /
+  `get_work_groups(school)` return the whole school and back the filter sidebar, which has to list
+  everything; `get_*_by_name(school, names)` return exactly the named groups and back the results
+  table, which only ever renders the groups its listed users are in. Use the by-name form for
+  anything driven by user data — the whole-school lookup ships every group of the school with its
+  full membership, so a big school makes it large and slow to answer a question about a dozen
+  groups. Both forms are per-port abstract methods with a contract test matrix over every
+  implementation (`tests/adapters/test_school_classes.py`, `test_work_groups.py`); an unknown name
+  is skipped, and an empty `names` costs no I/O at all.
 - **Per-request read cache**: the schools / school-classes / work-groups deps are wrapped in the
   `RequestCached*Adapter` decorators from `adapters/request_cache.py` (see the `cached_*_persistence`
-  dependencies in `routes.py`). A handler asks for the same school more than once — the filter
-  sidebar and the table both need the group display names — and FastAPI resolves a dependency once
-  per request, which is what scopes the cache. Keep new read-only lookups going through those deps
-  rather than the raw `port_dep(...)`, and don't widen the cache beyond one request: there is no
-  invalidation channel for a group renamed in Kelvin.
+  dependencies in `routes.py`). A handler asks for the same school more than once — the sidebar and
+  the table overlap — and FastAPI resolves a dependency once per request, which is what scopes the
+  cache. The group caches are keyed per group, and the whole-school read fills them, so the table's
+  by-name lookup for the school the sidebar already loaded costs nothing. Keep new read-only lookups
+  going through those deps rather than the raw `port_dep(...)`, and don't widen the cache beyond one
+  request: there is no invalidation channel for a group renamed in Kelvin.
 - **business_logic.py**: the *only* place permission checks and domain rules live. Never touches
   `Request`/`Response`/Jinja; only calls ports. Read paths must filter out anything the actor lacks
   permission on (existing pattern in `get_school_classes`, `get_work_groups`, which keep only items

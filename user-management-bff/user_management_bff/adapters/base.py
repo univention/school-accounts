@@ -1,20 +1,22 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+import asyncio
 import os
 from abc import ABC
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Type
+from typing import Type, TypeVar
 
 import httpx
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
-from ucsschool.kelvin.client import ServerError, Session
+from ucsschool.kelvin.client import NoObject, ServerError, Session
 
+from ..constants import GROUP_LOOKUP_MAX_CONCURRENCY
 from ..errors import KelvinAPIUnavailableError
 
 # this app supports the Kelvin v2 API only, so the version is pinned here.
@@ -24,6 +26,35 @@ KELVIN_API_VERSION = "v2"
 # The client defaults to 10s, which a password write outruns: it runs the ucsschool
 # import framework, far slower than an attribute change.
 KELVIN_TIMEOUT_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TIMEOUT_SECONDS", "60"))
+
+_T = TypeVar("_T")
+
+
+async def fetch_each_by_name(
+    fetch_one: Callable[[str], Awaitable[_T]], names: list[str], kind: str, school: str
+) -> list[_T]:
+    """Fetch each name concurrently, dropping the ones that no longer exist.
+
+    Kelvin has no bulk lookup, so a set of specific groups is one request each.
+    The semaphore is this call's own: it keeps a single school's lookups from
+    becoming a burst, not the whole request's.
+    """
+    semaphore = asyncio.Semaphore(GROUP_LOOKUP_MAX_CONCURRENCY)
+
+    async def _fetch(name: str) -> _T | None:
+        async with semaphore:
+            try:
+                return await fetch_one(name)
+            except NoObject:
+                # Deleted between reading the user that references it and now.
+                # The port promises to skip it rather than fail the whole list.
+                logger.warning(
+                    "Ignoring a group that no longer exists.", kind=kind, school=school, name=name
+                )
+                return None
+
+    fetched = await asyncio.gather(*(_fetch(name) for name in names))
+    return [group for group in fetched if group is not None]
 
 
 @dataclass

@@ -11,6 +11,15 @@ from user_management_bff.adapters.request_cache import (
 )
 from user_management_bff.models import School, SchoolClass, WorkGroup
 
+SCHOOL_CLASSES = [
+    SchoolClass(id="1a", display_name="Class 1a", school="school1"),
+    SchoolClass(id="2b", display_name="Class 2b", school="school1"),
+]
+WORK_GROUPS = [
+    WorkGroup(id="w1a", display_name="Choir", school="school1"),
+    WorkGroup(id="w2b", display_name="Chess", school="school1"),
+]
+
 
 @pytest.mark.asyncio
 async def test_schools_are_fetched_once_per_name(mocker: MockerFixture):
@@ -30,7 +39,7 @@ async def test_schools_are_fetched_once_per_name(mocker: MockerFixture):
 @pytest.mark.asyncio
 async def test_school_classes_are_fetched_once_per_school(mocker: MockerFixture):
     inner = mocker.AsyncMock()
-    inner.get_school_classes.return_value = [SchoolClass(id="1a", display_name="1a", school="school1")]
+    inner.get_school_classes.return_value = SCHOOL_CLASSES
     adapter = RequestCachedSchoolClassesAdapter(inner)
 
     first = await adapter.get_school_classes("school1")
@@ -46,7 +55,7 @@ async def test_school_classes_are_fetched_once_per_school(mocker: MockerFixture)
 @pytest.mark.asyncio
 async def test_work_groups_are_fetched_once_per_school(mocker: MockerFixture):
     inner = mocker.AsyncMock()
-    inner.get_work_groups.return_value = [WorkGroup(id="w1a", display_name="w1a", school="school1")]
+    inner.get_work_groups.return_value = WORK_GROUPS
     adapter = RequestCachedWorkGroupsAdapter(inner)
 
     first = await adapter.get_work_groups("school1")
@@ -70,3 +79,73 @@ async def test_an_empty_result_is_cached_too(mocker: MockerFixture):
     assert await adapter.get_work_groups("school3") == []
 
     inner.get_work_groups.assert_awaited_once_with("school3")
+
+
+@pytest.mark.asyncio
+async def test_the_whole_school_read_answers_later_lookups_by_name(mocker: MockerFixture):
+    """The sidebar loads the selected school in full, so the table's names for that
+    school are already known and must not be fetched again."""
+    inner = mocker.AsyncMock()
+    inner.get_work_groups.return_value = WORK_GROUPS
+    adapter = RequestCachedWorkGroupsAdapter(inner)
+
+    await adapter.get_work_groups("school1")
+    assert [group.id for group in await adapter.get_work_groups_by_name("school1", ["w2b"])] == ["w2b"]
+
+    inner.get_work_groups_by_name.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_name_the_whole_school_does_not_have_is_not_looked_up(mocker: MockerFixture):
+    """Holding the full list already answers for a missing name: it does not exist."""
+    inner = mocker.AsyncMock()
+    inner.get_school_classes.return_value = SCHOOL_CLASSES
+    adapter = RequestCachedSchoolClassesAdapter(inner)
+
+    await adapter.get_school_classes("school1")
+    assert await adapter.get_school_classes_by_name("school1", ["GONE"]) == []
+
+    inner.get_school_classes_by_name.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_only_the_names_not_yet_known_are_fetched(mocker: MockerFixture):
+    def _fetch(school: str, names: list[str]) -> list[SchoolClass]:
+        return [SchoolClass(id=name, display_name=f"Class {name}", school=school) for name in names]
+
+    inner = mocker.AsyncMock()
+    inner.get_school_classes_by_name.side_effect = _fetch
+    adapter = RequestCachedSchoolClassesAdapter(inner)
+
+    await adapter.get_school_classes_by_name("school1", ["1a"])
+    result = await adapter.get_school_classes_by_name("school1", ["1a", "2b"])
+
+    # Both come back, in the order asked for, but only the new one was fetched.
+    assert [school_class.id for school_class in result] == ["1a", "2b"]
+    assert [call.args for call in inner.get_school_classes_by_name.call_args_list] == [
+        ("school1", ["1a"]),
+        ("school1", ["2b"]),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_name_lookup_is_scoped_to_its_school(mocker: MockerFixture):
+    """Two schools can hold a class of the same name, so the cache key is the pair."""
+
+    def _fetch(school: str, names: list[str]) -> list[SchoolClass]:
+        return [
+            SchoolClass(id=name, display_name=f"{name} of {school}", school=school) for name in names
+        ]
+
+    inner = mocker.AsyncMock()
+    inner.get_school_classes_by_name.side_effect = _fetch
+    adapter = RequestCachedSchoolClassesAdapter(inner)
+
+    await adapter.get_school_classes_by_name("school1", ["1a"])
+    result = await adapter.get_school_classes_by_name("school2", ["1a"])
+
+    assert [school_class.display_name for school_class in result] == ["1a of school2"]
+    assert [call.args for call in inner.get_school_classes_by_name.call_args_list] == [
+        ("school1", ["1a"]),
+        ("school2", ["1a"]),
+    ]

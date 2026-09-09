@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.school_classes
 import user_management_bff.adapters.work_groups
@@ -82,6 +83,21 @@ class TestKelvinWorkGroupsPersistenceAdapter:
             WorkGroup(id=school_data["id"], display_name=school_data["display_name"], school="school1")
             for school_data in input_data
         ]
+
+    @pytest.mark.asyncio
+    async def test_get_work_groups_by_name_without_names_never_calls_kelvin(
+        self,
+        adapter: KelvinWorkGroupsPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        """No names, no request - not even a token: the port promises no I/O here."""
+        resource = mocker.MagicMock()
+        monkeypatch.setattr(user_management_bff.adapters.work_groups, "WorkGroupResource", resource)
+        await adapter.configure(dummy_settings)
+        assert await adapter.get_work_groups_by_name("school1", []) == []
+        resource.assert_not_called()
 
 
 class TestFileWorkGroupsPersistenceAdapter:
@@ -160,6 +176,13 @@ def work_groups_adapter(
                 for name in CONTRACT_WORK_GROUPS.get(school, []):
                     yield make_kelvin_group_from_data(name, None)
 
+            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
+                # The real service answers a single-group URL with 404, which the
+                # client raises as NoObject.
+                if name not in CONTRACT_WORK_GROUPS.get(school, []):
+                    raise NoObject(f"No group {name!r} in {school!r}.", status=404)
+                return make_kelvin_group_from_data(name, None)
+
         patch_kelvin_resource(
             user_management_bff.adapters.work_groups, "WorkGroupResource", MockResource()
         )
@@ -188,5 +211,33 @@ async def test_get_work_groups_contract(
     result = await adapter.get_work_groups(school)
     assert [group.id for group in result] == expected_ids
     # No description upstream, so the display name falls back to the name.
+    assert all(group.display_name == group.id for group in result)
+    assert all(group.school == school for group in result)
+
+
+@pytest.mark.parametrize(
+    "school,names,expected_ids",
+    [
+        pytest.param("school1", ["w1a", "w2b"], ["w1a", "w2b"], id="returns-the-named-groups"),
+        pytest.param("school1", ["w2b"], ["w2b"], id="returns-only-what-was-asked-for"),
+        pytest.param("school1", ["w2b", "w1a"], ["w2b", "w1a"], id="keeps-the-order-asked-for"),
+        # A group deleted between reading the user that references it and this
+        # lookup must not take the whole list down with it.
+        pytest.param("school1", ["w1a", "GONE"], ["w1a"], id="skips-an-unknown-name"),
+        pytest.param("school1", [], [], id="no-names-returns-nothing"),
+        pytest.param("school2", ["w1a"], [], id="school-with-none-returns-nothing"),
+        pytest.param("NON_EXISTENT", ["w1a"], [], id="unknown-school-returns-nothing"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_get_work_groups_by_name_contract(
+    work_groups_adapter: Callable[[], Coroutine[Any, Any, WorkGroupsPersistencePort]],
+    school: str,
+    names: list[str],
+    expected_ids: list[str],
+):
+    adapter = await work_groups_adapter()
+    result = await adapter.get_work_groups_by_name(school, names)
+    assert [group.id for group in result] == expected_ids
     assert all(group.display_name == group.id for group in result)
     assert all(group.school == school for group in result)

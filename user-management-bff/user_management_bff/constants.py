@@ -29,6 +29,12 @@ PASSWORD_RESET_MAX_CONCURRENCY = int(
     os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY", "5")
 )
 
+# Resolving the group display names of a user list fetches each referenced group
+# on its own, so the payload stays proportional to what is rendered instead of to
+# the size of the school. Bounds how many of those lookups one school has in
+# flight at once (the Kelvin client creates a task limiter but never applies it).
+GROUP_LOOKUP_MAX_CONCURRENCY = int(os.environ.get("USER_MANAGEMENT__GROUP_LOOKUP_MAX_CONCURRENCY", "10"))
+
 # Number of max users/accounts that can be reset in a single password reset request
 PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS", "200"))
 

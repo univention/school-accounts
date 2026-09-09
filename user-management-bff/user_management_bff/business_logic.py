@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import asyncio
 from collections import Counter
+from collections.abc import Awaitable, Callable
 from typing import Protocol, TypeVar
 
 from loguru import logger
@@ -132,6 +133,19 @@ def user_to_target(user: User) -> Target:
     )
 
 
+_Group = TypeVar("_Group", SchoolClass, WorkGroup)
+
+
+async def _resolve_groups(
+    fetch: Callable[[str, list[str]], Awaitable[list[_Group]]],
+    needed: dict[str, set[str]],
+) -> dict[str, list[_Group]]:
+    """Look up the named groups of every school in ``needed``, concurrently."""
+    schools = sorted(needed)
+    fetched = await asyncio.gather(*(fetch(school, sorted(needed[school])) for school in schools))
+    return dict(zip(schools, fetched, strict=False))
+
+
 async def _fetch_groups(
     school_classes_get_adapter: SchoolClassesPersistencePort,
     work_groups_get_adapter: WorkGroupsPersistencePort,
@@ -139,31 +153,25 @@ async def _fetch_groups(
 ) -> tuple[dict[str, list[SchoolClass]], dict[str, list[WorkGroup]]]:
     """Resolve the group display names the given users' rows will render.
 
-    Only the schools those users actually reference are looked up. Per school
-    that is one lookup for the whole set of its groups rather than one per group:
-    Kelvin can serve either, and a class of 25 references far more groups than
-    schools.
+    Asks for exactly the groups those users are in. The whole-school lookup would
+    answer the same question in one request per school, but a school can hold
+    hundreds of groups, each carrying its full membership - a large, slow response
+    almost entirely made of groups nobody is going to render.
     """
-    schools = {
-        school
-        for user in users
-        for school in (*user.attributes.school_classes, *user.attributes.work_groups)
-    }
-
-    async def _fetch(school: str) -> tuple[str, list[SchoolClass], list[WorkGroup]]:
-        classes, groups = await asyncio.gather(
-            school_classes_get_adapter.get_school_classes(school),
-            work_groups_get_adapter.get_work_groups(school),
-        )
-        return school, classes, groups
-
-    fetched = await asyncio.gather(*(_fetch(school) for school in sorted(schools)))
-    school_classes: dict[str, list[SchoolClass]] = {}
-    work_groups: dict[str, list[WorkGroup]] = {}
-    for school, classes, groups in fetched:
-        school_classes[school] = classes
-        work_groups[school] = groups
-    return school_classes, work_groups
+    needed_classes: dict[str, set[str]] = {}
+    needed_groups: dict[str, set[str]] = {}
+    for user in users:
+        for school, classes in user.attributes.school_classes.items():
+            needed_classes.setdefault(school, set()).update(classes)
+        for school, groups in user.attributes.work_groups.items():
+            needed_groups.setdefault(school, set()).update(groups)
+    # Keyed by school even where the set is empty: the table indexes these by the
+    # schools on the user, and a school with no group of one kind still has a row
+    # asking for it.
+    return await asyncio.gather(
+        _resolve_groups(school_classes_get_adapter.get_school_classes_by_name, needed_classes),
+        _resolve_groups(work_groups_get_adapter.get_work_groups_by_name, needed_groups),
+    )
 
 
 async def get_users(

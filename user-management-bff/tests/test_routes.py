@@ -787,22 +787,33 @@ def test_users_list_pushed_url_keeps_the_group_filter(test_client: TestClient):
 
 
 def test_users_list_reads_each_school_once_per_request(test_client: TestClient, mocker: MockerFixture):
-    """The filter sidebar and the table need the same lookups; the request-scoped
-    cache in the DI layer is what stops them being fetched twice."""
+    """The filter sidebar and the table overlap; the request-scoped cache in the DI
+    layer is what stops the overlap being fetched twice.
+
+    The sidebar has to load the selected school in full, so the table's groups for
+    that school come out of the cache - what reaches the backend a second time is
+    only the other schools, and only the names actually rendered.
+    """
     schools_spy = mocker.spy(FileSchoolsPersistenceAdapter, "get_schools")
-    classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
-    work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups")
+    all_classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
+    all_work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups")
+    classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes_by_name")
+    work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups_by_name")
 
     response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school2"})
     assert response.status_code == 200
 
     # The school list is needed for the filter and to name each user's schools.
     assert schools_spy.call_count == 1
-    # school1 comes from user3, who is listed under school2 but holds classes in
-    # school1; school2 is asked for by the sidebar and the table alike.
+    # Once each for the sidebar, and only for the selected school.
     # ``args[0]`` is the adapter instance - these spy on the class.
-    assert sorted(call.args[1] for call in classes_spy.call_args_list) == ["school1", "school2"]
-    assert sorted(call.args[1] for call in work_groups_spy.call_args_list) == ["school1", "school2"]
+    assert [call.args[1] for call in all_classes_spy.call_args_list] == ["school2"]
+    assert [call.args[1] for call in all_work_groups_spy.call_args_list] == ["school2"]
+    # school1 comes from user3, who is listed under school2 but holds classes in
+    # school1. school2's own groups are already cached from the sidebar, so the
+    # table's lookup for it never reaches the adapter.
+    assert [call.args[1:] for call in classes_spy.call_args_list] == [("school1", ["1a", "2b"])]
+    assert [call.args[1:] for call in work_groups_spy.call_args_list] == [("school1", ["w2b"])]
 
 
 def test_password_reset_confirm_renders_the_dialog(test_client: TestClient):

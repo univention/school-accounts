@@ -67,12 +67,37 @@ class SchoolClassesPersistencePort(ABC):
         This method returns all school classes of a given school.
         """
 
+    @abstractmethod
+    async def get_school_classes_by_name(self, school: str, names: list[str]) -> list[SchoolClass]:
+        """
+        This method returns the named school classes of a given school, in the order asked for.
+
+        Separate from ``get_school_classes`` because the two have very different
+        costs: turning the class ids on a user list into display names needs a
+        handful of specific classes, while the whole-school variant ships every
+        class of the school with its full membership to answer the same question.
+
+        A name with no class behind it is skipped rather than raising - a class
+        can be deleted between reading a user and resolving their classes. An
+        empty ``names`` returns an empty list without any I/O.
+        """
+
 
 class WorkGroupsPersistencePort(ABC):
     @abstractmethod
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         """
         This method returns all work groups of a given school.
+        """
+
+    @abstractmethod
+    async def get_work_groups_by_name(self, school: str, names: list[str]) -> list[WorkGroup]:
+        """
+        This method returns the named work groups of a given school, in the order asked for.
+
+        Separate from ``get_work_groups`` for the reasons given in
+        ``SchoolClassesPersistencePort.get_school_classes_by_name``, and with the
+        same handling of unknown names and of an empty ``names``.
         """
 
 

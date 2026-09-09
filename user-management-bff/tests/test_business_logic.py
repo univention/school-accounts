@@ -132,16 +132,23 @@ async def test_get_users(ports: Ports, school: str, expected_ids: set[str]):
 
 
 @pytest.mark.asyncio
-async def test_get_users_group_lookups_cover_referenced_schools(ports: Ports, mocker: MockerFixture):
-    classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
-    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
+async def test_get_users_looks_up_only_the_groups_the_rows_render(ports: Ports, mocker: MockerFixture):
+    all_classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
+    all_work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
+    classes_spy = mocker.spy(ports.school_classes, "get_school_classes_by_name")
+    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups_by_name")
     await _get_users(ports, "test_school2")
     # test_user3 is listed for test_school2 but holds classes in test_school1, and the
     # list renders those with their display names - hence more than the selected school,
-    # but not all seven of them.
-    expected = {"test_school1", "test_school2"}
-    assert {call.args[0] for call in classes_spy.call_args_list} == expected
-    assert {call.args[0] for call in work_groups_spy.call_args_list} == expected
+    # but not all seven of them. Only the names on those users are asked for, never a
+    # whole school: the whole-school lookup ships every group with its full membership.
+    assert [call.args for call in classes_spy.call_args_list] == [
+        ("test_school1", ["1a", "2b"]),
+        ("test_school2", ["1a", "2b", "3c"]),
+    ]
+    assert [call.args for call in work_groups_spy.call_args_list] == [("test_school2", ["w1a"])]
+    all_classes_spy.assert_not_called()
+    all_work_groups_spy.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -153,14 +160,15 @@ async def test_get_users_group_lookups_cover_referenced_schools(ports: Ports, mo
 async def test_get_users_group_lookups_skip_users_the_actor_cannot_see(
     _permissions_mock: MagicMock, ports: Ports, mocker: MockerFixture
 ):
-    classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
-    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
+    classes_spy = mocker.spy(ports.school_classes, "get_school_classes_by_name")
+    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups_by_name")
     result = await _get_users(ports, "test_school2")
     # test_school1 is only reachable through test_user3, who is now invisible, so
-    # nothing renders their groups and nothing looks them up either.
+    # nothing renders their groups and nothing looks them up either - and 3c drops
+    # out of the test_school2 lookup with them.
     assert [user.id for user in result.users] == ["test_user2"]
-    assert {call.args[0] for call in classes_spy.call_args_list} == {"test_school2"}
-    assert {call.args[0] for call in work_groups_spy.call_args_list} == {"test_school2"}
+    assert [call.args for call in classes_spy.call_args_list] == [("test_school2", ["1a", "2b"])]
+    assert [call.args for call in work_groups_spy.call_args_list] == [("test_school2", ["w1a"])]
 
 
 @pytest.mark.asyncio
