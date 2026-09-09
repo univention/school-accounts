@@ -233,10 +233,21 @@ async def get_password_reset_selection(
 ) -> PasswordResetSelectionData:
     """Resolve selected user ids into the users the actor may reset.
 
-    Applies the same permission rule as ``set_passwords``, so the dialog states
-    the scope the submit will act on.
+    Same permission rule and target ceiling as ``set_passwords``, so the dialog
+    states a scope the submit would accept.
     """
     deduped_ids = list(dict.fromkeys(target_ids))
+    # Resolving costs a round-trip per user, and the submit would refuse this anyway.
+    if len(deduped_ids) > PASSWORD_RESET_MAX_TARGETS:
+        logger.warning(
+            "Rejected a password reset confirmation: selection exceeds the maximum target count.",
+            actor_id=actor_id,
+            target_count=len(deduped_ids),
+            max_targets=PASSWORD_RESET_MAX_TARGETS,
+        )
+        return PasswordResetSelectionData(
+            users=[], request_error=PasswordResetRequestError.too_many_targets
+        )
     actor = await get_actor(actor_id, users_adapter, lang)
     # A vanished user is dropped here; the submit reports it as ``not_found``.
     found, _missing = await _fetch_users(users_adapter, deduped_ids)

@@ -54,19 +54,6 @@ class SchoolsData:
     schools: list[School]
 
 
-@dataclass
-class PasswordResetSelectionData:
-    """The selected users the actor may reset, plus how many were dropped.
-
-    ``denied`` is reported rather than silently omitted: the confirmation step
-    exists so the stated scope matches what the submit does.
-    """
-
-    users: list[User]
-    denied: int = 0
-    supports_change_on_next_login: bool = False
-
-
 class PasswordResetOutcomeCode(StrEnum):
     success = auto()
     permission_denied = auto()
@@ -78,14 +65,27 @@ class PasswordResetOutcomeCode(StrEnum):
 class PasswordResetRequestError(StrEnum):
     """A whole-request validation failure - distinct from a per-target outcome.
 
-    Set instead of populating ``outcomes`` at all, since neither case is
-    resolvable per-target: no targets were even selected, or the one password
-    that would apply to every target is missing.
+    Set instead of populating ``outcomes`` at all: no targets selected, no
+    password, or more targets than one request may carry.
     """
 
     no_targets = auto()
     empty_password = auto()
     too_many_targets = auto()
+
+
+@dataclass
+class PasswordResetSelectionData:
+    """The selected users the actor may reset, plus how many were dropped.
+
+    ``denied`` is reported rather than silently omitted: the confirmation step
+    exists so the stated scope matches what the submit does.
+    """
+
+    users: list[User]
+    denied: int = 0
+    supports_change_on_next_login: bool = False
+    request_error: PasswordResetRequestError | None = None
 
 
 @dataclass
@@ -202,8 +202,6 @@ class PasswordResetConfirmation:
     role_tallies: list[RoleTally]
     denied: int = 0
     supports_change_on_next_login: bool = False
-    # Quoted in the mass-action warning: the most one reset will accept.
-    limit: int = PASSWORD_RESET_MAX_TARGETS
 
     @property
     def count(self) -> int:

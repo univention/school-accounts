@@ -540,6 +540,42 @@ async def test_set_passwords_empty_password_is_rejected_without_any_writes(
 
 
 @pytest.mark.asyncio
+async def test_get_password_reset_selection_too_many_targets_is_rejected_without_any_reads(
+    ports: Ports, mocker: MockerFixture
+):
+    """Resolving costs a Kelvin round-trip per user, so the submit's ceiling holds here too."""
+    get_permissions_mock = mocker.patch.object(FilePermissionsAdapter, "get_permissions")
+    get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
+    mocker.patch.object(business_logic, "PASSWORD_RESET_MAX_TARGETS", 2)
+    data = await business_logic.get_password_reset_selection(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "test_user2", "test_user3"],
+        "en",
+    )
+    assert data.users == []
+    assert data.request_error == presentation.PasswordResetRequestError.too_many_targets
+    get_user_mock.assert_not_called()
+    get_permissions_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_password_reset_selection_counts_duplicates_once(ports: Ports, mocker: MockerFixture):
+    """The ceiling applies to the deduplicated ids, as it does on submit."""
+    mocker.patch.object(business_logic, "PASSWORD_RESET_MAX_TARGETS", 2)
+    data = await business_logic.get_password_reset_selection(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "test_user1", "test_user2"],
+        "en",
+    )
+    assert data.request_error is None
+    assert [user.id for user in data.users] == ["test_user1", "test_user2"]
+
+
+@pytest.mark.asyncio
 async def test_set_passwords_too_many_targets_is_rejected_without_any_writes(
     ports: Ports, mocker: MockerFixture
 ):

@@ -450,6 +450,16 @@ async def users_password_reset_confirm(
         selected_ids(form),
         lang,
     )
+    if data.request_error is not None:
+        # Nothing was resolved, so a dialog would have nothing to state.
+        message, variant = presentation.build_password_reset_summary(
+            presentation.PasswordResetResultData(outcomes=[], request_error=data.request_error),
+            lang,
+        )
+        response = render_static(request, "fragments/toast.html", message=message, variant=variant)
+        response.headers["HX-Retarget"] = "#toast-region"
+        response.headers["HX-Reswap"] = "beforeend"
+        return response
     return await _password_reset_dialog(request, auth, data)
 
 

@@ -183,10 +183,6 @@ msgid "Teacher"
 msgstr "Lehrer"
 
 #, python-brace-format
-msgid "The limit of mass action items is set to {limit}."
-msgstr "Das Limit für Massenaktionen liegt bei {limit}."
-
-#, python-brace-format
 msgid "The logged in user '{user}' is not a valid UCS@school user."
 msgstr ""
 "Der angemeldete Benutzer '{user}' ist kein gültiger UCS@school-Benutzer."
@@ -306,6 +302,10 @@ msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "Success"
 #~ msgstr "Erfolg"
+
+#, python-brace-format
+#~ msgid "The limit of mass action items is set to {limit}."
+#~ msgstr "Das Limit für Massenaktionen liegt bei {limit}."
 
 #~ msgid "The user has to be in a school class."
 #~ msgstr "Der Benutzer muss sich in einer Schulklasse befinden."

@@ -602,6 +602,25 @@ def test_password_reset_narrows_the_selection_to_what_failed(
     assert 'data-target-id="test_user1"' not in response.text
 
 
+
+
+def test_password_reset_confirm_refuses_an_oversized_selection_as_a_toast(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """No dialog: nothing was resolved, so it would have nothing to state. The
+    wording is the submit's, and no user is fetched to produce it."""
+    get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
+    _lower_the_reset_limit(mocker, 2)
+    response = _post_confirm(test_client, ["test_user1", "test_user2", "test_user3"])
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#toast-region"
+    assert response.headers["HX-Reswap"] == "beforeend"
+    assert "Select at most 2 users at once" in response.text
+    assert 'variant="error"' in response.text
+    assert "<dialog" not in response.text
+    get_user_mock.assert_not_called()
+
+
 def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
     response = test_client.post(
         f"{FRONTEND_PREFIX}/users/password-reset",
