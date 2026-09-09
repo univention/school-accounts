@@ -15,16 +15,15 @@ from .base import KelvinPersistenceBaseAdapter
 
 class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersistenceBaseAdapter):
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
-        async with self.kelvin_session as session:
-            kelvin_work_groups = WorkGroupResource(session=session).search(school=school)
-            return [
-                WorkGroup(
-                    id=work_group.name,
-                    display_name=work_group.description or work_group.name,
-                    school=school,
-                )
-                async for work_group in kelvin_work_groups
-            ]
+        kelvin_work_groups = WorkGroupResource(session=self.kelvin_session).search(school=school)
+        return [
+            WorkGroup(
+                id=work_group.name,
+                display_name=work_group.description or work_group.name,
+                school=school,
+            )
+            async for work_group in kelvin_work_groups
+        ]
 
 
 @dataclass

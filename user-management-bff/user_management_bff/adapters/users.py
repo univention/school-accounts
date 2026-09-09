@@ -125,73 +125,68 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
     ) -> list[User]:
         # TODO(ucsschool-kelvin-rest-api#149) dont filter here, let Kelvin filter by passing classes
         #   and workgroups to `.search` method
-        async with self.kelvin_session as session:
-            kelvin_users = UserResource(session=session).search(school=school)
-            return [
-                self._user_from_kelvin_user(kelvin_user)
-                async for kelvin_user in kelvin_users
-                if _in_selected_group(
-                    school,
-                    school_classes=school_classes,
-                    work_groups=work_groups,
-                    user_classes=kelvin_user.school_classes or {},
-                    user_work_groups=kelvin_user.workgroups or {},
-                )
-            ]
+        kelvin_users = UserResource(session=self.kelvin_session).search(school=school)
+        return [
+            self._user_from_kelvin_user(kelvin_user)
+            async for kelvin_user in kelvin_users
+            if _in_selected_group(
+                school,
+                school_classes=school_classes,
+                work_groups=work_groups,
+                user_classes=kelvin_user.school_classes or {},
+                user_work_groups=kelvin_user.workgroups or {},
+            )
+        ]
 
     async def get_user(self, identifier: str) -> User:
-        async with self.kelvin_session as session:
-            try:
-                kelvin_user = await UserResource(session=session).get(name=identifier)
-                return self._user_from_kelvin_user(kelvin_user)
-            except NoObject as exc:
-                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
-                raise ObjectNotFoundError(identifier=identifier) from exc
+        try:
+            kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
+            return self._user_from_kelvin_user(kelvin_user)
+        except NoObject as exc:
+            logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+            raise ObjectNotFoundError(identifier=identifier) from exc
 
     @override
     async def set_password(
         self, identifier: str, password: str, change_on_next_login: bool = False
     ) -> None:
-        async with self.kelvin_session as session:
-            try:
-                kelvin_user = await UserResource(session=session).get(name=identifier)
-            except NoObject as exc:
-                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
-                raise ObjectNotFoundError(identifier=identifier) from exc
-            if change_on_next_login and not self._change_on_next_login_supported:
-                logger.warning(
-                    "Kelvin does not map the property that forces a password change at "
-                    "the next login, so this password was not reset. Add it to Kelvin's "
-                    "mapped_udm_properties.json.",
-                    user_id=identifier,
-                    missing_udm_property=_UDM_CHANGE_ON_NEXT_LOGIN,
-                    udm_properties=",".join(sorted(kelvin_user.udm_properties)),
-                )
-                raise PasswordChangeOnNextLoginUnsupportedError(identifier=identifier)
-            kelvin_user.password = password
-            if change_on_next_login:
-                kelvin_user.udm_properties[_UDM_CHANGE_ON_NEXT_LOGIN] = True
-            if _UDM_OVERRIDE_PW_HISTORY in kelvin_user.udm_properties:
-                kelvin_user.udm_properties[_UDM_OVERRIDE_PW_HISTORY] = True
-            else:
-                logger.warning(
-                    "Kelvin does not map the property that skips the password-history "
-                    "check, so a password this account held before will be refused and "
-                    "the refusal tells whoever runs the reset that it once used it. Add "
-                    "it to Kelvin's mapped_udm_properties.json.",
-                    user_id=identifier,
-                    missing_udm_property=_UDM_OVERRIDE_PW_HISTORY,
-                    udm_properties=",".join(sorted(kelvin_user.udm_properties)),
-                )
-            try:
-                await kelvin_user.save()
-            except InvalidRequest as exc:
-                logger.error(
-                    "Kelvin rejected the password change.", user_id=identifier, error=exc.reason
-                )
-                raise PasswordResetRejectedError(
-                    identifier=identifier, message=_safe_rejection_reason(exc.reason)
-                ) from exc
+        try:
+            kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
+        except NoObject as exc:
+            logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+            raise ObjectNotFoundError(identifier=identifier) from exc
+        if change_on_next_login and not self._change_on_next_login_supported:
+            logger.warning(
+                "Kelvin does not map the property that forces a password change at the "
+                "next login, so this password was not reset. Add it to Kelvin's "
+                "mapped_udm_properties.json.",
+                user_id=identifier,
+                missing_udm_property=_UDM_CHANGE_ON_NEXT_LOGIN,
+                udm_properties=",".join(sorted(kelvin_user.udm_properties)),
+            )
+            raise PasswordChangeOnNextLoginUnsupportedError(identifier=identifier)
+        kelvin_user.password = password
+        if change_on_next_login:
+            kelvin_user.udm_properties[_UDM_CHANGE_ON_NEXT_LOGIN] = True
+        if _UDM_OVERRIDE_PW_HISTORY in kelvin_user.udm_properties:
+            kelvin_user.udm_properties[_UDM_OVERRIDE_PW_HISTORY] = True
+        else:
+            logger.warning(
+                "Kelvin does not map the property that skips the password-history check, "
+                "so a password this account held before will be refused and the refusal "
+                "tells whoever runs the reset that it once used it. Add it to Kelvin's "
+                "mapped_udm_properties.json.",
+                user_id=identifier,
+                missing_udm_property=_UDM_OVERRIDE_PW_HISTORY,
+                udm_properties=",".join(sorted(kelvin_user.udm_properties)),
+            )
+        try:
+            await kelvin_user.save()
+        except InvalidRequest as exc:
+            logger.error("Kelvin rejected the password change.", user_id=identifier, error=exc.reason)
+            raise PasswordResetRejectedError(
+                identifier=identifier, message=_safe_rejection_reason(exc.reason)
+            ) from exc
 
 
 @dataclass

@@ -12,7 +12,11 @@ from authlib.integrations.requests_client import OAuth2Session
 from ucsschool.kelvin.client import NoObject, SchoolClass, SchoolClassResource, Session, UserResource
 from ucsschool.kelvin.client import User as KelvinUser
 
-from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
+from user_management_bff.adapters.base import (
+    KelvinPersistenceAdapterSettings,
+    _SessionHolder,
+    enter_session_scope,
+)
 from user_management_bff.adapters.permissions import (
     CerbosPermissionsAdapter,
     CerbosPermissionsAdapterSettings,
@@ -23,7 +27,7 @@ from user_management_bff.adapters.users import KelvinUsersPersistenceAdapter
 from user_management_bff.adapters.work_groups import KelvinWorkGroupsPersistenceAdapter
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Coroutine
+    from collections.abc import AsyncIterator, Coroutine, Iterator
     from typing import Callable
 
     from faker import Faker
@@ -237,6 +241,25 @@ def kelvin_session(kelvin_adapter_settings: KelvinPersistenceAdapterSettings) ->
         host=kelvin_adapter_settings.url,
         verify=getenv("SSL_CERT_FILE"),
     )
+
+
+@pytest.fixture(autouse=True)
+def kelvin_scope() -> Iterator[_SessionHolder]:
+    """The router opens a scope per request; a test driving the adapters needs one too.
+
+    Sync on purpose: pytest-asyncio runs an async fixture in a different context
+    from the test, so a ContextVar set there never reaches the test body.
+    """
+    with enter_session_scope() as holder:
+        yield holder
+
+
+@pytest_asyncio.fixture(autouse=True)  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+async def close_kelvin_session(kelvin_scope: _SessionHolder) -> AsyncIterator[None]:
+    """These adapters reach a real Kelvin, so the session has to be closed again."""
+    yield
+    if kelvin_scope.session is not None:
+        await kelvin_scope.session.close()
 
 
 @pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]

@@ -18,15 +18,12 @@ from .base import KelvinPersistenceBaseAdapter
 class KelvinSchoolsPersistenceAdapter(SchoolsPersistencePort, KelvinPersistenceBaseAdapter):
     async def get_schools(self, name: Optional[str] = None) -> list[School]:
         search_kwargs = {"name": name} if name else {}
-        async with self.kelvin_session as session:
-            logger.debug("Fetching schools from Kelvin API.", search_kwargs=search_kwargs)
-            kelvin_schools = SchoolResource(session=session).search(**search_kwargs)
-            return [
-                School(
-                    id=kelvin_school.name, display_name=kelvin_school.display_name or kelvin_school.name
-                )
-                async for kelvin_school in kelvin_schools
-            ]
+        logger.debug("Fetching schools from Kelvin API.", search_kwargs=search_kwargs)
+        kelvin_schools = SchoolResource(session=self.kelvin_session).search(**search_kwargs)
+        return [
+            School(id=kelvin_school.name, display_name=kelvin_school.display_name or kelvin_school.name)
+            async for kelvin_school in kelvin_schools
+        ]
 
 
 @dataclass

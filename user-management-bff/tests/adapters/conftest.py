@@ -28,7 +28,18 @@ import pytest
 from loguru import logger
 from pytest_mock import MockerFixture
 
-from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
+from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings, enter_session_scope
+
+
+@pytest.fixture(autouse=True)
+def kelvin_scope() -> Iterator[None]:
+    """The router opens a scope for every request; a direct adapter call needs one too.
+
+    The sync entry point, so this also covers the non-async tests; nothing here
+    performs I/O, so the session it may create needs no closing.
+    """
+    with enter_session_scope():
+        yield
 
 
 @pytest.fixture

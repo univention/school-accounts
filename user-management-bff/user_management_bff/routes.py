@@ -10,6 +10,7 @@ except the interactive-login routes (login / callback / logout), which establish
 or tear down that session.
 """
 
+from collections.abc import AsyncIterator
 from functools import partial
 from typing import Annotated, cast
 from urllib.parse import urlencode
@@ -22,6 +23,7 @@ from starlette.responses import RedirectResponse, Response
 
 from . import business_logic, presentation
 from .adapter_registry import port_dep
+from .adapters.base import kelvin_session_scope
 from .constants import (
     AUTH_CALLBACK_PATH,
     AUTH_LOGIN_PATH,
@@ -59,7 +61,18 @@ env_globals["frontend_prefix"] = FRONTEND_PREFIX
 # The all-groups sentinel is rendered as an option value, so templates need it too.
 env_globals["all_groups_value"] = presentation.ALL_GROUPS
 
-router = APIRouter(prefix=FRONTEND_PREFIX)
+
+async def kelvin_session() -> AsyncIterator[None]:
+    """Give every route one Kelvin session, closed when the response is done.
+
+    Declared on the router so a new route cannot forget it, and so the adapters
+    keep their own signatures - they read the scope rather than being handed it.
+    """
+    async with kelvin_session_scope():
+        yield
+
+
+router = APIRouter(prefix=FRONTEND_PREFIX, dependencies=[Depends(kelvin_session)])
 
 # Module-level dependency callables so tests can target them via
 # ``app.dependency_overrides``.
