@@ -59,6 +59,7 @@ class PasswordResetOutcomeCode(StrEnum):
     permission_denied = auto()
     not_found = auto()
     rejected = auto()
+    unconfirmed = auto()
     next_login_change_unsupported = auto()
 
 
@@ -542,6 +543,11 @@ def build_password_reset_outcome_rows(
         PasswordResetOutcomeCode.permission_denied: _("Permission denied", lang=lang),
         PasswordResetOutcomeCode.not_found: _("User not found", lang=lang),
         PasswordResetOutcomeCode.rejected: _("Rejected", lang=lang),
+        PasswordResetOutcomeCode.unconfirmed: _(
+            "Could not be confirmed - the password may have been changed. "
+            "Please check this account before retrying.",
+            lang=lang,
+        ),
         PasswordResetOutcomeCode.next_login_change_unsupported: _(
             "This account cannot be required to change its password at the next login, "
             "so the password was left unchanged.",

@@ -37,6 +37,66 @@ class TestKelvinUsersPersistenceAdapter:
     def test_get_settings_cls(self):
         assert KelvinUsersPersistenceAdapter.get_settings_cls() == KelvinPersistenceAdapterSettings
 
+    @pytest.mark.asyncio
+    async def test_set_password_reuses_a_user_the_request_already_read(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Resolving the selection already reads every target, and a write needs the
+        same object: fetching it again doubled the requests a bulk reset made."""
+        await adapter.configure(dummy_settings)
+        gets: list[str] = []
+        saved: list[tuple[str, str]] = []
+
+        def _kelvin_user(name: str) -> Any:
+            user = MagicMock()
+            user.name = name
+            user.lastname = "L"
+            user.firstname = "F"
+            user.udm_properties = {}
+            user.school_classes = {}
+            user.workgroups = {}
+            user.ucsschool_roles = []
+            user.disabled = False
+            user.schools = ["s"]
+            user.legal_wards = []
+            user.legal_guardians = []
+            user.email = None
+            user.birthday = None
+            user.expiration_date = None
+
+            async def _save() -> None:
+                saved.append((name, user.password))
+
+            user.save = _save
+            return user
+
+        class _Resource:
+            def __init__(self, session: Any = None) -> None:
+                pass
+
+            def search(self, school: str) -> Any:
+                async def _gen() -> Any:
+                    yield _kelvin_user("u1")
+
+                return _gen()
+
+            async def get(self, name: str) -> Any:
+                gets.append(name)
+                return _kelvin_user(name)
+
+        monkeypatch.setattr(user_management_bff.adapters.users, "UserResource", _Resource)
+
+        await adapter.get_users("s", [], [])
+        await adapter.set_password("u1", "new-pw")
+        assert saved == [("u1", "new-pw")]
+        assert gets == []
+
+        await adapter.set_password("u2", "new-pw")
+        assert gets == ["u2"]
+
     @pytest.mark.parametrize(
         "input_data",
         [

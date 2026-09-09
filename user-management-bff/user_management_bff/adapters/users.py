@@ -101,6 +101,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         self._change_on_next_login_supported = _UDM_CHANGE_ON_NEXT_LOGIN in (
             kelvin_user.udm_properties or {}
         )
+        self.fetched_this_request[kelvin_user.name] = kelvin_user
         return User(
             id=kelvin_user.name,
             attributes=UserAttributes(
@@ -150,11 +151,14 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
     async def set_password(
         self, identifier: str, password: str, change_on_next_login: bool = False
     ) -> None:
-        try:
-            kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
-        except NoObject as exc:
-            logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
-            raise ObjectNotFoundError(identifier=identifier) from exc
+        # The selection already read every target, and a write needs the same object.
+        kelvin_user = cast("KelvinUser | None", self.fetched_this_request.get(identifier))
+        if kelvin_user is None:
+            try:
+                kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
+            except NoObject as exc:
+                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+                raise ObjectNotFoundError(identifier=identifier) from exc
         if change_on_next_login and not self._change_on_next_login_supported:
             logger.warning(
                 "Kelvin does not map the property that forces a password change at the "

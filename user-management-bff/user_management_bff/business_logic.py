@@ -198,23 +198,43 @@ async def get_work_groups(
 
 
 async def _fetch_users(
-    users_adapter: UsersPersistencePort, target_ids: list[str]
+    users_adapter: UsersPersistencePort, target_ids: list[str], school: str = ""
 ) -> tuple[dict[str, User], list[str]]:
-    """Fetch each id concurrently, returning what was found and what was missing.
+    """Fetch the selected users, returning what was found and what was missing.
 
-    ``return_exceptions=True``: without it gather propagates the first exception
-    while the other fetches keep running in the background.
+    With a school, one search covers it; anything it does not answer for is
+    fetched by id, which is also the whole job when no school is submitted.
     """
+    found: dict[str, User] = {}
+    if school:
+        wanted = set(target_ids)
+        try:
+            found = {
+                user.id: user
+                for user in await users_adapter.get_users(school, [], [])
+                if user.id in wanted
+            }
+        except Exception:
+            # The search is only a shortcut; a backend that is really down fails the
+            # per-id fetches below too, and those report it.
+            logger.warning(
+                "Resolving a selection by school failed, falling back to one fetch per user.",
+                school=school,
+                target_count=len(target_ids),
+            )
+
+    remaining = [target_id for target_id in target_ids if target_id not in found]
     semaphore = asyncio.Semaphore(PASSWORD_RESET_MAX_CONCURRENCY)
 
     async def _fetch(target_id: str) -> User:
         async with semaphore:
             return await users_adapter.get_user(target_id)
 
-    results = await asyncio.gather(*(_fetch(tid) for tid in target_ids), return_exceptions=True)
-    found: dict[str, User] = {}
+    # return_exceptions=True: without it gather propagates the first exception
+    # while the other fetches keep running in the background.
+    results = await asyncio.gather(*(_fetch(tid) for tid in remaining), return_exceptions=True)
     missing: list[str] = []
-    for target_id, result in zip(target_ids, results, strict=False):
+    for target_id, result in zip(remaining, results, strict=False):
         if isinstance(result, ObjectNotFoundError):
             missing.append(target_id)
         elif isinstance(result, BaseException):
@@ -230,6 +250,7 @@ async def get_password_reset_selection(
     actor_id: str,
     target_ids: list[str],
     lang: str,
+    school: str = "",
 ) -> PasswordResetSelectionData:
     """Resolve selected user ids into the users the actor may reset.
 
@@ -250,7 +271,7 @@ async def get_password_reset_selection(
         )
     actor = await get_actor(actor_id, users_adapter, lang)
     # A vanished user is dropped here; the submit reports it as ``not_found``.
-    found, _missing = await _fetch_users(users_adapter, deduped_ids)
+    found, _missing = await _fetch_users(users_adapter, deduped_ids, school)
     users = list(found.values())
 
     permissions = await permissions_port.get_permissions(actor, [user_to_target(user) for user in users])
@@ -289,6 +310,15 @@ async def _write_passwords(
                 outcome = PasswordResetOutcomeCode.next_login_change_unsupported
             except PasswordResetRejectedError as exc:
                 outcome, reason = PasswordResetOutcomeCode.rejected, exc.message
+            except Exception:
+                # Writes are not atomic: by the time one fails, others have gone
+                # through, and escaping the gather would lose the whole report.
+                outcome = PasswordResetOutcomeCode.unconfirmed
+                logger.exception(
+                    "Password reset could not be confirmed for target.",
+                    actor_id=actor_id,
+                    target_id=target_id,
+                )
             logger.info(
                 "Password reset outcome for target.",
                 actor_id=actor_id,
@@ -309,6 +339,7 @@ async def set_passwords(
     password: str,
     lang: str,
     change_on_next_login: bool = False,
+    school: str = "",
 ) -> PasswordResetResultData:
     deduped_ids = list(dict.fromkeys(target_ids))
     logger.debug(
@@ -339,7 +370,7 @@ async def set_passwords(
         )
 
     actor = await get_actor(actor_id, users_adapter, lang)
-    found, missing = await _fetch_users(users_adapter, deduped_ids)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, school)
     outcomes: dict[str, PasswordResetOutcome] = {
         tid: PasswordResetOutcome(target_id=tid, outcome=PasswordResetOutcomeCode.not_found)
         for tid in missing

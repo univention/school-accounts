@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
@@ -540,6 +541,50 @@ async def test_set_passwords_empty_password_is_rejected_without_any_writes(
 
 
 @pytest.mark.asyncio
+async def test_selection_with_a_school_is_resolved_by_one_search(ports: Ports, mocker: MockerFixture):
+    """One request per selected user is what the proxy could not take; the school
+    the selection was made in resolves all of them in a single search."""
+    get_users_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users")
+    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
+    data = await business_logic.get_password_reset_selection(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user4"], "en", "test_school1"
+    )
+    assert {user.id for user in data.users} == {"test_user1", "test_user4"}
+    assert get_users_spy.call_count == 1
+    # Only the actor, never the targets.
+    assert get_user_spy.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_a_failing_school_search_falls_back_to_ids(ports: Ports, mocker: MockerFixture):
+    """The search is a shortcut, so losing it must not lose the whole reset."""
+    mocker.patch.object(
+        FileUsersPersistenceAdapter, "get_users", side_effect=RuntimeError("search is down")
+    )
+    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
+    data = await business_logic.get_password_reset_selection(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user4"], "en", "test_school1"
+    )
+    assert {user.id for user in data.users} == {"test_user1", "test_user4"}
+    # The actor, plus both targets the search did not deliver.
+    assert get_user_spy.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_a_selection_reaching_outside_the_school_falls_back_to_ids(
+    ports: Ports, mocker: MockerFixture
+):
+    """A selection outlives a filter change, so it can name users the search misses."""
+    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
+    data = await business_logic.get_password_reset_selection(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "en", "test_school1"
+    )
+    assert {user.id for user in data.users} == {"test_user1", "test_user2"}
+    # The actor, plus the one the search did not cover.
+    assert get_user_spy.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_get_password_reset_selection_too_many_targets_is_rejected_without_any_reads(
     ports: Ports, mocker: MockerFixture
 ):
@@ -573,6 +618,26 @@ async def test_get_password_reset_selection_counts_duplicates_once(ports: Ports,
     )
     assert data.request_error is None
     assert [user.id for user in data.users] == ["test_user1", "test_user2"]
+
+
+@pytest.mark.asyncio
+async def test_a_write_that_times_out_does_not_discard_the_other_outcomes(
+    ports: Ports, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """Writes are not atomic. Letting the failure escape the gather returned a 500 and
+    left nobody able to say which passwords had already been changed."""
+    patch_set_password({"test_user2": httpx.ReadTimeout("timed out")})
+    result = await business_logic.set_passwords(
+        ports.users,
+        ports.permissions,
+        ACTOR_ID,
+        ["test_user1", "test_user2"],
+        "new-password",
+        "en",
+    )
+    by_id = {outcome.target_id: outcome.outcome for outcome in result.outcomes}
+    assert by_id["test_user1"] == presentation.PasswordResetOutcomeCode.success
+    assert by_id["test_user2"] == presentation.PasswordResetOutcomeCode.unconfirmed
 
 
 @pytest.mark.asyncio

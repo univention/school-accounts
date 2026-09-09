@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
   id="selection-form"
   grow
   hx-post="{{ frontend_prefix }}/users/password-reset/confirm"
+  {% if selected_school %}hx-vals='{"school": {{ selected_school | tojson }}}'{% endif %}
   hx-target="#password-reset-dialog-region"
   hx-swap="innerHTML"
   hx-headers='{"X-CSRF-Token": {{ csrf_token | tojson }}}'

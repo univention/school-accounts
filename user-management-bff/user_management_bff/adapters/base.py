@@ -18,6 +18,10 @@ from ucsschool.kelvin.client import Session
 # The client library still defaults to v1
 KELVIN_API_VERSION = "v2"
 
+# The client defaults to 10s, which a password write outruns: it runs the ucsschool
+# import framework, far slower than an attribute change.
+KELVIN_TIMEOUT_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TIMEOUT_SECONDS", "60"))
+
 
 @dataclass
 class KelvinPersistenceAdapterSettings:
@@ -35,6 +39,8 @@ class _SessionHolder:
     """
 
     session: Session | None = None
+    # Kelvin objects this request already fetched, by name.
+    fetched: dict[str, object] = field(default_factory=dict)
 
 
 _session_holder: ContextVar[_SessionHolder | None] = ContextVar("kelvin_session_holder", default=None)
@@ -86,6 +92,21 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
     async def configure(self, settings: KelvinPersistenceAdapterSettings):
         self._settings = settings
 
+    @staticmethod
+    def _session_holder_or_raise() -> _SessionHolder:
+        holder = _session_holder.get()
+        if holder is None:
+            raise RuntimeError(
+                "No Kelvin session scope is active. Wrap the work in "
+                "`kelvin_session_scope()`; the UI router does this for every request."
+            )
+        return holder
+
+    @property
+    def fetched_this_request(self) -> dict[str, object]:
+        """What this request has already read from Kelvin, so a write can skip a GET."""
+        return self._session_holder_or_raise().fetched
+
     @property
     def kelvin_session(self) -> Session:
         """The session of the surrounding scope, opened on first use.
@@ -98,12 +119,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 "Something went wrong with the configuration of the "
                 "KelvinPersistenceAdapter. No settings present."
             )
-        holder = _session_holder.get()
-        if holder is None:
-            raise RuntimeError(
-                "No Kelvin session scope is active. Wrap the work in "
-                "`kelvin_session_scope()`; the UI router does this for every request."
-            )
+        holder = self._session_holder_or_raise()
         if holder.session is None:
             holder.session = Session(
                 self._settings.username,
@@ -111,6 +127,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 self._settings.url,
                 api_version=KELVIN_API_VERSION,
                 verify=os.environ.get("SSL_CERT_FILE"),
+                timeout=KELVIN_TIMEOUT_SECONDS,
             )
             # `Session.client` raises "Session is closed." until this runs.
             holder.session.open()
