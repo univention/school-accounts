@@ -135,8 +135,21 @@ def user_to_target(user: User) -> Target:
 async def _fetch_groups(
     school_classes_get_adapter: SchoolClassesPersistencePort,
     work_groups_get_adapter: WorkGroupsPersistencePort,
-    schools: set[str],
+    users: list[User],
 ) -> tuple[dict[str, list[SchoolClass]], dict[str, list[WorkGroup]]]:
+    """Resolve the group display names the given users' rows will render.
+
+    Only the schools those users actually reference are looked up. Per school
+    that is one lookup for the whole set of its groups rather than one per group:
+    Kelvin can serve either, and a class of 25 references far more groups than
+    schools.
+    """
+    schools = {
+        school
+        for user in users
+        for school in (*user.attributes.school_classes, *user.attributes.work_groups)
+    }
+
     async def _fetch(school: str) -> tuple[str, list[SchoolClass], list[WorkGroup]]:
         classes, groups = await asyncio.gather(
             school_classes_get_adapter.get_school_classes(school),
@@ -167,23 +180,6 @@ async def get_users(
     users = await users_get_adapter.get_users(
         request_data.school, request_data.school_classes, request_data.work_groups
     )
-    schools = await schools_get_adapter.get_schools()
-    school_classes, work_groups = await _fetch_groups(
-        school_classes_get_adapter,
-        work_groups_get_adapter,
-        {
-            school
-            for user in users
-            for school in (*user.attributes.school_classes, *user.attributes.work_groups)
-        },
-    )
-    logger.debug(
-        "Loaded the group names needed to render the list.",
-        schools_scanned=len(school_classes),
-        school_class_count=sum(len(items) for items in school_classes.values()),
-        work_group_count=sum(len(items) for items in work_groups.values()),
-    )
-
     permissions = await permissions_port.get_permissions(
         actor,
         [user_to_target(user) for user in users],
@@ -194,6 +190,22 @@ async def get_users(
         school=request_data.school,
         user_count=len(users),
         permitted_user_count=sum(1 for user in users if permissions.get(user.id)),
+    )
+    # A user the actor holds no permission on at all is not listed, so their
+    # groups are never rendered either. Dropping them before the lookups is what
+    # keeps those proportional to what ends up on screen: an unfiltered school
+    # listing returns every user of the school, and each one would otherwise pull
+    # in the groups of every school they belong to.
+    users = [user for user in users if permissions.get(user.id)]
+    schools, (school_classes, work_groups) = await asyncio.gather(
+        schools_get_adapter.get_schools(),
+        _fetch_groups(school_classes_get_adapter, work_groups_get_adapter, users),
+    )
+    logger.debug(
+        "Loaded the group names needed to render the list.",
+        schools_scanned=len(school_classes),
+        school_class_count=sum(len(items) for items in school_classes.values()),
+        work_group_count=sum(len(items) for items in work_groups.values()),
     )
     return UserListData(
         users=users,

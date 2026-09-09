@@ -17,7 +17,10 @@ from starlette.types import Scope
 
 from user_management_bff.adapters.authentication import NeverAuthenticatedAdapter
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
+from user_management_bff.adapters.school_classes import FileSchoolClassesPersistenceAdapter
+from user_management_bff.adapters.schools import FileSchoolsPersistenceAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
+from user_management_bff.adapters.work_groups import FileWorkGroupsPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
 from user_management_bff.errors import (
     KelvinAPIUnavailableError,
@@ -781,6 +784,25 @@ def test_users_list_pushed_url_keeps_the_group_filter(test_client: TestClient):
     assert response.headers["HX-Push-Url"] == (
         f"{FRONTEND_PREFIX}/users?school=school1&group=school_class%3A1a"
     )
+
+
+def test_users_list_reads_each_school_once_per_request(test_client: TestClient, mocker: MockerFixture):
+    """The filter sidebar and the table need the same lookups; the request-scoped
+    cache in the DI layer is what stops them being fetched twice."""
+    schools_spy = mocker.spy(FileSchoolsPersistenceAdapter, "get_schools")
+    classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
+    work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups")
+
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school2"})
+    assert response.status_code == 200
+
+    # The school list is needed for the filter and to name each user's schools.
+    assert schools_spy.call_count == 1
+    # school1 comes from user3, who is listed under school2 but holds classes in
+    # school1; school2 is asked for by the sidebar and the table alike.
+    # ``args[0]`` is the adapter instance - these spy on the class.
+    assert sorted(call.args[1] for call in classes_spy.call_args_list) == ["school1", "school2"]
+    assert sorted(call.args[1] for call in work_groups_spy.call_args_list) == ["school1", "school2"]
 
 
 def test_password_reset_confirm_renders_the_dialog(test_client: TestClient):

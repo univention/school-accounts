@@ -25,6 +25,11 @@ from starlette.responses import RedirectResponse, Response
 from . import business_logic, presentation
 from .adapter_registry import port_dep
 from .adapters.base import kelvin_session_scope
+from .adapters.request_cache import (
+    RequestCachedSchoolClassesAdapter,
+    RequestCachedSchoolsAdapter,
+    RequestCachedWorkGroupsAdapter,
+)
 from .constants import (
     AUTH_CALLBACK_PATH,
     AUTH_LOGIN_PATH,
@@ -86,10 +91,40 @@ permissions = port_dep(PermissionsPort)
 
 AuthDep = Annotated[FastAPIAuthenticationPort, Depends(auth_port)]
 UsersAdapterDep = Annotated[UsersPersistencePort, Depends(users_persistence)]
-SchoolsAdapterDep = Annotated[SchoolsPersistencePort, Depends(schools_persistence)]
-SchoolClassesAdapterDep = Annotated[SchoolClassesPersistencePort, Depends(school_classes_persistence)]
-WorkGroupsAdapterDep = Annotated[WorkGroupsPersistencePort, Depends(work_groups_persistence)]
 PermissionsAdapterDep = Annotated[PermissionsPort, Depends(permissions)]
+
+
+# Async without an await: FastAPI hands a sync dependency to a threadpool, which
+# is real overhead per request for a wrapper that only constructs an object.
+#
+# The three read-only lookups below are asked for the same school more than once
+# per request (filter sidebar and table both need the group display names), so
+# each handler gets a memoizing decorator instead of the raw adapter. FastAPI
+# resolves a dependency once per request, which is what scopes the cache: every
+# parameter of a handler shares one instance, and the next request starts empty.
+async def cached_schools_persistence(  # NOSONAR(S7503)
+    adapter: Annotated[SchoolsPersistencePort, Depends(schools_persistence)],
+) -> SchoolsPersistencePort:
+    return RequestCachedSchoolsAdapter(adapter)
+
+
+async def cached_school_classes_persistence(  # NOSONAR(S7503)
+    adapter: Annotated[SchoolClassesPersistencePort, Depends(school_classes_persistence)],
+) -> SchoolClassesPersistencePort:
+    return RequestCachedSchoolClassesAdapter(adapter)
+
+
+async def cached_work_groups_persistence(  # NOSONAR(S7503)
+    adapter: Annotated[WorkGroupsPersistencePort, Depends(work_groups_persistence)],
+) -> WorkGroupsPersistencePort:
+    return RequestCachedWorkGroupsAdapter(adapter)
+
+
+SchoolsAdapterDep = Annotated[SchoolsPersistencePort, Depends(cached_schools_persistence)]
+SchoolClassesAdapterDep = Annotated[
+    SchoolClassesPersistencePort, Depends(cached_school_classes_persistence)
+]
+WorkGroupsAdapterDep = Annotated[WorkGroupsPersistencePort, Depends(cached_work_groups_persistence)]
 
 
 async def current_actor(request: Request, auth: AuthDep) -> str:

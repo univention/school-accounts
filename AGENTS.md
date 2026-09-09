@@ -81,6 +81,13 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 - **routes.py**: thin FastAPI handlers only. Auth via `Depends(current_actor)`, data access via
   `Depends(port_dep(SomePort))`. No permission logic of its own lives here. There are currently no
   mutating routes at all (see § Forms, Validation, and Mutations).
+- **Per-request read cache**: the schools / school-classes / work-groups deps are wrapped in the
+  `RequestCached*Adapter` decorators from `adapters/request_cache.py` (see the `cached_*_persistence`
+  dependencies in `routes.py`). A handler asks for the same school more than once — the filter
+  sidebar and the table both need the group display names — and FastAPI resolves a dependency once
+  per request, which is what scopes the cache. Keep new read-only lookups going through those deps
+  rather than the raw `port_dep(...)`, and don't widen the cache beyond one request: there is no
+  invalidation channel for a group renamed in Kelvin.
 - **business_logic.py**: the *only* place permission checks and domain rules live. Never touches
   `Request`/`Response`/Jinja; only calls ports. Read paths must filter out anything the actor lacks
   permission on (existing pattern in `get_school_classes`, `get_work_groups`, which keep only items

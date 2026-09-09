@@ -145,6 +145,25 @@ async def test_get_users_group_lookups_cover_referenced_schools(ports: Ports, mo
 
 
 @pytest.mark.asyncio
+@patch.object(
+    FilePermissionsAdapter,
+    "get_permissions",
+    return_value={"test_user2": [Permission.read_last_name]},
+)
+async def test_get_users_group_lookups_skip_users_the_actor_cannot_see(
+    _permissions_mock: MagicMock, ports: Ports, mocker: MockerFixture
+):
+    classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
+    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
+    result = await _get_users(ports, "test_school2")
+    # test_school1 is only reachable through test_user3, who is now invisible, so
+    # nothing renders their groups and nothing looks them up either.
+    assert [user.id for user in result.users] == ["test_user2"]
+    assert {call.args[0] for call in classes_spy.call_args_list} == {"test_school2"}
+    assert {call.args[0] for call in work_groups_spy.call_args_list} == {"test_school2"}
+
+
+@pytest.mark.asyncio
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
 async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Ports):
     # Users for whom the actor holds no permissions are omitted from the view.
