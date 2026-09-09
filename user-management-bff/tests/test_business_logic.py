@@ -132,6 +132,19 @@ async def test_get_users(ports: Ports, school: str, expected_ids: set[str]):
 
 
 @pytest.mark.asyncio
+async def test_get_users_group_lookups_cover_referenced_schools(ports: Ports, mocker: MockerFixture):
+    classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
+    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
+    await _get_users(ports, "test_school2")
+    # test_user3 is listed for test_school2 but holds classes in test_school1, and the
+    # list renders those with their display names - hence more than the selected school,
+    # but not all seven of them.
+    expected = {"test_school1", "test_school2"}
+    assert {call.args[0] for call in classes_spy.call_args_list} == expected
+    assert {call.args[0] for call in work_groups_spy.call_args_list} == expected
+
+
+@pytest.mark.asyncio
 @patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
 async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Ports):
     # Users for whom the actor holds no permissions are omitted from the view.

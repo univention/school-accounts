@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 import asyncio
-from collections import Counter, defaultdict
+from collections import Counter
 from typing import Protocol, TypeVar
 
 from loguru import logger
@@ -132,6 +132,27 @@ def user_to_target(user: User) -> Target:
     )
 
 
+async def _fetch_groups(
+    school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
+    schools: set[str],
+) -> tuple[dict[str, list[SchoolClass]], dict[str, list[WorkGroup]]]:
+    async def _fetch(school: str) -> tuple[str, list[SchoolClass], list[WorkGroup]]:
+        classes, groups = await asyncio.gather(
+            school_classes_get_adapter.get_school_classes(school),
+            work_groups_get_adapter.get_work_groups(school),
+        )
+        return school, classes, groups
+
+    fetched = await asyncio.gather(*(_fetch(school) for school in sorted(schools)))
+    school_classes: dict[str, list[SchoolClass]] = {}
+    work_groups: dict[str, list[WorkGroup]] = {}
+    for school, classes, groups in fetched:
+        school_classes[school] = classes
+        work_groups[school] = groups
+    return school_classes, work_groups
+
+
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
@@ -147,14 +168,18 @@ async def get_users(
         request_data.school, request_data.school_classes, request_data.work_groups
     )
     schools = await schools_get_adapter.get_schools()
-    school_classes: defaultdict[str, list[SchoolClass]] = defaultdict(list)
-    work_groups: defaultdict[str, list[WorkGroup]] = defaultdict(list)
-    for school in schools:
-        school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
-        work_groups[school.id].extend(await work_groups_get_adapter.get_work_groups(school.id))
+    school_classes, work_groups = await _fetch_groups(
+        school_classes_get_adapter,
+        work_groups_get_adapter,
+        {
+            school
+            for user in users
+            for school in (*user.attributes.school_classes, *user.attributes.work_groups)
+        },
+    )
     logger.debug(
         "Loaded the group names needed to render the list.",
-        schools_scanned=len(schools),
+        schools_scanned=len(school_classes),
         school_class_count=sum(len(items) for items in school_classes.values()),
         work_group_count=sum(len(items) for items in work_groups.values()),
     )
@@ -173,8 +198,8 @@ async def get_users(
     return UserListData(
         users=users,
         schools=schools,
-        school_classes=dict(school_classes),
-        work_groups=dict(work_groups),
+        school_classes=school_classes,
+        work_groups=work_groups,
         permissions=permissions,
     )
 
