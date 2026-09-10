@@ -120,6 +120,28 @@ Kelvin
 
    Defines the URL of the Kelvin REST API for data queries. If not set, the URL is generated from hostname and domain name.
 
+Logging
+-------
+
+.. envvar:: ucsschool-user-management/logging/level
+
+   Sets the log level of the application.
+   Possible values are ``TRACE``, ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR`` and ``CRITICAL``,
+   written in any case, with ``INFO`` as the default.
+   ``DEBUG`` adds the technical context of each request and is what a bug report should contain.
+   A value that names no level logs a warning saying so and leaves the application at ``INFO``,
+   rather than keeping it from starting.
+
+.. envvar:: ucsschool-user-management/logging/structured
+
+   If set to ``True``, the application writes each log record as a single JSON object,
+   which a log aggregator can parse without a pattern.
+   The default is ``False``, which writes the format described in :ref:`troubleshooting-log-format`.
+
+   The format itself is not configurable.
+   Both variants follow the Univention log format,
+   so that logs stay consistent across the products of a domain.
+
 Authentication
 --------------
 

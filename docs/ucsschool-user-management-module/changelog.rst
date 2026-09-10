@@ -33,6 +33,10 @@ This section lists the changes to the User Management Module.
 * The user interface is now fully translated into German. Page title, header, theme toggle, filter
   labels, empty-state messages and the role names in the list view were previously shown in English
   regardless of the browser language.
+* The application logs in the Univention log format.
+  Set :envvar:`ucsschool-user-management/logging/structured` to ``True``
+  to write each record as a single JSON object instead.
+  The setting ``ucsschool-user-management/logging/format`` has been removed.
 
 .. _release-0-1-1:
 
