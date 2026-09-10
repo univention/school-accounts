@@ -31,17 +31,8 @@ Show = Install,Settings
 [ucsschool-user-management/logging/structured]
 Type = Bool
 InitialValue = false
-Description = If set to True, the logging output is structured as a JSON object.
-Description[de] = Wird der Wert auf `True` gesetzt, werden strukturierte JSON Logeinträge generiert.
-Group = Logging
-Scope = outside
-Show = Install,Settings
-
-[ucsschool-user-management/logging/format]
-Type = String
-InitialValue = <green>{time:YYYY-MM-DD HH:mm:ss.SSS ZZ}</green> | <level>{level}</level> | <level>{message}</level> | {extra}
-Description = Defines the format of the log output, if not structured. The possible options are described in https://loguru.readthedocs.io/en/stable/api/logger.html.
-Description[de] = Bestimmt das Format der Logeinträge, wenn die Logs nicht strukturiert konfiguriert worden sind. The möglichen Optionen sind hier beschrieben: https://loguru.readthedocs.io/en/stable/api/logger.html
+Description = If set to True, each log record is written as a single JSON object. If set to False, the records follow the Univention log format.
+Description[de] = Wird der Wert auf `True` gesetzt, wird jeder Logeintrag als einzelnes JSON-Objekt geschrieben. Bei `False` folgen die Einträge dem Univention-Logformat.
 Group = Logging
 Scope = outside
 Show = Install,Settings

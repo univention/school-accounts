@@ -11,7 +11,8 @@
         first installation generates it, later installations and updates adopt the one
         Keycloak already holds. Update every host that runs the app, a host left on 0.1.1
         can no longer log users in once the client is confidential.</li>
-    <li>The page header shows the logged in user and a button that ends the session.</li>
+    <li>The page header shows the logged in user and a button that ends the session.
+        The setting <code>ucsschool-user-management/logging/format</code> has been removed.</li>
 </ul>
 
 <h2>v0.1.1 (2024-04-29)</h2>
