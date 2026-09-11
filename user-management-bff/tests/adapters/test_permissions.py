@@ -174,7 +174,7 @@ class TestCerbosPermissionsAdapter:
                     "disabled": False,
                     "first_name": "firstname3",
                     "last_name": "lastname3",
-                    "roles": ["teacher:school:test_school2", "student:school:test_school3"],
+                    "roles": ["teacher:school:test_school2", "student:school:test_school3", "a:b:c"],
                     "legal_wards": [],
                     "legal_guardians": [],
                     "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},

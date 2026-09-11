@@ -121,6 +121,12 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
             )
         holder = self._session_holder_or_raise()
         if holder.session is None:
+            logger.trace(
+                "Opening the request's Kelvin session.",
+                adapter=type(self).__name__,
+                kelvin_url=self._settings.url,
+                kelvin_api_version=KELVIN_API_VERSION,
+            )
             holder.session = Session(
                 self._settings.username,
                 self._settings.password,

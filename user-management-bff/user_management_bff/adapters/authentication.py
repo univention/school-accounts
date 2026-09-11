@@ -126,7 +126,7 @@ class CookieSessionAuthenticationAdapter(
     def settings(self) -> CookieSessionAuthenticationAdapterSettings:
         if self._settings is None:
             error_msg = "The settings should never be accessed before the adapter was configured!"
-            logger.error(error_msg)
+            logger.critical("The authentication backend is not configured, so nobody can log in.")
             raise RuntimeError(error_msg)
         return self._settings
 
@@ -151,7 +151,7 @@ class CookieSessionAuthenticationAdapter(
     def _get_client(self) -> StarletteOAuth2App:
         if self._oauth is None:
             error_msg = "The OAuth client should never be accessed before the adapter was configured!"
-            logger.error(error_msg)
+            logger.critical("The OAuth client is not configured, so nobody can log in.")
             raise RuntimeError(error_msg)
         # authlib ships no types for create_client(); safe because configure() always
         # registers _OIDC_CLIENT_NAME as an OAuth2 client before this is ever called.
@@ -223,7 +223,14 @@ class CookieSessionAuthenticationAdapter(
 
     @override
     async def login_redirect(self, request: Request, next_url: str = "") -> Response:
-        request.session[_NEXT_SESSION_KEY] = self._safe_next(next_url)
+        safe_next = self._safe_next(next_url)
+        if next_url and safe_next != next_url:
+            logger.info(
+                "Rejected a non-local post-login target and sent the user to the start page.",
+                requested=next_url,
+            )
+        logger.debug("Starting the OIDC login.", post_login_target=safe_next)
+        request.session[_NEXT_SESSION_KEY] = safe_next
         # authlib ships no types for authorize_redirect(); it returns a RedirectResponse.
         return cast(
             Response, await self._get_client().authorize_redirect(request, self.settings.redirect_url)
@@ -236,7 +243,12 @@ class CookieSessionAuthenticationAdapter(
             # OAuth2Token, which is a plain dict subclass.
             token = cast(dict[str, Any], await self._get_client().authorize_access_token(request))
         except OAuthError as exc:
-            logger.error("OIDC callback failed: {}", str(exc))
+            logger.warning(
+                "The OIDC callback failed, so the login did not complete. Usually a login "
+                "left open too long - starting it again resolves it.",
+                error=exc.error,
+                description=exc.description,
+            )
             raise NotAuthenticatedError(_("Not authenticated"))
         claims: dict[str, Any] = token.get("userinfo") or {}
         actor_id = claims.get(self.settings.identifier_claim)
@@ -245,7 +257,12 @@ class CookieSessionAuthenticationAdapter(
                 f"The ID token does not contain the identifier claim "
                 f"{self.settings.identifier_claim}. Please check the settings of the oauth provider."
             )
-            logger.error(error_msg)
+            logger.critical(
+                "The ID token lacks the configured identifier claim, so every login fails. "
+                "Map this claim into the ID token of the app's Keycloak client.",
+                identifier_claim=self.settings.identifier_claim,
+                available_claims=sorted(claims),
+            )
             raise RuntimeError(error_msg)
         record = SessionRecord(
             actor_id=actor_id,
@@ -258,7 +275,12 @@ class CookieSessionAuthenticationAdapter(
             id_token=token.get("id_token"),
             csrf_token=secrets.token_urlsafe(32),
         )
-        logger.info("Established a session for actor.", actor_id=actor_id)
+        logger.info(
+            "Established a session for actor.",
+            actor_id=actor_id,
+            expires_at=record.expires_at,
+            has_refresh_token=bool(record.refresh_token),
+        )
         next_url = self._safe_next(request.session.pop(_NEXT_SESSION_KEY, ""))
         response = RedirectResponse(next_url, status_code=303)
         self._write_session(response, record)
@@ -267,6 +289,8 @@ class CookieSessionAuthenticationAdapter(
     @override
     async def logout(self, request: Request) -> Response:
         record = self._read_session(request)
+        if record is not None:
+            logger.info("Ended a session for actor.", actor_id=record.actor_id)
         target = await self._end_session_url(record.id_token if record is not None else None)
         response = RedirectResponse(target, status_code=303)
         self._delete_session(response)
@@ -277,6 +301,11 @@ class CookieSessionAuthenticationAdapter(
         end_session_endpoint = metadata.get("end_session_endpoint")
         logout_redirect = self.settings.post_logout_redirect_url or FRONTEND_PREFIX
         if not end_session_endpoint:
+            logger.warning(
+                "The OAuth2 provider advertises no end-session endpoint, so logging out here "
+                "leaves the browser signed in at the provider. Enable it at the provider.",
+                well_known_url=self.settings.well_known_url,
+            )
             return logout_redirect
         params = {"post_logout_redirect_uri": logout_redirect}
         if id_token:
@@ -285,8 +314,9 @@ class CookieSessionAuthenticationAdapter(
 
     async def _refresh(self, record: SessionRecord) -> SessionRecord:
         if not record.refresh_token:
-            logger.info(
-                "Session carries no refresh token; requiring re-login.", actor_id=record.actor_id
+            logger.debug(
+                "The expired session has no refresh token; requiring re-login.",
+                actor_id=record.actor_id,
             )
             raise NotAuthenticatedError(_("Not authenticated"))
         try:
@@ -307,7 +337,7 @@ class CookieSessionAuthenticationAdapter(
         if token.get("id_token"):
             actor_id = await self._refreshed_actor_id(token, record)
         # created_at stays put: it anchors the absolute lifetime.
-        return record.model_copy(
+        updated = record.model_copy(
             update={
                 "actor_id": actor_id,
                 "expires_at": self._token_expiry(token),
@@ -315,6 +345,10 @@ class CookieSessionAuthenticationAdapter(
                 "id_token": token.get("id_token") or record.id_token,
             }
         )
+        logger.debug(
+            "Refreshed the session token.", actor_id=updated.actor_id, expires_at=updated.expires_at
+        )
+        return updated
 
     async def _refreshed_actor_id(self, token: dict[str, object], record: SessionRecord) -> str:
         """Re-derive the actor from a refreshed ID token, rejecting a changed subject.
@@ -335,23 +369,28 @@ class CookieSessionAuthenticationAdapter(
             # Broad on purpose: the signature and claim errors come from authlib's
             # JOSE backend, which it swaps out between releases.
             logger.warning(
-                "The refreshed ID token could not be validated; requiring re-login.",
+                "The refreshed ID token could not be validated; requiring re-login. If this "
+                "repeats for every user, check the provider's signing keys and issuer.",
                 actor_id=record.actor_id,
                 reason=str(exc),
             )
             raise NotAuthenticatedError(_("Not authenticated"))
         if claims.get("sub") != record.sub:
             logger.warning(
-                "The refreshed ID token belongs to a different subject; requiring re-login.",
+                "The refreshed ID token belongs to a different subject; requiring re-login. "
+                "Usually the account was deleted and recreated at the provider.",
                 actor_id=record.actor_id,
+                previous_sub=record.sub,
+                refreshed_sub=claims.get("sub"),
             )
             raise NotAuthenticatedError(_("Not authenticated"))
         actor_id = claims.get(self.settings.identifier_claim)
         if not isinstance(actor_id, str) or not actor_id:
             logger.warning(
-                "The refreshed ID token does not contain the identifier claim {}; requiring re-login.",
-                self.settings.identifier_claim,
+                "The refreshed ID token lacks the configured identifier claim; requiring "
+                "re-login. Map this claim into the ID token of the app's Keycloak client.",
                 actor_id=record.actor_id,
+                identifier_claim=self.settings.identifier_claim,
             )
             raise NotAuthenticatedError(_("Not authenticated"))
         return actor_id
@@ -367,8 +406,14 @@ class CookieSessionAuthenticationAdapter(
     async def get_authenticated_id(self, request: Request) -> str:
         record = self._read_session(request)
         if record is None:
+            logger.debug("The request carries no usable session cookie.")
             raise NotAuthenticatedError(_("Not authenticated"))
         if record.expires_at <= self._now():
+            logger.debug(
+                "The session's token has expired; refreshing it.",
+                actor_id=record.actor_id,
+                expires_at=record.expires_at,
+            )
             try:
                 record = await self._refresh(record)
             except NotAuthenticatedError:
@@ -405,9 +450,16 @@ class CookieSessionAuthenticationAdapter(
     @override
     async def check_csrf(self, request: Request, submitted: str | None) -> bool:
         record = self._read_session(request)
-        if record is None:
+        if record is None or not self.verify_csrf(submitted, record):
+            logger.warning(
+                "Rejected an unsafe request: the CSRF token is missing or does not match. "
+                "Usually a page opened before the app restarted - reload it and retry.",
+                actor_id=record.actor_id if record else None,
+                path=request.url.path,
+                token_submitted=bool(submitted),
+            )
             return False
-        return self.verify_csrf(submitted, record)
+        return True
 
 
 @dataclass
@@ -438,6 +490,11 @@ class AlwaysAuthenticatedAdapter(
     @override
     async def configure(self, settings: AlwaysAuthenticatedAdapterSettings) -> None:
         self._settings = settings
+        logger.warning(
+            "Authentication is disabled: every request acts as one fixed actor. Outside "
+            "development, select CookieSessionAuthenticationAdapter instead.",
+            actor_id=settings.actor_id,
+        )
 
     @override
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:

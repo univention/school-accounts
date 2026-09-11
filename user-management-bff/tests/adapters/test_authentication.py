@@ -205,12 +205,22 @@ class TestCookieSessionAuthenticationAdapter:
         result = adapter._token_expiry({"expires_in": 60})
         assert before + timedelta(seconds=59) <= result <= before + timedelta(seconds=61)
 
+    def test_token_expiry_without_any_claim_uses_the_cookie_max_age(
+        self, adapter: CookieSessionAuthenticationAdapter
+    ):
+        max_age = adapter.settings.cookie_max_age
+        before = datetime.now(timezone.utc)
+        result = adapter._token_expiry({})
+        assert (
+            before + timedelta(seconds=max_age - 1) <= result <= before + timedelta(seconds=max_age + 1)
+        )
+
     @pytest.mark.parametrize(
         "candidate,expected",
         [
             ("/ui/users", "/ui/users"),
-            ("//evil.com", FRONTEND_PREFIX),
-            ("https://evil.com", FRONTEND_PREFIX),
+            ("//example.com", FRONTEND_PREFIX),
+            ("https://example.com", FRONTEND_PREFIX),
             ("", FRONTEND_PREFIX),
         ],
     )
@@ -267,15 +277,25 @@ class TestCookieSessionAuthenticationAdapter:
     # --- login / callback ---------------------------------------------------------
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "next_url,expected",
+        [("/ui/users", "/ui/users"), ("https://example.com", FRONTEND_PREFIX)],
+        ids=["local", "discarded"],
+    )
     async def test_login_redirect(
-        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
+        next_url: str,
+        expected: str,
     ):
         sentinel = object()
         client.authorize_redirect = mocker.AsyncMock(return_value=sentinel)
         request = self._request(mocker, session={})
-        result = await wired.login_redirect(request, "/ui/users")
+        result = await wired.login_redirect(request, next_url)
         assert result is sentinel
-        assert request.session["post_login_next"] == "/ui/users"
+        assert request.session["post_login_next"] == expected
         client.authorize_redirect.assert_awaited_once_with(request, wired.settings.redirect_url)
 
     @pytest.mark.asyncio

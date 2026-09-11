@@ -53,7 +53,9 @@ class SessionCookieCodec:
         token = self._fernet.encrypt(compressed).decode("ascii")
         if len(token) > _MAX_COOKIE_BYTES:
             logger.error(
-                "The session cookie is too large for browsers to keep; sessions will not persist.",
+                "The session cookie is too large for browsers to keep; sessions will not persist. "
+                "Usually the ID token carries too many claims - trim the Keycloak client's mappers.",
+                actor_id=record.actor_id,
                 size=len(token),
                 limit=_MAX_COOKIE_BYTES,
             )
@@ -63,16 +65,23 @@ class SessionCookieCodec:
         try:
             plain = zlib.decompress(self._fernet.decrypt(raw.encode("ascii")))
         except (InvalidToken, zlib.error, UnicodeEncodeError):
-            logger.warning("Rejected a session cookie that could not be decrypted.")
+            logger.info(
+                "Rejected a session cookie that could not be decrypted, so this user has to log "
+                "in again. Usually follows a change of the session secret.",
+            )
             return None
         try:
             payload = _CookiePayload.model_validate_json(plain)
         except ValidationError:
-            logger.warning("Rejected a session cookie whose payload could not be parsed.")
+            logger.info(
+                "Rejected a session cookie whose payload could not be read, so this user has to "
+                "log in again. Usually follows a release that changed the cookie without its version.",
+            )
             return None
         if payload.version != COOKIE_VERSION:
             logger.warning(
-                "Rejected a session cookie written by a different release.",
+                "Session cookie predates the running release; requiring re-login. "
+                "Expected once per session after an app update, no action needed.",
                 cookie_version=payload.version,
                 expected_version=COOKIE_VERSION,
             )

@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 import asyncio
-from collections import defaultdict
+from collections import Counter, defaultdict
+from typing import Protocol, TypeVar
 
 from loguru import logger
 
@@ -42,16 +43,40 @@ from .presentation import (
 )
 
 
+class _HasId(Protocol):
+    id: str
+
+
+_Filterable = TypeVar("_Filterable", bound=_HasId)
+
+
+def _usable_as_filter(
+    items: list[_Filterable], permissions: dict[str, list[Permission]], **context: object
+) -> list[_Filterable]:
+    permitted = [item for item in items if Permission.use_as_filter in permissions.get(item.id, [])]
+    logger.debug(
+        "Filtered by the use-as-filter permission.",
+        fetched_count=len(items),
+        permitted_count=len(permitted),
+        **context,
+    )
+    return permitted
+
+
 async def get_actor(
     actor_id: str,
     users_persistence_adapter: UsersPersistencePort,
     lang: str,
 ) -> User:
     try:
-        return await users_persistence_adapter.get_user(actor_id)
+        actor = await users_persistence_adapter.get_user(actor_id)
     except ObjectNotFoundError as exc:
         user = exc.identifier
-        logger.error("Actor is not a valid UCS@school user.", actor_id=actor_id)
+        logger.warning(
+            "Actor is not a UCS@school user, so this module is unusable for them. "
+            "Assign a UCS@school role, or use a school account.",
+            actor_id=actor_id,
+        )
         raise NoSchoolUserError(
             _(
                 "The logged in user '{user}' is not a valid UCS@school user.",
@@ -59,6 +84,13 @@ async def get_actor(
             ).format(user=user),
             identifier=exc.identifier,
         ) from exc
+    logger.debug(
+        "Resolved the actor.",
+        actor_id=actor_id,
+        roles=actor.attributes.roles,
+        schools=actor.attributes.schools,
+    )
+    return actor
 
 
 def school_class_to_target(school_class: SchoolClass) -> Target:
@@ -110,7 +142,6 @@ async def get_users(
     request_data: UsersGetRequest,
     lang: str,
 ) -> UserListData:
-    logger.debug("Retrieving all users of a school.", actor_id=actor_id, school=request_data.school)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     users = await users_get_adapter.get_users(
         request_data.school, request_data.school_classes, request_data.work_groups
@@ -121,10 +152,23 @@ async def get_users(
     for school in schools:
         school_classes[school.id].extend(await school_classes_get_adapter.get_school_classes(school.id))
         work_groups[school.id].extend(await work_groups_get_adapter.get_work_groups(school.id))
+    logger.debug(
+        "Loaded the group names needed to render the list.",
+        schools_scanned=len(schools),
+        school_class_count=sum(len(items) for items in school_classes.values()),
+        work_group_count=sum(len(items) for items in work_groups.values()),
+    )
 
     permissions = await permissions_port.get_permissions(
         actor,
         [user_to_target(user) for user in users],
+    )
+    logger.debug(
+        "Retrieved the users of a school.",
+        actor_id=actor_id,
+        school=request_data.school,
+        user_count=len(users),
+        permitted_user_count=sum(1 for user in users if permissions.get(user.id)),
     )
     return UserListData(
         users=users,
@@ -142,17 +186,12 @@ async def get_schools(
     actor_id: str,
     lang: str,
 ) -> SchoolsData:
-    logger.debug("Retrieving all schools.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     schools = await schools_get_adapter.get_schools()
     permissions = await permissions_port.get_permissions(
         actor, [school_to_target(school) for school in schools]
     )
-    return SchoolsData(
-        schools=[
-            school for school in schools if Permission.use_as_filter in permissions.get(school.id, [])
-        ]
-    )
+    return SchoolsData(schools=_usable_as_filter(schools, permissions, kind="school", actor_id=actor_id))
 
 
 async def get_school_classes(
@@ -163,17 +202,14 @@ async def get_school_classes(
     school_id: str,
     lang: str,
 ) -> list[SchoolClass]:
-    logger.debug("Retrieving all school classes.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     school_classes = await schools_get_adapter.get_school_classes(school_id)
     permissions = await permissions_port.get_permissions(
         actor, [school_class_to_target(school_class) for school_class in school_classes]
     )
-    return [
-        school_class
-        for school_class in school_classes
-        if Permission.use_as_filter in permissions.get(school_class.id, [])
-    ]
+    return _usable_as_filter(
+        school_classes, permissions, kind="school_class", actor_id=actor_id, school=school_id
+    )
 
 
 async def get_work_groups(
@@ -184,21 +220,21 @@ async def get_work_groups(
     school_id: str,
     lang: str,
 ) -> list[WorkGroup]:
-    logger.debug("Retrieving all work groups.", actor_id=actor_id)
     actor = await get_actor(actor_id, users_get_adapter, lang)
     work_groups = await schools_get_adapter.get_work_groups(school_id)
     permissions = await permissions_port.get_permissions(
         actor, [work_group_to_target(work_group) for work_group in work_groups]
     )
-    return [
-        work_group
-        for work_group in work_groups
-        if Permission.use_as_filter in permissions.get(work_group.id, [])
-    ]
+    return _usable_as_filter(
+        work_groups, permissions, kind="work_group", actor_id=actor_id, school=school_id
+    )
 
 
 async def _fetch_users(
-    users_adapter: UsersPersistencePort, target_ids: list[str], school: str = ""
+    users_adapter: UsersPersistencePort,
+    target_ids: list[str],
+    actor_id: str,
+    school: str = "",
 ) -> tuple[dict[str, User], list[str]]:
     """Fetch the selected users, returning what was found and what was missing.
 
@@ -214,16 +250,27 @@ async def _fetch_users(
                 for user in await users_adapter.get_users(school, [], [])
                 if user.id in wanted
             }
-        except Exception:
+        except Exception as exc:
             # The search is only a shortcut; a backend that is really down fails the
             # per-id fetches below too, and those report it.
             logger.warning(
-                "Resolving a selection by school failed, falling back to one fetch per user.",
+                "Resolving a selection by school failed, falling back to one fetch per user. "
+                "Check the Kelvin REST API if this repeats.",
+                actor_id=actor_id,
                 school=school,
                 target_count=len(target_ids),
+                error=str(exc),
+                error_type=type(exc).__name__,
             )
 
     remaining = [target_id for target_id in target_ids if target_id not in found]
+    logger.debug(
+        "Looked up the selected users.",
+        actor_id=actor_id,
+        school=school,
+        from_search=len(found),
+        by_id=len(remaining),
+    )
     semaphore = asyncio.Semaphore(PASSWORD_RESET_MAX_CONCURRENCY)
 
     async def _fetch(target_id: str) -> User:
@@ -238,9 +285,27 @@ async def _fetch_users(
         if isinstance(result, ObjectNotFoundError):
             missing.append(target_id)
         elif isinstance(result, BaseException):
+            logger.error(
+                "Abandoned the password reset: a selected user could not be looked up. "
+                "No password was changed. Usually the Kelvin REST API is unreachable or "
+                "answered with an error; the reset can be retried once it responds.",
+                actor_id=actor_id,
+                target_id=target_id,
+                target_count=len(target_ids),
+                error=str(result),
+                error_type=type(result).__name__,
+            )
             raise result
         else:
             found[target_id] = result
+    if missing:
+        logger.warning(
+            "Selected users no longer exist, so the list this selection came from predates "
+            "their removal. Reloading the list drops them.",
+            actor_id=actor_id,
+            missing=missing,
+            target_count=len(target_ids),
+        )
     return found, missing
 
 
@@ -260,8 +325,8 @@ async def get_password_reset_selection(
     deduped_ids = list(dict.fromkeys(target_ids))
     # Resolving costs a round-trip per user, and the submit would refuse this anyway.
     if len(deduped_ids) > PASSWORD_RESET_MAX_TARGETS:
-        logger.warning(
-            "Rejected a password reset confirmation: selection exceeds the maximum target count.",
+        logger.info(
+            "Rejected a password reset: selection exceeds the maximum target count.",
             actor_id=actor_id,
             target_count=len(deduped_ids),
             max_targets=PASSWORD_RESET_MAX_TARGETS,
@@ -271,7 +336,7 @@ async def get_password_reset_selection(
         )
     actor = await get_actor(actor_id, users_adapter, lang)
     # A vanished user is dropped here; the submit reports it as ``not_found``.
-    found, _missing = await _fetch_users(users_adapter, deduped_ids, school)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, school)
     users = list(found.values())
 
     permissions = await permissions_port.get_permissions(actor, [user_to_target(user) for user in users])
@@ -282,6 +347,8 @@ async def get_password_reset_selection(
         actor_id=actor_id,
         selected=len(deduped_ids),
         resettable=len(permitted),
+        denied=denied,
+        missing_count=len(missing),
     )
     return PasswordResetSelectionData(
         users=permitted,
@@ -315,7 +382,8 @@ async def _write_passwords(
                 # through, and escaping the gather would lose the whole report.
                 outcome = PasswordResetOutcomeCode.unconfirmed
                 logger.exception(
-                    "Password reset could not be confirmed for target.",
+                    "A password reset could not be confirmed, so it is unknown whether this "
+                    "user's password changed. Check the account before resetting it again.",
                     actor_id=actor_id,
                     target_id=target_id,
                 )
@@ -345,13 +413,15 @@ async def set_passwords(
     logger.debug(
         "Resetting passwords for a selection of users.",
         actor_id=actor_id,
+        submitted_count=len(target_ids),
         target_count=len(deduped_ids),
     )
     if not deduped_ids:
+        logger.info("Rejected a password reset: no user was selected.", actor_id=actor_id)
         return PasswordResetResultData(outcomes=[], request_error=PasswordResetRequestError.no_targets)
     if len(deduped_ids) > PASSWORD_RESET_MAX_TARGETS:
-        logger.warning(
-            "Rejected a bulk password reset: selection exceeds the maximum target count.",
+        logger.info(
+            "Rejected a password reset: selection exceeds the maximum target count.",
             actor_id=actor_id,
             target_count=len(deduped_ids),
             max_targets=PASSWORD_RESET_MAX_TARGETS,
@@ -360,8 +430,8 @@ async def set_passwords(
             outcomes=[], request_error=PasswordResetRequestError.too_many_targets
         )
     if not password:
-        logger.warning(
-            "Rejected a bulk password reset: no password was supplied.",
+        logger.info(
+            "Rejected a password reset: no password was supplied.",
             actor_id=actor_id,
             target_count=len(deduped_ids),
         )
@@ -370,7 +440,7 @@ async def set_passwords(
         )
 
     actor = await get_actor(actor_id, users_adapter, lang)
-    found, missing = await _fetch_users(users_adapter, deduped_ids, school)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, school)
     outcomes: dict[str, PasswordResetOutcome] = {
         tid: PasswordResetOutcome(target_id=tid, outcome=PasswordResetOutcomeCode.not_found)
         for tid in missing
@@ -382,7 +452,7 @@ async def set_passwords(
     permitted_ids = [tid for tid in found if Permission.write_password in permissions.get(tid, [])]
     denied_ids = [tid for tid in found if tid not in permitted_ids]
     for tid in denied_ids:
-        logger.warning(
+        logger.info(
             "Denied a password reset: actor lacks write-password on this target.",
             actor_id=actor_id,
             target_id=tid,
@@ -390,13 +460,21 @@ async def set_passwords(
         outcomes[tid] = PasswordResetOutcome(
             target_id=tid, outcome=PasswordResetOutcomeCode.permission_denied
         )
+    logger.debug(
+        "Resolved the password-reset targets.",
+        actor_id=actor_id,
+        resolved_count=len(found),
+        missing_count=len(missing),
+        permitted_count=len(permitted_ids),
+        denied_count=len(denied_ids),
+    )
 
     for outcome in await _write_passwords(
         users_adapter, permitted_ids, password, actor_id, change_on_next_login
     ):
         outcomes[outcome.target_id] = outcome
 
-    return PasswordResetResultData(
+    result = PasswordResetResultData(
         outcomes=[outcomes[tid] for tid in deduped_ids],
         selection=PasswordResetSelectionData(
             users=[found[tid] for tid in permitted_ids],
@@ -404,3 +482,10 @@ async def set_passwords(
             supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
         ),
     )
+    logger.info(
+        "Completed a bulk password reset.",
+        actor_id=actor_id,
+        target_count=len(deduped_ids),
+        **Counter(outcome.outcome.value for outcome in result.outcomes),
+    )
+    return result

@@ -141,12 +141,17 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 
 ## Logging, Correlation IDs, and Sessions
 
-- **Logging**: use loguru's structured form — `logger.<level>(message, key=value, ...)`, not
-  f-strings/`.format()` (the OIDC callback handler in `authentication.py` is the one existing
-  exception to this — don't copy it). Log from `business_logic.py` and adapters, never from
-  `routes.py` (no logger calls exist there today). Rough level convention: `debug` for routine
-  data fetches, `info` for session lifecycle events, `warning`/`error` for failures with enough
-  context to trace.
+- **Logging**: use loguru's structured form — `logger.<level>(message, key=value, ...)`, never
+  f-strings/`.format()`. Log from `business_logic.py`, `presentation.py` and the adapters.
+  `routes.py` logs only the filter-state decisions it makes itself and no other layer sees (a
+  school the actor cannot filter by, a dropped group filter); anything a port or a domain rule
+  decides belongs where that decision is made — a rejected CSRF token is logged by the
+  authentication adapter, not by the dependency that raises. Levels follow
+  [ADR 0005](https://git.knut.univention.de/univention/dev/decision-records/-/blob/main/dev/0005-log-levels.md):
+  `debug` for technical context, `info` for a completed business event, `warning` only for a
+  handled surprise (never for wrong user input) and it must say how to avoid it next time,
+  `error` for what the service cannot handle but survives, `critical` for what stops every
+  future request, stating why.
 - **Correlation ID** (`correlation_id.py`): a `ContextVar` set once per request by `main.py`'s
   middleware (from the `X-Request-ID` header or a generated UUID), automatically attached to
   every loguru call in that request and echoed back as a response header. This is transparent
@@ -328,7 +333,7 @@ docker compose so no local Python/Node install is required.
 
 CI (`.gitlab-ci/gitlab-ci.yml`) runs the equivalent of `pytest -m "not e2e"` with **coverage gated via
 the `BFF_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `user_management_bff` +
-`keycloak_provisioning` (excluding `main.py`, `constants.py`, `logging.py` — see
+`keycloak_provisioning` (excluding `main.py` and `constants.py` — see
 `[tool.coverage.run] omit` in `pyproject.toml`). New code outside those three omitted files must be
 fully covered or CI fails.
 

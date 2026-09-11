@@ -4,7 +4,6 @@
 import gettext
 import os
 from functools import cache
-from typing import cast
 
 from fastapi import Request
 
@@ -17,13 +16,10 @@ from user_management_bff.constants import (
 
 
 @cache
-def gettext_instances() -> dict[str, gettext.GNUTranslations]:
+def gettext_instances() -> dict[str, gettext.NullTranslations]:
     locales_dir = os.path.join(PROJECT_DIR, "locales")
     return {
-        lang: cast(
-            gettext.GNUTranslations,
-            gettext.translation(APP_NAME, locales_dir, languages=[lang], fallback=True),
-        )
+        lang: gettext.translation(APP_NAME, locales_dir, languages=[lang], fallback=True)
         for lang in LANGUAGES
     }
 

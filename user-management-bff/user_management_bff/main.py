@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
-from port_loader import AsyncAdapterSettingsProvider
+from port_loader import EnvSettingsProvider
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -41,20 +41,15 @@ from .session_middleware import SessionCookieMiddleware
 @asynccontextmanager
 async def lifespan(_fastapi_app: FastAPI):
     try:
-        await configure_logger()
+        await configure_logger(EnvSettingsProvider())
         configure_registry(ADAPTER_REGISTRY)
-
-        settings_port: AsyncAdapterSettingsProvider = await ADAPTER_REGISTRY.request_port(
-            AsyncAdapterSettingsProvider
-        )
-        await configure_logger(settings_port)
-
         await initialize_adapters(ADAPTER_REGISTRY)
     except Exception:
-        import traceback
-
-        traceback.print_exc()
+        logger.opt(exception=True).critical("Startup failed, so the application cannot serve requests.")
+    else:
+        logger.info("Application started.", version=metadata.version("user-management-bff"))
     yield
+    logger.info("Application shutting down.")
     await ADAPTER_REGISTRY.aclose()
 
 
@@ -84,9 +79,10 @@ async def add_correlation_id(request: Request, call_next: RequestResponseEndpoin
     correlation_id_ctx_var.set(correlation_id)
 
     with logger.contextualize(correlation_id=correlation_id):
-        logger.trace(f"Setting correlation id for request {request.url} to {correlation_id}")
+        logger.trace("Handling request.", method=request.method, path=request.url.path)
         response = await call_next(request)
         response.headers[CORRELATION_ID_HEADER_NAME] = correlation_id
+        logger.trace("Handled request.", status_code=response.status_code)
         return response
 
 
@@ -151,12 +147,19 @@ async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserEr
 @app.exception_handler(ObjectNotFoundError)
 async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError):
     lang = get_lang(request)
+    logger.info(
+        "Request referenced an object that does not exist.",
+        actor_id=getattr(request.state, "actor_id", None),
+        path=request.url.path,
+        identifier=exc.identifier,
+    )
     return _html_error(request, f"{_(exc.message, lang=lang)}: {exc.identifier}", 404)
 
 
 @app.exception_handler(NotAuthenticatedError)
 async def not_authenticated_exception_handler(request: Request, _exc: NotAuthenticatedError):
     # Send the browser into the interactive login, preserving where it was going.
+    logger.debug("Redirecting an unauthenticated request to the login.", path=request.url.path)
     login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(request.url.path)}"
     if request.headers.get("HX-Request") == "true":
         # htmx performs a client-side redirect when it sees this header.
@@ -165,7 +168,13 @@ async def not_authenticated_exception_handler(request: Request, _exc: NotAuthent
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(request: Request, _exc: RequestValidationError):
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     # Fallback for request validation failures (e.g. a missing query parameter).
     lang = get_lang(request)
+    logger.info(
+        "Rejected a malformed request.",
+        actor_id=getattr(request.state, "actor_id", None),
+        path=request.url.path,
+        errors=exc.errors(),
+    )
     return _html_error(request, _("Invalid request.", lang=lang), 422)

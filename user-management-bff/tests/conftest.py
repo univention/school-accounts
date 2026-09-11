@@ -4,7 +4,7 @@ import os
 import subprocess
 from pathlib import Path
 from typing import Callable
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import nest_asyncio
 import pytest
@@ -28,10 +28,14 @@ def pytest_configure(config: pytest.Config):
 
 @pytest.fixture(scope="session")
 def test_client():
-    from user_management_bff.main import app
+    from user_management_bff import main
 
-    with TestClient(app) as client:
-        yield client
+    # Starting the app configures loguru process-wide, which would otherwise decide for
+    # every later test in the session what its own log records look like.
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(main, "configure_logger", AsyncMock())
+        with TestClient(main.app) as client:
+            yield client
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Protocol, TypeVar
 
+from loguru import logger
+
 from .constants import (
     PASSWORD_RESET_BULK_THRESHOLD,
     PASSWORD_RESET_MAX_TARGETS,
@@ -245,10 +247,7 @@ def _find_by_id(items: Collection[_Identifiable], item_id: str) -> _Identifiable
     try:
         return next(item for item in items if item.id == item_id)
     except StopIteration:
-        # TODO univention/dev/education/user-management#214
-        #      Handle this situation properly (context dependent),
-        #      e.g. log an error and return user toast
-        raise KeyError(f"Item with id {item_id} not found")
+        raise KeyError(item_id, len(items))
 
 
 def _format_school(schools: list[School], school_id: str) -> str:
@@ -368,6 +367,8 @@ def split_group_value(value: str | None) -> tuple[str, str]:
     """
     kind, _sep, item_id = (value or "").partition(":")
     if kind not in (SCHOOL_CLASS_KIND, WORK_GROUP_KIND) or not item_id:
+        if value and value != ALL_GROUPS:
+            logger.debug("Ignored an unrecognised group filter value.", value=value)
         return "", ""
     return kind, item_id
 
@@ -415,49 +416,69 @@ def list_columns(lang: str) -> list[Column]:
     ]
 
 
+def _user_cells(user: User, data: UserListData, permissions: set[Permission], lang: str) -> list[Cell]:
+    attributes = user.attributes
+    return [
+        _text_cell("last_name", attributes.last_name, permissions),
+        _text_cell("first_name", attributes.first_name, permissions),
+        _text_cell("username", attributes.username, permissions),
+        _list_cell(
+            "roles",
+            [_format_role(data.schools, role, lang) for role in attributes.roles],
+            permissions,
+        ),
+        _list_cell(
+            "school_classes",
+            [
+                _format_school_class(
+                    data.schools, data.school_classes.get(school, []), school, school_class
+                )
+                for school, classes in attributes.school_classes.items()
+                for school_class in classes
+            ],
+            permissions,
+        ),
+        _list_cell(
+            "work_groups",
+            [
+                _format_work_group(data.schools, data.work_groups.get(school, []), school, work_group)
+                for school, groups in attributes.work_groups.items()
+                for work_group in groups
+            ],
+            permissions,
+        ),
+        _list_cell(
+            "schools",
+            [_format_school(data.schools, school) for school in attributes.schools],
+            permissions,
+        ),
+        _boolean_cell("activated", not attributes.disabled, permissions, lang),
+    ]
+
+
 def build_user_list(data: UserListData, lang: str) -> UserListView:
     rows: list[Row] = []
+    hidden = 0
     for user in data.users:
         permissions = set(data.permissions.get(user.id, []))
         # A user is only listed if the actor holds at least one permission on
         # them (``username`` alone is implicit and never produced in isolation).
         if not permissions:
+            hidden += 1
             continue
-        attributes = user.attributes
-        cells = [
-            _text_cell("last_name", attributes.last_name, permissions),
-            _text_cell("first_name", attributes.first_name, permissions),
-            _text_cell("username", attributes.username, permissions),
-            _list_cell(
-                "roles",
-                [_format_role(data.schools, role, lang) for role in attributes.roles],
-                permissions,
-            ),
-            _list_cell(
-                "school_classes",
-                [
-                    _format_school_class(data.schools, data.school_classes[school], school, school_class)
-                    for school, classes in attributes.school_classes.items()
-                    for school_class in classes
-                ],
-                permissions,
-            ),
-            _list_cell(
-                "work_groups",
-                [
-                    _format_work_group(data.schools, data.work_groups[school], school, work_group)
-                    for school, groups in attributes.work_groups.items()
-                    for work_group in groups
-                ],
-                permissions,
-            ),
-            _list_cell(
-                "schools",
-                [_format_school(data.schools, school) for school in attributes.schools],
-                permissions,
-            ),
-            _boolean_cell("activated", not attributes.disabled, permissions, lang),
-        ]
+        try:
+            cells = _user_cells(user, data, permissions, lang)
+        except KeyError as exc:
+            # TODO univention/dev/education/user-management#214
+            #      Handle this properly and context dependent, e.g. as a toast for the user.
+            logger.error(
+                "Cannot render the user list: a user belongs to a school, class or work group "
+                "that the backend did not return. Check that user's groups in the Kelvin REST API.",
+                user_id=user.id,
+                missing_id=exc.args[0],
+                candidate_count=exc.args[1],
+            )
+            raise
         rows.append(
             Row(
                 id=user.id,
@@ -465,6 +486,12 @@ def build_user_list(data: UserListData, lang: str) -> UserListView:
                 label=_display_name(user),
                 selectable=Permission.write_password in permissions,
             )
+        )
+    if hidden:
+        logger.debug(
+            "Left users out of the list: the actor holds no permission on them.",
+            hidden_count=hidden,
+            fetched_count=len(data.users),
         )
     return UserListView(columns=list_columns(lang), rows=rows)
 

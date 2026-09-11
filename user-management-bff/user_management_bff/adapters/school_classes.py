@@ -4,6 +4,7 @@
 import json
 from dataclasses import dataclass, field
 
+from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
@@ -17,7 +18,7 @@ from .base import KelvinPersistenceBaseAdapter
 class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
         kelvin_school_classes = SchoolClassResource(session=self.kelvin_session).search(school=school)
-        return [
+        school_classes = [
             SchoolClass(
                 id=school_class.name,
                 display_name=school_class.description or school_class.name,
@@ -25,6 +26,10 @@ class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, Kelvin
             )
             async for school_class in kelvin_school_classes
         ]
+        logger.debug(
+            "Fetched school classes from the Kelvin API.", school=school, count=len(school_classes)
+        )
+        return school_classes
 
 
 @dataclass

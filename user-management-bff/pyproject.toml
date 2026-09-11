@@ -103,8 +103,7 @@ skip_covered = true
 [tool.coverage.run]
 omit = [
     "main.py",
-    "constants.py",
-    "logging.py"
+    "constants.py"
     ]
 source_pkgs = [
     "user_management_bff",

@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from loguru import logger
 from starlette.datastructures import FormData
 from starlette.responses import RedirectResponse, Response
 
@@ -94,6 +95,7 @@ PermissionsAdapterDep = Annotated[PermissionsPort, Depends(permissions)]
 async def current_actor(request: Request, auth: AuthDep) -> str:
     """Resolve the authenticated actor id, or raise ``NotAuthenticatedError``."""
     actor = await auth.get_authenticated_id(request)
+    request.state.actor_id = actor
     request.state.actor_name = await auth.get_display_name(request) or actor
     return actor
 
@@ -240,10 +242,22 @@ async def users_list(
             lang,
             selected=f"{kind}:{item_id}" if kind else "",
         )
+    else:
+        logger.debug(
+            "Requested a school the actor cannot filter by; rendering it without group filters.",
+            actor_id=actor,
+            school=school,
+        )
     # Drop a group the selected school does not have. That covers a stale deep
     # link, and the moment after a school change where the search fires while the
     # dependent control still holds the previous school's selection.
     if kind and not any(o.selected for section in group_sections for o in section.options):
+        logger.debug(
+            "Dropped a group filter the selected school does not have.",
+            school=school,
+            group_kind=kind,
+            group_id=item_id,
+        )
         kind, item_id = "", ""
     # The control always carries a selection, so "no group filter" is the
     # explicit all-groups value rather than an empty one.

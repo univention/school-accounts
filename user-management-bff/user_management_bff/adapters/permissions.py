@@ -145,12 +145,19 @@ class CerbosPermissionsAdapter(
 
     @staticmethod
     def _user_to_principal(user: User) -> engine_pb2.Principal:
+        cerbos_roles = ucsschool_roles_to_cerbos_roles(user.attributes.roles)
+        if len(cerbos_roles) != len(user.attributes.roles):
+            logger.debug(
+                "Ignored actor role strings that are not <role>:school:<context>.",
+                actor_id=user.id,
+                roles=user.attributes.roles,
+            )
         return engine_pb2.Principal(
             id=user.id,
             roles=[_PRINCIPAL_ROLE],
             attr=CerbosPermissionsAdapter._attrs_to_struct_fields(
                 {
-                    "cerbos_roles": ucsschool_roles_to_cerbos_roles(user.attributes.roles),
+                    "cerbos_roles": cerbos_roles,
                     "schools": user.attributes.schools,
                     "school_classes": user.attributes.school_classes,
                     "work_groups": user.attributes.work_groups,
@@ -206,7 +213,9 @@ class CerbosPermissionsAdapter(
     def settings(self) -> CerbosPermissionsAdapterSettings:
         if self._settings is None:
             error_msg = "The settings should never be accessed before the adapter was configured!"
-            logger.error(error_msg)
+            logger.critical(
+                "The permissions backend is not configured, so no request can be authorized."
+            )
             raise RuntimeError(error_msg)
         return self._settings
 
@@ -247,7 +256,7 @@ class CerbosPermissionsAdapter(
             for target in targets
         ]
         principal = self._user_to_principal(actor)
-        batches = self._chunked(resources, self.settings.max_batch_size)
+        batches = list(self._chunked(resources, self.settings.max_batch_size))
         # return_exceptions=True: with several batches in flight concurrently, a systemic
         # failure (eg. Cerbos unreachable) fails every batch at once. Without this, gather
         # would propagate the first exception while the other batches' tasks keep running in
@@ -262,8 +271,10 @@ class CerbosPermissionsAdapter(
         for result in results:
             if isinstance(result, (grpc.aio.AioRpcError, CerbosTypeError)):
                 logger.error(
-                    "Error fetching permissions for actor",
+                    "Failed to ask Cerbos for permissions, so the request cannot be answered. "
+                    "Check that the Cerbos service is running and reachable.",
                     actor_id=actor.id,
+                    cerbos_target=self.settings.cerbos_target,
                     error_message=str(result),
                 )
                 raise PermissionsError(str(result)) from result
@@ -279,6 +290,13 @@ class CerbosPermissionsAdapter(
                 cerbos_call_id=result.cerbos_call_id,
             )
             permissions.update(self._check_resources_response_to_permissions_dict(result))
+        logger.debug(
+            "Checked permissions with Cerbos.",
+            actor_id=actor.id,
+            resource_count=len(resources),
+            batch_count=len(batches),
+            resolved_count=len(permissions),
+        )
         return permissions
 
 
@@ -306,10 +324,20 @@ class FilePermissionsAdapter(
     async def configure(self, settings: FilePermissionsAdapterSettings):
         with open(settings.source, "r") as fd:
             self._data = json.load(fd)
+        logger.warning(
+            "Authorization is not enforced by Cerbos: permissions come from a file. Outside "
+            "development, select CerbosPermissionsAdapter instead.",
+            source=settings.source,
+            actor_count=len(self._data),
+        )
 
     @override
     async def get_permissions(self, actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
-        logger.debug("Fetching actor permissions from the Guardian", actor_id=actor.id)
+        logger.debug(
+            "Reading actor permissions from the file adapter.",
+            actor_id=actor.id,
+            target_count=len(targets),
+        )
         permission_data = {}
         for target in targets:
             if target.old_target:

@@ -20,10 +20,14 @@ class KelvinSchoolsPersistenceAdapter(SchoolsPersistencePort, KelvinPersistenceB
         search_kwargs = {"name": name} if name else {}
         logger.debug("Fetching schools from Kelvin API.", search_kwargs=search_kwargs)
         kelvin_schools = SchoolResource(session=self.kelvin_session).search(**search_kwargs)
-        return [
+        schools = [
             School(id=kelvin_school.name, display_name=kelvin_school.display_name or kelvin_school.name)
             async for kelvin_school in kelvin_schools
         ]
+        logger.debug(
+            "Fetched schools from the Kelvin API.", search_kwargs=search_kwargs, count=len(schools)
+        )
+        return schools
 
 
 @dataclass

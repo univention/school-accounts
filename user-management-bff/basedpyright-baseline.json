@@ -2808,14 +2808,6 @@
         ],
         "./user_management_bff/logging.py": [
             {
-                "code": "reportDeprecated",
-                "range": {
-                    "startColumn": 26,
-                    "endColumn": 34,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportImplicitOverride",
                 "range": {
                     "startColumn": 8,
@@ -2828,14 +2820,6 @@
                 "range": {
                     "startColumn": 27,
                     "endColumn": 36,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportDeprecated",
-                "range": {
-                    "startColumn": 42,
-                    "endColumn": 50,
                     "lineCount": 1
                 }
             }
@@ -2864,14 +2848,6 @@
                 "range": {
                     "startColumn": 78,
                     "endColumn": 81,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAny",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 30,
                     "lineCount": 1
                 }
             }

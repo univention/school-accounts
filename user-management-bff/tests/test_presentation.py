@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Unit tests for the presentation view-model builders."""
 
+from dataclasses import replace
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -39,11 +41,6 @@ from user_management_bff.models import (
 )
 def test_attribute_access(name: str, permissions: set[Permission], expected: AttributeAccess):
     assert presentation._attribute_access(name, permissions) is expected
-
-
-def test_find_by_id_missing_raises_keyerror():
-    with pytest.raises(KeyError, match="Item with id missing not found"):
-        presentation._find_by_id([School(id="a", display_name="Alpha")], "missing")
 
 
 def test_build_school_options_sorts_by_display_name():
@@ -245,6 +242,19 @@ def test_build_user_list_hidden_cells_and_deactivated():
     assert row.cells[3].visible is False and row.cells[3].items == []  # roles hidden
     assert row.cells[7].activated is False and row.cells[7].text == "Deactivated"
     assert row.cells[7].visible is False
+
+
+@pytest.mark.parametrize(
+    "user_overrides,data_overrides",
+    [({"schools": ["ghost"]}, {}), ({}, {"school_classes": {}})],
+    ids=["dangling-reference", "collection-not-loaded"],
+)
+def test_a_dangling_group_reference_breaks_the_list(
+    user_overrides: dict[str, object], data_overrides: dict[str, object]
+):
+    data = replace(_list_data(_user(**user_overrides), list(Permission)), **data_overrides)
+    with pytest.raises(KeyError):
+        presentation.build_user_list(data, "en")
 
 
 def test_build_user_list_skips_users_without_permissions():

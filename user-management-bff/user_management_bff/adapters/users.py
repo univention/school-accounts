@@ -49,7 +49,7 @@ def _udm_messages(raw: object) -> list[str]:
     ]
 
 
-def _safe_rejection_reason(raw: object) -> str:
+def _safe_rejection_reason(raw: object, user_id: str) -> str:
     """Normalize Kelvin's untyped ``InvalidRequest.reason`` into the plain string promised.
 
     Only UDM's ``msg`` entries survive; anything else is stringified whole, untouched.
@@ -62,7 +62,9 @@ def _safe_rejection_reason(raw: object) -> str:
         return str(raw)
     except Exception as exc:
         logger.warning(
-            "Could not convert Kelvin's rejection reason to a string.",
+            "The user will see no reason for a refused password change: Kelvin sent one in "
+            "an unexpected shape. Report it together with the Kelvin REST API version.",
+            user_id=user_id,
             raw_type=type(raw).__name__,
             error=exc,
         )
@@ -127,7 +129,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         # TODO(ucsschool-kelvin-rest-api#149) dont filter here, let Kelvin filter by passing classes
         #   and workgroups to `.search` method
         kelvin_users = UserResource(session=self.kelvin_session).search(school=school)
-        return [
+        users = [
             self._user_from_kelvin_user(kelvin_user)
             async for kelvin_user in kelvin_users
             if _in_selected_group(
@@ -138,13 +140,21 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
                 user_work_groups=kelvin_user.workgroups or {},
             )
         ]
+        logger.debug(
+            "Fetched users from the Kelvin API.",
+            school=school,
+            school_classes=school_classes,
+            work_groups=work_groups,
+            count=len(users),
+        )
+        return users
 
     async def get_user(self, identifier: str) -> User:
         try:
             kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
             return self._user_from_kelvin_user(kelvin_user)
         except NoObject as exc:
-            logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+            logger.debug("Kelvin does not know this user.", user_id=identifier)
             raise ObjectNotFoundError(identifier=identifier) from exc
 
     @override
@@ -157,7 +167,7 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             try:
                 kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
             except NoObject as exc:
-                logger.error("Unable to find user with the Kelvin API.", user_id=identifier)
+                logger.debug("Kelvin does not know this user.", user_id=identifier)
                 raise ObjectNotFoundError(identifier=identifier) from exc
         if change_on_next_login and not self._change_on_next_login_supported:
             logger.warning(
@@ -187,9 +197,14 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         try:
             await kelvin_user.save()
         except InvalidRequest as exc:
-            logger.error("Kelvin rejected the password change.", user_id=identifier, error=exc.reason)
+            logger.error(
+                "Kelvin rejected the password change.",
+                user_id=identifier,
+                error=exc.reason,
+                password_history_overridden=_UDM_OVERRIDE_PW_HISTORY in kelvin_user.udm_properties,
+            )
             raise PasswordResetRejectedError(
-                identifier=identifier, message=_safe_rejection_reason(exc.reason)
+                identifier=identifier, message=_safe_rejection_reason(exc.reason, identifier)
             ) from exc
 
 
@@ -247,6 +262,7 @@ class FileUsersPersistenceAdapter(
         try:
             return next(user for user in self._data if user.id == identifier)
         except StopIteration:
+            logger.debug("The source file does not contain this user.", user_id=identifier)
             raise ObjectNotFoundError(identifier=identifier)
 
     @override

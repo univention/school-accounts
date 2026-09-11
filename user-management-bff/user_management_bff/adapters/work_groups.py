@@ -4,6 +4,7 @@
 import json
 from dataclasses import dataclass, field
 
+from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from ucsschool.kelvin.client import WorkGroupResource
@@ -16,7 +17,7 @@ from .base import KelvinPersistenceBaseAdapter
 class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersistenceBaseAdapter):
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
         kelvin_work_groups = WorkGroupResource(session=self.kelvin_session).search(school=school)
-        return [
+        work_groups = [
             WorkGroup(
                 id=work_group.name,
                 display_name=work_group.description or work_group.name,
@@ -24,6 +25,8 @@ class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersis
             )
             async for work_group in kelvin_work_groups
         ]
+        logger.debug("Fetched work groups from the Kelvin API.", school=school, count=len(work_groups))
+        return work_groups
 
 
 @dataclass
