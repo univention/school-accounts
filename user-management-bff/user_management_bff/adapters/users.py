@@ -34,6 +34,9 @@ _STORED_USERS = TypeAdapter(list[User])
 
 # Kelvin forwards it only when listed in mapped_udm_properties.json
 _UDM_CHANGE_ON_NEXT_LOGIN = "pwdChangeNextLogin"
+# Without it a reused password is refused, and the refusal tells the teacher
+# running the reset that this student once held that password.
+_UDM_OVERRIDE_PW_HISTORY = "overridePWHistory"
 
 
 def _udm_messages(raw: object) -> list[str]:
@@ -168,6 +171,18 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             kelvin_user.password = password
             if change_on_next_login:
                 kelvin_user.udm_properties[_UDM_CHANGE_ON_NEXT_LOGIN] = True
+            if _UDM_OVERRIDE_PW_HISTORY in kelvin_user.udm_properties:
+                kelvin_user.udm_properties[_UDM_OVERRIDE_PW_HISTORY] = True
+            else:
+                logger.warning(
+                    "Kelvin does not map the property that skips the password-history "
+                    "check, so a password this account held before will be refused and "
+                    "the refusal tells whoever runs the reset that it once used it. Add "
+                    "it to Kelvin's mapped_udm_properties.json.",
+                    user_id=identifier,
+                    missing_udm_property=_UDM_OVERRIDE_PW_HISTORY,
+                    udm_properties=",".join(sorted(kelvin_user.udm_properties)),
+                )
             try:
                 await kelvin_user.save()
             except InvalidRequest as exc:

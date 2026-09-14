@@ -9,7 +9,6 @@ from typing import Any, Callable
 from unittest.mock import MagicMock
 
 import pytest
-from loguru import logger
 from pytest_mock import MockerFixture
 from typing_extensions import override
 from ucsschool.kelvin.client import InvalidRequest, NoObject
@@ -341,6 +340,68 @@ class TestKelvinUsersPersistenceAdapter:
         assert "birthday,title" in warning_records[0]
         assert "test_user1" in warning_records[0]
         assert "new-password" not in warning_records[0]
+
+    @pytest.mark.asyncio
+    async def test_set_password_warns_when_the_password_history_cannot_be_overridden(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        patch_kelvin_resource: Callable[[Any, str, Any], None],
+        mocker: MockerFixture,
+        warning_records: list[str],
+    ):
+        """The reset still runs; only a reused password is refused, and that refusal leaks."""
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(return_value=kelvin_user)
+        kelvin_user.udm_properties = {"title": "x", "birthday": "2000-01-01"}
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        patch_kelvin_resource(user_management_bff.adapters.users, "UserResource", MockUserResource())
+        await adapter.configure(dummy_settings)
+        await adapter.set_password("test_user1", "new-password")
+        assert kelvin_user.password == "new-password"
+        kelvin_user.save.assert_awaited_once()
+        assert len(warning_records) == 1
+        assert "overridePWHistory" in warning_records[0]
+        assert "birthday,title" in warning_records[0]
+        assert "test_user1" in warning_records[0]
+        assert "new-password" not in warning_records[0]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("mapped", "expected"),
+        [({"overridePWHistory": "0"}, {"overridePWHistory": True}), ({}, {})],
+    )
+    async def test_set_password_overrides_the_password_history_when_kelvin_maps_it(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        mapped: dict[str, object],
+        expected: dict[str, object],
+    ):
+        """Refusing a reused password would tell the teacher what this student once used."""
+        kelvin_user = mocker.MagicMock()
+        kelvin_user.save = mocker.AsyncMock(return_value=kelvin_user)
+        udm_properties: dict[str, object] = dict(mapped)
+        kelvin_user.udm_properties = udm_properties
+
+        class MockUserResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                return kelvin_user
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        await adapter.configure(dummy_settings)
+        await adapter.set_password("test_user1", "new-password")
+        assert udm_properties == expected
 
     @pytest.mark.asyncio
     async def test_set_password_not_found(
