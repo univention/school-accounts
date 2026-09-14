@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-09-08 21:26+0000\n"
+"POT-Creation-Date: 2026-09-14 09:57+0200\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-"
 "maintainers@univention.de>\n"
@@ -152,6 +152,9 @@ msgstr "Benutzername"
 msgid "Work Groups"
 msgstr "Arbeitsgruppen"
 
+msgid "logout"
+msgstr "abmelden"
+
 #~ msgid "A student must be member of at least one school class."
 #~ msgstr "Ein Schüler muss Mitglied mindestens einer Schulklasse sein."
 
@@ -240,6 +243,3 @@ msgstr "Arbeitsgruppen"
 
 #~ msgid "general"
 #~ msgstr "allgemein"
-
-#~ msgid "logout"
-#~ msgstr "abmelden"
