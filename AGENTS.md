@@ -25,7 +25,7 @@ Top-level areas:
   Sphinx user manual (installation, configuration, troubleshooting, changelog). User-facing, built
   in CI (`docs-*` jobs); not developer documentation.
 - [dev/](dev/) — local dev environment (Docker Compose, Keycloak provisioning, fixture data,
-  scripts, product/e2e tests). See § Development Environment.
+  scripts, integration-test config). See § Development Environment.
 
 ## Repository Structure (`user-management-bff/`)
 
@@ -294,9 +294,15 @@ beyond having `docker` (>= 25) installed.
 - `dev/dev_run.sh pre-commit run [-a]` — runs the pre-commit suite (see § Testing and Validation).
 - `dev/.env` is created from `dev/.env.example` on first run and is **git-ignored** — treat any
   `dev/.env*` file other than `.env.example` as local/untracked, never edit or commit it.
-- Product tests (`dev/tests/product-tests/`) are a separate Python project (own `pyproject.toml` /
-  `uv.lock`), Playwright-driven, run against a fully installed instance — not part of the normal
-  backend test loop.
+- Product tests: the `dev/tests/product-tests/` project (a separate Playwright-driven Python project,
+  run against a fully installed instance) was **removed in `ff48630`**; a replacement is planned. Until
+  it lands, these references point at nothing — expect them to match no files rather than to work, and
+  reuse them when the new project arrives instead of reading them as live configuration:
+  - `.pre-commit-config.yaml` — a second `uv-lock` hook whose `files:` never matches, and exclude
+    patterns for the deleted baseline, `uv.lock` and `.python-version`.
+  - `REUSE.toml` — four paths under `dev/tests/product-tests/`.
+  - `dev/tests/playwright_product_test.sh` and `dev/tests/playwright2gitlab_junit.py` — orphaned; the
+    first `cd`s into the deleted directory, and nothing invokes either.
 
 ## Common Commands
 
@@ -333,14 +339,12 @@ optional:
 
 - **black** (line length 105, target py311) and **ruff** (`E, F, I, B`, `B008`/`B904` ignored,
   `--fix`) — both configured in `user-management-bff/pyproject.toml`.
-- **basedpyright** on the package (config: `user-management-bff/pyrightconfig.json`,
-  `dev/tests/product-tests/pyrightconfig.json`) with a committed baseline
-  (`basedpyright-baseline.json` per package) suppressing pre-existing findings — only *new*
+- **basedpyright** on the package (config: `user-management-bff/pyrightconfig.json`) with a committed
+  baseline (`basedpyright-baseline.json`) suppressing pre-existing findings — only *new*
   diagnostics fail the pre-commit hook/CI job. The default `basedpyright-*-native-baseline` hooks run
   against the host's `uv`-managed venv; for a precise type check that matches CI exactly, run the
   containerized hook instead: `uvx prek run --hook-stage manual basedpyright-bff-container-baseline
-  --all-files` (swap in `basedpyright-product-tests-container-baseline` for
-  `dev/tests/product-tests/`). These container hooks are `stages: [manual]`, so `pre-commit run -a`
+  --all-files`. These container hooks are `stages: [manual]`, so `pre-commit run -a`
   alone skips them — invoke them explicitly when you want a trustworthy type-check result.
 - **bandit** on everything except `tests/` and `appcenter-management/scripts/test_*`.
 - **reuse** — every source file needs an SPDX header or a matching `.license` sidecar file (see the
@@ -447,8 +451,7 @@ no access token is stored) rather than restating what the code does.
 - **`*.license` sidecar files**: required by the `reuse` tool for any file it can't auto-annotate
   (JSON fixtures, binary assets, `.po` files). Generate with `dev/dev_run.sh task reuse`; if reuse
   still fails afterward, create the `.license` file by hand following the existing ones' format.
-- `user-management-bff/uv.lock` and `dev/tests/product-tests/uv.lock` are managed by `uv` and checked
-  by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
+- `user-management-bff/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
   `uv add <package>` inside the relevant package directory, which updates that package's
   `pyproject.toml` and lockfile together, instead of editing either file manually.
 
