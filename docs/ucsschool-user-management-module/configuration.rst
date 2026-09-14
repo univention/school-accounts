@@ -50,29 +50,53 @@ and registers at Keycloak during the join. The secret never reaches the browser.
 Replacing the file therefore also needs the join script to run again, with
 :command:`univention-run-join-scripts`, so that Keycloak learns the new value.
 
-A session lasts at most eight hours. Renewing the tokens extends the login
-within that window but never beyond it, so after eight hours users log in again.
+A session lasts at most eight hours.
+Renewing the tokens extends the login within that window but never beyond it.
+
+Eight hours is the ceiling the app enforces, not the lifetime users experience.
+Keycloak applies its own session limits on top of it,
+and those usually end the session earlier.
+The app renews the login only after the access token has expired,
+and Keycloak refuses that renewal once it has closed the user's session:
+after the realm's *SSO Session Idle* has passed
+without the user working in the app,
+or at the latest after its *SSO Session Max*.
+A client can override both with *Client Session Idle* and *Client Session Max*.
+Whichever limit runs out first is the one that sends users back to the login.
 
 This model has three limitations that administrators should know about:
 
 No revocation before expiry
-   The app cannot invalidate an individual session. A copy of the cookie keeps
-   working for the rest of the eight hours. Logging out shortens that: the copy
-   stops working once the app next renews the login against Keycloak, which
-   happens within the lifetime of an access token.
+   The app cannot invalidate an individual session.
+   A copy of the cookie keeps working for the rest of the session's lifetime.
+   Logging out shortens that:
+   it ends the session in Keycloak as well,
+   so the copy stops working once the app next renews the login against Keycloak,
+   which happens within the lifetime of an access token.
 
-One login per UCS system
-   Each host generates its own secret, so a session established on the
-   :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` is not valid on a
-   :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`, or the other way
-   round. Users log in once per system they use.
+One app session per UCS system
+   Each host generates its own secret,
+   so the session from the
+   :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node`
+   is not valid on a
+   :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`,
+   or the other way round.
+   Users pass through Keycloak again on the second system.
+   Keycloak keeps its own session for the user, independently of this app,
+   so as long as that session is still open,
+   they see only a redirect and are not asked for their credentials again.
 
-Replacing the secret is the only way to end all sessions at once
+Replacing the secret ends the app sessions, but does not sign anybody out
    Writing a new secret into the :file:`session.secret` file and restarting the
-   app ends every session on that host at once, for example with
-   :command:`openssl rand -hex 32 > session.secret`. Do not delete the file:
-   the app only generates it during installation and refuses to start without
-   it.
+   app invalidates every cookie on that host at once,
+   for example with :command:`openssl rand -hex 32 > session.secret`.
+   This does not lock users out.
+   Their Keycloak sessions survive it,
+   so the next request takes them through Keycloak
+   and back into the app without a credential prompt.
+   Ending the sessions in Keycloak is what forces users to authenticate again.
+   Do not delete the :file:`session.secret` file:
+   the app only generates it during installation and refuses to start without it.
 
 App Settings
 ============

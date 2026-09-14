@@ -422,7 +422,8 @@ cd appcenter-management
 - a session lives entirely in an encrypted cookie, which buys statelessness at three costs: an
   individual session cannot be revoked before it expires, a session is valid only on the UCS system
   that issued it (each host generates its own `session.secret`), and replacing that secret is the
-  only way to end every session at once
+  only way to end every app session at once — it does not sign anybody out, because the Keycloak
+  session survives and carries the user straight back in
 
 ### Issues
 
