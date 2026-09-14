@@ -42,6 +42,14 @@ installation, in
 :file:`/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret`.
 An update reuses an existing file and therefore keeps existing sessions valid.
 
+The app logs users in through a confidential Keycloak client. It proves its own
+identity to Keycloak with a client secret that the installation generates once
+per host, in
+:file:`/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret`,
+and registers at Keycloak during the join. The secret never reaches the browser.
+Replacing the file therefore also needs the join script to run again, with
+:command:`univention-run-join-scripts`, so that Keycloak learns the new value.
+
 A session lasts at most eight hours. Renewing the tokens extends the login
 within that window but never beyond it, so after eight hours users log in again.
 

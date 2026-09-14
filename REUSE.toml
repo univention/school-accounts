@@ -15,6 +15,7 @@ path = [
     "appcenter-management/files/**.json",
     "basedpyright-baseline.json",
     "dev/data/**.json",
+    "dev/data/client.secret",
     "dev/data/fake-machine.secret",
     "dev/tests/**.csv",
     "dev/tests/**.json",

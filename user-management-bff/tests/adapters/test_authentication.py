@@ -94,6 +94,7 @@ class TestCookieSessionAuthenticationAdapter:
             client_id="ucsschool-user-management-ui",
             redirect_url="https://app/ui/auth/callback",
             cookie_secret="unit-test-secret",
+            client_secret="unit-test-client-secret",
             post_logout_redirect_url="https://app/ui",
         )
 
@@ -174,6 +175,8 @@ class TestCookieSessionAuthenticationAdapter:
         client = adapter._get_client()
         assert client is not None
         assert client.client_kwargs["timeout"] == settings.request_timeout
+        # Confidential client: without this the token and refresh calls are rejected.
+        assert client.client_secret == settings.client_secret
 
     @pytest.mark.asyncio
     async def test_configure_rebuilds_the_codec_for_the_new_secret(

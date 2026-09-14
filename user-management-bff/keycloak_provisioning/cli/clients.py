@@ -4,6 +4,7 @@
 import json
 import secrets
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
@@ -61,16 +62,30 @@ def modify(
     remove_redirect_urls: Annotated[
         Optional[list[str]], Option(help="Remove client redirect URLs")
     ] = None,
+    secret_file: Annotated[
+        Path | None,
+        Option(
+            help="File holding the client secret; makes the client confidential.",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
 ):
     """
     Command to modify a client
     """
+    client_secret = secret_file.read_text().strip() if secret_file else None
+    if secret_file and not client_secret:
+        print(f"The secret file {secret_file} is empty.")
+        raise typer.Exit(1)
     try:
         client = get_keycloak_client(ctx.obj.login_credentials)
         client.modify_client(
             client_id,
             append_redirect_urls=append_redirect_urls,
             remove_redirect_urls=remove_redirect_urls,
+            client_secret=client_secret,
         )
     except KeycloakClientError as exc:
         print(f"Client modification failed with the following error: {exc.error_message}")

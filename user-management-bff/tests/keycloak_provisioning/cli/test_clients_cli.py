@@ -6,6 +6,7 @@ import secrets
 from pathlib import Path
 
 import pytest
+import typer
 from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
@@ -70,7 +71,46 @@ def test_client_modify(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
         "test_id",
         append_redirect_urls="new_server/path",
         remove_redirect_urls="old_server/path",
+        client_secret=None,
     )
+
+
+def test_client_modify_secret_file(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, tmp_path: Path
+):
+    kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
+    ctx_mock = mocker.MagicMock()
+    monkeypatch.setattr(
+        keycloak_provisioning.cli.clients,
+        "get_keycloak_client",
+        mocker.Mock(return_value=kc_client_mock),
+    )
+    secret_file = tmp_path / "client.secret"
+    secret_file.write_text("SECRET\n")
+    modify(ctx_mock, "test_id", secret_file=secret_file)
+    kc_client_mock.modify_client.assert_called_once_with(
+        "test_id",
+        append_redirect_urls=None,
+        remove_redirect_urls=None,
+        client_secret="SECRET",
+    )
+
+
+def test_client_modify_empty_secret_file(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, tmp_path: Path
+):
+    kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
+    ctx_mock = mocker.MagicMock()
+    monkeypatch.setattr(
+        keycloak_provisioning.cli.clients,
+        "get_keycloak_client",
+        mocker.Mock(return_value=kc_client_mock),
+    )
+    secret_file = tmp_path / "client.secret"
+    secret_file.write_text("   \n")
+    with pytest.raises(typer.Exit):
+        modify(ctx_mock, "test_id", secret_file=secret_file)
+    kc_client_mock.modify_client.assert_not_called()
 
 
 def test_client_add_overrides(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):

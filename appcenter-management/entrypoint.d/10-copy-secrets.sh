@@ -30,3 +30,6 @@ install -m 400 -o appuser -g appuser /etc/machine.user /run/secrets/machine.user
 install -m 400 -o appuser -g appuser \
     /var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret \
     /run/secrets/session.secret
+install -m 400 -o appuser -g appuser \
+    /var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret \
+    /run/secrets/client.secret

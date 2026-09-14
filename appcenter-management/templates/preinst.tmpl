@@ -37,6 +37,21 @@ else
 	openssl rand -hex 32 > "$SESSION_SECRET_FILE"
 fi
 
+# Authenticates the app as the confidential ucsschool-user-management-ui client at
+# Keycloak's token endpoint. Generated here rather than in the join script because
+# the container copies it out of this directory at boot, which happens first.
+# Reusing an existing file keeps the secret the join script registered at Keycloak.
+CLIENT_SECRET_FILE="$CONF_DIR/client.secret"
+if [ -s "$CLIENT_SECRET_FILE" ]; then
+	echo "Using existing client secret in $CLIENT_SECRET_FILE"
+else
+	echo "Generating client secret in $CLIENT_SECRET_FILE"
+	touch "$CLIENT_SECRET_FILE"
+	chmod 640 "$CLIENT_SECRET_FILE"
+	export RANDFILE=/.rnd
+	openssl rand -hex 32 > "$CLIENT_SECRET_FILE"
+fi
+
 # ucsschool-user-management-ui keycloak client config
 ucsschool_user_management_ui_client_path="$CONF_DIR/ucsschool-user-management_client_ui.json"
 echo "Installing Keycloak client config for the UI"

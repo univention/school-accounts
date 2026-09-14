@@ -131,7 +131,8 @@ if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
       --realm ucs \
       --user-realm master \
       clients modify ucsschool-user-management-ui \
-      --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" || die
+      --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" \
+      --secret-file "$CONF_DIR/client.secret" || die
 
 fi
 

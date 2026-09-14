@@ -32,6 +32,7 @@ kelvin_url = ucr.get(
 print(kelvin_url, end='')@!@
       USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:CookieSessionAuthenticationAdapter"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_ID: "ucsschool-user-management-ui"
+      COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__COOKIE_SECRET_FILE: "/run/secrets/session.secret"
       USER_MANAGEMENT__SESSION_SECRET_FILE: "/run/secrets/session.secret"

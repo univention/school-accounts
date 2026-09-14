@@ -6,6 +6,9 @@ The interactive UI authenticates the browser with an OAuth2 Authorization Code
 flow (with PKCE) against Keycloak and keeps the resulting session entirely in an
 encrypted cookie - no server-side storage, and therefore no way to revoke a
 session before it expires.
+
+The OIDC client is confidential: the token and refresh calls leave the browser
+out of it entirely, so the client secret never reaches a user agent.
 """
 
 from __future__ import annotations
@@ -60,6 +63,10 @@ class CookieSessionAuthenticationAdapterSettings:
     )
     cookie_secret: str = field(
         metadata={SETTINGS_NAME_METADATA: "cookie_session_authentication_adapter.cookie_secret"}
+    )
+    client_secret: str = field(
+        default="",
+        metadata={SETTINGS_NAME_METADATA: "cookie_session_authentication_adapter.client_secret"},
     )
     post_logout_redirect_url: str = field(
         default="",
@@ -131,6 +138,7 @@ class CookieSessionAuthenticationAdapter(
         oauth.register(
             name=_OIDC_CLIENT_NAME,
             client_id=settings.client_id,
+            client_secret=settings.client_secret,
             server_metadata_url=settings.well_known_url,
             client_kwargs={
                 "scope": settings.scope,

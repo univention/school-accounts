@@ -133,6 +133,34 @@ class TestKeycloakClient:
             payload=updated_client_test_data,
         )
 
+    def test_modify_client_sets_the_secret_and_drops_public(
+        self, mocker: MockerFixture, client_instance: KeycloakClient
+    ):
+        client_test_data: dict[str, object] = {"publicClient": True, "redirectUris": []}
+        client_instance.keycloak_admin.get_client = mocker.Mock(return_value=client_test_data)
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="test_id")
+        update_client = mocker.Mock()
+        client_instance.keycloak_admin.update_client = update_client
+        client_instance.modify_client("test_id", client_secret="SECRET")
+        update_client.assert_called_once_with(
+            "test_id",
+            payload={"publicClient": False, "redirectUris": [], "secret": "SECRET"},
+        )
+
+    def test_modify_client_without_a_secret_leaves_the_client_public(
+        self, mocker: MockerFixture, client_instance: KeycloakClient
+    ):
+        client_test_data: dict[str, object] = {"publicClient": True, "redirectUris": []}
+        client_instance.keycloak_admin.get_client = mocker.Mock(return_value=client_test_data)
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="test_id")
+        update_client = mocker.Mock()
+        client_instance.keycloak_admin.update_client = update_client
+        client_instance.modify_client("test_id")
+        update_client.assert_called_once_with(
+            "test_id",
+            payload={"publicClient": True, "redirectUris": []},
+        )
+
 
 def test_get_keycloak_client(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     kc_oidc_mock = mocker.Mock()

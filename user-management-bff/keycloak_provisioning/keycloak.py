@@ -92,6 +92,7 @@ class KeycloakClient:
         client_id: str,
         append_redirect_urls: Optional[list[str]] = None,
         remove_redirect_urls: Optional[list[str]] = None,
+        client_secret: str | None = None,
     ):
         with convert_keycloak_error():
             internal_id = self.keycloak_admin.get_client_id(client_id)
@@ -104,6 +105,9 @@ class KeycloakClient:
             oidc_client["redirectUris"] = self.__sorted_difference_urls(
                 oidc_client["redirectUris"], remove_redirect_urls
             )
+        if client_secret:
+            oidc_client["publicClient"] = False
+            oidc_client["secret"] = client_secret
         with convert_keycloak_error():
             oidc_client = self.keycloak_admin.update_client(internal_id, payload=oidc_client)
 

@@ -38,4 +38,5 @@ uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --realm ucs \
 --user-realm master \
 clients modify ucsschool-user-management-ui \
---append-redirect-urls "*" || exit 1
+--append-redirect-urls "*" \
+--secret-file $PROJECT_DIR/dev/data/client.secret || exit 1

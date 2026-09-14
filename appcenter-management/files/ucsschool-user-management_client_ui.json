@@ -134,7 +134,7 @@
       "protocolMapper": "oidc-audience-mapper"
     }
   ],
-  "publicClient": true,
+  "publicClient": false,
   "serviceAccountsEnabled": false,
   "standardFlowEnabled": true,
   "surrogateAuthRequired": false,
