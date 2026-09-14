@@ -286,48 +286,73 @@ dev/dev_run.sh task pytest --pdb
 
 #### Running e2e tests for the Backend
 
-The e2e tests are designed to run against the environment that is created by the integration-test pipeline job. ??
+The e2e tests need a deployed environment. The integration-test pipeline job creates one -- start it with
+the `TERMINATE_INSTANCE` variable set to anything but true to keep it afterwards -- and runs the tests
+on that machine with `univention-app shell ucsschool-user-management python3 -m pytest -m "e2e"`.
 
-If you want to manually run the tests, make sure to start the job with the `TERMINATE_INSTANCE` variable set to anything but true.
-This way you have access to the setup after the job is done.
+Running them from your laptop against such an environment takes three preparations.
 
-You can run the e2e tests for the backend with:
-
-```shell
-E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
-E2E_CERBOS_URL="cerbos:3593" \
-E2E_KELVIN_URL="primary.ucsschool.test" \
-dev/dev_run.sh task pytest-e2e
-```
-
-Make sure that the domain names can be resolved. This can be achieved by entering the following into your `/etc/hosts`:
+The domain names have to resolve. Add them to your `/etc/hosts`:
 
 ```text
 IP_PRIMARY ucs-sso-ng.ucsschool.test ucs-sso.ucsschool.test primary.ucsschool.test
 IP_BACKUP backup1.ucsschool.test
 ```
 
-Make sure that the ssl certificate from the UCS domain is also downloaded and set in the .env file.
+The UCS root CA has to be trusted. Every instance mints its own, so fetch it again whenever the
+environment is recreated -- an old one fails verification without saying that it is the wrong CA:
 
 ```shell
-curl -o dev/local/ucs-root-ca.crt http://primary.ucsschool.test/ucs-root-ca.crt
+dev/scripts/fetch_ucs_ca.sh primary.ucsschool.test
 ```
 
-Uncomment the following lines in the `.env` file:
+Cerbos has to be reachable. Nothing starts it for the tests, so leave it running in a second
+terminal; it publishes 3592 and 3593 on the host:
 
-```text
-REQUESTS_CA_BUNDLE=/src/dev/local/ucs-root-ca.crt
-SSL_CERT_FILE=/src/dev/local/ucs-root-ca.crt
+```shell
+dev/dev_run.sh task cerbos-server
 ```
 
-**NOTE:** You will need to disable these lines again before running the `dev-server  task.
+Then run the tests **outside** the dev container, from the BFF's own virtualenv:
+
+```shell
+# --inexact: a plain sync prunes everything the lock does not name, including a
+# hand-installed basedpyright.
+uv sync --inexact --project user-management-bff
+cd user-management-bff
+env SSL_CERT_FILE=../dev/local/ucs-root-ca.crt \
+    REQUESTS_CA_BUNDLE=../dev/local/ucs-root-ca.crt \
+    KELVIN_PERSISTENCE_ADAPTER__URL=primary.ucsschool.test \
+    KELVIN_PERSISTENCE_ADAPTER__USERNAME=Administrator \
+    KELVIN_PERSISTENCE_ADAPTER__PASSWORD=univention \
+  uv run --no-sync pytest -m "e2e" \
+    --base_url "https://primary.ucsschool.test/univention/ucsschool/user-management" \
+    --kelvin_url primary.ucsschool.test \
+    --cerbos_url localhost:3593
+```
+
+`dev/dev_run.sh task pytest-e2e` runs the same tests inside the dev container, where the UCS names do
+not resolve: a container never sees the host's `/etc/hosts`, and the names are in no DNS zone the
+container can reach. Use the command above instead, or teach the container the names first.
+
+`--no-sync`, and the CA variables on the command rather than in `dev/.env`, because both variables
+replace the whole trust store for the process that reads them: a `uv` that has to fetch anything can
+then no longer verify PyPI (`invalid peer certificate: UnknownIssuer`). A warm cache hides that, which
+makes it look intermittent; `--no-sync` resolves nothing, so the `uv sync` above is the only step that
+talks to PyPI -- run it before setting the variables, as written.
+
+The tests create users in the target environment and delete them again afterwards. The legal-guardian
+tests additionally need the users the integration job imports from `dev/tests/import_users.csv`, under
+exactly those names; on an instance that has imported before, the import hands out `max.student2` and
+the tests fail with `NoSchoolUserError`, which says nothing about the code.
 
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
 
 #### Running product tests
 
-The product tests are using playwright. Run them as follows:
+The product tests are using playwright. Their project, `dev/tests/product-tests/`, was removed in
+`ff48630` and a replacement is planned -- until it lands, the commands below have nothing to run.
 
 If you test against a fresh installation you need to add the same users as in `dev/tests/integration_tests.cfg`.
 
