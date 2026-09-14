@@ -390,8 +390,9 @@ class TestCookieSessionAuthenticationAdapter:
     async def test_authenticate_without_cookie(
         self, wired: CookieSessionAuthenticationAdapter, mocker: MockerFixture
     ):
+        request = self._request(mocker)
         with pytest.raises(NotAuthenticatedError):
-            await wired.get_authenticated_id(self._request(mocker))
+            await wired.get_authenticated_id(request)
 
     @pytest.mark.asyncio
     async def test_authenticate_with_an_unreadable_cookie(
@@ -455,8 +456,9 @@ class TestCookieSessionAuthenticationAdapter:
 
     @pytest.mark.asyncio
     async def test_refresh_without_refresh_token(self, wired: CookieSessionAuthenticationAdapter):
+        record = _record(expires_at=_past(), refresh_token=None)
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past(), refresh_token=None))
+            await wired._refresh(record)
 
     @pytest.mark.asyncio
     async def test_refresh_keeps_previous_tokens_when_absent(
@@ -482,8 +484,9 @@ class TestCookieSessionAuthenticationAdapter:
         self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
     ):
         client.fetch_access_token = mocker.AsyncMock(side_effect=httpx.ConnectError("no route"))
+        record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past()))
+            await wired._refresh(record)
 
     @pytest.mark.asyncio
     async def test_refresh_follows_a_renamed_actor(
@@ -508,8 +511,9 @@ class TestCookieSessionAuthenticationAdapter:
             {"expires_in": 3600, "id_token": "IDT2"},
             {"sub": "someone-else", "preferred_username": "mina.teacher"},
         )
+        record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past()))
+            await wired._refresh(record)
 
     @pytest.mark.asyncio
     async def test_refresh_rejects_an_unverifiable_id_token(
@@ -519,16 +523,18 @@ class TestCookieSessionAuthenticationAdapter:
             return_value={"expires_in": 3600, "id_token": "IDT2"}
         )
         client.parse_id_token = mocker.AsyncMock(side_effect=ValueError("bad signature"))
+        record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past()))
+            await wired._refresh(record)
 
     @pytest.mark.asyncio
     async def test_refresh_rejects_an_id_token_without_the_identifier_claim(
         self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
     ):
         _stub_refresh(mocker, client, {"expires_in": 3600, "id_token": "IDT2"}, {"sub": "sub-1"})
+        record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past()))
+            await wired._refresh(record)
 
     @pytest.mark.asyncio
     async def test_refresh_rejects_a_non_string_identifier_claim(
@@ -536,8 +542,9 @@ class TestCookieSessionAuthenticationAdapter:
     ):
         claims: dict[str, object] = {"sub": "sub-1", "preferred_username": ["mina.teacher"]}
         _stub_refresh(mocker, client, {"expires_in": 3600, "id_token": "IDT2"}, claims)
+        record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(_record(expires_at=_past()))
+            await wired._refresh(record)
 
     # --- display name ---------------------------------------------------------------
 

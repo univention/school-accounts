@@ -66,8 +66,10 @@ def test_another_secret_cannot_read_the_cookie(codec: SessionCookieCodec):
 
 
 def test_derive_key_is_deterministic_and_secret_specific():
-    assert _derive_key(SECRET) == _derive_key(SECRET)
-    assert _derive_key(SECRET) != _derive_key("0" * 64)
+    first = _derive_key(SECRET)
+    second = _derive_key(SECRET)
+    assert first == second
+    assert first != _derive_key("0" * 64)
 
 
 @pytest.mark.parametrize(
