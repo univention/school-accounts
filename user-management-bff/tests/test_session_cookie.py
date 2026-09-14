@@ -87,8 +87,12 @@ def test_unreadable_cookie_is_rejected(codec: SessionCookieCodec, raw: str):
 
 def test_tampered_cookie_is_rejected(codec: SessionCookieCodec):
     token = codec.encode(_record())
-    flipped = "A" if token[-2] != "A" else "B"
-    assert codec.decode(token[:-2] + flipped + token[-1]) is None
+    # Mutate mid-token, not the final base64 quantum: its trailing character
+    # carries bits the padding discards, so some substitutions there decode to
+    # the very same ciphertext and tamper with nothing.
+    index = len(token) // 2
+    flipped = "A" if token[index] != "A" else "B"
+    assert codec.decode(token[:index] + flipped + token[index + 1 :]) is None
 
 
 def test_authentic_ciphertext_that_is_not_deflated_is_rejected(codec: SessionCookieCodec):
