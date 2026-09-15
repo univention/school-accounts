@@ -53,6 +53,22 @@ def test_client_get_secret(
     assert captured.out == "SECRET\n"
 
 
+def test_client_get_secret_without_a_secret(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+):
+    kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
+    kc_client_mock.get_client_secret = mocker.Mock(return_value=None)
+    ctx_mock = mocker.MagicMock()
+    monkeypatch.setattr(
+        keycloak_provisioning.cli.clients,
+        "get_keycloak_client",
+        mocker.Mock(return_value=kc_client_mock),
+    )
+    get_secret(ctx_mock, "test_id")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+
 def test_client_modify(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     kc_client_mock = mocker.MagicMock(spec=KeycloakClient)
     ctx_mock = mocker.MagicMock()

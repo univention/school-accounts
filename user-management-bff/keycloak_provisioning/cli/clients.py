@@ -98,11 +98,13 @@ def get_secret(
     client_id: Annotated[str, Argument()],
 ):
     """
-    Command to get a client secret
+    Command to get a client secret. Prints nothing if the client has none.
     """
     try:
         client = get_keycloak_client(ctx.obj.login_credentials)
-        print(client.get_client_secret(client_id))
+        client_secret = client.get_client_secret(client_id)
     except KeycloakClientError as exc:
         print(f"Getting client secret failed with the following error: {exc.error_message}")
         raise typer.Exit(1)
+    if client_secret:
+        typer.echo(client_secret)

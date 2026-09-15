@@ -165,12 +165,15 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   `session_cookie.COOKIE_VERSION` when `SessionRecord` changes shape, and write a refreshed
   cookie through `request.state.pending_session` — `session_middleware.py` says why nothing
   simpler works.
-- **The UI's OIDC client is confidential, and its secret has an ordering constraint.** The
-  preinst generates `conf/client.secret` before the container exists, because
-  `entrypoint.d/10-copy-secrets.sh` copies it into `/run/secrets` at boot and the join script
-  only runs afterwards. So the join script registers *that* value at Keycloak rather than
-  letting Keycloak generate one and reading it back — the reverse order would hand the running
-  container a secret it never picked up.
+- **The UI's OIDC client is confidential, its secret belongs to the domain, and the file that
+  holds it is per host.** The preinst generates `conf/client.secret` before the container
+  exists, because `entrypoint.d/10-copy-secrets.sh` copies it into `/run/secrets` at boot and
+  the join script only runs afterwards. The client itself lives in the shared `ucs` realm, so
+  the join script asks Keycloak for the registered secret first and, when there is one, writes
+  it into the file and restarts the container — the entrypoint copied the generated value at
+  boot and would otherwise keep serving it. Registering the generated value unconditionally
+  would lock out every other host that had already registered its own. Only a first
+  installation in the domain gets to keep what the preinst generated.
 - **`revoke.refresh.token: "false"` in the shipped UI client JSON is load-bearing.** Nothing
   serializes the refresh, so two htmx requests that cross `expires_at` at the same time both
   present the same refresh token; with Keycloak's rotation enabled one of them would be rejected

@@ -111,10 +111,15 @@ class KeycloakClient:
         with convert_keycloak_error():
             oidc_client = self.keycloak_admin.update_client(internal_id, payload=oidc_client)
 
-    def get_client_secret(self, client_id: str):
+    def get_client_secret(self, client_id: str) -> str | None:
         with convert_keycloak_error():
             internal_id = self.keycloak_admin.get_client_id(client_id)
-            return self.keycloak_admin.get_client_secrets(internal_id)["value"]
+            if not internal_id:
+                raise KeycloakClientError(f"The client {client_id} does not exist.")
+            oidc_client = self.keycloak_admin.get_client(internal_id)
+        if oidc_client.get("publicClient"):
+            return None
+        return oidc_client.get("secret")
 
 
 def get_keycloak_client(login_credentials: LoginCredentials) -> KeycloakClient:

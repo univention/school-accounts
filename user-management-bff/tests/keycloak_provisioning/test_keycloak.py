@@ -88,10 +88,37 @@ class TestKeycloakClient:
         )
 
     def test_get_client_secret(self, client_instance: KeycloakClient, mocker: MockerFixture):
-        client_instance.keycloak_admin.get_client_secrets = mocker.Mock(
-            return_value={"type": "test", "value": "SECRET"}
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="internal_id")
+        client_instance.keycloak_admin.get_client = mocker.Mock(
+            return_value={"publicClient": False, "secret": "SECRET"}
         )
         assert client_instance.get_client_secret("test_id") == "SECRET"
+
+    def test_get_client_secret_of_an_unknown_client(
+        self, client_instance: KeycloakClient, mocker: MockerFixture
+    ):
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value=None)
+        get_client = mocker.Mock()
+        client_instance.keycloak_admin.get_client = get_client
+        with pytest.raises(KeycloakClientError):
+            client_instance.get_client_secret("test_id")
+        get_client.assert_not_called()
+
+    def test_get_client_secret_of_a_public_client(
+        self, client_instance: KeycloakClient, mocker: MockerFixture
+    ):
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="internal_id")
+        client_instance.keycloak_admin.get_client = mocker.Mock(
+            return_value={"publicClient": True, "secret": "STALE"}
+        )
+        assert client_instance.get_client_secret("test_id") is None
+
+    def test_get_client_secret_of_a_client_without_one(
+        self, client_instance: KeycloakClient, mocker: MockerFixture
+    ):
+        client_instance.keycloak_admin.get_client_id = mocker.Mock(return_value="internal_id")
+        client_instance.keycloak_admin.get_client = mocker.Mock(return_value={"publicClient": False})
+        assert client_instance.get_client_secret("test_id") is None
 
     @pytest.mark.parametrize(
         "append_redirect_urls",

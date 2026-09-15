@@ -40,7 +40,9 @@ fi
 # Authenticates the app as the confidential ucsschool-user-management-ui client at
 # Keycloak's token endpoint. Generated here rather than in the join script because
 # the container copies it out of this directory at boot, which happens first.
-# Reusing an existing file keeps the secret the join script registered at Keycloak.
+# Only a first installation in the domain keeps this value: the client belongs to
+# the shared realm, so the join script replaces the file with the secret Keycloak
+# already holds whenever the client is registered.
 CLIENT_SECRET_FILE="$CONF_DIR/client.secret"
 if [ -s "$CLIENT_SECRET_FILE" ]; then
 	echo "Using existing client secret in $CLIENT_SECRET_FILE"

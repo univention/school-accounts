@@ -9,7 +9,7 @@
 #
 
 # shellcheck disable=SC2034
-VERSION=4
+VERSION=5
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
@@ -108,32 +108,48 @@ ucs_registerLDAPExtension "$@" \
 
 rm -f "$BUNDLE_TAR"
 
-if [ "$JS_LAST_EXECUTED_VERSION" -lt 1 ]; then
+machine_username="$hostname$"
+machine_pw="$(cat /etc/machine.secret)"
 
-  machine_username="$hostname$"
-  machine_pw="$(cat /etc/machine.secret)"
+keycloak_provisioning () {
+    univention-app shell "$APP" /venv/bin/keycloak-provisioning \
+        --username "$machine_username" \
+        --password "$machine_pw" \
+        --url "$keycloak_url" \
+        --realm ucs \
+        --user-realm master \
+        "$@"
+}
 
-  # This client is used by the frontend to communicate with the bff
-  univention-app shell "$APP" /venv/bin/keycloak-provisioning \
-      --username "$machine_username" \
-      --password "$machine_pw" \
-      --url "$keycloak_url" \
-      --realm ucs \
-      --user-realm master \
-      clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
-      --ignore-exists \
-      --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" || die
+# This client is used by the frontend to communicate with the bff.
+# Runs on every join, not only the first one, so that an update also reaches a
+# client an earlier version registered as a public one.
+keycloak_provisioning clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
+    --ignore-exists \
+    --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" || die
 
-  univention-app shell "$APP" /venv/bin/keycloak-provisioning \
-      --username "$machine_username" \
-      --password "$machine_pw" \
-      --url "$keycloak_url" \
-      --realm ucs \
-      --user-realm master \
-      clients modify ucsschool-user-management-ui \
-      --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" \
-      --secret-file "$CONF_DIR/client.secret" || die
+# The client lives in the domain-wide `ucs` realm, so an earlier installation —
+# a previous version here, or another host — may already have registered it, and
+# every host that did authenticates with the secret Keycloak holds. Adopt that
+# secret; registering the one the preinst generated would lock those hosts out.
+CLIENT_SECRET_FILE="$CONF_DIR/client.secret"
+registered_secret="$(keycloak_provisioning clients get-secret ucsschool-user-management-ui)" || die
+registered_secret="${registered_secret//[[:space:]]/}"
+adopted_secret=false
+if [ -n "$registered_secret" ] && [ "$registered_secret" != "$(cat "$CLIENT_SECRET_FILE")" ]; then
+    echo "Adopting the client secret already registered at Keycloak"
+    printf '%s\n' "$registered_secret" > "$CLIENT_SECRET_FILE"
+    adopted_secret=true
+fi
 
+keycloak_provisioning clients modify ucsschool-user-management-ui \
+    --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" \
+    --secret-file "$CLIENT_SECRET_FILE" || die
+
+if [ "$adopted_secret" = true ]; then
+    # entrypoint.d/10-copy-secrets.sh copied the generated secret into the
+    # container at boot, which is before this script replaced the file.
+    univention-app restart "$APP" || die
 fi
 
 joinscript_save_current_version

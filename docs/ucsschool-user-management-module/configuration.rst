@@ -43,12 +43,16 @@ installation, in
 An update reuses an existing file and therefore keeps existing sessions valid.
 
 The app logs users in through a confidential Keycloak client. It proves its own
-identity to Keycloak with a client secret that the installation generates once
-per host, in
-:file:`/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret`,
-and registers at Keycloak during the join. The secret never reaches the browser.
-Replacing the file therefore also needs the join script to run again, with
-:command:`univention-run-join-scripts`, so that Keycloak learns the new value.
+identity to Keycloak with a client secret in
+:file:`/var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret`.
+The secret never reaches the browser.
+
+The Keycloak client belongs to the domain rather than to a single host, and so
+does its secret. The first installation in the domain registers a generated
+secret. Every later installation, and every app update, adopts the secret that
+Keycloak already holds and restarts the app. Keycloak therefore keeps the
+authoritative copy: to change the secret, change it in Keycloak and then run
+:command:`univention-run-join-scripts` on every host that runs the app.
 
 A session lasts at most eight hours.
 Renewing the tokens extends the login within that window but never beyond it.
