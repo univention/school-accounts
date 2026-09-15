@@ -25,7 +25,8 @@ Before installing the User Management module, the following prerequisites are ne
 * :external+uv-school-manual:ref:`UCS@school <introduction>` is installed and configured in the domain.
 * The Guardian (``univention-guardian``) is installed and configured
   on the same system as the |UASUMM|.
-  See the :external+uv-guardian-manual:ref:`Guardian Manual <installation>` for further instructions.
+  See :external+uv-ucs-operation:ref:`iam-authorization-engine-install`
+  for further instructions.
 * The :external+uv-school-kelvin:doc:`Kelvin Rest API <index>` is installed and configured
   in the domain. By default, the |UASUMM| expects the Kelvin REST API on the same system.
   If the Kelvin REST API runs on a different system,

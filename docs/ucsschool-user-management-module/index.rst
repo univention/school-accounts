@@ -7,7 +7,7 @@ Introduction
 
 Welcome to the UCS\@school User Management manual.
 It explains how to use the module to manage users and how to modify roles
-and permissions through the :external+uv-guardian-manual:ref:`Guardian <what-is-the-guardian>`.
+and permissions through the :external+uv-nubus-manual:ref:`Guardian <nubus-authorization>`.
 
 Historically, UCS\@school user roles were limited to a few roles, such as
 teachers and students, and the permissions were hard-coded into the
@@ -19,8 +19,10 @@ what the UCS\@school User Management module uses.
 
 Now you can create new roles, and assign permissions to them. For example,
 you can create a role “legal guardian” and assign the permissions to view
-only the data of the children they are responsible for. You can find more
-details on the process in the :external+uv-guardian-manual:ref:`Guardian manual <management-ui>` .
+only the data of the children they are responsible for.
+Roles and permissions live in policy files that the Guardian evaluates.
+For how those policies work and where they come from,
+see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 
 .. _audience-for-this-manual:
 

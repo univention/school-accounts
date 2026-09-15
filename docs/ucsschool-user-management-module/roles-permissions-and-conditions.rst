@@ -9,12 +9,11 @@ Roles and permissions
 
 This section is for administrators and covers the default roles and permissions
 used by the |UASUMM|.
-The :external+uv-guardian-manual:ref:`Guardian <what-is-the-guardian>` makes the
+The :external+uv-nubus-manual:ref:`Guardian <nubus-authorization>` makes the
 authorization decisions, using a policy bundle that ships with the |UASUMM|.
-For more information about general concepts such as
-:external+uv-guardian-manual:ref:`roles <terminology-guardian-role>` and
-:external+uv-guardian-manual:ref:`permissions <terminology-guardian-permission>`,
-see the :external+uv-guardian-manual:doc:`Guardian manual <index>`.
+For more information about how the Guardian reaches a decision
+and where its policies come from,
+see :external+uv-nubus-manual:doc:`Authorization <authorization>`.
 
 .. _default-roles:
 

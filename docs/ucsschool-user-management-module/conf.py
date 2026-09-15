@@ -93,8 +93,12 @@ intersphinx_mapping = {
         "https://docs.software-univention.de/manual/latest/en/",
         None,
     ),
-    "uv-guardian-manual": (
-        "https://docs.software-univention.de/guardian-manual/latest/",
+    "uv-nubus-manual": (
+        "https://docs.software-univention.de/nubus-manual/1.x/en/",
+        None,
+    ),
+    "uv-ucs-operation": (
+        "https://docs.software-univention.de/ucs-operation/5.2/en/",
         None,
     ),
 }
