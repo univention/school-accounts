@@ -399,31 +399,43 @@ dev/dev_run.sh task dev-server
 dev/dev_run.sh task pytest-frontend
 ```
 
-Against an installed system, point the same suite at it.
-The directory contents differ from `dev/data/`,
-so the account, the school, and the user the tests look for
-all have to come from that system:
+Against an installed system, point the same suite at it and give it a Kelvin URL.
+It then seeds the objects it needs through Kelvin --
+a `umtest` school, a class, a work group,
+and four of the `dev/data` people under their own names --
+and logs in as one of them,
+so the assertions hold on any machine that has the app installed,
+with no test data prepared by hand:
 
 ```shell
 FRONTEND_BASE_URL="https://primary.ucsschool.test" \
-dev/dev_run.sh task pytest-frontend \
-  --frontend_username alex.admin \
-  --frontend_password univention \
-  --frontend_school school1 \
-  --frontend_listed_user mina.teacher
+dev/dev_run.sh task pytest-frontend --kelvin_url primary.ucsschool.test
 ```
 
-Those values match the environment
-[dev/tests/integration_tests.cfg](dev/tests/integration_tests.cfg) seeds;
-the defaults match `dev/data/`.
+The Kelvin account defaults to `Administrator`/`univention`;
+override it with `--kelvin_username` and `--kelvin_password`.
 Everything after the task name is forwarded to pytest.
 
-The domain name has to resolve --
+Without `--kelvin_url` nothing is seeded
+and the deployment's contents are taken as they are,
+named by `--frontend_school` and `--frontend_listed_user`,
+which default to what the dev stack serves.
+
+The seeded objects stay on the machine when the run ends, deliberately:
+Kelvin offers no way to delete a school,
+and deleting a user only to create it again under the same name
+leaves Keycloak rejecting every later login as that name.
+Seeding reconciles what is already there,
+so a machine converges on that set and repeat runs are cheap.
+The module docstring in
+[user-management-bff/tests/frontend/seed.py](user-management-bff/tests/frontend/seed.py)
+has the detail.
+
+The domain names have to resolve --
 see [Running e2e tests for the Backend](#running-e2e-tests-for-the-backend)
-for the `/etc/hosts` entries.
+for the `/etc/hosts` entries, if DNS does not already answer for them.
 The UCS root CA does not have to be installed:
-the browser context ignores HTTPS errors,
-and nothing else in the suite talks to the system.
+both the browser context and the Kelvin session ignore HTTPS errors.
 
 To watch a run in a real browser window instead of headless:
 

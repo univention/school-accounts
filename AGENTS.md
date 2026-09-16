@@ -286,9 +286,8 @@ beyond having `docker` (>= 25) installed.
     `E2E_BASE_URL`, `E2E_CERBOS_URL`, `E2E_KELVIN_URL` and resolvable domain names (see
     [README.md](README.md#running-e2e-tests-for-the-backend)). Not runnable standalone locally.
   - `pytest-frontend` — Playwright-driven UI tests against a running deployment; defaults to the
-    `dev-server` stack, so start that first. `FRONTEND_BASE_URL` points it at an installed system
-    instead, where `--frontend_username`/`--frontend_password`/`--frontend_school`/
-    `--frontend_listed_user` also have to name objects that exist there
+    `dev-server` stack, so start that first. `FRONTEND_BASE_URL` points it at an installed system,
+    where `--kelvin_url` additionally makes the suite seed its own test data
     (see [README.md](README.md#running-frontend-tests)).
   - `pytest-frontend-headed` — the same run in a visible browser window, slowed down and with the
     host's X server wired into the container; needs `DISPLAY`. Use it to watch a failing
@@ -438,7 +437,9 @@ no access token is stored) rather than restating what the code does.
   installed system. Assert through the `login`/`select_school` fixtures in their `conftest.py`
   rather than re-deriving the login flow or the htmx swap in a test, and take directory contents
   from the `school`/`listed_user` fixtures rather than hardcoding `dev/data` values — a literal
-  school or username is what pins a test to one deployment.
+  school or username is what pins a test to one deployment. Given `--kelvin_url`, `seed.py` puts
+  those contents into the directory itself; it never deletes a user, and its module docstring
+  explains why re-creating one breaks the next run's login.
 - Fixture data: `tests/data/*.json` is a small, test-owned mirror of `dev/data/*.json`'s shape,
   deliberately decoupled so tests don't depend on whatever is currently in `dev/data`
   (commit `3180c6a`). The `restore_data_files` autouse fixture snapshots/restores any file a `File*`

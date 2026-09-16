@@ -14,19 +14,23 @@ options: the compose dev stack, the stack
 UCS system. Nothing here imports the application, so the suite stays usable
 against a system that does not run this checkout's code.
 
-The directory contents differ per deployment, so the school and the user the
-tests look for are options too, defaulting to ``dev/data``. An installed system
-seeded by ``dev/tests/integration_tests.cfg`` carries ``school1`` and
-``alex.admin``/``mina.teacher`` instead.
+The directory contents differ per deployment, so they are not assumed either.
+Given ``--kelvin_url``, the suite seeds its own objects through Kelvin (see
+``seed.py``) and logs in as one of them; without it, it takes the deployment's
+contents as they are, from ``--frontend_school`` and ``--frontend_listed_user``,
+which default to what the dev stack serves out of ``dev/data``.
 """
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from playwright.sync_api import expect
+
+from tests.frontend import seed
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,6 +54,16 @@ def require_base_url(base_url: str | None) -> None:
         )
 
 
+@pytest.fixture(autouse=True)
+def patient_expectations() -> None:
+    """Playwright's 5s default is tuned for a local app, not a UCS over the network.
+
+    Every assertion here waits on a deployment that answers from LDAP behind a
+    reverse proxy, and the login redirect chain crosses Keycloak twice.
+    """
+    expect.set_options(timeout=15_000)
+
+
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
     """A UCS system serves the UI behind its own CA, and the UI follows the browser's locale."""
@@ -57,7 +71,37 @@ def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]
 
 
 @pytest.fixture(scope="session")
-def frontend_credentials(pytestconfig: pytest.Config) -> tuple[str, str]:
+def kelvin_credentials(pytestconfig: pytest.Config) -> dict[str, str] | None:
+    """The system to seed through, or None to take the deployment's contents as they are."""
+    host = cast("str | None", pytestconfig.getoption("kelvin_url"))
+    if not host:
+        return None
+    return {
+        "username": cast(str, pytestconfig.getoption("kelvin_username")),
+        "password": cast(str, pytestconfig.getoption("kelvin_password")),
+        "host": host,
+    }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def seeded(kelvin_credentials: dict[str, str] | None) -> bool:
+    """Reconcile `seed`'s objects into the directory, and report whether it ran.
+
+    Session scoped and synchronous on purpose: the tests drive Playwright's sync
+    API, and seeding is a handful of calls every test in the session shares.
+    There is no teardown - see `seed`'s module docstring for why removing these
+    users again would break the next run's login.
+    """
+    if kelvin_credentials is None:
+        return False
+    asyncio.run(seed.provision(kelvin_credentials))
+    return True
+
+
+@pytest.fixture(scope="session")
+def frontend_credentials(pytestconfig: pytest.Config, seeded: bool) -> tuple[str, str]:
+    if seeded:
+        return seed.LOGIN_USER.name, seed.PASSWORD
     return (
         cast(str, pytestconfig.getoption("frontend_username")),
         cast(str, pytestconfig.getoption("frontend_password")),
@@ -65,14 +109,18 @@ def frontend_credentials(pytestconfig: pytest.Config) -> tuple[str, str]:
 
 
 @pytest.fixture(scope="session")
-def school(pytestconfig: pytest.Config) -> str:
+def school(pytestconfig: pytest.Config, seeded: bool) -> str:
     """A school the logged-in account may filter by."""
+    if seeded:
+        return seed.SCHOOL_DISPLAY_NAME
     return cast(str, pytestconfig.getoption("frontend_school"))
 
 
 @pytest.fixture(scope="session")
-def listed_user(pytestconfig: pytest.Config) -> str:
+def listed_user(pytestconfig: pytest.Config, seeded: bool) -> str:
     """A username the logged-in account sees once `school` is selected."""
+    if seeded:
+        return seed.LISTED_USER.name
     return cast(str, pytestconfig.getoption("frontend_listed_user"))
 
 
