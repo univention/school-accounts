@@ -288,6 +288,9 @@ beyond having `docker` (>= 25) installed.
   - `pytest-frontend` — Playwright-driven UI tests against a running deployment; defaults to the
     `dev-server` stack, so start that first. `FRONTEND_BASE_URL` points it at an installed system
     instead (see [README.md](README.md#running-frontend-tests)).
+  - `pytest-frontend-headed` — the same run in a visible browser window, slowed down and with the
+    host's X server wired into the container; needs `DISPLAY`. Use it to watch a failing
+    interaction, with `PWDEBUG=1` for the Playwright inspector.
   - `translate` — verifies and (re)compiles gettext translations; must be run at least once locally
     since `.mo` files are git-ignored (see § Documentation and Changelog Requirements).
   - `cerbos-server` — starts a local Cerbos server for manually testing policies from
@@ -327,6 +330,7 @@ docker compose so no local Python/Node install is required.
 | Run a single test file/case | `dev/dev_run.sh task pytest user-management-bff/tests/test_routes.py::test_users_search_renders_results` |
 | Run backend e2e tests | see § Development Environment — requires a live `E2E_*` environment |
 | Run the frontend tests | `dev/dev_run.sh task dev-server`, then `dev/dev_run.sh task pytest-frontend` |
+| Watch a frontend test in a real browser | `dev/dev_run.sh task pytest-frontend-headed` |
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
 | Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-bff-container-baseline --all-files` |

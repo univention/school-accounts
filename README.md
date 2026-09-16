@@ -411,6 +411,18 @@ The login defaults to the dev realm's `dev`/`univention`;
 override it with `--frontend_username` and `--frontend_password`,
 which the task forwards like the `pytest` task does (up to 7 arguments).
 
+To watch a run in a real browser window instead of headless:
+
+```shell
+dev/dev_run.sh task pytest-frontend-headed
+```
+
+The browser runs in the dev container and connects to the host's X server,
+so `DISPLAY` has to be set --
+on Wayland that means Xwayland has to be running.
+Every action is slowed to 500 ms so the run is followable;
+`SLOWMO` changes that, and `PWDEBUG=1` opens the Playwright inspector instead.
+
 ## QA Checklist
 
 This section is a collection of items which can be helpful for the QA process.
