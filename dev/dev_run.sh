@@ -23,6 +23,7 @@ sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
 pytest: Runs the pytests for the BFF.
 pytest-e2e: Runs pytest end to end tests.
+pytest-frontend: Runs the Playwright frontend tests against a running dev-server.
 translate: Generates translations for the BFF.
 EOF
 }
@@ -82,7 +83,7 @@ run_task() {
     -vv \
     --cov=user_management_bff \
     --cov=keycloak_provisioning \
-    -m "not e2e" $3 $4 $5 $6 $7 $8 $9  \
+    -m "not e2e and not frontend" "${@:3}" \
     .
     exit $?
   fi
@@ -97,6 +98,18 @@ run_task() {
     --base_url "$E2E_BASE_URL" \
     --cerbos_url "$E2E_CERBOS_URL" \
     --kelvin_url "$E2E_KELVIN_URL" \
+    .
+    exit $?
+  fi
+  if [[ "$TASK" = "pytest-frontend" ]]; then
+    run_command env --chdir=user-management-bff/ uv run \
+    pytest \
+    -vv \
+    --screenshot only-on-failure \
+    --tracing retain-on-failure \
+    --output "/src/.cache/frontend-test-results" \
+    -m "frontend" \
+    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" $3 $4 $5 $6 $7 $8 $9 \
     .
     exit $?
   fi

@@ -8,3 +8,5 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--base_url", action="store")
     parser.addoption("--cerbos_url", action="store")
     parser.addoption("--kelvin_url", action="store")
+    parser.addoption("--frontend_username", action="store", default="dev")
+    parser.addoption("--frontend_password", action="store", default="univention")

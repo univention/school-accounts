@@ -27,7 +27,7 @@ This is the repository for the new UCS@school User Management Module.
       - [Generating license annotations](#generating-license-annotations)
       - [Running unit tests for the Backend](#running-unit-tests-for-the-backend)
       - [Running e2e tests for the Backend](#running-e2e-tests-for-the-backend)
-      - [Running product tests](#running-product-tests)
+      - [Running frontend tests](#running-frontend-tests)
   - [QA Checklist](#qa-checklist)
     - [Technical QA](#technical-qa)
     - [Functional QA](#functional-qa)
@@ -49,6 +49,21 @@ Installation instructions for Ubuntu can be found [here](https://docs.docker.com
 You must have at least Docker version 25.
 
 ### Gitlab Pipeline
+
+#### Frontend Tests
+
+The `bff-frontend-test` job runs the Playwright tests in
+[user-management-bff/tests/frontend](user-management-bff/tests/frontend) on every merge request
+that touches `user-management-bff/` or `dev/`.
+It starts Keycloak as a service container and,
+next to it, the BFF on the File adapters and the fixture data from `dev/data/`,
+so a real browser drives a real login against the same stack the dev server uses.
+Kelvin and Cerbos are not part of it; those stay with the integration tests below.
+
+On failure the job keeps the BFF log,
+plus a Playwright trace and a screenshot per failed test,
+under `.cache/` in its artifacts.
+Open a trace with `playwright show-trace <trace.zip>`.
 
 #### Integration Tests
 
@@ -278,7 +293,7 @@ You can run the unit tests for the backend with:
 dev/dev_run.sh task pytest
 ```
 
-It is also possible to pass additional arguments (limited to 7 arguments!) to pytest, e.g. to use the PDB on errors:
+Any further arguments are forwarded to pytest, e.g. to use the PDB on errors:
 
 ```shell
 dev/dev_run.sh task pytest --pdb
@@ -373,22 +388,28 @@ tests additionally need the users the integration job imports from `dev/tests/im
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
 
-#### Running product tests
+#### Running frontend tests
 
-The product tests are using playwright. Their project, `dev/tests/product-tests/`, was removed in
-`ff48630` and a replacement is planned -- until it lands, the commands below have nothing to run.
-
-If you test against a fresh installation you need to add the same users as in `dev/tests/integration_tests.cfg`.
+The frontend tests use Playwright to drive a browser against a running deployment,
+which is named by `--base-url` and nothing else.
+Against the dev server, start it first and then run:
 
 ```shell
-cd dev/tests/product-tests
-uv sync --locked
-# is needed if playwright is freshly installed in the project
-# playwright install
-CI_INTEGRATION=1 uv run pytest --base-url "https://$YOUR_TEST_INSTANCE"
-# Or for debugging
-#CI_INTEGRATION=1 PWDEBUG=1 uv run pytest --base-url "https://$YOUR_TEST_INSTANCE" --headed --browser firefox
+dev/dev_run.sh task dev-server
+dev/dev_run.sh task pytest-frontend
 ```
+
+Against an installed system,
+point the same suite at it and give it an account that exists there:
+
+```shell
+FRONTEND_BASE_URL="https://$YOUR_TEST_INSTANCE" \
+dev/dev_run.sh task pytest-frontend
+```
+
+The login defaults to the dev realm's `dev`/`univention`;
+override it with `--frontend_username` and `--frontend_password`,
+which the task forwards like the `pytest` task does (up to 7 arguments).
 
 ## QA Checklist
 

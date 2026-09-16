@@ -60,6 +60,7 @@ keycloak_provisioning/       separate Typer CLI: seeds Keycloak realms/clients/u
 tests/
   adapters/                  adapter-level tests (one file per adapter)
   e2e/                       Playwright-driven backend e2e tests, marked `e2e`, require a live env
+  frontend/                  browser-driven UI tests, marked `frontend`, require a running deployment
   keycloak_provisioning/     tests for the provisioning CLI
   data/                      small, test-owned JSON fixtures (mirror of dev/data/*.json shape)
   test_routes.py             route/HTTP-level tests: TestClient + dependency_overrides, assert on
@@ -279,11 +280,14 @@ beyond having `docker` (>= 25) installed.
     changes are picked up live. Requires `user-management-proxy` to resolve (add it to `/etc/hosts`).
     UI: `http://user-management-proxy/univention/ucsschool/user-management/ui/`. API docs:
     `.../bff/docs`. Keycloak admin: `.../keycloak/admin/` (`admin:admin`).
-  - `pytest` — unit/integration tests (excludes `e2e`-marked tests); accepts up to 7 extra pytest
-    args, e.g. `dev/dev_run.sh task pytest --pdb`.
+  - `pytest` — unit/integration tests (excludes the `e2e`- and `frontend`-marked tests); forwards
+    any further arguments to pytest, e.g. `dev/dev_run.sh task pytest --pdb`.
   - `pytest-e2e` — Playwright-backed backend e2e tests against a real deployed environment; requires
     `E2E_BASE_URL`, `E2E_CERBOS_URL`, `E2E_KELVIN_URL` and resolvable domain names (see
     [README.md](README.md#running-e2e-tests-for-the-backend)). Not runnable standalone locally.
+  - `pytest-frontend` — Playwright-driven UI tests against a running deployment; defaults to the
+    `dev-server` stack, so start that first. `FRONTEND_BASE_URL` points it at an installed system
+    instead (see [README.md](README.md#running-frontend-tests)).
   - `translate` — verifies and (re)compiles gettext translations; must be run at least once locally
     since `.mo` files are git-ignored (see § Documentation and Changelog Requirements).
   - `cerbos-server` — starts a local Cerbos server for manually testing policies from
@@ -307,6 +311,10 @@ beyond having `docker` (>= 25) installed.
   - `REUSE.toml` — four paths under `dev/tests/product-tests/`.
   - `dev/tests/playwright_product_test.sh` and `dev/tests/playwright2gitlab_junit.py` — orphaned; the
     first `cd`s into the deleted directory, and nothing invokes either.
+- The frontend tests (`user-management-bff/tests/frontend/`) need a deployment to drive, so they are
+  excluded from the normal backend test loop by the `frontend` marker. CI stands up their stack in
+  the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, via
+  `dev/scripts/start_frontend_test_stack.sh`); locally the `dev-server` stack is that deployment.
 
 ## Common Commands
 
@@ -318,6 +326,7 @@ docker compose so no local Python/Node install is required.
 | Run backend unit/integration tests | `dev/dev_run.sh task pytest` |
 | Run a single test file/case | `dev/dev_run.sh task pytest user-management-bff/tests/test_routes.py::test_users_search_renders_results` |
 | Run backend e2e tests | see § Development Environment — requires a live `E2E_*` environment |
+| Run the frontend tests | `dev/dev_run.sh task dev-server`, then `dev/dev_run.sh task pytest-frontend` |
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
 | Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-bff-container-baseline --all-files` |
@@ -330,7 +339,7 @@ docker compose so no local Python/Node install is required.
 | Clean dev artifacts/containers | `dev/dev_run.sh task clean` |
 | Regenerate the App Center `inst` script | `cd appcenter-management && ./scripts/generate-preinst` |
 
-CI (`.gitlab-ci/gitlab-ci.yml`) runs the equivalent of `pytest -m "not e2e"` with **coverage gated via
+CI (`.gitlab-ci/gitlab-ci.yml`) runs the equivalent of `pytest -m "not e2e and not frontend"` with **coverage gated via
 the `BFF_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `user_management_bff` +
 `keycloak_provisioning` (excluding `main.py` and `constants.py` — see
 `[tool.coverage.run] omit` in `pyproject.toml`). New code outside those three omitted files must be
@@ -417,6 +426,11 @@ no access token is stored) rather than restating what the code does.
 - **Adapter tests** (`tests/adapters/`): one file per adapter; test the adapter in isolation.
 - **e2e tests** (`tests/e2e/`, marked `e2e`, excluded by default via `-m "not e2e"`): require a live
   deployed environment (`E2E_BASE_URL` etc.) — do not expect these to run in a normal dev loop.
+- **frontend tests** (`tests/frontend/`, marked `frontend`, excluded the same way): the only
+  browser-level coverage there is. They drive whatever `--base-url` names and import nothing from
+  the application, so the same suite runs against the dev stack, the stack CI provisions, and an
+  installed system. Assert through the `login`/`select_school` fixtures in their `conftest.py`
+  rather than re-deriving the login flow or the htmx swap in a test.
 - Fixture data: `tests/data/*.json` is a small, test-owned mirror of `dev/data/*.json`'s shape,
   deliberately decoupled so tests don't depend on whatever is currently in `dev/data`
   (commit `3180c6a`). The `restore_data_files` autouse fixture snapshots/restores any file a `File*`
@@ -430,7 +444,7 @@ no access token is stored) rather than restating what the code does.
 | --- | --- |
 | Docs-only (`docs/`, `dev/docs/`, `README.md`) | `dev/dev_run.sh pre-commit run -a` (pymarkdown, reuse) |
 | Business logic / permission rules | `dev/dev_run.sh task pytest` targeted at `test_business_logic.py` (+ full `task pytest` before finishing, given the 100% coverage gate) |
-| Template/fragment/htmx wiring only | Targeted `test_routes.py` run; manually check the swap in the dev server if the interaction is non-trivial (no browser-level htmx assertions exist beyond checking rendered attributes) |
+| Template/fragment/htmx wiring only | Targeted `test_routes.py` run; add or extend a `tests/frontend/` test when the interaction is non-trivial, since that is the only level where the swap actually runs |
 | New/changed view model or table column | `test_presentation.py` for the `visible`/`kind` computation + `test_routes.py` for the rendered HTML |
 | New adapter or port method | The relevant `tests/adapters/test_*.py` + `test_adapter_registry.py` if wiring changed |
 | New translatable string | `dev/dev_run.sh task translate` (fails loudly on untranslated/fuzzy strings) before running tests |

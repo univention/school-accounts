@@ -3,7 +3,12 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-KEYCLOAK_URL=http://user-management-proxy/keycloak/
+# Overridable so the CI frontend-test stack can point this at its own Keycloak
+# service container, which is not behind the compose stack's proxy. The trailing
+# slash is restored either way: python-keycloak joins its paths onto this string
+# verbatim, so dropping it turns every request into a 404.
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://user-management-proxy/keycloak}"
+KEYCLOAK_URL="${KEYCLOAK_URL%/}/"
 
 uv run --project $PROJECT_DIR/user-management-bff keycloak-provisioning \
 --username admin \

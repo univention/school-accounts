@@ -58,6 +58,20 @@ include:
       build_args: |
         commit=$CI_COMMIT_SHA
         date=$CI_JOB_STARTED_AT
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
+    inputs:
+      job_name: "build_keycloak_image"
+      stage: prepare
+      # The frontend tests run against a real login, so the image backing the
+      # Keycloak service container is built for every pipeline, like the dev image.
+      job_rules:
+        - when: on_success
+      build_context: "$CI_PROJECT_DIR/dev"
+      dockerfile_path: "$CI_PROJECT_DIR/dev/Keycloak.Dockerfile"
+      image_name: "$KEYCLOAK_IMAGE_NAME"
+      registry_image: "$CI_REGISTRY_IMAGE/$KEYCLOAK_IMAGE_NAME"
+      image_tag: "$KEYCLOAK_IMAGE_TAG"
+      image_tag_env_name: "KEYCLOAK_IMAGE_TAG"
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.16.2
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
@@ -90,6 +104,8 @@ variables:
   DOCS_DIR: "docs/$DOC_TARGET_NAME"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
+  KEYCLOAK_IMAGE_NAME: ci-keycloak
+  KEYCLOAK_IMAGE_TAG: $CI_REGISTRY_IMAGE/$KEYCLOAK_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
   UV_CACHE_DIR: .cache/uv
   # Keep in sync with the version/checksum used in dev/docker-compose.yaml and
@@ -113,6 +129,9 @@ build_dev_image:
   tags: ["dae-m"]
 
 build_docker_image_user_management:
+  tags: ["dae-m"]
+
+build_keycloak_image:
   tags: ["dae-m"]
 
 build_appcenter_files:
@@ -194,7 +213,7 @@ bff-test:
     - when: manual
       allow_failure: true
   script:
-    - uv run --project user-management-bff/ pytest -vv -m "not e2e" --junitxml=report.xml --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
+    - uv run --project user-management-bff/ pytest -vv -m "not e2e and not frontend" --junitxml=report.xml --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
@@ -202,6 +221,68 @@ bff-test:
         coverage_format: cobertura
         path: coverage.xml
       junit: report.xml
+
+# Drives a real browser against a real login. Keycloak runs as a service
+# container and the BFF is started next to it on the File adapters and the dev
+# fixture data, so the job covers the login redirect chain, the design system's
+# custom elements and the htmx swaps - none of which the in-process tests reach.
+# Kelvin and Cerbos are not part of it; those stay with the integration tests.
+bff-frontend-test:
+  stage: test
+  needs: [build_dev_image, build_keycloak_image]
+  tags: ["dae-m"]
+  image: $DEV_IMAGE_TAG
+  services:
+    - name: $KEYCLOAK_IMAGE_TAG
+      alias: keycloak
+      command: ["start"]
+      variables:
+        # The image is built for the compose stack, where Keycloak is addressed
+        # through the proxy. Here the issuer has to match KEYCLOAK_URL below or
+        # the redirect chain breaks, and both say localhost: these runners create
+        # service containers in host network mode, where the `keycloak` alias
+        # never resolves and the service is reachable on the job's own loopback.
+        # Spelling the path out is required either way: a hostname URL without
+        # one overrides KC_HTTP_RELATIVE_PATH, and the discovery document then
+        # advertises endpoints that are not served.
+        KC_HOSTNAME: "http://localhost:8080/keycloak"
+  variables:
+    UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
+    # The dev image bakes PROJECT_DIR=/src for the compose bind mount.
+    PROJECT_DIR: $CI_PROJECT_DIR
+    KEYCLOAK_URL: "http://localhost:8080/keycloak"
+    FRONTEND_BASE_URL: "http://localhost:8000"
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  cache:
+    key:
+      files:
+        - user-management-bff/uv.lock
+    paths:
+      - .cache/ms-playwright/
+  before_script:
+    - ./user-management-bff/scripts/test_setup.sh
+    - uv run --project user-management-bff/ playwright install chromium
+    - ./dev/scripts/start_frontend_test_stack.sh
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+      changes:
+        - user-management-bff/**/*
+        - dev/**/*
+        - appcenter-management/files/ucsschool-user-management_client_ui.json
+        - .gitlab-ci/gitlab-ci.yml
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $CI_COMMIT_TAG
+    - when: manual
+      allow_failure: true
+  script:
+    - uv run --project user-management-bff/ pytest -vv -m frontend --base-url "$FRONTEND_BASE_URL" --browser chromium --screenshot only-on-failure --tracing retain-on-failure --output .cache/frontend-test-results --junitxml=frontend-report.xml user-management-bff/tests/frontend
+  artifacts:
+    when: always
+    paths:
+      - .cache/frontend-test-bff.log
+      - .cache/frontend-test-results/
+    reports:
+      junit: frontend-report.xml
 
 repo_tar:
   stage: prepare

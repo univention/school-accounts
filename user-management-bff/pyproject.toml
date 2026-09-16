@@ -113,6 +113,7 @@ source_pkgs = [
 [tool.pytest.ini_options]
 markers = [
     "e2e: marks tests as e2e tests (deselect with '-m \"not e2e\"')",
+    "frontend: marks browser-driven frontend tests, which need a running deployment (deselect with '-m \"not frontend\"')",
 ]
 filterwarnings = [
     # Starlette's TestClient passes the deprecated `app` shortcut to httpx
