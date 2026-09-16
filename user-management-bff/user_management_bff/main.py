@@ -27,6 +27,7 @@ from .constants import (
 )
 from .correlation_id import correlation_id_ctx_var
 from .errors import (
+    KelvinAPIUnavailableError,
     NoSchoolUserError,
     NotAuthenticatedError,
     ObjectNotFoundError,
@@ -120,6 +121,12 @@ app.mount(f"{FRONTEND_PREFIX}/static", StaticFiles(directory=STATIC_DIR), name="
 app.include_router(router)
 
 
+def _actor_id(request: Request) -> str | None:
+    """The actor ``current_actor`` resolved, or None when the request failed before that."""
+    actor_id = getattr(request.state, "actor_id", None)
+    return actor_id if isinstance(actor_id, str) else None
+
+
 # All error handlers render HTML: a toast for HTMX requests (retargeted at the
 # shared toast region), a full-page message otherwise.
 def _html_error(request: Request, message: str, status_code: int) -> Response:
@@ -127,6 +134,7 @@ def _html_error(request: Request, message: str, status_code: int) -> Response:
         response = render_static(request, "fragments/toast.html", message=message, variant="error")
         response.headers["HX-Retarget"] = "#toast-region"
         response.headers["HX-Reswap"] = "beforeend"
+        response.headers["HX-Reselect"] = "unset"
         return response
     response = render_static(request, "pages/message.html", message=message)
     response.status_code = status_code
@@ -153,7 +161,7 @@ async def object_not_found_exception_handler(request: Request, exc: ObjectNotFou
     lang = get_lang(request)
     logger.info(
         "Request referenced an object that does not exist.",
-        actor_id=getattr(request.state, "actor_id", None),
+        actor_id=_actor_id(request),
         path=request.url.path,
         identifier=exc.identifier,
     )
@@ -177,8 +185,29 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
     lang = get_lang(request)
     logger.info(
         "Rejected a malformed request.",
-        actor_id=getattr(request.state, "actor_id", None),
+        actor_id=_actor_id(request),
         path=request.url.path,
         errors=exc.errors(),
     )
     return _html_error(request, _("Invalid request.", lang=lang), 422)
+
+
+@app.exception_handler(KelvinAPIUnavailableError)
+async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavailableError):
+    # Without this the failure is a bare 500, and htmx swaps nothing on a 5xx: the
+    # user sees the spinner stop and no message at all.
+    logger.opt(exception=exc).error(
+        "The user directory did not answer; the request could not be completed. Check that "
+        "the Kelvin REST API is running and reachable from this host, and its log for this error.",
+        actor_id=_actor_id(request),
+        path=request.url.path,
+    )
+    lang = get_lang(request)
+    return _html_error(
+        request,
+        _(
+            "The user directory (Kelvin API) is currently unavailable. Please try again in a moment.",
+            lang=lang,
+        ),
+        502,
+    )

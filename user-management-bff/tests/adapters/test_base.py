@@ -4,8 +4,10 @@
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
-from ucsschool.kelvin.client import Session
+from pytest_mock import MockerFixture
+from ucsschool.kelvin.client import ServerError, Session
 
 from user_management_bff.adapters import base as adapters_base
 from user_management_bff.adapters.base import (
@@ -13,6 +15,7 @@ from user_management_bff.adapters.base import (
     KelvinPersistenceBaseAdapter,
     kelvin_session_scope,
 )
+from user_management_bff.errors import KelvinAPIUnavailableError
 
 
 class DummyAdapter(KelvinPersistenceBaseAdapter): ...
@@ -88,6 +91,21 @@ class TestKelvinPersistenceBaseAdapter:
                 _session = adapter.kelvin_session
         finally:
             adapters_base._session_holder.reset(token)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure", [ServerError("boom", status=500), httpx.ConnectTimeout("slow")])
+    async def test_a_kelvin_that_does_not_answer_is_reported_as_unavailable(
+        self,
+        adapter: DummyAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        mocker: MockerFixture,
+        failure: Exception,
+    ):
+        mocker.patch("ucsschool.kelvin.client.session.Session.request", side_effect=failure)
+        adapter._settings = dummy_settings
+        async with kelvin_session_scope():
+            with pytest.raises(KelvinAPIUnavailableError):
+                await adapter.kelvin_session.request(adapter.kelvin_session.client.get, "https://kelvin")
 
 
 @pytest.mark.asyncio

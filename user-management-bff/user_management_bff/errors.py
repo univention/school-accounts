@@ -27,6 +27,11 @@ class NoSchoolUserError(PermissionsError):
 class NotAuthenticatedError(BaseError): ...
 
 
+class KelvinAPIUnavailableError(BaseError):
+    def __init__(self):
+        super().__init__("The user directory is unavailable.")
+
+
 class PasswordChangeOnNextLoginUnsupportedError(BaseError):
     """The backend cannot force a password change at the next login for this user.
 

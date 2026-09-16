@@ -8,11 +8,14 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Type
 
+import httpx
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
-from ucsschool.kelvin.client import Session
+from ucsschool.kelvin.client import ServerError, Session
+
+from ..errors import KelvinAPIUnavailableError
 
 # this app supports the Kelvin v2 API only, so the version is pinned here.
 # The client library still defaults to v1
@@ -28,6 +31,19 @@ class KelvinPersistenceAdapterSettings:
     url: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.url"})
     username: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.username"})
     password: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.password"})
+
+
+class _KelvinSession(Session):
+    @override
+    async def request(
+        self, async_request_method: object, url: str, return_json: bool = True, **kwargs: object
+    ) -> str | int | dict[str, object]:
+        # Every Kelvin call, the token login included, passes through here; the client
+        # re-raises network errors and timeouts unchanged, and a 5xx as ServerError.
+        try:
+            return await super().request(async_request_method, url, return_json, **kwargs)
+        except (ServerError, httpx.TransportError) as exc:
+            raise KelvinAPIUnavailableError() from exc
 
 
 @dataclass
@@ -127,7 +143,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 kelvin_url=self._settings.url,
                 kelvin_api_version=KELVIN_API_VERSION,
             )
-            holder.session = Session(
+            holder.session = _KelvinSession(
                 self._settings.username,
                 self._settings.password,
                 self._settings.url,

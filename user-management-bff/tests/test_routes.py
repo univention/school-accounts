@@ -20,6 +20,7 @@ from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
 from user_management_bff.errors import (
+    KelvinAPIUnavailableError,
     ObjectNotFoundError,
     PasswordChangeOnNextLoginUnsupportedError,
     PasswordResetRejectedError,
@@ -844,3 +845,30 @@ def test_password_reset_confirm_with_nothing_resettable_offers_only_a_close(
     body = response.text
     assert "None of the selected accounts" in body
     assert 'name="password"' not in body
+
+
+def test_a_kelvin_failure_becomes_a_toast_for_htmx(test_client: TestClient, mocker: MockerFixture):
+    """htmx swaps nothing on a 5xx, so an unhandled backend failure shows the user nothing."""
+    mocker.patch.object(
+        FileUsersPersistenceAdapter, "get_users", side_effect=KelvinAPIUnavailableError()
+    )
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school1"}, headers={"HX-Request": "true"}
+    )
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#toast-region"
+    # Without this the filter form's hx-select="#results-region" picks nothing out of the
+    # toast fragment and htmx swaps an empty string over the toast region.
+    assert response.headers["HX-Reselect"] == "unset"
+    assert "currently unavailable" in response.text
+
+
+def test_a_kelvin_failure_becomes_a_message_page_without_htmx(
+    test_client: TestClient, mocker: MockerFixture
+):
+    mocker.patch.object(
+        FileUsersPersistenceAdapter, "get_users", side_effect=KelvinAPIUnavailableError()
+    )
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
+    assert response.status_code == 502
+    assert "currently unavailable" in response.text
