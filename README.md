@@ -399,17 +399,31 @@ dev/dev_run.sh task dev-server
 dev/dev_run.sh task pytest-frontend
 ```
 
-Against an installed system,
-point the same suite at it and give it an account that exists there:
+Against an installed system, point the same suite at it.
+The directory contents differ from `dev/data/`,
+so the account, the school, and the user the tests look for
+all have to come from that system:
 
 ```shell
-FRONTEND_BASE_URL="https://$YOUR_TEST_INSTANCE" \
-dev/dev_run.sh task pytest-frontend
+FRONTEND_BASE_URL="https://primary.ucsschool.test" \
+dev/dev_run.sh task pytest-frontend \
+  --frontend_username alex.admin \
+  --frontend_password univention \
+  --frontend_school school1 \
+  --frontend_listed_user mina.teacher
 ```
 
-The login defaults to the dev realm's `dev`/`univention`;
-override it with `--frontend_username` and `--frontend_password`,
-which the task forwards like the `pytest` task does (up to 7 arguments).
+Those values match the environment
+[dev/tests/integration_tests.cfg](dev/tests/integration_tests.cfg) seeds;
+the defaults match `dev/data/`.
+Everything after the task name is forwarded to pytest.
+
+The domain name has to resolve --
+see [Running e2e tests for the Backend](#running-e2e-tests-for-the-backend)
+for the `/etc/hosts` entries.
+The UCS root CA does not have to be installed:
+the browser context ignores HTTPS errors,
+and nothing else in the suite talks to the system.
 
 To watch a run in a real browser window instead of headless:
 

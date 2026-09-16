@@ -9,10 +9,15 @@ system's custom elements and the htmx swaps they trigger are actually executed,
 so this is where a regression in any of the three surfaces.
 
 Which deployment is left entirely to ``--base-url`` and the ``--frontend_*``
-credentials: the compose dev stack, the stack
+options: the compose dev stack, the stack
 ``dev/scripts/start_frontend_test_stack.sh`` provisions in CI, or an installed
 UCS system. Nothing here imports the application, so the suite stays usable
 against a system that does not run this checkout's code.
+
+The directory contents differ per deployment, so the school and the user the
+tests look for are options too, defaulting to ``dev/data``. An installed system
+seeded by ``dev/tests/integration_tests.cfg`` carries ``school1`` and
+``alex.admin``/``mina.teacher`` instead.
 """
 
 from __future__ import annotations
@@ -59,6 +64,18 @@ def frontend_credentials(pytestconfig: pytest.Config) -> tuple[str, str]:
     )
 
 
+@pytest.fixture(scope="session")
+def school(pytestconfig: pytest.Config) -> str:
+    """A school the logged-in account may filter by."""
+    return cast(str, pytestconfig.getoption("frontend_school"))
+
+
+@pytest.fixture(scope="session")
+def listed_user(pytestconfig: pytest.Config) -> str:
+    """A username the logged-in account sees once `school` is selected."""
+    return cast(str, pytestconfig.getoption("frontend_listed_user"))
+
+
 @pytest.fixture
 def login(page: Page, frontend_credentials: tuple[str, str]) -> Callable[..., Page]:
     """Open the UI and hand back the page with the browser past Keycloak's login form.
@@ -73,7 +90,10 @@ def login(page: Page, frontend_credentials: tuple[str, str]) -> Callable[..., Pa
         page.goto(f"{FRONTEND_PREFIX}/")
         page.get_by_label("Username or email").fill(username or default_username)
         page.get_by_label("Password", exact=True).fill(password or default_password)
-        page.get_by_role("button", name="Sign In").click()
+        # Submitting from the field rather than clicking the button: the button's
+        # label comes from whichever login theme the deployment uses, the form
+        # submission does not.
+        page.get_by_label("Password", exact=True).press("Enter")
         expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
         return page
 

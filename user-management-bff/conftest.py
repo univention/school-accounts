@@ -10,3 +10,5 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--kelvin_url", action="store")
     parser.addoption("--frontend_username", action="store", default="dev")
     parser.addoption("--frontend_password", action="store", default="univention")
+    parser.addoption("--frontend_school", action="store", default="Goethe-Gymnasium Berlin")
+    parser.addoption("--frontend_listed_user", action="store", default="jonas.huber")

@@ -21,8 +21,6 @@ if TYPE_CHECKING:
 
     from playwright.sync_api import Page
 
-SCHOOL = "Goethe-Gymnasium Berlin"
-
 
 @pytest.mark.frontend
 def test_login_lands_on_the_user_list(login: Callable[..., Page]) -> None:
@@ -38,8 +36,11 @@ def test_the_user_list_starts_empty_until_a_school_is_picked(login: Callable[...
 
 @pytest.mark.frontend
 def test_selecting_a_school_swaps_in_its_users(
-    login: Callable[..., Page], select_school: Callable[[str], None]
+    login: Callable[..., Page],
+    select_school: Callable[[str], None],
+    school: str,
+    listed_user: str,
 ) -> None:
     page = login()
-    select_school(SCHOOL)
-    expect(page.locator("#results-region")).to_contain_text("jonas.huber")
+    select_school(school)
+    expect(page.locator("#results-region")).to_contain_text(listed_user)

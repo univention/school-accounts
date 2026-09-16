@@ -110,7 +110,7 @@ run_task() {
     --tracing retain-on-failure \
     --output "/src/.cache/frontend-test-results" \
     -m "frontend" \
-    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" $3 $4 $5 $6 $7 $8 $9 \
+    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" "${@:3}" \
     .
     exit $?
   fi
@@ -145,7 +145,7 @@ run_task() {
     --slowmo "${SLOWMO:-500}" \
     --output "/src/.cache/frontend-test-results" \
     -m "frontend" \
-    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" $3 $4 $5 $6 $7 $8 $9 \
+    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" "${@:3}" \
     .
     exit $?
   fi
@@ -184,7 +184,7 @@ if [[ ! -f "dev/.env" ]]; then
 fi
 
 if [[ "$COMMAND" = "task" ]]; then
-  run_task $@
+  run_task "$@"
 fi
 if [[ "$COMMAND" = "--help" ]]; then
   print_help
