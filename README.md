@@ -299,12 +299,20 @@ IP_PRIMARY ucs-sso-ng.ucsschool.test ucs-sso.ucsschool.test primary.ucsschool.te
 IP_BACKUP backup1.ucsschool.test
 ```
 
-The UCS root CA has to be trusted. Every instance mints its own, so fetch it again whenever the
-environment is recreated -- an old one fails verification without saying that it is the wrong CA:
+The UCS root CA has to be trusted.
+Every instance mints its own,
+so fetch it again whenever the environment is recreated --
+an old one fails verification without saying that it is the wrong CA:
 
 ```shell
 dev/scripts/fetch_ucs_ca.sh primary.ucsschool.test
 ```
+
+Besides `dev/local/ucs-root-ca.crt` this writes `dev/local/ca-bundle.crt`,
+the system roots and the UCS root concatenated.
+`SSL_CERT_FILE` and `REQUESTS_CA_BUNDLE` replace the trust store rather than adding to it,
+so pointing them at the UCS root alone would leave the process unable to verify PyPI.
+Always use the bundle.
 
 Cerbos has to be reachable. Nothing starts it for the tests, so leave it running in a second
 terminal; it publishes 3592 and 3593 on the host:
@@ -320,12 +328,12 @@ Then run the tests **outside** the dev container, from the BFF's own virtualenv:
 # hand-installed basedpyright.
 uv sync --inexact --project user-management-bff
 cd user-management-bff
-env SSL_CERT_FILE=../dev/local/ucs-root-ca.crt \
-    REQUESTS_CA_BUNDLE=../dev/local/ucs-root-ca.crt \
+env SSL_CERT_FILE=../dev/local/ca-bundle.crt \
+    REQUESTS_CA_BUNDLE=../dev/local/ca-bundle.crt \
     KELVIN_PERSISTENCE_ADAPTER__URL=primary.ucsschool.test \
     KELVIN_PERSISTENCE_ADAPTER__USERNAME=Administrator \
     KELVIN_PERSISTENCE_ADAPTER__PASSWORD=univention \
-  uv run --no-sync pytest -m "e2e" \
+  uv run pytest -m "e2e" \
     --base_url "https://primary.ucsschool.test/univention/ucsschool/user-management" \
     --kelvin_url primary.ucsschool.test \
     --cerbos_url localhost:3593
@@ -334,12 +342,6 @@ env SSL_CERT_FILE=../dev/local/ucs-root-ca.crt \
 `dev/dev_run.sh task pytest-e2e` runs the same tests inside the dev container, where the UCS names do
 not resolve: a container never sees the host's `/etc/hosts`, and the names are in no DNS zone the
 container can reach. Use the command above instead, or teach the container the names first.
-
-`--no-sync`, and the CA variables on the command rather than in `dev/.env`, because both variables
-replace the whole trust store for the process that reads them: a `uv` that has to fetch anything can
-then no longer verify PyPI (`invalid peer certificate: UnknownIssuer`). A warm cache hides that, which
-makes it look intermittent; `--no-sync` resolves nothing, so the `uv sync` above is the only step that
-talks to PyPI -- run it before setting the variables, as written.
 
 The tests create users in the target environment and delete them again afterwards. The legal-guardian
 tests additionally need the users the integration job imports from `dev/tests/import_users.csv`, under
