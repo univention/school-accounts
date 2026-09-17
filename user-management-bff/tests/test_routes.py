@@ -175,6 +175,9 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # The cascade (school -> filters) must not inherit the form's select/push-url,
     # or its fragment response would blank out the dependent filters.
     assert 'hx-disinherit="hx-select hx-push-url"' in body
+    # htmx snapshots the page after the click that set the school but before the
+    # results swap, so a restored snapshot pairs a school with the old table.
+    assert 'hx-history="false"' in body
     assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users"
     # Empty results table (column headers only) rendered on initial load.
     assert "<u-table empty" in body
@@ -600,8 +603,6 @@ def test_password_reset_narrows_the_selection_to_what_failed(
     )
     assert 'data-target-id="test_user2"' in response.text
     assert 'data-target-id="test_user1"' not in response.text
-
-
 
 
 def test_password_reset_confirm_refuses_an_oversized_selection_as_a_toast(

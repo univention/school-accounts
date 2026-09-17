@@ -8,7 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 {# Fixed page: the header and the filter sidebar stay put while only the results
    column scrolls. Every element between the page and the two scrolling regions
    has to grow, or the results region has no bounded height to scroll inside. #}
-<u-page variant="fixed">
+{# htmx's history snapshot is taken after the click that set the list's value but
+   before the results swap, so a restored page shows a school with the old table. #}
+<u-page variant="fixed" hx-history="false">
   <u-container grow>
     <u-vstack gap="md" grow>
       {{ layout.page_header() }}
