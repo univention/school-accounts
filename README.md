@@ -324,8 +324,6 @@ dev/dev_run.sh task cerbos-server
 Then run the tests **outside** the dev container, from the BFF's own virtualenv:
 
 ```shell
-# --inexact: a plain sync prunes everything the lock does not name, including a
-# hand-installed basedpyright.
 uv sync --inexact --project user-management-bff
 cd user-management-bff
 env SSL_CERT_FILE=../dev/local/ca-bundle.crt \
@@ -339,14 +337,38 @@ env SSL_CERT_FILE=../dev/local/ca-bundle.crt \
     --cerbos_url localhost:3593
 ```
 
-`dev/dev_run.sh task pytest-e2e` runs the same tests inside the dev container, where the UCS names do
-not resolve: a container never sees the host's `/etc/hosts`, and the names are in no DNS zone the
-container can reach. Use the command above instead, or teach the container the names first.
+The same tests also run inside the dev container, which needs two more things. A container never sees
+the host's `/etc/hosts` and the UCS names are in no DNS zone it can reach, so add them to the
+`extra_hosts` anchor in `dev/docker-compose.yaml`:
+
+```yaml
+    extra_hosts: &extra_hosts
+      - git.knut.univention.de:${GITLAB_IP}
+      - host.docker.internal:host-gateway
+      - primary.ucsschool.test:IP_PRIMARY
+      - ucs-sso-ng.ucsschool.test:IP_PRIMARY
+      - ucs-sso.ucsschool.test:IP_PRIMARY
+      - backup1.ucsschool.test:IP_BACKUP
+```
+
+Then uncomment these in `dev/.env`, so the processes in the container trust the UCS CA:
+
+```text
+REQUESTS_CA_BUNDLE=/src/dev/local/ca-bundle.crt
+SSL_CERT_FILE=/src/dev/local/ca-bundle.crt
+```
+
+```shell
+E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
+E2E_CERBOS_URL="cerbos:3593" \
+E2E_KELVIN_URL="primary.ucsschool.test" \
+dev/dev_run.sh task pytest-e2e
+```
+
+Cerbos is reached at `cerbos:3593` over the compose network here, not on localhost.
 
 The tests create users in the target environment and delete them again afterwards. The legal-guardian
-tests additionally need the users the integration job imports from `dev/tests/import_users.csv`, under
-exactly those names; on an instance that has imported before, the import hands out `max.student2` and
-the tests fail with `NoSchoolUserError`, which says nothing about the code.
+tests additionally need the users the integration job imports from `dev/tests/import_users.csv`.
 
 You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
