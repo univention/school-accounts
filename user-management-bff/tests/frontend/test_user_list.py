@@ -1,20 +1,23 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Smoke coverage for the user list, and the worked examples for the harness.
+"""The list view: what the harness has to get right, and the "UI Content" cases.
 
-Deliberately thin: these assert the three things the harness itself has to get
-right -- the login redirect chain completes, a page renders through the design
-system's custom elements, and an htmx swap replaces the results region -- so a
-broken harness fails here rather than inside a product test written on top of
-it. Product test cases belong in their own modules next to this one.
+The first three are the harness's own smoke tests -- the login redirect chain
+completes, a page renders through the design system's custom elements, and an
+htmx swap replaces the results region -- so a broken harness fails here rather
+than inside a product test written on top of it. The rest carry case ids from
+`RAM-product-test-matrix.md` in `univention/dev/internal/product-tests/ucsschool`.
 """
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import expect
+
+from tests.frontend.conftest import FRONTEND_PREFIX
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,24 +26,52 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.frontend
-def test_login_lands_on_the_user_list(login: Callable[..., Page]) -> None:
-    page = login()
-    expect(page.locator("u-page-header")).to_have_text("User Management")
+def test_the_page_renders_through_the_design_system(signed_in: Page) -> None:
+    expect(signed_in.locator("u-page-header")).to_have_text("User Management")
 
 
 @pytest.mark.frontend
-def test_the_user_list_starts_empty_until_a_school_is_picked(login: Callable[..., Page]) -> None:
-    page = login()
-    expect(page.locator("#results-region")).to_contain_text("No users found.")
+def test_the_user_list_starts_empty_until_a_school_is_picked(signed_in: Page) -> None:
+    expect(signed_in.locator("#results-region")).to_contain_text("No users found.")
 
 
 @pytest.mark.frontend
 def test_selecting_a_school_swaps_in_its_users(
-    login: Callable[..., Page],
-    select_school: Callable[[str], None],
+    signed_in: Page,
+    select_school: Callable[..., None],
     school: str,
     listed_user: str,
 ) -> None:
-    page = login()
     select_school(school)
-    expect(page.locator("#results-region")).to_contain_text(listed_user)
+    expect(signed_in.locator("#results-region")).to_contain_text(listed_user)
+
+
+@pytest.mark.frontend
+def test_a_group_narrows_the_result_further(
+    signed_in: Page, select_school: Callable[..., None], school: str
+) -> None:
+    """U0015: the list view can be scoped by school and by class or work group."""
+    select_school(school)
+
+    # The first option is "All classes and work groups"; the next one is a real group.
+    signed_in.locator("#group-list").get_by_role("option").nth(1).click()
+
+    expect(signed_in).to_have_url(re.compile(r"[?&]group="))
+
+
+@pytest.mark.frontend
+def test_a_filtered_list_view_is_bookmarkable(signed_in: Page, school_id: str, listed_user: str) -> None:
+    """U0035: the URL carries the school and opening it reproduces the same state."""
+    signed_in.goto(f"{FRONTEND_PREFIX}/users?school={school_id}")
+
+    expect(signed_in.locator("#results-region")).to_contain_text(listed_user)
+    expect(signed_in.locator("#school-list")).to_have_attribute("value", school_id)
+
+
+@pytest.mark.frontend
+def test_an_unknown_school_falls_back_instead_of_failing(signed_in: Page) -> None:
+    """U0036: a URL naming a school that does not exist renders the unfiltered view."""
+    signed_in.goto(f"{FRONTEND_PREFIX}/users?school=school-that-does-not-exist")
+
+    expect(signed_in.locator("u-table")).to_be_visible()
+    expect(signed_in.locator("#results-region")).to_contain_text("No users found.")

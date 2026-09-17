@@ -434,9 +434,10 @@ no access token is stored) rather than restating what the code does.
 - **frontend tests** (`tests/frontend/`, marked `frontend`, excluded the same way): the only
   browser-level coverage there is. They drive whatever `--base-url` names and import nothing from
   the application, so the same suite runs against the dev stack, the stack CI provisions, and an
-  installed system. Assert through the `login`/`select_school` fixtures in their `conftest.py`
-  rather than re-deriving the login flow or the htmx swap in a test, and take directory contents
-  from the `school`/`listed_user` fixtures rather than hardcoding `dev/data` values — a literal
+  installed system. Assert through the `sign_in`/`signed_in`/`sign_in_as`/`select_school` helpers
+  in their `conftest.py` rather than re-deriving the login flow or the htmx swap in a test, and
+  take directory contents from the `school`/`listed_user` fixtures rather than hardcoding
+  `dev/data` values — a literal
   school or username is what pins a test to one deployment. Given `--kelvin_url`, `seed.py` puts
   those contents into the directory itself; it never deletes a user, and its module docstring
   explains why re-creating one breaks the next run's login.

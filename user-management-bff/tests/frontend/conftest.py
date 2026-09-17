@@ -35,7 +35,8 @@ from tests.frontend import seed
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from playwright.sync_api import Page
+    from playwright.sync_api import Browser, BrowserContext, Page, StorageState
+    from pytest_playwright.pytest_playwright import CreateContextCallback
 
 # Part of the deployed URL contract rather than a setting of the run, so it is
 # spelled out here instead of read from ``user_management_bff.constants``, whose
@@ -62,12 +63,6 @@ def patient_expectations() -> None:
     reverse proxy, and the login redirect chain crosses Keycloak twice.
     """
     expect.set_options(timeout=15_000)
-
-
-@pytest.fixture(scope="session")
-def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
-    """A UCS system serves the UI behind its own CA, and the UI follows the browser's locale."""
-    return {**browser_context_args, "ignore_https_errors": True, "locale": "en-US"}
 
 
 @pytest.fixture(scope="session")
@@ -117,6 +112,14 @@ def school(pytestconfig: pytest.Config, seeded: bool) -> str:
 
 
 @pytest.fixture(scope="session")
+def school_id(pytestconfig: pytest.Config, seeded: bool) -> str:
+    """`school`'s identifier, which is what the filter puts in the URL."""
+    if seeded:
+        return seed.SCHOOL
+    return cast(str, pytestconfig.getoption("frontend_school_id"))
+
+
+@pytest.fixture(scope="session")
 def listed_user(pytestconfig: pytest.Config, seeded: bool) -> str:
     """A username the logged-in account sees once `school` is selected."""
     if seeded:
@@ -124,41 +127,136 @@ def listed_user(pytestconfig: pytest.Config, seeded: bool) -> str:
     return cast(str, pytestconfig.getoption("frontend_listed_user"))
 
 
-@pytest.fixture
-def login(page: Page, frontend_credentials: tuple[str, str]) -> Callable[..., Page]:
-    """Open the UI and hand back the page with the browser past Keycloak's login form.
+def sign_in(page: Page, username: str, password: str, start: str = f"{FRONTEND_PREFIX}/") -> None:
+    """Walk one browser from `start` to the user list, through Keycloak.
 
-    Landing on the user list is asserted by URL rather than by any rendered
-    string, so a login failure is reported here, by this fixture, instead of as
-    a puzzling content mismatch inside the test that called it.
+    Submitting from the field rather than clicking the button: the button's label
+    comes from whichever login theme the deployment uses, the form submission
+    does not. Landing on the list is asserted here so a login failure is reported
+    where it happened, rather than as a puzzling content mismatch later.
     """
-    default_username, default_password = frontend_credentials
+    page.goto(start)
+    page.get_by_label("Username or email").fill(username)
+    page.get_by_label("Password", exact=True).fill(password)
+    page.get_by_label("Password", exact=True).press("Enter")
+    expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
 
-    def _login(username: str | None = None, password: str | None = None) -> Page:
-        page.goto(f"{FRONTEND_PREFIX}/")
-        page.get_by_label("Username or email").fill(username or default_username)
-        page.get_by_label("Password", exact=True).fill(password or default_password)
-        # Submitting from the field rather than clicking the button: the button's
-        # label comes from whichever login theme the deployment uses, the form
-        # submission does not.
-        page.get_by_label("Password", exact=True).press("Enter")
+
+@pytest.fixture(scope="session")
+def authenticated_state(
+    browser: Browser, base_url: str, frontend_credentials: tuple[str, str]
+) -> StorageState:
+    """Log in once for the whole session and keep the cookies it produced.
+
+    A login costs a full redirect chain through Keycloak, which against an
+    installed system is by far the slowest thing these tests do. Every test below
+    starts from these cookies instead, so the flow itself is exercised once, by
+    the test that is actually about it.
+
+    Created outside `new_context`, which is per test: a failure here is reported
+    as an error in the setup of whichever test asked first, without a trace.
+    """
+    context = browser.new_context(base_url=base_url, ignore_https_errors=True, locale="en-US")
+    try:
+        sign_in(context.new_page(), *frontend_credentials)
+        return context.storage_state()
+    finally:
+        context.close()
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
+    """A UCS system serves the UI behind its own CA.
+
+    The locale and the cookies are left to each context: `new_context` passes
+    these and its own keyword arguments side by side, so a key set here could not
+    be overridden by a test that needs another language or no session at all.
+    """
+    return {**browser_context_args, "ignore_https_errors": True}
+
+
+@pytest.fixture
+def context(new_context: CreateContextCallback, authenticated_state: StorageState) -> BrowserContext:
+    """The default `page`'s context, in English and with the session's cookies."""
+    return new_context(locale="en-US", storage_state=authenticated_state)
+
+
+@pytest.fixture
+def signed_in(page: Page) -> Page:
+    """The user list, reached with the session `authenticated_state` already holds."""
+    page.goto(f"{FRONTEND_PREFIX}/users")
+    expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
+    return page
+
+
+@pytest.fixture
+def fresh_browser(new_context: CreateContextCallback) -> Callable[..., Page]:
+    """A browser that has never logged in, for the tests that are about logging in.
+
+    Through `new_context`, like every context a test opens, so a failure leaves
+    the trace and the screenshot `--tracing` and `--screenshot` ask for.
+    """
+
+    def _open(locale: str = "en-US") -> Page:
+        return new_context(locale=locale).new_page()
+
+    return _open
+
+
+@pytest.fixture
+def open_in_language(
+    new_context: CreateContextCallback, authenticated_state: StorageState
+) -> Callable[[str], Page]:
+    """Open the user list through a browser that asks for one particular language.
+
+    The module has no language switcher; it follows the browser's
+    `Accept-Language`, so this needs a context per language. The session's cookies
+    come along, so no login is paid for it.
+    """
+
+    def _open(language: str) -> Page:
+        page = new_context(locale=language, storage_state=authenticated_state).new_page()
+        page.goto(f"{FRONTEND_PREFIX}/users")
         expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
         return page
 
-    return _login
+    return _open
 
 
 @pytest.fixture
-def select_school(page: Page) -> Callable[[str], None]:
+def sign_in_as(fresh_browser: Callable[..., Page]) -> Callable[[str, str], Page]:
+    """Log somebody else in, in a browser of their own."""
+
+    def _sign_in_as(username: str, password: str) -> Page:
+        page = fresh_browser()
+        sign_in(page, username, password)
+        return page
+
+    return _sign_in_as
+
+
+@pytest.fixture
+def seeded_only(seeded: bool) -> None:
+    """Skip a test whose users only exist when the suite seeded them itself."""
+    if not seeded:
+        pytest.skip("needs --kelvin_url: the roles under test are seeded through Kelvin")
+
+
+@pytest.fixture
+def select_school(request: pytest.FixtureRequest) -> Callable[..., None]:
     """Pick a school in the filter sidebar and wait for the htmx swap it triggers.
 
     The list select has no submit button: choosing an item fires ``u-change``,
     which the form turns into a request that both replaces the results region
     and pushes the filter into the URL. Waiting for the pushed URL is therefore
     the one signal that the swap has completed, rather than merely started.
+
+    Without a `page`, it acts on `signed_in`, which is only set up then: a test
+    that brings its own page should not pay for a second one it never looks at.
     """
 
-    def _select(school: str) -> None:
+    def _select(school: str, page: Page | None = None) -> None:
+        page = page or cast("Page", request.getfixturevalue("signed_in"))
         page.get_by_role("option", name=school, exact=True).click()
         expect(page).to_have_url(re.compile(r"[?&]school="))
 
