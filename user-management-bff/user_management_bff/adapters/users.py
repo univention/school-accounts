@@ -173,6 +173,12 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         return users
 
     async def get_user(self, identifier: str) -> User:
+        # Rendering the list resolves the actor once per section it builds, and a
+        # reset resolves users this request has already read. The same object
+        # answers all of them, which is what `set_password` has always relied on.
+        kelvin_user = cast("KelvinUser | None", self.fetched_this_request.get(identifier))
+        if kelvin_user is not None:
+            return self._user_from_kelvin_user(kelvin_user)
         try:
             kelvin_user = await UserResource(session=self.kelvin_session).get(name=identifier)
             return self._user_from_kelvin_user(kelvin_user)

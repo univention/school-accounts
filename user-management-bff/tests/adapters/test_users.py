@@ -304,6 +304,43 @@ class TestKelvinUsersPersistenceAdapter:
         assert exc_info.value.identifier == "test_user1"
 
     @pytest.mark.asyncio
+    async def test_get_user_reuses_a_user_the_request_already_read(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
+        """Rendering the list resolves the actor once per section it builds: four
+        GETs for one user, none of which the previous one could have been."""
+        gets: list[str] = []
+
+        class MockUserResource:
+            async def search(self, *_args: Any, name: list[str], **_kwargs: Any):
+                for username in name:
+                    yield make_kelvin_user_from_data(_contract_shape(username))
+
+            async def get(self, *_args: Any, name: str = "", **_kwargs: Any):
+                gets.append(name)
+                return make_kelvin_user_from_data(_contract_shape(name))
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        await adapter.configure(dummy_settings)
+        assert (await adapter.get_user("actor")).id == "actor"
+        assert (await adapter.get_user("actor")).id == "actor"
+        assert gets == ["actor"]
+
+        # A user the selection search delivered costs nothing either.
+        await adapter.get_users_by_id(["u1"])
+        assert (await adapter.get_user("u1")).id == "u1"
+        assert gets == ["actor"]
+
+    @pytest.mark.asyncio
     async def test_get_users_by_id_asks_for_every_name_in_one_search(
         self,
         adapter: KelvinUsersPersistenceAdapter,
