@@ -493,14 +493,11 @@ async def test_set_passwords_unexpected_fetch_error_still_aborts_whole_request(
     patch_set_password: Callable[[dict[str, Exception]], MagicMock],
 ):
     set_password_mock = patch_set_password({})
-    original_get_user = FileUsersPersistenceAdapter.get_user
-
-    async def _get_user(identifier: str) -> User:
-        if identifier == "test_user1":
-            raise RuntimeError("Kelvin is unreachable")
-        return await original_get_user(ports.users, identifier)  # pyright: ignore[reportArgumentType]
-
-    mocker.patch.object(FileUsersPersistenceAdapter, "get_user", side_effect=_get_user)
+    mocker.patch.object(
+        FileUsersPersistenceAdapter,
+        "get_users_by_id",
+        side_effect=RuntimeError("Kelvin is unreachable"),
+    )
     with pytest.raises(RuntimeError, match="Kelvin is unreachable"):
         await business_logic.set_passwords(
             ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "new-password", "en"
@@ -592,54 +589,26 @@ async def test_set_passwords_empty_password_is_rejected_without_any_writes(
 
 
 @pytest.mark.asyncio
-async def test_selection_with_a_school_is_resolved_by_one_search(ports: Ports, mocker: MockerFixture):
-    """One request per selected user is what the proxy could not take; the school
-    the selection was made in resolves all of them in a single search."""
-    get_users_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users")
+async def test_a_selection_is_resolved_by_one_search(ports: Ports, mocker: MockerFixture):
+    """One request per selected user is what the proxy could not take. A selection
+    outlives a filter change, so it can span schools - the search names them all
+    anyway, and costs the same one round-trip."""
+    get_users_by_id_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users_by_id")
     get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
     data = await business_logic.get_password_reset_selection(
-        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user4"], "en", "test_school1"
+        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2", "test_user4"], "en"
     )
-    assert {user.id for user in data.users} == {"test_user1", "test_user4"}
-    assert get_users_spy.call_count == 1
+    assert {user.id for user in data.users} == {"test_user1", "test_user2", "test_user4"}
+    assert get_users_by_id_spy.call_count == 1
     # Only the actor, never the targets.
     assert get_user_spy.call_count == 1
-
-
-@pytest.mark.asyncio
-async def test_a_failing_school_search_falls_back_to_ids(ports: Ports, mocker: MockerFixture):
-    """The search is a shortcut, so losing it must not lose the whole reset."""
-    mocker.patch.object(
-        FileUsersPersistenceAdapter, "get_users", side_effect=RuntimeError("search is down")
-    )
-    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
-    data = await business_logic.get_password_reset_selection(
-        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user4"], "en", "test_school1"
-    )
-    assert {user.id for user in data.users} == {"test_user1", "test_user4"}
-    # The actor, plus both targets the search did not deliver.
-    assert get_user_spy.call_count == 3
-
-
-@pytest.mark.asyncio
-async def test_a_selection_reaching_outside_the_school_falls_back_to_ids(
-    ports: Ports, mocker: MockerFixture
-):
-    """A selection outlives a filter change, so it can name users the search misses."""
-    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
-    data = await business_logic.get_password_reset_selection(
-        ports.users, ports.permissions, ACTOR_ID, ["test_user1", "test_user2"], "en", "test_school1"
-    )
-    assert {user.id for user in data.users} == {"test_user1", "test_user2"}
-    # The actor, plus the one the search did not cover.
-    assert get_user_spy.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_get_password_reset_selection_too_many_targets_is_rejected_without_any_reads(
     ports: Ports, mocker: MockerFixture
 ):
-    """Resolving costs a Kelvin round-trip per user, so the submit's ceiling holds here too."""
+    """The submit refuses this too, so confirming it would promise a reset that cannot happen."""
     get_permissions_mock = mocker.patch.object(FilePermissionsAdapter, "get_permissions")
     get_user_mock = mocker.patch.object(FileUsersPersistenceAdapter, "get_user")
     mocker.patch.object(business_logic, "PASSWORD_RESET_MAX_TARGETS", 2)
@@ -746,6 +715,10 @@ async def test_set_passwords_bounds_concurrency(mocker: MockerFixture):
             )
 
         @override
+        async def get_users_by_id(self, identifiers: list[str]) -> dict[str, User]:
+            return {identifier: await self.get_user(identifier) for identifier in identifiers}
+
+        @override
         def supports_password_change_on_next_login(self) -> bool:
             return True
 
@@ -806,15 +779,11 @@ async def test_password_reset_selection_propagates_an_unexpected_fetch_error(
     ports: Ports, mocker: MockerFixture
 ):
     """A missing user is an anticipated outcome; anything else is systemic."""
-    real_get_user = FileUsersPersistenceAdapter.get_user
-
-    async def _get_user(self: FileUsersPersistenceAdapter, identifier: str) -> User:
-        # The actor is let through, so the failure comes from the gather, not get_actor.
-        if identifier == ACTOR_ID:
-            return await real_get_user(self, identifier)
-        raise RuntimeError("kelvin is down")
-
-    mocker.patch.object(FileUsersPersistenceAdapter, "get_user", _get_user)
+    # get_user is left alone, so the failure comes from resolving the selection
+    # rather than from get_actor.
+    mocker.patch.object(
+        FileUsersPersistenceAdapter, "get_users_by_id", side_effect=RuntimeError("kelvin is down")
+    )
     with pytest.raises(RuntimeError, match="kelvin is down"):
         await business_logic.get_password_reset_selection(
             ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "en"

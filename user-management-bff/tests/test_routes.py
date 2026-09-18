@@ -758,11 +758,14 @@ def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
     assert '<input type="hidden" name="user_id"' not in selection_form
 
 
-def test_the_selection_form_carries_its_school_to_the_confirm_post(test_client: TestClient):
-    """The confirm route resolves the selection within the school it was made in."""
+def test_the_selection_form_carries_no_school(test_client: TestClient):
+    """The selection is resolved by name in one search, so the school it was made in
+    is no longer part of the request - and it never was safe as a form field, because
+    the filter form includes this one and its own `school` would win."""
     body = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"}).text
     selection_form = body[body.index('id="selection-form"') :]
-    assert '"school": "school1"' in selection_form
+    assert 'name="school"' not in selection_form
+    assert '"school"' not in selection_form
 
 
 def test_only_the_posting_form_sends_the_csrf_token(

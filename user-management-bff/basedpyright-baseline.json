@@ -2790,6 +2790,14 @@
             {
                 "code": "reportUnknownMemberType",
                 "range": {
+                    "startColumn": 37,
+                    "endColumn": 52,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
                     "startColumn": 36,
                     "endColumn": 81,
                     "lineCount": 1

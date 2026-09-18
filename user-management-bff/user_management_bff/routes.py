@@ -157,15 +157,6 @@ def selected_ids(form: FormData) -> list[str]:
     return [str(value) for value in form.getlist("user_id")]
 
 
-def selected_school(form: FormData) -> str:
-    """The school the selection was made in.
-
-    A hint, not a trust boundary: it only decides how the users are looked up.
-    Permissions are still resolved on whatever comes back.
-    """
-    return str(form.get("school", ""))
-
-
 def render_static(request: Request, name: str, **context: object) -> HTMLResponse:
     """Render chrome that carries no form: the error toast and message page.
 
@@ -473,7 +464,6 @@ async def _password_reset_dialog(
     request: Request,
     auth: FastAPIAuthenticationPort,
     data: presentation.PasswordResetSelectionData,
-    school: str,
     password_error: str = "",
 ) -> HTMLResponse:
     """The confirmation dialog for a resolved selection, before and after a submit."""
@@ -483,7 +473,6 @@ async def _password_reset_dialog(
         auth,
         confirmation=presentation.build_password_reset_confirmation(data, get_lang(request)),
         password_error=password_error,
-        selected_school=school,
     )
 
 
@@ -504,7 +493,7 @@ async def users_password_reset_confirm(
     lang = get_lang(request)
     form = await request.form()
     data = await business_logic.get_password_reset_selection(
-        users_adapter, permissions_adapter, actor, selected_ids(form), lang, selected_school(form)
+        users_adapter, permissions_adapter, actor, selected_ids(form), lang
     )
     if data.request_error is not None:
         # Nothing was resolved, so a dialog would have nothing to state.
@@ -516,7 +505,7 @@ async def users_password_reset_confirm(
         response.headers["HX-Retarget"] = "#toast-region"
         response.headers["HX-Reswap"] = "beforeend"
         return response
-    return await _password_reset_dialog(request, auth, data, selected_school(form))
+    return await _password_reset_dialog(request, auth, data)
 
 
 @router.post("/users/password-reset", response_class=HTMLResponse)
@@ -542,7 +531,6 @@ async def users_password_reset(
         str(form.get("password", "")),
         lang,
         change_on_next_login=bool(form.get("change_on_next_login")),
-        school=selected_school(form),
     )
     rejection = result.password_rejection
     if rejection is not None and result.selection is not None:
@@ -550,7 +538,7 @@ async def users_password_reset(
         # the field. The write already resolved the selection; re-resolving costs a
         # second round of Kelvin reads and a Cerbos batch for nothing.
         response = await _password_reset_dialog(
-            request, auth, result.selection, selected_school(form), password_error=rejection
+            request, auth, result.selection, password_error=rejection
         )
         response.headers["HX-Retarget"] = "#password-reset-dialog-region"
         response.headers["HX-Reswap"] = "innerHTML"

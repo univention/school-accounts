@@ -29,6 +29,23 @@ from user_management_bff.models import User, UserAttributes
 from user_management_bff.ports import UsersPersistencePort
 
 
+def _contract_shape(username: str) -> dict[str, Any]:
+    """The stored-user shape ``make_kelvin_user_from_data`` expects, for one name."""
+    return {
+        "id": username,
+        "attributes": {
+            "disabled": False,
+            "first_name": "F",
+            "last_name": "L",
+            "roles": [],
+            "schools": [],
+            "school_classes": {},
+            "work_groups": {},
+            "username": username,
+        },
+    }
+
+
 class TestKelvinUsersPersistenceAdapter:
     @pytest.fixture
     def adapter(self) -> KelvinUsersPersistenceAdapter:
@@ -285,6 +302,93 @@ class TestKelvinUsersPersistenceAdapter:
         with pytest.raises(ObjectNotFoundError, match="Object not found") as exc_info:
             await adapter.get_user("test_user1")
         assert exc_info.value.identifier == "test_user1"
+
+    @pytest.mark.asyncio
+    async def test_get_users_by_id_asks_for_every_name_in_one_search(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
+        """A selection is one request, not one per user - that is the whole point."""
+        searches: list[list[str]] = []
+
+        class MockUserResource:
+            async def search(self, *_args: Any, name: list[str], **_kwargs: Any):
+                searches.append(name)
+                for username in name:
+                    yield make_kelvin_user_from_data(_contract_shape(username))
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        await adapter.configure(dummy_settings)
+        result = await adapter.get_users_by_id(["u1", "u2", "u3"])
+        assert searches == [["u1", "u2", "u3"]]
+        assert sorted(result) == ["u1", "u2", "u3"]
+
+    @pytest.mark.asyncio
+    async def test_get_users_by_id_splits_a_selection_too_long_for_one_request_line(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
+        """Past the request-line cap the server answers 414, so the names are split
+        over as few requests as still fit - and every user still comes back."""
+        searches: list[list[str]] = []
+
+        class MockUserResource:
+            async def search(self, *_args: Any, name: list[str], **_kwargs: Any):
+                searches.append(name)
+                for username in name:
+                    yield make_kelvin_user_from_data(_contract_shape(username))
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        await adapter.configure(dummy_settings)
+        # 12 characters plus "&name=" is 18 bytes, so the budget holds 333 of them.
+        names = [f"user{index:08d}" for index in range(700)]
+        result = await adapter.get_users_by_id(names)
+        assert [len(chunk) for chunk in searches] == [333, 333, 34]
+        assert sorted(result) == sorted(names)
+
+    @pytest.mark.asyncio
+    async def test_get_users_by_id_does_not_let_a_wildcard_widen_the_search(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
+        """Kelvin reads `*` in a name as a wildcard. The ids come off a form, and no
+        UCS username holds one, so such a value names nobody rather than everybody."""
+        searches: list[list[str]] = []
+
+        class MockUserResource:
+            async def search(self, *_args: Any, name: list[str], **_kwargs: Any):
+                searches.append(name)
+                for username in name:
+                    yield make_kelvin_user_from_data(_contract_shape(username))
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        await adapter.configure(dummy_settings)
+        assert await adapter.get_users_by_id(["*"]) == {}
+        assert searches == []
 
     @pytest.mark.asyncio
     async def test_set_password_success(
@@ -966,12 +1070,17 @@ def users_adapter(
 
     async def _kelvin() -> UsersPersistencePort:
         class MockUserResource:
-            async def search(self, *_args: Any, school: str = "", **_kwargs: Any):
-                # Kelvin applies ?school= itself, so the adapter is not credited
-                # with work the real service does for it.
+            async def search(
+                self, *_args: Any, school: str = "", name: list[str] | None = None, **_kwargs: Any
+            ):
+                # Kelvin applies ?school= and ?name= itself, so the adapter is not
+                # credited with work the real service does for it.
                 for user_data in CONTRACT_USERS:
-                    if school in user_data["attributes"]["schools"]:
-                        yield make_kelvin_user_from_data(user_data)
+                    if name is not None and user_data["id"] not in name:
+                        continue
+                    if school and school not in user_data["attributes"]["schools"]:
+                        continue
+                    yield make_kelvin_user_from_data(user_data)
 
             async def get(self, *_args: Any, name: str = "", **_kwargs: Any):
                 for user_data in CONTRACT_USERS:
@@ -1038,3 +1147,35 @@ async def test_get_user_unknown_contract(
     with pytest.raises(ObjectNotFoundError) as exc_info:
         await adapter.get_user("NON_EXISTENT")
     assert exc_info.value.identifier == "NON_EXISTENT"
+
+
+@pytest.mark.asyncio
+async def test_get_users_by_id_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    """Every id the backend knows comes back, keyed by id, across schools."""
+    adapter = await users_adapter()
+    result = await adapter.get_users_by_id(["staff.novak", "student.carla"])
+    assert sorted(result) == ["staff.novak", "student.carla"]
+    assert result["staff.novak"] == User(
+        id="staff.novak", attributes=UserAttributes(**CONTRACT_USERS[2]["attributes"])
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_users_by_id_skips_unknown_ids_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    """An id nobody answers to is absent rather than raising: the caller compares
+    against what it asked for and reports the difference as ``not_found``."""
+    adapter = await users_adapter()
+    result = await adapter.get_users_by_id(["staff.novak", "NON_EXISTENT"])
+    assert sorted(result) == ["staff.novak"]
+
+
+@pytest.mark.asyncio
+async def test_get_users_by_id_without_ids_contract(
+    users_adapter: Callable[[], Coroutine[Any, Any, UsersPersistencePort]],
+):
+    adapter = await users_adapter()
+    assert await adapter.get_users_by_id([]) == {}

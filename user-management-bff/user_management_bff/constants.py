@@ -23,8 +23,8 @@ AUTH_LOGOUT_PATH = "/auth/logout"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 
 # Selecting a whole class and resetting its password must not create a burst of
-# concurrent writes against Kelvin. Bounds how many set_password/get_user calls
-# one bulk submission has in flight at once.
+# concurrent writes against Kelvin. Bounds how many set_password calls one bulk
+# submission has in flight at once.
 PASSWORD_RESET_MAX_CONCURRENCY = int(
     os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY", "5")
 )

@@ -36,7 +36,7 @@ print(kelvin_url, end='')@!@
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__COOKIE_SECRET_FILE: "/run/secrets/session.secret"
       USER_MANAGEMENT__SESSION_SECRET_FILE: "/run/secrets/session.secret"
-      # Bounds how many concurrent set_password/get_user calls a bulk password reset has in
+      # Bounds how many concurrent set_password calls a bulk password reset has in
       # flight against Kelvin at once. 5 matches the app default.
       USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY: "5"
       # Rejects a bulk password reset outright once the (deduplicated) selection exceeds this

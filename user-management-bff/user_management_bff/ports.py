@@ -28,6 +28,20 @@ class UsersPersistencePort(ABC):
         """
 
     @abstractmethod
+    async def get_users_by_id(self, identifiers: list[str]) -> dict[str, User]:
+        """
+        This method returns the users named by ``identifiers``, keyed by id.
+
+        One lookup for the whole set, not one per id: a bulk password reset
+        resolves its selection through this, and the per-request overhead of a
+        single read dwarfs what a further id adds to a search.
+
+        An id no user answers to is absent from the result rather than raising -
+        the caller compares against what it asked for and reports the difference.
+        An empty ``identifiers`` returns an empty dict without any I/O.
+        """
+
+    @abstractmethod
     async def set_password(
         self, identifier: str, password: str, change_on_next_login: bool = False
     ) -> None:  # pragma: no cover

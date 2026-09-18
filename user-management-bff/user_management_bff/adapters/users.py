@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import asyncio
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import cast
+from urllib.parse import quote
 
 import aiofiles
 from loguru import logger
@@ -37,6 +39,27 @@ _UDM_CHANGE_ON_NEXT_LOGIN = "pwdChangeNextLogin"
 # Without it a reused password is refused, and the refusal tells the teacher
 # running the reset that this student once held that password.
 _UDM_OVERRIDE_PW_HISTORY = "overridePWHistory"
+
+# A whole selection travels as repeated ``name`` parameters in one request line,
+# and that line is capped - apache's LimitRequestLine defaults to 8190 bytes and
+# nothing in front of Kelvin raises it. Budgeted for the names alone, leaving the
+# rest to the collection URL.
+_SEARCH_NAMES_BUDGET_BYTES = 6000
+
+
+def _name_chunks(identifiers: list[str]) -> Iterator[list[str]]:
+    """Split ``identifiers`` into the largest groups that still fit one request line."""
+    chunk: list[str] = []
+    used = 0
+    for identifier in identifiers:
+        cost = len("&name=") + len(quote(identifier, safe=""))
+        if chunk and used + cost > _SEARCH_NAMES_BUDGET_BYTES:
+            yield chunk
+            chunk, used = [], 0
+        chunk.append(identifier)
+        used += cost
+    if chunk:
+        yield chunk
 
 
 def _udm_messages(raw: object) -> list[str]:
@@ -158,6 +181,21 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             raise ObjectNotFoundError(identifier=identifier) from exc
 
     @override
+    async def get_users_by_id(self, identifiers: list[str]) -> dict[str, User]:
+        # Kelvin reads `*` in a name as a wildcard, so a `*` arriving from the
+        # selection form would widen the search rather than name anyone. No UCS
+        # username holds one, so there is nothing such a value could resolve to.
+        wanted = [identifier for identifier in identifiers if identifier and "*" not in identifier]
+        if not wanted:
+            return {}
+        resource = UserResource(session=self.kelvin_session)
+        found: dict[str, User] = {}
+        for chunk in _name_chunks(wanted):
+            async for kelvin_user in resource.search(name=chunk):
+                found[kelvin_user.name] = self._user_from_kelvin_user(kelvin_user)
+        return found
+
+    @override
     async def set_password(
         self, identifier: str, password: str, change_on_next_login: bool = False
     ) -> None:
@@ -264,6 +302,14 @@ class FileUsersPersistenceAdapter(
         except StopIteration:
             logger.debug("The source file does not contain this user.", user_id=identifier)
             raise ObjectNotFoundError(identifier=identifier)
+
+    @override
+    async def get_users_by_id(self, identifiers: list[str]) -> dict[str, User]:
+        if not identifiers:
+            return {}
+        await self._reload_data()
+        wanted = set(identifiers)
+        return {user.id: user for user in self._data if user.id in wanted}
 
     @override
     def supports_password_change_on_next_login(self) -> bool:
