@@ -635,6 +635,7 @@ class TestCookieSessionAuthenticationAdapter:
         [
             ("the-token", True),
             ("wrong", False),
+            ("wröng", False),
             (None, False),
         ],
     )

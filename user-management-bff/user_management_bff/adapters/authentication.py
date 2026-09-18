@@ -395,7 +395,7 @@ class CookieSessionAuthenticationAdapter(
     def verify_csrf(submitted: str | None, record: SessionRecord) -> bool:
         if not submitted:
             return False
-        return secrets.compare_digest(submitted, record.csrf_token)
+        return secrets.compare_digest(submitted.encode(), record.csrf_token.encode())
 
     @override
     async def issue_csrf_token(self, request: Request) -> str:
