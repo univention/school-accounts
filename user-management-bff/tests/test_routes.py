@@ -115,6 +115,47 @@ def override_auth() -> Generator[Callable[[FastAPIAuthenticationPort], None], No
     app.dependency_overrides.pop(auth_port, None)
 
 
+def _lower_the_reset_limit(mocker: MockerFixture, limit: int) -> None:
+    """Lower the ceiling on how many accounts one reset may name.
+
+    A route crosses both modules and each reads the constant at call time, so
+    patching only one leaves the other enforcing the real limit.
+    """
+    mocker.patch("user_management_bff.business_logic.PASSWORD_RESET_MAX_TARGETS", limit)
+    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_MAX_TARGETS", limit)
+
+
+def _post_reset(
+    test_client: TestClient,
+    user_id: str | list[str],
+    password: str | None = "new-password",
+    **extra: str,
+) -> httpx.Response:
+    """Submit the reset form. ``password=None`` omits the field entirely, which is a
+    different request from submitting it empty."""
+    data: dict[str, str | list[str]] = {"user_id": user_id, **extra}
+    if password is not None:
+        data["password"] = password
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/password-reset", data=data
+        ),
+    )
+
+
+def _post_confirm(test_client: TestClient, user_id: str | list[str]) -> httpx.Response:
+    """Ask for the confirmation dialog over a selection."""
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/password-reset/confirm", data={"user_id": user_id}
+        ),
+    )
+
+
 def test_root_redirects_to_users(test_client: TestClient):
     response = test_client.get(FRONTEND_PREFIX, follow_redirects=False)
     assert response.status_code == 303
@@ -271,6 +312,7 @@ def _users_page(test_client: TestClient, accept_language: str, **params: str) ->
     # Starlette annotates TestClient against httpx2, which this project does not
     # install, so every httpx type in its signature resolves to Unknown. The cast
     # confines that to one call site instead of leaking into every assertion.
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     response = cast(
         httpx.Response,
         test_client.get(  # pyright: ignore[reportUnknownMemberType]
@@ -480,15 +522,11 @@ def test_unsafe_routes_reject_a_missing_csrf_token(
     assert "security token" in response.text
 
 
-def test_password_reset_happy_path(test_client: TestClient, mocker: MockerFixture):
-    # set_password is mocked to avoid a real write against the shared
-    # tests/data/users.json fixture; the write path itself is covered at the
-    # adapter level (tests/adapters/test_users.py).
-    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock)
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
-    )
+def test_password_reset_happy_path(
+    test_client: TestClient, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    patch_set_password({})
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "new-password")
     assert response.status_code == 200
     assert "2 of 2" in response.text
     assert 'variant="success"' in response.text
@@ -523,28 +561,43 @@ def test_password_reset_never_echoes_a_rejected_password(
 
 def test_password_reset_permission_denied(test_client: TestClient, mocker: MockerFixture):
     mocker.patch.object(FilePermissionsAdapter, "get_permissions", return_value={})
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": "test_user1", "password": "new-password"},
-    )
+    response = _post_reset(test_client, "test_user1", "new-password")
     assert response.status_code == 200
     assert "0 of 1" in response.text
     assert 'variant="error"' in response.text
 
 
-def test_password_reset_partial_failure(test_client: TestClient, mocker: MockerFixture):
-    async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
-        if identifier == "test_user2":
-            raise ObjectNotFoundError(identifier="test_user2")
-
-    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", side_effect=_set_password)
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
-    )
+def test_a_partial_failure_lists_only_the_accounts_that_failed(
+    test_client: TestClient, patch_set_password: Callable[[dict[str, Exception]], MagicMock]
+):
+    """Two things about one response: it counts, and it keeps only the failures
+    ticked so a retry does not mean hunting them down in the table again."""
+    patch_set_password({"test_user2": ObjectNotFoundError(identifier="test_user2")})
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "new-password")
     assert response.status_code == 200
     assert "1 of 2" in response.text
     assert 'variant="error"' in response.text
+    assert 'data-target-id="test_user2"' in response.text
+    assert 'data-target-id="test_user1"' not in response.text
+
+
+def test_a_refused_password_reopens_the_dialog_over_the_selection_the_write_resolved(
+    test_client: TestClient,
+    mocker: MockerFixture,
+    rejecting_set_password: Callable[[str | Callable[[str], str]], MagicMock],
+):
+    """Nothing was written and every attempt failed alike, so the password is at fault
+    and its reason belongs on the field. Re-rendering the dialog must then cost nothing:
+    the write already read every target and asked Cerbos about all of them."""
+    rejecting_set_password("Password too short")
+    permissions_spy = mocker.spy(FilePermissionsAdapter, "get_permissions")
+    response = _post_reset(test_client, ["test_user1", "test_user2"], "short")
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#password-reset-dialog-region"
+    assert 'error="Password too short"' in response.text
+    assert "<dialog" in response.text
+    assert 'value="test_user1"' in response.text and 'value="test_user2"' in response.text
+    assert permissions_spy.call_count == 1
 
 
 def test_password_reset_differing_reasons_stay_in_the_result_list(
@@ -586,25 +639,6 @@ def test_password_reset_reports_an_account_that_cannot_be_forced_to_change_it(
     assert "the password was left unchanged" in response.text
 
 
-def test_password_reset_narrows_the_selection_to_what_failed(
-    test_client: TestClient, mocker: MockerFixture
-):
-    """Successful accounts are done, but the failures stay ticked so a retry does
-    not mean hunting them down in the table again."""
-
-    async def _set_password(identifier: str, _password: str, _change: bool = False) -> None:
-        if identifier == "test_user2":
-            raise ObjectNotFoundError(identifier="test_user2")
-
-    mocker.patch.object(FileUsersPersistenceAdapter, "set_password", side_effect=_set_password)
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": ["test_user1", "test_user2"], "password": "new-password"},
-    )
-    assert 'data-target-id="test_user2"' in response.text
-    assert 'data-target-id="test_user1"' not in response.text
-
-
 def test_password_reset_confirm_refuses_an_oversized_selection_as_a_toast(
     test_client: TestClient, mocker: MockerFixture
 ):
@@ -623,10 +657,7 @@ def test_password_reset_confirm_refuses_an_oversized_selection_as_a_toast(
 
 
 def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": "NON_EXISTENT", "password": "new-password"},
-    )
+    response = _post_reset(test_client, "NON_EXISTENT", "new-password")
     assert response.status_code == 200
     assert "0 of 1" in response.text
     assert 'variant="error"' in response.text
@@ -635,7 +666,7 @@ def test_password_reset_unknown_user_reports_not_found(test_client: TestClient):
 def test_password_reset_no_users_selected_shows_error(test_client: TestClient):
     response = test_client.post(
         f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"password": "new-password"},
+        data={"password": "new-password"},  # no user_id at all, so not _post_reset
     )
     assert response.status_code == 200
     assert 'variant="error"' in response.text
@@ -647,45 +678,26 @@ def test_password_reset_too_many_targets_is_refused(test_client: TestClient, moc
     set_password_mock = mocker.patch.object(
         FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
     )
-    mocker.patch("user_management_bff.business_logic.PASSWORD_RESET_MAX_TARGETS", 2)
-    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_MAX_TARGETS", 2)
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={
-            "user_id": ["test_user1", "test_user2", "test_user3"],
-            "password": "new-password",
-        },
-    )
+    _lower_the_reset_limit(mocker, 2)
+    response = _post_reset(test_client, ["test_user1", "test_user2", "test_user3"])
     assert response.status_code == 200
     assert 'variant="error"' in response.text
     assert "Select at most 2 users at once" in response.text
     set_password_mock.assert_not_called()
 
 
-def test_password_reset_empty_password_is_refused(test_client: TestClient, mocker: MockerFixture):
-    set_password_mock = mocker.patch.object(
-        FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
-    )
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": "test_user1", "password": ""},
-    )
-    assert response.status_code == 200
-    assert 'variant="error"' in response.text
-    assert "A new password is required" in response.text
-    set_password_mock.assert_not_called()
-
-
-def test_password_reset_missing_password_field_is_refused(
-    test_client: TestClient, mocker: MockerFixture
+@pytest.mark.parametrize(
+    "password",
+    [pytest.param("", id="submitted-empty"), pytest.param(None, id="field-absent")],
+)
+def test_password_reset_without_a_password_is_refused(
+    test_client: TestClient,
+    patch_set_password: Callable[[dict[str, Exception]], MagicMock],
+    password: str | None,
 ):
-    set_password_mock = mocker.patch.object(
-        FileUsersPersistenceAdapter, "set_password", new_callable=mocker.AsyncMock
-    )
-    response = test_client.post(
-        f"{FRONTEND_PREFIX}/users/password-reset",
-        data={"user_id": "test_user1"},
-    )
+    """A browser that drops the field and one that sends it blank must read alike."""
+    set_password_mock = patch_set_password({})
+    response = _post_reset(test_client, "test_user1", password)
     assert response.status_code == 200
     assert 'variant="error"' in response.text
     assert "A new password is required" in response.text
@@ -821,63 +833,3 @@ def test_password_reset_confirm_with_nothing_resettable_offers_only_a_close(
     body = response.text
     assert "None of the selected accounts" in body
     assert 'name="password"' not in body
-
-
-def _lower_the_reset_limit(mocker: MockerFixture, limit: int) -> None:
-    """Lower the ceiling on how many accounts one reset may name.
-
-    A route crosses both modules and each reads the constant at call time, so
-    patching only one leaves the other enforcing the real limit.
-    """
-    mocker.patch("user_management_bff.business_logic.PASSWORD_RESET_MAX_TARGETS", limit)
-    mocker.patch("user_management_bff.presentation.PASSWORD_RESET_MAX_TARGETS", limit)
-
-
-def _post_reset(
-    test_client: TestClient,
-    user_id: str | list[str],
-    password: str | None = "new-password",
-    **extra: str,
-) -> httpx.Response:
-    """Submit the reset form. ``password=None`` omits the field entirely, which is a
-    different request from submitting it empty."""
-    data: dict[str, str | list[str]] = {"user_id": user_id, **extra}
-    if password is not None:
-        data["password"] = password
-    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
-    return cast(
-        httpx.Response,
-        test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users/password-reset", data=data
-        ),
-    )
-
-
-def _post_confirm(test_client: TestClient, user_id: str | list[str]) -> httpx.Response:
-    """Ask for the confirmation dialog over a selection."""
-    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
-    return cast(
-        httpx.Response,
-        test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users/password-reset/confirm", data={"user_id": user_id}
-        ),
-    )
-
-
-def test_a_refused_password_reopens_the_dialog_over_the_selection_the_write_resolved(
-    test_client: TestClient,
-    mocker: MockerFixture,
-    rejecting_set_password: Callable[[str | Callable[[str], str]], MagicMock],
-):
-    """Nothing was written and every attempt failed alike, so the password is at fault
-    and its reason belongs on the field. Re-rendering the dialog must then cost nothing:
-    the write already read every target and asked Cerbos about all of them."""
-    rejecting_set_password("Password too short")
-    permissions_spy = mocker.spy(FilePermissionsAdapter, "get_permissions")
-    response = _post_reset(test_client, ["test_user1", "test_user2"], "short")
-    assert response.status_code == 200
-    assert response.headers["HX-Retarget"] == "#password-reset-dialog-region"
-    assert 'error="Password too short"' in response.text
-    assert "<dialog" in response.text
-    assert 'value="test_user1"' in response.text and 'value="test_user2"' in response.text
-    assert permissions_spy.call_count == 1
