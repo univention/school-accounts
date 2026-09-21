@@ -16,6 +16,7 @@ The following tasks are available:
 
 clean: Cleans up cached files and removes docker containers and local images.
 dev-server: Starts the dev server for the API.
+kelvin-server: Starts the dev server against a real Kelvin and a local Cerbos, with no interactive login. Configured by dev/.env.kelvin.
 prod-server: Starts the production docker image
 cerbos-server: Starts a local Cerbos server for manually testing the policies or running CerbosPermissionsAdapter against a real PDP. (not wired into dev-server or prod-server yet, so start it separately)
 cerbos-compile: Lints and tests the Cerbos policies via \`cerbos compile\`.
@@ -44,6 +45,16 @@ run_task() {
     down \
     --remove-orphans \
     --rmi local
+    exit $?
+  fi
+  if [[ "$TASK" = "kelvin-server" ]]; then
+    prepare_kelvin_env
+    DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP \
+    UCS_PRIMARY_HOST=$UCS_PRIMARY_HOST UCS_PRIMARY_IP=$UCS_PRIMARY_IP docker compose \
+    -f dev/docker-compose.yaml \
+    --profile "kelvin-server" \
+    up \
+    --build
     exit $?
   fi
   if [[ "$TASK" = "dev-server" ]] || [[ "$TASK" = "sphinx" ]] || [[ "$TASK" = "prod-server" ]] || [[ "$TASK" = "cerbos-server" ]]; then
@@ -149,6 +160,36 @@ run_task() {
   fi
   echo "Task '$TASK' does not exist."
   exit 1
+}
+
+# The container resolves neither the host's /etc/hosts nor, reliably, a DNS zone
+# holding the UCS names, and every instance mints its own root CA. Both are read
+# off the one host dev/.env.kelvin names, so there is a single place to change.
+prepare_kelvin_env () {
+  if [[ ! -f "dev/.env.kelvin" ]]; then
+    cp dev/.env.kelvin.example dev/.env.kelvin
+    echo "Wrote dev/.env.kelvin from the example."
+    echo "Set the host, the credentials and ALWAYS_AUTHENTICATED_ADAPTER__ACTOR_ID"
+    echo "in it - the actor has to be a UCS@school user - then run this again."
+    exit 1
+  fi
+  UCS_PRIMARY_HOST="$(sed -n 's/^KELVIN_PERSISTENCE_ADAPTER__URL=//p' dev/.env.kelvin \
+    | tail -n 1 | tr -d '\r\042\047')"
+  if [[ -z "$UCS_PRIMARY_HOST" ]]; then
+    echo "dev/.env.kelvin sets no KELVIN_PERSISTENCE_ADAPTER__URL."
+    exit 1
+  fi
+  UCS_PRIMARY_IP="$(getent -i ahostsv4 "$UCS_PRIMARY_HOST" | head -n 1 | cut -d ' ' -f 1)"
+  if [[ -z "$UCS_PRIMARY_IP" ]]; then
+    echo "Cannot resolve $UCS_PRIMARY_HOST. Add it to /etc/hosts or fix the name"
+    echo "in dev/.env.kelvin; the container is given the address, not the name."
+    exit 1
+  fi
+  echo "Kelvin: $UCS_PRIMARY_HOST ($UCS_PRIMARY_IP)"
+  if [[ ! -f "dev/local/ca-bundle.crt" ]]; then
+    dev/scripts/fetch_ucs_ca.sh "$UCS_PRIMARY_HOST"
+  fi
+  return 0
 }
 
 run_command () {

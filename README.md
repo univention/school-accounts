@@ -163,6 +163,41 @@ One way to achieve this, would be adapting your `/etc/hosts`:
 echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
 ```
 
+#### Start development server against a real Kelvin
+
+The file adapters cannot imitate a populated environment,
+and a page's cost is dominated by how much the backend has to produce -
+a school of 6000 users is nine seconds of Kelvin before anything renders.
+This task points every adapter that has a Kelvin implementation at a real instance,
+sends the permission checks to a local Cerbos running the real policies,
+and skips the interactive login,
+so a page answers a plain `curl` and can be timed:
+
+```shell
+dev/dev_run.sh task kelvin-server
+```
+
+The first run writes `dev/.env.kelvin` from `dev/.env.kelvin.example` and stops.
+Set the instance, the credentials
+and `ALWAYS_AUTHENTICATED_ADAPTER__ACTOR_ID` in it -
+every request is that actor, and it has to be a UCS@school user
+(`Administrator` is not one) -
+then run the task again.
+
+`dev/.env.kelvin` is layered on top of `dev/.env`, and is git-ignored.
+The task resolves the host named by `KELVIN_PERSISTENCE_ADAPTER__URL` itself
+and hands the container the address,
+because a container sees neither the host's `/etc/hosts`
+nor necessarily a DNS zone holding the UCS names.
+It also fetches the instance's root CA when `dev/local/ca-bundle.crt` is missing;
+every instance mints its own,
+so re-run `dev/scripts/fetch_ucs_ca.sh` yourself after recreating one.
+
+```shell
+curl -s -o /dev/null -w '%{time_total}\n' \
+  'http://localhost/univention/ucsschool/user-management/ui/users?school=school2&group=all'
+```
+
 #### Reachable URLS
 
 The frontend page is served by the API at http://user-management-proxy/univention/ucsschool/user-management/ui/ .

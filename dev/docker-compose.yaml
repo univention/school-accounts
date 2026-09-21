@@ -21,6 +21,7 @@ services:
     profiles:
       - clean-profile
       - dev-server
+      - kelvin-server
       - prod-server
     user: $DOCKER_USER
     extra_hosts: &extra_hosts
@@ -51,6 +52,7 @@ services:
     profiles:
       - clean-profile
       - cerbos-server
+      - kelvin-server
     ports:
       - "3592:3592"
       - "3593:3593"
@@ -81,6 +83,7 @@ services:
     profiles:
       - clean-profile
       - dev-server
+      - kelvin-server
       - sphinx
       - prod-server
     extra_hosts: *extra_hosts
@@ -142,7 +145,7 @@ services:
     build: *docker-build
     container_name: ucsschool-user-management-bff
     environment: *uv-project-environment
-    command:
+    command: &bff-command
       - "uv"
       - "run"
       - "--project"
@@ -179,12 +182,12 @@ services:
     extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
-    labels:
+    labels: &bff-labels
       traefik.http.routers.bff.entrypoints: web
       traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/user-management/ui`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
-    develop:
+    develop: &bff-develop
       watch:
         # backend project
         - action: sync
@@ -198,6 +201,40 @@ services:
         # dev Dockerfile
         - action: rebuild
           path: Dockerfile
+  # The same dev server as `bff`, wired to a real Kelvin and a real Cerbos
+  # instead of the file adapters, and with no interactive login, so a page can
+  # be measured against a populated environment with plain curl. `.env.kelvin`
+  # carries the overrides and comes after `.env`, so it wins.
+  bff_kelvin:
+    image: ucsschool-user-management-dev:latest
+    build: *docker-build
+    container_name: ucsschool-user-management-bff-kelvin
+    environment: *uv-project-environment
+    command: *bff-command
+    profiles:
+      - clean-profile
+      - kelvin-server
+    depends_on:
+      install_deps:
+        condition: service_completed_successfully
+      proxy:
+        condition: service_started
+      cerbos:
+        condition: service_started
+    user: $DOCKER_USER
+    # A container sees neither the host's /etc/hosts nor necessarily a DNS zone
+    # holding the UCS names, so dev_run.sh resolves the one this talks to and
+    # passes it in. The fallback only keeps the file parsable for other tasks.
+    extra_hosts:
+      - git.knut.univention.de:${GITLAB_IP}
+      - host.docker.internal:host-gateway
+      - ${UCS_PRIMARY_HOST:-primary.ucsschool.test}:${UCS_PRIMARY_IP:-127.0.0.1}
+    volumes: *default-volumes
+    env_file:
+      - path: .env
+      - path: .env.kelvin
+    labels: *bff-labels
+    develop: *bff-develop
   production_container:
     image: ucsschool-user-management-prod:latest
     build:
