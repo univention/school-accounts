@@ -181,6 +181,9 @@ class Row:
 class UserListView:
     columns: list[Column]
     rows: list[Row]
+    # What to say instead of "No users found." when the list was never asked
+    # for. An empty table and an unanswered question look alike otherwise.
+    hint: str = ""
 
 
 @dataclass
@@ -399,8 +402,9 @@ def build_group_options(
     return groups
 
 
-def empty_user_list_view(lang: str) -> UserListView:
-    return UserListView(columns=list_columns(lang), rows=[])
+def empty_user_list_view(lang: str, hint: str = "") -> UserListView:
+    """A table with no rows, saying why rather than showing an empty result."""
+    return UserListView(columns=list_columns(lang), rows=[], hint=hint)
 
 
 def list_columns(lang: str) -> list[Column]:

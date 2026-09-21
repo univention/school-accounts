@@ -72,7 +72,7 @@ SPDX-License-Identifier: AGPL-3.0-only
       <u-tr slot="header">
         {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
       </u-tr>
-      <span slot="empty">{{ _('No users found.') }}</span>
+      <span slot="empty">{{ view.hint or _('No users found.') }}</span>
     </u-table>
     {% endif %}
     </u-vstack>

@@ -245,15 +245,23 @@ async def users_list(
             auth,
             schools=school_options,
             selected_school=None,
-            selected_group=presentation.ALL_GROUPS,
+            selected_group="",
             group_sections=[],
             query="",
-            view=presentation.empty_user_list_view(lang),
+            view=presentation.empty_user_list_view(
+                lang, hint=_("Select a school and a group to list users.", lang=lang)
+            ),
         )
-        response.headers["HX-Push-Url"] = _push_url(None, presentation.ALL_GROUPS)
+        response.headers["HX-Push-Url"] = _push_url(None, "")
         return response
 
     kind, item_id = presentation.split_group_value(group)
+    # Listing a whole school is a choice, not the default. Nothing selected means
+    # nothing is listed: a school of thousands takes seconds to fetch and seconds
+    # more to render, and the bulk reset it feeds refuses more than
+    # PASSWORD_RESET_MAX_TARGETS anyway, so nobody should wait for one they did
+    # not ask for.
+    all_groups = (group or "") == presentation.ALL_GROUPS
     # A deep link can outlive its school; only load the dependent filters for a
     # school that still exists (the File adapter raises on an unknown id).
     known_school = any(option.value == school for option in school_options)
@@ -293,15 +301,19 @@ async def users_list(
             lang,
         )
 
-    # Neither the filter control nor the table needs the other's result, and each
-    # is a whole-school read, so the page cost their sum while they ran in turn.
-    # Where they read the same thing the request caches collapse it into one call.
-    group_sections, data = await asyncio.gather(load_sections(), load_users(kind, item_id))
+    data: presentation.UserListData | None = None
+    if kind or all_groups:
+        # Neither the filter control nor the table needs the other's result, and
+        # each is a whole-school read, so the page cost their sum while they ran
+        # in turn. Where they read the same thing the request caches collapse it
+        # into one call.
+        group_sections, data = await asyncio.gather(load_sections(), load_users(kind, item_id))
+    else:
+        group_sections = await load_sections()
     # Drop a group the selected school does not have. That covers a stale deep
     # link, and the moment after a school change where the search fires while the
-    # dependent control still holds the previous school's selection. The table
-    # was already filtered by it, so it has to be read again without it - the
-    # price of not waiting for the control on every other request.
+    # dependent control still holds the previous school's selection. Whatever the
+    # speculative read returned answers a question nobody asked, so it goes with it.
     if kind and not any(o.selected for section in group_sections for o in section.options):
         logger.debug(
             "Dropped a group filter the selected school does not have.",
@@ -309,11 +321,10 @@ async def users_list(
             group_kind=kind,
             group_id=item_id,
         )
-        kind, item_id = "", ""
-        data = await load_users(kind, item_id)
-    # The control always carries a selection, so "no group filter" is the
-    # explicit all-groups value rather than an empty one.
-    selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS
+        kind, item_id, data = "", "", None
+    # "" is no selection, which lists nobody; ALL_GROUPS is the selection that
+    # lists everybody. They are different states and the URL distinguishes them.
+    selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS if all_groups else ""
     response = await render(
         request,
         "pages/user_list.html",
@@ -323,7 +334,19 @@ async def users_list(
         selected_group=selected_group,
         group_sections=group_sections,
         query="",
-        view=presentation.build_user_list(data, lang),
+        view=(
+            presentation.build_user_list(data, lang)
+            if data is not None
+            else presentation.empty_user_list_view(
+                lang,
+                hint=(
+                    _("Select a class or work group to list its users.", lang=lang)
+                    if known_school
+                    # A link to a school that is gone has no groups to offer.
+                    else _("Select a school and a group to list users.", lang=lang)
+                ),
+            )
+        ),
     )
     response.headers["HX-Push-Url"] = _push_url(school, selected_group)
     return response
@@ -336,7 +359,7 @@ def _push_url(school: str | None, selected_group: str) -> str:
     URL - that is what drops the all-groups default from the address bar.
     """
     params = {"school": school} if school else {}
-    if selected_group != presentation.ALL_GROUPS:
+    if selected_group:
         params["group"] = selected_group
     return f"{FRONTEND_PREFIX}/users" + (f"?{urlencode(params)}" if params else "")
 
@@ -394,8 +417,9 @@ async def users_filters(
         "fragments/user_filters.html",
         auth,
         selected_school=school,
-        # A fresh school starts unfiltered.
-        selected_group=presentation.ALL_GROUPS,
+        # A fresh school starts with nothing selected, so nothing is listed until
+        # the user says what they want to see.
+        selected_group="",
         query="",
         group_sections=await _group_sections(
             school_classes_adapter,

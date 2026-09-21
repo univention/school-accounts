@@ -247,10 +247,11 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # the active item too, and refetching would discard the selection.
     assert 'hx-trigger="u-change[filterChanged(event)] delay:100ms"' in body
     assert 'type="submit"' not in body[body.index("<u-form") : body.index("</u-form>")]
-    # The combined list carries an explicit reset option, preselected while no
-    # class or work group is chosen.
-    assert 'value="all" selected' in body
+    # The reset option is offered but never preselected: listing a whole school
+    # is a choice, and the table says so instead of making it.
+    assert 'value="all"' in body and 'value="all" selected' not in body
     assert "All classes and work groups" in body
+    assert "Select a school and a group to list users." in body
     # Only the route's HX-Push-Url pushes: the attribute would also push after an
     # error toast, recording a filter whose results never loaded.
     assert "hx-push-url" not in body
@@ -274,10 +275,11 @@ def test_users_filters_returns_combined_control_for_school(test_client: TestClie
     # school drops the previous selection the element was holding.
     assert "<u-list-select" in body and 'name="group"' in body
     # Both datasets arrive as labelled groups of one single-select list, behind
-    # the reset option, which a fresh school starts on.
+    # the reset option. A fresh school starts on nothing, so no option comes
+    # back selected and no users are listed until one is picked.
     assert body.count("<u-list-select-group") == 2
     assert 'value="school_class:1a"' in body and 'value="work_group:w1a"' in body
-    assert 'value="all" selected' in body
+    assert " selected>" not in body
     # The control carries the selected school baked into its own hx-vals so the
     # item-search requests are not overridden by the inherited cascade hx-vals
     # (whose u-change value is absent on the list select's u-search event).
@@ -339,7 +341,8 @@ def test_group_options_empty_without_school(test_client: TestClient):
 
 
 def test_users_search_renders_results(test_client: TestClient):
-    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
+    # ``all`` because a school on its own lists nobody.
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "all"})
     assert response.status_code == 200
     body = response.text
     assert "<u-table" in body
@@ -381,7 +384,7 @@ def test_german_accept_language_renders_german_template_strings(test_client: Tes
 
 def test_german_accept_language_translates_runtime_composed_role_msgids(test_client: TestClient):
     """The role label reaches `_()` through a variable, so only `N_` markers extract it."""
-    body = _users_page(test_client, "de", school="school1")
+    body = _users_page(test_client, "de", school="school1", group="all")
     assert "Lehrer (School 1)" in body
     assert "Teacher (School 1)" not in body
 
@@ -430,30 +433,66 @@ def test_users_deep_link_preselects_filters(test_client: TestClient, group: str)
         "unknown_kind:1a",
         "school_class:",
         "",
-        "all",
         "school_class:3c",  # exists, but belongs to another school
     ],
 )
 def test_users_deep_link_ignores_unusable_group(test_client: TestClient, group: str):
-    # A stale or hand-edited link must degrade to "no group filter", not error,
+    # A stale or hand-edited link must degrade to "nothing selected", not error,
     # and must not echo the unusable value back onto the control.
     response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": group})
     assert response.status_code == 200
     body = response.text
-    # The school stays preselected; the combined list falls back to its reset option.
+    # The school stays preselected; nothing in the combined list is.
     assert 'value="school1" selected' in body
-    assert 'value="all" selected' in body
+    assert 'value="all" selected' not in body
     assert 'value="school_class:1a" selected' not in body
     assert 'value="work_group:w1a" selected' not in body
-    assert "max.muster" in body  # results are unfiltered by group
+    # Degrading to the whole school would list thousands nobody asked for.
+    assert "max.muster" not in body
+    assert "Select a class or work group to list its users." in body
+
+
+def test_users_deep_link_to_all_groups_lists_the_school(test_client: TestClient):
+    """``all`` is a selection like any other, and the only one that lists a whole
+    school - reachable and shareable, never arrived at by default."""
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "all"})
+    assert response.status_code == 200
+    body = response.text
+    assert 'value="all" selected' in body
+    assert "max.muster" in body
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+
+
+def test_choosing_a_school_does_not_read_its_users(test_client: TestClient, mocker: MockerFixture):
+    """A school of thousands costs seconds to fetch and seconds more to render,
+    and the bulk reset refuses more than PASSWORD_RESET_MAX_TARGETS of them."""
+    get_users_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users")
+
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
+
+    assert response.status_code == 200
+    assert "Select a class or work group to list its users." in response.text
+    assert get_users_spy.call_count == 0
+    # The filter control is loaded, so the next click is the only thing missing.
+    assert 'value="school_class:1a"' in response.text
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1"
 
 
 def test_users_search_empty_state(test_client: TestClient):
-    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "NON_EXISTENT"})
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "NON_EXISTENT", "group": "all"}
+    )
     assert response.status_code == 200
     body = response.text
     assert 'slot="empty"' in body
     assert "No users found" in body
+
+
+def test_users_deep_link_to_a_vanished_school_asks_for_a_new_one(test_client: TestClient):
+    """There are no groups to offer for a school that is gone, so pointing at the
+    group control would be a dead end."""
+    body = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "NON_EXISTENT"}).text
+    assert "Select a school and a group to list users." in body
 
 
 def test_login_route_redirects_to_idp(
@@ -748,9 +787,16 @@ def test_password_reset_without_a_password_is_refused(
 
 def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
     """A new filter is a new selection: the filter form does not send the ticked ids,
-    and a request naming them anyway gets a list with nothing selected."""
+    and a request naming them anyway gets a list with nothing selected.
+
+    A group is named because the table only lists once one is chosen."""
     body = test_client.get(
-        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "user_id": ["user1", "elsewhere"]}
+        f"{FRONTEND_PREFIX}/users",
+        params={
+            "school": "school1",
+            "group": "school_class:1a",
+            "user_id": ["user1", "elsewhere"],
+        },
     ).text
     filter_form, selection_form = body.split('id="selection-form"', 1)
     assert "hx-include" not in filter_form
@@ -804,7 +850,7 @@ def test_users_list_reads_each_school_once_per_request(test_client: TestClient, 
     classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes_by_name")
     work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups_by_name")
 
-    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school2"})
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school2", "group": "all"})
     assert response.status_code == 200
 
     # The school list is needed for the filter and to name each user's schools.
@@ -961,7 +1007,7 @@ def test_the_user_page_loads_its_filter_and_its_table_together(
     mocker.patch.object(business_logic, "get_group_filters", _filters)
     mocker.patch.object(business_logic, "get_users", _users)
 
-    response = test_client.get(f"{FRONTEND_PREFIX}/users?school=school1")
+    response = test_client.get(f"{FRONTEND_PREFIX}/users?school=school1&group=all")
 
     assert response.status_code == 200
     assert order.index("users:start") < order.index("filters:end")
