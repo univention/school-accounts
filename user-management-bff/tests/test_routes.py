@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.types import Scope
 
+from user_management_bff import business_logic
 from user_management_bff.adapters.authentication import NeverAuthenticatedAdapter
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
 from user_management_bff.adapters.school_classes import FileSchoolClassesPersistenceAdapter
@@ -934,3 +935,33 @@ def test_a_kelvin_failure_becomes_a_message_page_without_htmx(
     response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
     assert response.status_code == 502
     assert "currently unavailable" in response.text
+
+
+def test_the_user_page_loads_its_filter_and_its_table_together(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """Each is a whole-school read and neither needs the other's result, so the
+    page used to cost their sum."""
+    order: list[str] = []
+    real_filters = business_logic.get_group_filters
+    real_users = business_logic.get_users
+
+    async def _filters(*args: Any, **kwargs: Any):
+        order.append("filters:start")
+        result = await real_filters(*args, **kwargs)
+        order.append("filters:end")
+        return result
+
+    async def _users(*args: Any, **kwargs: Any):
+        order.append("users:start")
+        result = await real_users(*args, **kwargs)
+        order.append("users:end")
+        return result
+
+    mocker.patch.object(business_logic, "get_group_filters", _filters)
+    mocker.patch.object(business_logic, "get_users", _users)
+
+    response = test_client.get(f"{FRONTEND_PREFIX}/users?school=school1")
+
+    assert response.status_code == 200
+    assert order.index("users:start") < order.index("filters:end")

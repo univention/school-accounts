@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
+import asyncio
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -149,3 +151,55 @@ async def test_a_name_lookup_is_scoped_to_its_school(mocker: MockerFixture):
         ("school1", ["1a"]),
         ("school2", ["1a"]),
     ]
+
+
+@pytest.mark.asyncio
+async def test_two_concurrent_reads_of_a_school_share_one_request(mocker: MockerFixture):
+    """The page starts the filter control and the table at once, and both read the
+    selected school: a cache of finished results would still let the second start."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def _fetch(_school: str) -> list[SchoolClass]:
+        started.set()
+        await release.wait()
+        return SCHOOL_CLASSES
+
+    inner = mocker.AsyncMock()
+    inner.get_school_classes.side_effect = _fetch
+    adapter = RequestCachedSchoolClassesAdapter(inner)
+
+    first = asyncio.ensure_future(adapter.get_school_classes("school1"))
+    await started.wait()
+    second = asyncio.ensure_future(adapter.get_school_classes("school1"))
+    release.set()
+
+    assert await first == await second == SCHOOL_CLASSES
+    inner.get_school_classes.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_a_name_lookup_waits_for_a_whole_school_read_already_running(mocker: MockerFixture):
+    """Firing the per-name lookups next to the whole-school read would undo the
+    saving the cache exists for, one round trip per name."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def _fetch(_school: str) -> list[SchoolClass]:
+        started.set()
+        await release.wait()
+        return SCHOOL_CLASSES
+
+    inner = mocker.AsyncMock()
+    inner.get_school_classes.side_effect = _fetch
+    adapter = RequestCachedSchoolClassesAdapter(inner)
+
+    whole = asyncio.ensure_future(adapter.get_school_classes("school1"))
+    await started.wait()
+    named = asyncio.ensure_future(adapter.get_school_classes_by_name("school1", ["2b"]))
+    await asyncio.sleep(0)
+    release.set()
+
+    await whole
+    assert [school_class.id for school_class in await named] == ["2b"]
+    inner.get_school_classes_by_name.assert_not_awaited()

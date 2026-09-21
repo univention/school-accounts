@@ -788,3 +788,26 @@ async def test_password_reset_selection_propagates_an_unexpected_fetch_error(
         await business_logic.get_password_reset_selection(
             ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "en"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_group_filters_reads_both_kinds_and_the_actor_once(
+    ports: Ports, mocker: MockerFixture
+):
+    get_user_spy = mocker.spy(FileUsersPersistenceAdapter, "get_user")
+
+    school_classes, work_groups = await business_logic.get_group_filters(
+        ports.school_classes,
+        ports.work_groups,
+        ports.permissions,
+        ports.users,
+        ACTOR_ID,
+        "school1",
+        "en",
+    )
+
+    assert [school_class.id for school_class in school_classes] == ["1a", "2b"]
+    assert [work_group.id for work_group in work_groups] == ["w1a", "w2b"]
+    # Resolving it per kind would put the actor lookup back into the race the two
+    # whole-school reads now run in.
+    assert get_user_spy.call_count == 1

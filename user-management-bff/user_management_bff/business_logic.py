@@ -136,6 +136,19 @@ def user_to_target(user: User) -> Target:
 _Group = TypeVar("_Group", SchoolClass, WorkGroup)
 
 
+async def _filterable(
+    groups: Awaitable[list[_Group]],
+    to_target: Callable[[_Group], Target],
+    permissions_port: PermissionsPort,
+    actor: User,
+    **context: object,
+) -> list[_Group]:
+    """The groups of ``groups`` the actor is allowed to filter by, in the order read."""
+    fetched = await groups
+    permissions = await permissions_port.get_permissions(actor, [to_target(group) for group in fetched])
+    return _usable_as_filter(fetched, permissions, actor_id=actor.id, **context)
+
+
 async def _resolve_groups(
     fetch: Callable[[str, list[str]], Awaitable[list[_Group]]],
     needed: dict[str, set[str]],
@@ -248,12 +261,13 @@ async def get_school_classes(
     lang: str,
 ) -> list[SchoolClass]:
     actor = await get_actor(actor_id, users_get_adapter, lang)
-    school_classes = await schools_get_adapter.get_school_classes(school_id)
-    permissions = await permissions_port.get_permissions(
-        actor, [school_class_to_target(school_class) for school_class in school_classes]
-    )
-    return _usable_as_filter(
-        school_classes, permissions, kind="school_class", actor_id=actor_id, school=school_id
+    return await _filterable(
+        schools_get_adapter.get_school_classes(school_id),
+        school_class_to_target,
+        permissions_port,
+        actor,
+        kind="school_class",
+        school=school_id,
     )
 
 
@@ -266,12 +280,49 @@ async def get_work_groups(
     lang: str,
 ) -> list[WorkGroup]:
     actor = await get_actor(actor_id, users_get_adapter, lang)
-    work_groups = await schools_get_adapter.get_work_groups(school_id)
-    permissions = await permissions_port.get_permissions(
-        actor, [work_group_to_target(work_group) for work_group in work_groups]
+    return await _filterable(
+        schools_get_adapter.get_work_groups(school_id),
+        work_group_to_target,
+        permissions_port,
+        actor,
+        kind="work_group",
+        school=school_id,
     )
-    return _usable_as_filter(
-        work_groups, permissions, kind="work_group", actor_id=actor_id, school=school_id
+
+
+async def get_group_filters(
+    school_classes_get_adapter: SchoolClassesPersistencePort,
+    work_groups_get_adapter: WorkGroupsPersistencePort,
+    permissions_port: PermissionsPort,
+    users_get_adapter: UsersPersistencePort,
+    actor_id: str,
+    school_id: str,
+    lang: str,
+) -> tuple[list[SchoolClass], list[WorkGroup]]:
+    """Both filterable datasets of one school, as the group filter control needs them.
+
+    The two are independent whole-school reads, each the slowest call in its own
+    right, so running them one after the other made the filter cost their sum.
+    Resolving the actor first keeps that one lookup out of the race.
+    """
+    actor = await get_actor(actor_id, users_get_adapter, lang)
+    return await asyncio.gather(
+        _filterable(
+            school_classes_get_adapter.get_school_classes(school_id),
+            school_class_to_target,
+            permissions_port,
+            actor,
+            kind="school_class",
+            school=school_id,
+        ),
+        _filterable(
+            work_groups_get_adapter.get_work_groups(school_id),
+            work_group_to_target,
+            permissions_port,
+            actor,
+            kind="work_group",
+            school=school_id,
+        ),
     )
 
 

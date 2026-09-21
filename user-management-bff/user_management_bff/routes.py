@@ -10,7 +10,8 @@ except the interactive-login routes (login / callback / logout), which establish
 or tear down that session.
 """
 
-from collections.abc import AsyncIterator
+import asyncio
+from collections.abc import AsyncIterator, Awaitable
 from functools import partial
 from typing import Annotated, cast
 from urllib.parse import urlencode
@@ -256,9 +257,16 @@ async def users_list(
     # A deep link can outlive its school; only load the dependent filters for a
     # school that still exists (the File adapter raises on an unknown id).
     known_school = any(option.value == school for option in school_options)
-    group_sections: list[presentation.OptionGroup] = []
-    if known_school:
-        group_sections = await _group_sections(
+
+    async def load_sections() -> list[presentation.OptionGroup]:
+        if not known_school:
+            logger.debug(
+                "Requested a school the actor cannot filter by; rendering it without group filters.",
+                actor_id=actor,
+                school=school,
+            )
+            return []
+        return await _group_sections(
             school_classes_adapter,
             work_groups_adapter,
             permissions_adapter,
@@ -268,15 +276,32 @@ async def users_list(
             lang,
             selected=f"{kind}:{item_id}" if kind else "",
         )
-    else:
-        logger.debug(
-            "Requested a school the actor cannot filter by; rendering it without group filters.",
-            actor_id=actor,
-            school=school,
+
+    def load_users(kind: str, item_id: str) -> Awaitable[presentation.UserListData]:
+        return business_logic.get_users(
+            users_adapter,
+            schools_adapter,
+            school_classes_adapter,
+            work_groups_adapter,
+            permissions_adapter,
+            actor,
+            UsersGetRequest(
+                school=school,
+                school_classes=[item_id] if kind == presentation.SCHOOL_CLASS_KIND else [],
+                work_groups=[item_id] if kind == presentation.WORK_GROUP_KIND else [],
+            ),
+            lang,
         )
+
+    # Neither the filter control nor the table needs the other's result, and each
+    # is a whole-school read, so the page cost their sum while they ran in turn.
+    # Where they read the same thing the request caches collapse it into one call.
+    group_sections, data = await asyncio.gather(load_sections(), load_users(kind, item_id))
     # Drop a group the selected school does not have. That covers a stale deep
     # link, and the moment after a school change where the search fires while the
-    # dependent control still holds the previous school's selection.
+    # dependent control still holds the previous school's selection. The table
+    # was already filtered by it, so it has to be read again without it - the
+    # price of not waiting for the control on every other request.
     if kind and not any(o.selected for section in group_sections for o in section.options):
         logger.debug(
             "Dropped a group filter the selected school does not have.",
@@ -285,23 +310,10 @@ async def users_list(
             group_id=item_id,
         )
         kind, item_id = "", ""
+        data = await load_users(kind, item_id)
     # The control always carries a selection, so "no group filter" is the
     # explicit all-groups value rather than an empty one.
     selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS
-    data = await business_logic.get_users(
-        users_adapter,
-        schools_adapter,
-        school_classes_adapter,
-        work_groups_adapter,
-        permissions_adapter,
-        actor,
-        UsersGetRequest(
-            school=school,
-            school_classes=[item_id] if kind == presentation.SCHOOL_CLASS_KIND else [],
-            work_groups=[item_id] if kind == presentation.WORK_GROUP_KIND else [],
-        ),
-        lang,
-    )
     response = await render(
         request,
         "pages/user_list.html",
@@ -341,13 +353,18 @@ async def _group_sections(
     query: str = "",
 ) -> list[presentation.OptionGroup]:
     """Load both filterable datasets for ``school`` as combined filter sections."""
+    school_classes, work_groups = await business_logic.get_group_filters(
+        school_classes_adapter,
+        work_groups_adapter,
+        permissions_adapter,
+        users_adapter,
+        actor,
+        school,
+        lang,
+    )
     return presentation.build_group_options(
-        await business_logic.get_school_classes(
-            school_classes_adapter, permissions_adapter, users_adapter, actor, school, lang
-        ),
-        await business_logic.get_work_groups(
-            work_groups_adapter, permissions_adapter, users_adapter, actor, school, lang
-        ),
+        school_classes,
+        work_groups,
         lang,
         selected=selected,
         query=query,

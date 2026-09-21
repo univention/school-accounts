@@ -17,6 +17,10 @@ are applied in the DI layer (``routes.py``) instead of being registered as
 adapters themselves.
 """
 
+import asyncio
+from collections.abc import Awaitable, Callable
+from typing import Generic, TypeVar
+
 from typing_extensions import override
 
 from ..models import School, SchoolClass, WorkGroup
@@ -26,75 +30,108 @@ from ..ports import (
     WorkGroupsPersistencePort,
 )
 
-# The caches below are plain dicts rather than task-based single-flight: the
-# duplicate reads this exists for are sequential, and two concurrent reads of the
-# same key would only cost the extra request they cost today.
+_Group = TypeVar("_Group", SchoolClass, WorkGroup)
+_Key = TypeVar("_Key")
+_Value = TypeVar("_Value")
+
+
+class _SingleFlight(Generic[_Key, _Value]):
+    """Run at most one ``fetch`` per key, however many callers ask concurrently.
+
+    The route builds the sidebar and the table at the same time and both read the
+    same school, so a cache of finished results would still let the second read
+    start before the first one lands. Keeping the task, not its value, is what
+    collapses them into one request.
+    """
+
+    _fetch: Callable[[_Key], Awaitable[_Value]]
+
+    def __init__(self, fetch: Callable[[_Key], Awaitable[_Value]]):
+        self._fetch = fetch
+        self._tasks: dict[_Key, asyncio.Task[_Value]] = {}
+
+    def started(self, key: _Key) -> bool:
+        return key in self._tasks
+
+    async def get(self, key: _Key) -> _Value:
+        task = self._tasks.get(key)
+        if task is None:
+            # ensure_future, not create_task: the port methods are typed as
+            # returning an Awaitable, and only the task is worth keeping.
+            task = asyncio.ensure_future(self._fetch(key))
+            self._tasks[key] = task
+        return await task
 
 
 class RequestCachedSchoolsAdapter(SchoolsPersistencePort):
-    _adapter: SchoolsPersistencePort
-
     def __init__(self, adapter: SchoolsPersistencePort):
-        self._adapter = adapter
-        self._cache: dict[str | None, list[School]] = {}
+        self._cache: _SingleFlight[str | None, list[School]] = _SingleFlight(adapter.get_schools)
 
     @override
     async def get_schools(self, name: str | None = None) -> list[School]:
-        if name not in self._cache:
-            self._cache[name] = await self._adapter.get_schools(name)
-        return self._cache[name]
+        return await self._cache.get(name)
+
+
+class _GroupCache(Generic[_Group]):
+    """One group kind's two read shapes, memoized against each other."""
+
+    _fetch_named: Callable[[str, list[str]], Awaitable[list[_Group]]]
+
+    def __init__(
+        self,
+        fetch_all: Callable[[str], Awaitable[list[_Group]]],
+        fetch_named: Callable[[str, list[str]], Awaitable[list[_Group]]],
+    ):
+        self._fetch_named = fetch_named
+        self._complete: _SingleFlight[str, list[_Group]] = _SingleFlight(fetch_all)
+        self._by_name: dict[tuple[str, str], _Group] = {}
+
+    async def all_of(self, school: str) -> list[_Group]:
+        groups = await self._complete.get(school)
+        for group in groups:
+            self._by_name[school, group.id] = group
+        return groups
+
+    async def named(self, school: str, names: list[str]) -> list[_Group]:
+        missing = [name for name in names if (school, name) not in self._by_name]
+        if missing:
+            # Reading the whole school already answers for a name still missing
+            # afterwards: it does not exist, and asking again would not change
+            # that - including while that read is still in flight, which is what
+            # keeps the table off the per-name lookups the sidebar is superseding.
+            if self._complete.started(school):
+                await self.all_of(school)
+            else:
+                for group in await self._fetch_named(school, missing):
+                    self._by_name[school, group.id] = group
+        return [self._by_name[school, name] for name in names if (school, name) in self._by_name]
 
 
 class RequestCachedSchoolClassesAdapter(SchoolClassesPersistencePort):
-    _adapter: SchoolClassesPersistencePort
-
     def __init__(self, adapter: SchoolClassesPersistencePort):
-        self._adapter = adapter
-        self._complete: dict[str, list[SchoolClass]] = {}
-        self._by_name: dict[tuple[str, str], SchoolClass] = {}
+        self._cache: _GroupCache[SchoolClass] = _GroupCache(
+            adapter.get_school_classes, adapter.get_school_classes_by_name
+        )
 
     @override
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
-        if school not in self._complete:
-            classes = await self._adapter.get_school_classes(school)
-            self._complete[school] = classes
-            for school_class in classes:
-                self._by_name[school, school_class.id] = school_class
-        return self._complete[school]
+        return await self._cache.all_of(school)
 
     @override
     async def get_school_classes_by_name(self, school: str, names: list[str]) -> list[SchoolClass]:
-        missing = [name for name in names if (school, name) not in self._by_name]
-        # Holding the whole school already answers for a name that is still
-        # missing: it does not exist, and asking again would not change that.
-        if missing and school not in self._complete:
-            for school_class in await self._adapter.get_school_classes_by_name(school, missing):
-                self._by_name[school, school_class.id] = school_class
-        return [self._by_name[school, name] for name in names if (school, name) in self._by_name]
+        return await self._cache.named(school, names)
 
 
 class RequestCachedWorkGroupsAdapter(WorkGroupsPersistencePort):
-    _adapter: WorkGroupsPersistencePort
-
     def __init__(self, adapter: WorkGroupsPersistencePort):
-        self._adapter = adapter
-        self._complete: dict[str, list[WorkGroup]] = {}
-        self._by_name: dict[tuple[str, str], WorkGroup] = {}
+        self._cache: _GroupCache[WorkGroup] = _GroupCache(
+            adapter.get_work_groups, adapter.get_work_groups_by_name
+        )
 
     @override
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
-        if school not in self._complete:
-            groups = await self._adapter.get_work_groups(school)
-            self._complete[school] = groups
-            for work_group in groups:
-                self._by_name[school, work_group.id] = work_group
-        return self._complete[school]
+        return await self._cache.all_of(school)
 
     @override
     async def get_work_groups_by_name(self, school: str, names: list[str]) -> list[WorkGroup]:
-        missing = [name for name in names if (school, name) not in self._by_name]
-        # See RequestCachedSchoolClassesAdapter.get_school_classes_by_name.
-        if missing and school not in self._complete:
-            for work_group in await self._adapter.get_work_groups_by_name(school, missing):
-                self._by_name[school, work_group.id] = work_group
-        return [self._by_name[school, name] for name in names if (school, name) in self._by_name]
+        return await self._cache.named(school, names)
