@@ -211,6 +211,13 @@ run_command () {
 COMMAND="$1"
 RUN_COMMAND_ARGS=()
 GITLAB_IP="$(getent -i ahostsv4 git.knut.univention.de | head -n 1 | cut -d ' ' -f 1)"
+if [[ -z "$GITLAB_IP" ]]; then
+  # Every service pins this name to an address, so an empty one reaches docker as
+  # `--add-host git.knut.univention.de:` and it answers "invalid IP address in
+  # add-host", which says nothing about the VPN being down.
+  echo "Cannot resolve git.knut.univention.de - is the VPN up?"
+  exit 1
+fi
 DOCKER_USER="$(id -u):$(id -g)"
 
 if [[ ! -f "dev/.env" ]]; then
