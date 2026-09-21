@@ -12,6 +12,7 @@ or tear down that session.
 
 import asyncio
 from collections.abc import AsyncIterator, Awaitable
+from dataclasses import dataclass
 from functools import partial
 from typing import Annotated, cast
 from urllib.parse import urlencode
@@ -251,9 +252,7 @@ async def users_list(
             selected_group="",
             group_sections=[],
             query="",
-            view=presentation.empty_user_list_view(
-                lang, hint=_("Select a school and a group to list users.", lang=lang)
-            ),
+            view=_list_view(None, lang, known_school=False),
         )
         response.headers["HX-Push-Url"] = _push_url(None, "")
         return response
@@ -262,61 +261,143 @@ async def users_list(
     # (`hx-select`), so a filter change rebuilt the group control - every class
     # and work group of the school, the most expensive thing on the page - and
     # threw it away. Answer such a request with the region it actually takes.
-    results_only = (
-        request.headers.get("HX-Request") == "true"
-        and request.headers.get("HX-Target") == RESULTS_REGION_ID
+    listing = _Listing(
+        users=users_adapter,
+        schools=schools_adapter,
+        school_classes=school_classes_adapter,
+        work_groups=work_groups_adapter,
+        permissions=permissions_adapter,
+        actor=actor,
+        school=school,
+        lang=lang,
+        known_school=any(option.value == school for option in school_options),
+        results_only=(
+            request.headers.get("HX-Request") == "true"
+            and request.headers.get("HX-Target") == RESULTS_REGION_ID
+        ),
     )
-
-    kind, item_id = presentation.split_group_value(group)
     # Listing a whole school is a choice, not the default. Nothing selected means
     # nothing is listed: a school of thousands takes seconds to fetch and seconds
     # more to render, and the bulk reset it feeds refuses more than
     # PASSWORD_RESET_MAX_TARGETS anyway, so nobody should wait for one they did
     # not ask for.
-    all_groups = (group or "") == presentation.ALL_GROUPS
-    # A deep link can outlive its school; only load the dependent filters for a
-    # school that still exists (the File adapter raises on an unknown id).
-    known_school = any(option.value == school for option in school_options)
+    group_sections, data, selection = await _resolve_listing(listing, _GroupSelection.from_value(group))
+    response = await render(
+        request,
+        "fragments/results_region.html" if listing.results_only else "pages/user_list.html",
+        auth,
+        schools=school_options,
+        selected_school=school,
+        selected_group=selection.value,
+        group_sections=group_sections,
+        query="",
+        view=_list_view(data, lang, listing.known_school),
+    )
+    response.headers["HX-Push-Url"] = _push_url(school, selection.value)
+    return response
 
-    async def load_sections() -> list[presentation.OptionGroup]:
-        if not known_school:
+
+@dataclass(frozen=True)
+class _GroupSelection:
+    """What the request asked the table to list, once the group value is read.
+
+    Three states, not two: no selection lists nobody, ``all_groups`` lists the
+    whole school, and a kind/id pair lists one group. The URL tells them apart,
+    so a reload and a shared link land where the click did.
+    """
+
+    kind: str = ""
+    item_id: str = ""
+    all_groups: bool = False
+
+    @classmethod
+    def from_value(cls, value: str | None) -> "_GroupSelection":
+        kind, item_id = presentation.split_group_value(value)
+        return cls(kind, item_id, (value or "") == presentation.ALL_GROUPS)
+
+    @property
+    def lists_users(self) -> bool:
+        return bool(self.kind) or self.all_groups
+
+    @property
+    def school_classes(self) -> list[str]:
+        return [self.item_id] if self.kind == presentation.SCHOOL_CLASS_KIND else []
+
+    @property
+    def work_groups(self) -> list[str]:
+        return [self.item_id] if self.kind == presentation.WORK_GROUP_KIND else []
+
+    @property
+    def value(self) -> str:
+        """The control's value, and the ``group`` of the pushed URL."""
+        if self.kind:
+            return f"{self.kind}:{self.item_id}"
+        return presentation.ALL_GROUPS if self.all_groups else ""
+
+
+@dataclass(frozen=True)
+class _Listing:
+    """One request's view of a school, and what it is allowed to skip.
+
+    The handler is left with reading the request and rendering the answer; the
+    three reads behind a listing are their own thing, and they need most of the
+    same arguments, so they travel together rather than as a parameter list.
+    """
+
+    users: UsersPersistencePort
+    schools: SchoolsPersistencePort
+    school_classes: SchoolClassesPersistencePort
+    work_groups: WorkGroupsPersistencePort
+    permissions: PermissionsPort
+    actor: str
+    school: str
+    lang: str
+    # A deep link can outlive its school. Nothing is read for one the domain no
+    # longer has (the file adapter raises on an unknown id).
+    known_school: bool
+    # htmx keeps only #results-region of the response, so the filter control it
+    # would discard is not built.
+    results_only: bool
+
+    async def group_sections(self, selection: "_GroupSelection") -> list[presentation.OptionGroup]:
+        if not self.known_school:
             logger.debug(
                 "Requested a school the actor cannot filter by; rendering it without group filters.",
-                actor_id=actor,
-                school=school,
+                actor_id=self.actor,
+                school=self.school,
             )
             return []
-        if results_only:
+        if self.results_only:
             return []
         return await _group_sections(
-            school_classes_adapter,
-            work_groups_adapter,
-            permissions_adapter,
-            users_adapter,
-            actor,
-            school,
-            lang,
-            selected=f"{kind}:{item_id}" if kind else "",
+            self.school_classes,
+            self.work_groups,
+            self.permissions,
+            self.users,
+            self.actor,
+            self.school,
+            self.lang,
+            selected=selection.value if selection.kind else "",
         )
 
-    def load_users(kind: str, item_id: str) -> Awaitable[presentation.UserListData]:
+    def users_of(self, selection: "_GroupSelection") -> Awaitable[presentation.UserListData]:
         return business_logic.get_users(
-            users_adapter,
-            schools_adapter,
-            school_classes_adapter,
-            work_groups_adapter,
-            permissions_adapter,
-            actor,
+            self.users,
+            self.schools,
+            self.school_classes,
+            self.work_groups,
+            self.permissions,
+            self.actor,
             UsersGetRequest(
-                school=school,
-                school_classes=[item_id] if kind == presentation.SCHOOL_CLASS_KIND else [],
-                work_groups=[item_id] if kind == presentation.WORK_GROUP_KIND else [],
+                school=self.school,
+                school_classes=selection.school_classes,
+                work_groups=selection.work_groups,
             ),
-            lang,
+            self.lang,
         )
 
-    async def school_has_the_group() -> bool:
-        """Whether ``school`` still holds the selected group.
+    async def holds(self, selection: "_GroupSelection") -> bool:
+        """Whether the school still holds the selected group.
 
         A deep link outlives the group it names, and for a moment after a school
         change the results request still carries the previous school's
@@ -324,62 +405,64 @@ async def users_list(
         no control, and nothing at all when it does - the whole-school read the
         control needs already answers it.
         """
-        if not known_school:
+        if not self.known_school:
             return False
-        if kind == presentation.SCHOOL_CLASS_KIND:
-            return bool(await school_classes_adapter.get_school_classes_by_name(school, [item_id]))
-        return bool(await work_groups_adapter.get_work_groups_by_name(school, [item_id]))
+        names = [selection.item_id]
+        if selection.kind == presentation.SCHOOL_CLASS_KIND:
+            return bool(await self.school_classes.get_school_classes_by_name(self.school, names))
+        return bool(await self.work_groups.get_work_groups_by_name(self.school, names))
 
-    # None of the control, the table and the check needs another's result, and
-    # each is a read of its own, so the page cost their sum while they ran in
-    # turn. Where they read the same thing the request caches collapse it.
-    data: presentation.UserListData | None = None
-    if kind:
-        group_sections, usable, data = await asyncio.gather(
-            load_sections(), school_has_the_group(), load_users(kind, item_id)
+
+async def _resolve_listing(
+    listing: _Listing, selection: "_GroupSelection"
+) -> tuple[list[presentation.OptionGroup], presentation.UserListData | None, "_GroupSelection"]:
+    """The filter control, the table's data and the selection that survived.
+
+    None of the three reads needs another's result, and each is a read of its
+    own, so the page cost their sum while they ran in turn. Where they read the
+    same thing the request caches collapse it.
+    """
+    if selection.kind:
+        sections, usable, data = await asyncio.gather(
+            listing.group_sections(selection), listing.holds(selection), listing.users_of(selection)
         )
-        if not usable:
-            logger.debug(
-                "Dropped a group filter the selected school does not have.",
-                school=school,
-                group_kind=kind,
-                group_id=item_id,
-            )
-            # Whatever the speculative read returned answers a question nobody
-            # asked, so it goes with the selection.
-            kind, item_id, data = "", "", None
-    elif all_groups:
-        group_sections, data = await asyncio.gather(load_sections(), load_users(kind, item_id))
+        if usable:
+            return sections, data, selection
+        logger.debug(
+            "Dropped a group filter the selected school does not have.",
+            school=listing.school,
+            group_kind=selection.kind,
+            group_id=selection.item_id,
+        )
+        # Whatever the speculative read returned answers a question nobody
+        # asked, so it goes with the selection.
+        return sections, None, _GroupSelection()
+    if selection.lists_users:
+        sections, data = await asyncio.gather(
+            listing.group_sections(selection), listing.users_of(selection)
+        )
+        return sections, data, selection
+    return await listing.group_sections(selection), None, selection
+
+
+def _list_view(
+    data: presentation.UserListData | None,
+    lang: str,
+    known_school: bool,
+) -> presentation.UserListView:
+    """The table, or the reason there is not one yet.
+
+    An empty table reads as an answer, and nothing was asked until a school and
+    a group have been picked - so say which of the two is missing.
+    """
+    if data is not None:
+        return presentation.build_user_list(data, lang)
+    if known_school:
+        hint = _("Select a class or work group to list its users.", lang=lang)
     else:
-        group_sections = await load_sections()
-    # "" is no selection, which lists nobody; ALL_GROUPS is the selection that
-    # lists everybody. They are different states and the URL distinguishes them.
-    selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS if all_groups else ""
-    response = await render(
-        request,
-        "fragments/results_region.html" if results_only else "pages/user_list.html",
-        auth,
-        schools=school_options,
-        selected_school=school,
-        selected_group=selected_group,
-        group_sections=group_sections,
-        query="",
-        view=(
-            presentation.build_user_list(data, lang)
-            if data is not None
-            else presentation.empty_user_list_view(
-                lang,
-                hint=(
-                    _("Select a class or work group to list its users.", lang=lang)
-                    if known_school
-                    # A link to a school that is gone has no groups to offer.
-                    else _("Select a school and a group to list users.", lang=lang)
-                ),
-            )
-        ),
-    )
-    response.headers["HX-Push-Url"] = _push_url(school, selected_group)
-    return response
+        # A link to a school that is gone has no groups to offer.
+        hint = _("Select a school and a group to list users.", lang=lang)
+    return presentation.empty_user_list_view(lang, hint=hint)
 
 
 def _push_url(school: str | None, selected_group: str) -> str:
