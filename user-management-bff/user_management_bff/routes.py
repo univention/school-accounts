@@ -67,6 +67,9 @@ env_globals["static"] = _static_url
 env_globals["frontend_prefix"] = FRONTEND_PREFIX
 # The all-groups sentinel is rendered as an option value, so templates need it too.
 env_globals["all_groups_value"] = presentation.ALL_GROUPS
+# The element a filter change replaces. htmx names it back in ``HX-Target``,
+# which is how the list route knows it need only render that much.
+RESULTS_REGION_ID = "results-region"
 
 
 async def kelvin_session() -> AsyncIterator[None]:
@@ -255,6 +258,15 @@ async def users_list(
         response.headers["HX-Push-Url"] = _push_url(None, "")
         return response
 
+    # htmx asks this route for the whole page and keeps only #results-region
+    # (`hx-select`), so a filter change rebuilt the group control - every class
+    # and work group of the school, the most expensive thing on the page - and
+    # threw it away. Answer such a request with the region it actually takes.
+    results_only = (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-Target") == RESULTS_REGION_ID
+    )
+
     kind, item_id = presentation.split_group_value(group)
     # Listing a whole school is a choice, not the default. Nothing selected means
     # nothing is listed: a school of thousands takes seconds to fetch and seconds
@@ -273,6 +285,8 @@ async def users_list(
                 actor_id=actor,
                 school=school,
             )
+            return []
+        if results_only:
             return []
         return await _group_sections(
             school_classes_adapter,
@@ -301,33 +315,49 @@ async def users_list(
             lang,
         )
 
+    async def school_has_the_group() -> bool:
+        """Whether ``school`` still holds the selected group.
+
+        A deep link outlives the group it names, and for a moment after a school
+        change the results request still carries the previous school's
+        selection. Asked by name, so it is one lookup when this request builds
+        no control, and nothing at all when it does - the whole-school read the
+        control needs already answers it.
+        """
+        if not known_school:
+            return False
+        if kind == presentation.SCHOOL_CLASS_KIND:
+            return bool(await school_classes_adapter.get_school_classes_by_name(school, [item_id]))
+        return bool(await work_groups_adapter.get_work_groups_by_name(school, [item_id]))
+
+    # None of the control, the table and the check needs another's result, and
+    # each is a read of its own, so the page cost their sum while they ran in
+    # turn. Where they read the same thing the request caches collapse it.
     data: presentation.UserListData | None = None
-    if kind or all_groups:
-        # Neither the filter control nor the table needs the other's result, and
-        # each is a whole-school read, so the page cost their sum while they ran
-        # in turn. Where they read the same thing the request caches collapse it
-        # into one call.
+    if kind:
+        group_sections, usable, data = await asyncio.gather(
+            load_sections(), school_has_the_group(), load_users(kind, item_id)
+        )
+        if not usable:
+            logger.debug(
+                "Dropped a group filter the selected school does not have.",
+                school=school,
+                group_kind=kind,
+                group_id=item_id,
+            )
+            # Whatever the speculative read returned answers a question nobody
+            # asked, so it goes with the selection.
+            kind, item_id, data = "", "", None
+    elif all_groups:
         group_sections, data = await asyncio.gather(load_sections(), load_users(kind, item_id))
     else:
         group_sections = await load_sections()
-    # Drop a group the selected school does not have. That covers a stale deep
-    # link, and the moment after a school change where the search fires while the
-    # dependent control still holds the previous school's selection. Whatever the
-    # speculative read returned answers a question nobody asked, so it goes with it.
-    if kind and not any(o.selected for section in group_sections for o in section.options):
-        logger.debug(
-            "Dropped a group filter the selected school does not have.",
-            school=school,
-            group_kind=kind,
-            group_id=item_id,
-        )
-        kind, item_id, data = "", "", None
     # "" is no selection, which lists nobody; ALL_GROUPS is the selection that
     # lists everybody. They are different states and the URL distinguishes them.
     selected_group = f"{kind}:{item_id}" if kind else presentation.ALL_GROUPS if all_groups else ""
     response = await render(
         request,
-        "pages/user_list.html",
+        "fragments/results_region.html" if results_only else "pages/user_list.html",
         auth,
         schools=school_options,
         selected_school=school,

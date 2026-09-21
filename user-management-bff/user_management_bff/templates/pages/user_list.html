@@ -65,12 +65,7 @@ SPDX-License-Identifier: AGPL-3.0-only
           </u-form>
         </u-vstack>
 
-        <u-vstack id="results-region" grow scroll>
-          {# innerHTML keeps this element, so its handler outlives every swap into it -
-             unlike a script in the swapped fragment. #}
-          <div id="password-reset-result" hx-on::after-swap="narrowSelectionToFailures(this)"></div>
-          {% include "fragments/user_table.html" %}
-        </u-vstack>
+        {% include "fragments/results_region.html" %}
       </u-hstack>
     </u-vstack>
   </u-container>

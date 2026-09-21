@@ -495,6 +495,21 @@ def test_users_deep_link_to_a_vanished_school_asks_for_a_new_one(test_client: Te
     assert "Select a school and a group to list users." in body
 
 
+def test_a_group_of_a_vanished_school_is_not_looked_up(test_client: TestClient, mocker: MockerFixture):
+    """Both halves of the link are stale together. Nothing can hold the group, so
+    asking whether the school does is a round trip with one possible answer."""
+    by_name_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes_by_name")
+
+    body = test_client.get(
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "NON_EXISTENT", "group": "school_class:1a"},
+    ).text
+
+    assert "Select a school and a group to list users." in body
+    assert 'value="school_class:1a" selected' not in body
+    assert by_name_spy.call_count == 0
+
+
 def test_login_route_redirects_to_idp(
     test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
 ):
@@ -1011,3 +1026,47 @@ def test_the_user_page_loads_its_filter_and_its_table_together(
 
     assert response.status_code == 200
     assert order.index("users:start") < order.index("filters:end")
+
+
+def test_a_filter_change_renders_only_the_results_region(test_client: TestClient, mocker: MockerFixture):
+    """htmx keeps only #results-region of this route's response, so building the
+    group control for one is work thrown away - and it is the page's slowest."""
+    all_classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
+    all_work_groups_spy = mocker.spy(FileWorkGroupsPersistenceAdapter, "get_work_groups")
+
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "school1", "group": "school_class:1a"},
+        headers={"HX-Request": "true", "HX-Target": "results-region"},
+    )
+
+    assert response.status_code == 200
+    body = response.text
+    assert body.lstrip().startswith('<u-vstack id="results-region"')
+    assert "<html" not in body and "<u-list-select" not in body
+    # The rows are there; the control they were filtered by is not rebuilt.
+    assert "max.muster" in body
+    assert all_classes_spy.call_count == 0
+    assert all_work_groups_spy.call_count == 0
+    assert response.headers["HX-Push-Url"] == (
+        f"{FRONTEND_PREFIX}/users?school=school1&group=school_class%3A1a"
+    )
+
+
+def test_a_filter_change_still_rejects_a_group_the_school_lacks(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """Without the control to check against, the group is confirmed by name -
+    one lookup, against the whole-school read a full page load would do."""
+    by_name_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes_by_name")
+
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "school1", "group": "school_class:3c"},  # belongs to another school
+        headers={"HX-Request": "true", "HX-Target": "results-region"},
+    )
+
+    assert response.status_code == 200
+    assert "Select a class or work group to list its users." in response.text
+    assert ("school1", ["3c"]) in [call.args[1:] for call in by_name_spy.call_args_list]
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1"

@@ -1,0 +1,14 @@
+{#
+SPDX-FileCopyrightText: 2026 Univention GmbH
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{# The half of the page a filter change replaces. Its own fragment so the route
+   can answer such a request with it alone: htmx would otherwise fetch the whole
+   page and `hx-select` this out of it, and the filter control it discarded costs
+   more to build than everything it kept. #}
+<u-vstack id="results-region" grow scroll>
+  {# innerHTML keeps this element, so its handler outlives every swap into it -
+     unlike a script in the swapped fragment. #}
+  <div id="password-reset-result" hx-on::after-swap="narrowSelectionToFailures(this)"></div>
+  {% include "fragments/user_table.html" %}
+</u-vstack>
