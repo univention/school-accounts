@@ -7,6 +7,7 @@ from typing import Protocol, TypeVar
 
 from loguru import logger
 
+from . import presentation
 from .constants import PASSWORD_RESET_MAX_CONCURRENCY, PASSWORD_RESET_MAX_TARGETS
 from .errors import (
     NoSchoolUserError,
@@ -174,9 +175,14 @@ async def _fetch_groups(
     needed_classes: dict[str, set[str]] = {}
     needed_groups: dict[str, set[str]] = {}
     for user in users:
-        for school, classes in user.attributes.school_classes.items():
+        # Only what the row will show: one user in every class of their school
+        # would otherwise pull that whole school in to render a cell nobody can
+        # read. ``shown_groups`` is the same cap the row applies.
+        classes_by_school, _hidden_classes = presentation.shown_groups(user.attributes.school_classes)
+        work_groups_by_school, _hidden_groups = presentation.shown_groups(user.attributes.work_groups)
+        for school, classes in classes_by_school.items():
             needed_classes.setdefault(school, set()).update(classes)
-        for school, groups in user.attributes.work_groups.items():
+        for school, groups in work_groups_by_school.items():
             needed_groups.setdefault(school, set()).update(groups)
     # Keyed by school even where the set is empty: the table indexes these by the
     # schools on the user, and a school with no group of one kind still has a row

@@ -154,7 +154,8 @@ msgid "Schools"
 msgstr "Schulen"
 
 msgid "Select a class or work group to list its users."
-msgstr "Wählen Sie eine Klasse oder Arbeitsgruppe aus, um deren Benutzer aufzulisten."
+msgstr ""
+"Wählen Sie eine Klasse oder Arbeitsgruppe aus, um deren Benutzer aufzulisten."
 
 msgid "Select a school and a group to list users."
 msgstr "Wählen Sie eine Schule und eine Gruppe aus, um Benutzer aufzulisten."
@@ -245,6 +246,10 @@ msgstr "Benutzername"
 
 msgid "Work Groups"
 msgstr "Arbeitsgruppen"
+
+#, python-brace-format
+msgid "and {count} more"
+msgstr "und {count} weitere"
 
 msgid "logout"
 msgstr "abmelden"

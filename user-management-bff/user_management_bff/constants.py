@@ -38,6 +38,15 @@ GROUP_LOOKUP_MAX_CONCURRENCY = int(os.environ.get("USER_MANAGEMENT__GROUP_LOOKUP
 # Number of max users/accounts that can be reset in a single password reset request
 PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS", "200"))
 
+# A user can be in every class of their school. Such a row is unreadable long
+# before it is slow, and resolving every display name behind it is the most
+# expensive thing the row does - one user in 251 classes made a single-row table
+# cost 4 s and 7 kB. The row names this many groups of each kind and counts the
+# rest, and the lookups are capped with it: a name the table will not show is a
+# name nobody has to resolve. High enough that an ordinary teacher's classes all
+# fit.
+USER_LIST_GROUPS_SHOWN = 10
+
 # Cut-of number for listing the users in the confirmation dialog
 # >10, no individual listing
 PASSWORD_RESET_NAMED_LIMIT = 10
