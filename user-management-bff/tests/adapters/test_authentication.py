@@ -80,10 +80,15 @@ def _stub_refresh(
     mocker: MockerFixture,
     client: MagicMock,
     token: dict[str, object],
-    claims: dict[str, object] | None = None,
+    claims: dict[str, object] | Exception | None = None,
 ) -> None:
+    """Stub one refresh round-trip. An ``Exception`` for ``claims`` makes the ID token
+    fail verification rather than come back with those claims."""
     client.fetch_access_token = mocker.AsyncMock(return_value=token)
-    client.parse_id_token = mocker.AsyncMock(return_value=_CLAIMS if claims is None else claims)
+    if isinstance(claims, Exception):
+        client.parse_id_token = mocker.AsyncMock(side_effect=claims)
+    else:
+        client.parse_id_token = mocker.AsyncMock(return_value=_CLAIMS if claims is None else claims)
 
 
 class TestCookieSessionAuthenticationAdapter:
@@ -502,45 +507,29 @@ class TestCookieSessionAuthenticationAdapter:
         assert updated.actor_id == "mina.married"
 
     @pytest.mark.asyncio
-    async def test_refresh_rejects_a_changed_subject(
-        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
+    @pytest.mark.parametrize(
+        "claims",
+        [
+            pytest.param(
+                {"sub": "someone-else", "preferred_username": "mina.teacher"},
+                id="a-changed-subject",
+            ),
+            pytest.param(ValueError("bad signature"), id="an-unverifiable-id-token"),
+            pytest.param({"sub": "sub-1"}, id="no-identifier-claim"),
+            pytest.param(
+                {"sub": "sub-1", "preferred_username": ["mina.teacher"]},
+                id="a-non-string-identifier-claim",
+            ),
+        ],
+    )
+    async def test_refresh_rejects_an_id_token_it_cannot_trust(
+        self,
+        wired: CookieSessionAuthenticationAdapter,
+        client: MagicMock,
+        mocker: MockerFixture,
+        claims: dict[str, object] | Exception,
     ):
-        _stub_refresh(
-            mocker,
-            client,
-            {"expires_in": 3600, "id_token": "IDT2"},
-            {"sub": "someone-else", "preferred_username": "mina.teacher"},
-        )
-        record = _record(expires_at=_past())
-        with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(record)
-
-    @pytest.mark.asyncio
-    async def test_refresh_rejects_an_unverifiable_id_token(
-        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
-    ):
-        client.fetch_access_token = mocker.AsyncMock(
-            return_value={"expires_in": 3600, "id_token": "IDT2"}
-        )
-        client.parse_id_token = mocker.AsyncMock(side_effect=ValueError("bad signature"))
-        record = _record(expires_at=_past())
-        with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(record)
-
-    @pytest.mark.asyncio
-    async def test_refresh_rejects_an_id_token_without_the_identifier_claim(
-        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
-    ):
-        _stub_refresh(mocker, client, {"expires_in": 3600, "id_token": "IDT2"}, {"sub": "sub-1"})
-        record = _record(expires_at=_past())
-        with pytest.raises(NotAuthenticatedError):
-            await wired._refresh(record)
-
-    @pytest.mark.asyncio
-    async def test_refresh_rejects_a_non_string_identifier_claim(
-        self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
-    ):
-        claims: dict[str, object] = {"sub": "sub-1", "preferred_username": ["mina.teacher"]}
+        """Every way the refreshed token can fail to prove it is still the same actor."""
         _stub_refresh(mocker, client, {"expires_in": 3600, "id_token": "IDT2"}, claims)
         record = _record(expires_at=_past())
         with pytest.raises(NotAuthenticatedError):
