@@ -2756,6 +2756,14 @@
         ],
         "./user_management_bff/adapters/users.py": [
             {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 26,
+                    "endColumn": 38,
+                    "lineCount": 1
+                }
+            },
+            {
                 "code": "reportImplicitOverride",
                 "range": {
                     "startColumn": 14,
@@ -2766,8 +2774,8 @@
             {
                 "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 23,
-                    "endColumn": 71,
+                    "startColumn": 27,
+                    "endColumn": 75,
                     "lineCount": 1
                 }
             },

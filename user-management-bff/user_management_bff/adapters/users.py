@@ -12,7 +12,13 @@ from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from pydantic import TypeAdapter
-from ucsschool.kelvin.client import InvalidRequest, NoObject, UserResource
+from ucsschool.kelvin.client import (
+    InvalidRequest,
+    NoObject,
+    SchoolClassResource,
+    UserResource,
+    WorkGroupResource,
+)
 from ucsschool.kelvin.client import User as KelvinUser
 
 from ..errors import (
@@ -104,8 +110,9 @@ def _in_selected_group(
     """Decide whether the group filter keeps a user of ``school``.
 
     No selection means no filter; otherwise membership in either list is enough.
-    Shared by every ``UsersPersistencePort`` implementation so the adapters cannot
-    drift apart on how they read the filter arguments again.
+    The file adapter holds the whole dataset in memory and answers from the user
+    side; the Kelvin adapter asks the groups who is in them, because reading a
+    school to discard most of it is what makes that page slow.
     """
     if not school_classes and not work_groups:
         return True
@@ -146,23 +153,50 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
             ),
         )
 
+    async def _members_of(
+        self, resource: SchoolClassResource | WorkGroupResource, school: str, name: str
+    ) -> list[str]:
+        """The usernames in one group, or none if the filter names no group at all."""
+        try:
+            group = await resource.get(school=school, name=name)
+        except NoObject:
+            # A filter value can outlive the group it names, and the control is
+            # rebuilt from the same request - an empty table says as much.
+            logger.warning("Ignoring a group filter that names no group.", school=school, name=name)
+            return []
+        return list(group.users or [])
+
+    async def _users_in_groups(
+        self, school: str, school_classes: list[str], work_groups: list[str]
+    ) -> list[User]:
+        """Resolve a group filter from the groups' own membership.
+
+        Kelvin cannot search users by class or work group, so the alternative is
+        reading every user of the school and discarding all but a classroom of
+        them - on a school of 6000 that is nine seconds to render twenty rows.
+        A group carries its members and a search names them all at once, so this
+        costs one read per selected group plus one search, whatever the school.
+        """
+        classes = SchoolClassResource(session=self.kelvin_session)
+        groups = WorkGroupResource(session=self.kelvin_session)
+        members = await asyncio.gather(
+            *(self._members_of(classes, school, name) for name in school_classes),
+            *(self._members_of(groups, school, name) for name in work_groups),
+        )
+        # Membership order, deduplicated: the table renders what the adapter
+        # returns, and a user in both a class and a work group is listed once.
+        names = list(dict.fromkeys(name for group in members for name in group))
+        found = await self.get_users_by_id(names)
+        return [found[name] for name in names if name in found]
+
     async def get_users(
         self, school: str, school_classes: list[str], work_groups: list[str]
     ) -> list[User]:
-        # TODO(ucsschool-kelvin-rest-api#149) dont filter here, let Kelvin filter by passing classes
-        #   and workgroups to `.search` method
-        kelvin_users = UserResource(session=self.kelvin_session).search(school=school)
-        users = [
-            self._user_from_kelvin_user(kelvin_user)
-            async for kelvin_user in kelvin_users
-            if _in_selected_group(
-                school,
-                school_classes=school_classes,
-                work_groups=work_groups,
-                user_classes=kelvin_user.school_classes or {},
-                user_work_groups=kelvin_user.workgroups or {},
-            )
-        ]
+        if school_classes or work_groups:
+            users = await self._users_in_groups(school, school_classes, work_groups)
+        else:
+            kelvin_users = UserResource(session=self.kelvin_session).search(school=school)
+            users = [self._user_from_kelvin_user(kelvin_user) async for kelvin_user in kelvin_users]
         logger.debug(
             "Fetched users from the Kelvin API.",
             school=school,

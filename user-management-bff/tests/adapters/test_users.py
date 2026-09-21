@@ -341,6 +341,71 @@ class TestKelvinUsersPersistenceAdapter:
         assert gets == ["actor"]
 
     @pytest.mark.asyncio
+    async def test_a_group_filter_asks_the_group_who_is_in_it(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
+    ):
+        """Kelvin cannot search users by class, so the filtered list used to read
+        every user of the school and keep a classroom of them."""
+        searches: list[dict[str, Any]] = []
+
+        class MockUserResource:
+            async def search(self, *_args: Any, **kwargs: Any):
+                searches.append(kwargs)
+                for username in kwargs.get("name", []):
+                    yield make_kelvin_user_from_data(_contract_shape(username))
+
+        class MockSchoolClassResource:
+            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
+                return mocker.MagicMock(users=[f"{school}.{name}.1", f"{school}.{name}.2"])
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "UserResource",
+            mocker.MagicMock(return_value=MockUserResource()),
+        )
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "SchoolClassResource",
+            mocker.MagicMock(return_value=MockSchoolClassResource()),
+        )
+        await adapter.configure(dummy_settings)
+
+        result = await adapter.get_users("school2", school_classes=["1a"], work_groups=[])
+
+        assert [user.id for user in result] == ["school2.1a.1", "school2.1a.2"]
+        # The members by name, and never the school.
+        assert searches == [{"name": ["school2.1a.1", "school2.1a.2"]}]
+
+    @pytest.mark.asyncio
+    async def test_a_group_filter_naming_no_group_lists_nobody(
+        self,
+        adapter: KelvinUsersPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        """A filter value outlives the work group it names. The control is rebuilt
+        from the same request, so an empty table is the whole answer."""
+
+        class MockWorkGroupResource:
+            async def get(self, *_args: Any, **_kwargs: Any):
+                raise NoObject()
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.users,
+            "WorkGroupResource",
+            mocker.MagicMock(return_value=MockWorkGroupResource()),
+        )
+        await adapter.configure(dummy_settings)
+
+        assert await adapter.get_users("school2", school_classes=[], work_groups=["gone"]) == []
+
+    @pytest.mark.asyncio
     async def test_get_users_by_id_asks_for_every_name_in_one_search(
         self,
         adapter: KelvinUsersPersistenceAdapter,
@@ -1087,10 +1152,30 @@ CONTRACT_USERS: list[dict[str, Any]] = [
 EVERYONE_IN_CONTRACT_SCHOOL = ["staff.novak", "student.aiko", "student.bruno"]
 
 
+def _contract_group_members(kind: str, school: str, name: str) -> list[str]:
+    """Who CONTRACT_USERS says is in one group, read from the group's side."""
+    return [
+        user_data["id"]
+        for user_data in CONTRACT_USERS
+        if name in user_data["attributes"][kind].get(school, [])
+    ]
+
+
+def _contract_group_names(kind: str) -> set[tuple[str, str]]:
+    """Every (school, name) any contract user is in, so an unknown one can 404."""
+    return {
+        (school, name)
+        for user_data in CONTRACT_USERS
+        for school, names in user_data["attributes"][kind].items()
+        for name in names
+    }
+
+
 @pytest.fixture(params=["file", "kelvin"])
 def users_adapter(
     request: pytest.FixtureRequest,
     tmpdir: Path,
+    mocker: MockerFixture,
     dummy_settings: KelvinPersistenceAdapterSettings,
     patch_kelvin_resource: Callable[[Any, str, Any], None],
     make_kelvin_user_from_data: Callable[[dict[str, Any]], MagicMock],
@@ -1125,7 +1210,28 @@ def users_adapter(
                         return make_kelvin_user_from_data(user_data)
                 raise NoObject()
 
+        class MockGroupResource:
+            """A class or work group, which Kelvin answers with its member list."""
+
+            _kind: str
+
+            def __init__(self, kind: str):
+                self._kind = kind
+
+            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
+                if (school, name) not in _contract_group_names(self._kind):
+                    raise NoObject()
+                return mocker.MagicMock(users=_contract_group_members(self._kind, school, name))
+
         patch_kelvin_resource(user_management_bff.adapters.users, "UserResource", MockUserResource())
+        patch_kelvin_resource(
+            user_management_bff.adapters.users,
+            "SchoolClassResource",
+            MockGroupResource("school_classes"),
+        )
+        patch_kelvin_resource(
+            user_management_bff.adapters.users, "WorkGroupResource", MockGroupResource("work_groups")
+        )
         adapter = KelvinUsersPersistenceAdapter()
         await adapter.configure(dummy_settings)
         return adapter
