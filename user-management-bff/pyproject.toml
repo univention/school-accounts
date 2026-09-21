@@ -25,6 +25,9 @@ dependencies = [
     "lazy-object-proxy>=1.10.0",
     "pydantic-settings>=2.1.0",
     "kelvin-rest-api-client>=2.5.0",
+    # A transitive dep of the Kelvin client, but the session subclass in
+    # adapters/base.py decorates its token override with it directly.
+    "async-property>=0.2.2",
     "typer>=0.9.0",
     "rich>=13.7.0",
     "python-keycloak>=3.9.0",

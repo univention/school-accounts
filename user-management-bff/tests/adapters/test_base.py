@@ -1,11 +1,14 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
+import time
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
+import jwt
 import pytest
+from async_property import async_property
 from pytest_mock import MockerFixture
 from ucsschool.kelvin.client import ServerError, Session
 
@@ -121,3 +124,82 @@ async def test_the_scope_survives_a_session_that_cannot_be_closed():
         holder.session = cast("Session", cast("object", session))
 
     session.close.assert_awaited_once()
+
+
+def _token_valid_for(seconds: int) -> str:
+    """A JWT the Kelvin client will parse, expiring in ``seconds``."""
+    return jwt.encode(
+        {"exp": int(time.time()) + seconds}, "not-verified-anywhere-in-this-test", algorithm="HS256"
+    )
+
+
+@pytest.fixture
+def no_shared_token(monkeypatch: pytest.MonkeyPatch):
+    """The token outlives a request on purpose, so it must not outlive a test."""
+    adapters_base.forget_shared_token()
+    yield
+    adapters_base.forget_shared_token()
+
+
+@pytest.mark.asyncio
+async def test_the_token_outlives_the_session_that_minted_it(
+    no_shared_token, monkeypatch: pytest.MonkeyPatch
+):
+    """The client keeps its token on the session and a session lives for one
+    request, so every page view was a password verification against LDAP."""
+    minted: list[str] = []
+
+    async def _mint(self: Session) -> str:
+        minted.append("once")
+        return _token_valid_for(3600)
+
+    monkeypatch.setattr(Session, "token", async_property(_mint))
+
+    first = adapters_base.SharedTokenSession("actor", "secret", "kelvin.test")
+    second = adapters_base.SharedTokenSession("actor", "secret", "kelvin.test")
+    assert await first.token == await second.token
+    assert len(minted) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_token_is_not_reused_past_its_window(no_shared_token, monkeypatch: pytest.MonkeyPatch):
+    """Kelvin restarting with a new signing key makes a cached token unusable,
+    and the client cannot tell - it only checks the expiry."""
+    minted: list[str] = []
+
+    async def _mint(self: Session) -> str:
+        minted.append("again")
+        return _token_valid_for(3600)
+
+    monkeypatch.setattr(Session, "token", async_property(_mint))
+    now = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+
+    session = adapters_base.SharedTokenSession("actor", "secret", "kelvin.test")
+    await session.token
+    now[0] = adapters_base.KELVIN_TOKEN_REUSE_SECONDS - 1
+    await session.token
+    assert len(minted) == 1, "still inside the window"
+
+    now[0] = adapters_base.KELVIN_TOKEN_REUSE_SECONDS + 1
+    await session.token
+    assert len(minted) == 2
+
+
+@pytest.mark.asyncio
+async def test_an_expired_token_is_minted_again(no_shared_token, monkeypatch: pytest.MonkeyPatch):
+    """Inside the window but past its own expiry is still no good."""
+    minted: list[str] = []
+
+    async def _mint(self: Session) -> str:
+        minted.append("again")
+        # Already past the client's leeway, so `Token.is_valid` refuses it.
+        return _token_valid_for(-1)
+
+    monkeypatch.setattr(Session, "token", async_property(_mint))
+
+    session = adapters_base.SharedTokenSession("actor", "secret", "kelvin.test")
+    await session.token
+    await session.token
+
+    assert len(minted) == 2

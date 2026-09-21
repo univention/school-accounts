@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import asyncio
 import os
+import time
 from abc import ABC
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
@@ -10,11 +11,13 @@ from dataclasses import dataclass, field
 from typing import Type, TypeVar
 
 import httpx
+from async_property import async_property
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
 from ucsschool.kelvin.client import NoObject, ServerError, Session
+from ucsschool.kelvin.client.session import Token
 
 from ..constants import GROUP_LOOKUP_MAX_CONCURRENCY
 from ..errors import KelvinAPIUnavailableError
@@ -27,7 +30,68 @@ KELVIN_API_VERSION = "v2"
 # import framework, far slower than an attribute change.
 KELVIN_TIMEOUT_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TIMEOUT_SECONDS", "60"))
 
+# The client keeps its token on the session and a session lives for one request,
+# so every page view re-authenticated: a password verification against LDAP for
+# a credential Kelvin issues with an hour's life. The token is the service
+# account's, not the request's, so it is shared across requests - but for far
+# less than its life. If Kelvin restarts with a new signing key, a cached token
+# is refused and the client will not know to refresh it, because `Token.is_valid`
+# only looks at the expiry; this window bounds how long that can last.
+KELVIN_TOKEN_REUSE_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TOKEN_REUSE_SECONDS", "300"))
+
 _T = TypeVar("_T")
+
+
+@dataclass
+class _SharedToken:
+    token: Token
+    minted: float
+
+    def usable(self) -> bool:
+        """Still valid to the client, and minted recently enough to trust."""
+        return self.token.is_valid() and time.monotonic() - self.minted < KELVIN_TOKEN_REUSE_SECONDS
+
+
+# Process-wide on purpose: what it saves is exactly the per-request login.
+_shared_token: _SharedToken | None = None
+
+
+def forget_shared_token() -> None:
+    """Drop the shared token, so the next session mints one."""
+    global _shared_token
+    _shared_token = None
+
+
+class _KelvinSession(Session):
+    @override
+    async def request(
+        self, async_request_method: object, url: str, return_json: bool = True, **kwargs: object
+    ) -> str | int | dict[str, object]:
+        # Every Kelvin call, the token login included, passes through here; the client
+        # re-raises network errors and timeouts unchanged, and a 5xx as ServerError.
+        try:
+            return await super().request(async_request_method, url, return_json, **kwargs)
+        except (ServerError, httpx.TransportError) as exc:
+            raise KelvinAPIUnavailableError() from exc
+
+
+class SharedTokenSession(_KelvinSession):
+    """A Kelvin session that reuses the service account's token across requests.
+
+    Only the caching is ours: a miss delegates to the client, which is what
+    knows how to mint one. Two requests missing at once mint twice and the
+    later one wins, which costs what it costs today.
+    """
+
+    @async_property
+    async def token(self) -> str:
+        global _shared_token
+        shared = _shared_token
+        if shared is not None and shared.usable():
+            return shared.token.value
+        value = await super().token
+        _shared_token = _SharedToken(Token.from_str(value), time.monotonic())
+        return value
 
 
 async def fetch_each_by_name(
@@ -64,17 +128,6 @@ class KelvinPersistenceAdapterSettings:
     password: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.password"})
 
 
-class _KelvinSession(Session):
-    @override
-    async def request(
-        self, async_request_method: object, url: str, return_json: bool = True, **kwargs: object
-    ) -> str | int | dict[str, object]:
-        # Every Kelvin call, the token login included, passes through here; the client
-        # re-raises network errors and timeouts unchanged, and a 5xx as ServerError.
-        try:
-            return await super().request(async_request_method, url, return_json, **kwargs)
-        except (ServerError, httpx.TransportError) as exc:
-            raise KelvinAPIUnavailableError() from exc
 
 
 @dataclass
@@ -108,8 +161,10 @@ def enter_session_scope() -> Generator[_SessionHolder]:
 async def kelvin_session_scope() -> AsyncGenerator[None]:
     """Bind one Kelvin session to the work inside, then close it.
 
-    Every adapter in the scope shares it, so a request logs in once however many calls
-    it makes, and no idle connection the server already closed carries to the next one.
+    Every adapter in the scope shares it, so a request opens one set of connections
+    however many calls it makes, and no idle connection the server already closed
+    carries to the next one. The login itself outlives the scope - see
+    ``SharedTokenSession``.
     """
     with enter_session_scope() as holder:
         try:
@@ -174,7 +229,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 kelvin_url=self._settings.url,
                 kelvin_api_version=KELVIN_API_VERSION,
             )
-            holder.session = _KelvinSession(
+            holder.session = SharedTokenSession(
                 self._settings.username,
                 self._settings.password,
                 self._settings.url,
