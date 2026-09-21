@@ -250,8 +250,13 @@ async def get_schools(
     actor_id: str,
     lang: str,
 ) -> SchoolsData:
-    actor = await get_actor(actor_id, users_get_adapter, lang)
-    schools = await schools_get_adapter.get_schools()
+    # This is the first thing a page does, so the actor read sat in front of
+    # everything else. Only the permission check below needs it, and the school
+    # list does not, so the two reads run together and the rest of the request
+    # finds the actor already resolved.
+    actor, schools = await asyncio.gather(
+        get_actor(actor_id, users_get_adapter, lang), schools_get_adapter.get_schools()
+    )
     permissions = await permissions_port.get_permissions(
         actor, [school_to_target(school) for school in schools]
     )
