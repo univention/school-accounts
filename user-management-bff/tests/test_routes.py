@@ -24,7 +24,11 @@ from user_management_bff.errors import (
     PasswordChangeOnNextLoginUnsupportedError,
     PasswordResetRejectedError,
 )
-from user_management_bff.main import app
+from user_management_bff.main import (
+    CORRELATION_ID_HEADER_NAME,
+    CORRELATION_ID_MAX_LENGTH,
+    app,
+)
 from user_management_bff.models import Permission
 from user_management_bff.ports import FastAPIAuthenticationPort
 from user_management_bff.routes import auth_port, render_static
@@ -160,6 +164,13 @@ def test_root_redirects_to_users(test_client: TestClient):
     response = test_client.get(FRONTEND_PREFIX, follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"].endswith("/users")
+
+
+def test_an_oversized_request_id_is_capped(test_client: TestClient):
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", headers={CORRELATION_ID_HEADER_NAME: "x" * 5000}
+    )
+    assert response.headers[CORRELATION_ID_HEADER_NAME] == "x" * CORRELATION_ID_MAX_LENGTH
 
 
 def test_users_list_renders_filter_form(test_client: TestClient):

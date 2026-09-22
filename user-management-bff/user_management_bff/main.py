@@ -62,6 +62,9 @@ app = FastAPI(
 )
 
 CORRELATION_ID_HEADER_NAME = "X-Request-ID"
+# Caps a client-supplied id, as echoed and logged in full. Fits upstream formats uncut
+# (UUID 36, W3C `traceparent` 55), so they still match those systems' logs.
+CORRELATION_ID_MAX_LENGTH = 64
 
 
 # Added first so it runs inside the correlation-id middleware below.
@@ -76,6 +79,7 @@ async def add_correlation_id(request: Request, call_next: RequestResponseEndpoin
     """
 
     correlation_id = request.headers.get(CORRELATION_ID_HEADER_NAME, str(uuid4()))
+    correlation_id = correlation_id[:CORRELATION_ID_MAX_LENGTH]
     correlation_id_ctx_var.set(correlation_id)
 
     with logger.contextualize(correlation_id=correlation_id):
