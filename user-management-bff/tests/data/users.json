@@ -170,7 +170,11 @@
       "last_name": "User",
       "password": null,
       "roles": [
-        "teacher:school:school1"
+        "teacher:school:school1",
+        "school_admin:school:school1",
+        "school_admin:school:school2",
+        "school_admin:school:test_school1",
+        "school_admin:school:test_school2"
       ],
       "school_classes": {
         "school1": [

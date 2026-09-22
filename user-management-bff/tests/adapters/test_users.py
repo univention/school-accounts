@@ -1010,7 +1010,13 @@ class TestFileUsersPersistenceAdapter:
                 schools=["school1"],
                 school_classes={"school1": ["1a", "2b"]},
                 work_groups={},
-                roles=["teacher:school:school1"],
+                roles=[
+                    "teacher:school:school1",
+                    "school_admin:school:school1",
+                    "school_admin:school:school2",
+                    "school_admin:school:test_school1",
+                    "school_admin:school:test_school2",
+                ],
             ),
         )
 
@@ -1047,7 +1053,13 @@ class TestFileUsersPersistenceAdapter:
                 schools=["school1"],
                 school_classes={"school1": ["1a", "2b"]},
                 work_groups={},
-                roles=["teacher:school:school1"],
+                roles=[
+                    "teacher:school:school1",
+                    "school_admin:school:school1",
+                    "school_admin:school:school2",
+                    "school_admin:school:test_school1",
+                    "school_admin:school:test_school2",
+                ],
                 password="new-password",
             ),
         )

@@ -193,6 +193,85 @@ async def _fetch_groups(
     )
 
 
+# The roles the policy lets read every user of a school rather than the users of
+# their own groups - see ``school_user_resource.yaml``. Widening this costs a
+# school-wide read; narrowing it hides rows the policy allows, so the permission
+# filter, not this set, stays the authority on what is shown.
+SCHOOL_WIDE_ROLES = frozenset({"school_admin"})
+
+
+def _sees_whole_school(actor: User, school: str) -> bool:
+    return bool(actor.attributes.role_names_in(school) & SCHOOL_WIDE_ROLES)
+
+
+async def _members_of(
+    users_get_adapter: UsersPersistencePort,
+    school: str,
+    school_classes: list[str],
+    work_groups: list[str],
+) -> list[User]:
+    """The members of the named groups, and none where none are named.
+
+    The port reads the whole school when it is given no group, which is the
+    other branch of ``_reachable_users`` - never this one.
+    """
+    if not (school_classes or work_groups):
+        return []
+    return await users_get_adapter.get_users(school, school_classes, work_groups)
+
+
+async def _wards_of(users_get_adapter: UsersPersistencePort, actor: User) -> list[User]:
+    """The actor's legal wards, whom no group of the actor's need contain."""
+    ward_ids = actor.attributes.legal_wards
+    if not ward_ids:
+        return []
+    found = await users_get_adapter.get_users_by_id(ward_ids)
+    return [found[identifier] for identifier in dict.fromkeys(ward_ids) if identifier in found]
+
+
+async def _reachable_users(
+    users_get_adapter: UsersPersistencePort,
+    actor: User,
+    request_data: UsersGetRequest,
+) -> list[User]:
+    """The users a listing may show, read from the actor's reach, not the school's size.
+
+    Reading the school returns every user it holds and the permission filter then
+    drops all but the few the actor may see - work proportional to the school for
+    a result proportional to one teacher's classes, and on a school of a few
+    thousand it outruns the Kelvin client's timeout. The actor's own groups, plus
+    their wards and themselves, is that same result arrived at by asking for it.
+
+    Deliberately a superset of what the policy grants: it returns every member of
+    those groups, where a teacher may read only the students among them. The
+    permission filter trims it. A subset would hide rows instead, which is why
+    a school-wide role still reads the school.
+    """
+    if request_data.school_classes or request_data.work_groups:
+        return await users_get_adapter.get_users(
+            request_data.school, request_data.school_classes, request_data.work_groups
+        )
+    school = request_data.school
+    if _sees_whole_school(actor, school):
+        return await users_get_adapter.get_users(school, [], [])
+    members, wards = await asyncio.gather(
+        _members_of(
+            users_get_adapter,
+            school,
+            actor.attributes.school_classes.get(school, []),
+            actor.attributes.work_groups.get(school, []),
+        ),
+        _wards_of(users_get_adapter, actor),
+    )
+    listed = {user.id for user in members}
+    # The actor belongs to every group of theirs, so they are already here -
+    # unless they are in none, and a listing that omits the reader reads as an
+    # error. A ward of another school is not part of this school's listing.
+    return members + [
+        user for user in (actor, *wards) if user.id not in listed and school in user.attributes.schools
+    ]
+
+
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
@@ -204,9 +283,7 @@ async def get_users(
     lang: str,
 ) -> UserListData:
     actor = await get_actor(actor_id, users_get_adapter, lang)
-    users = await users_get_adapter.get_users(
-        request_data.school, request_data.school_classes, request_data.work_groups
-    )
+    users = await _reachable_users(users_get_adapter, actor, request_data)
     permissions = await permissions_port.get_permissions(
         actor,
         [user_to_target(user) for user in users],

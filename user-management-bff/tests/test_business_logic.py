@@ -181,6 +181,181 @@ async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Por
     assert presentation.build_user_list(result, "en").rows == []
 
 
+async def _get_users_from(ports: Ports, school: str):
+    return await business_logic.get_users(
+        ports.users,
+        ports.schools,
+        ports.school_classes,
+        ports.work_groups,
+        ports.permissions,
+        ACTOR_ID,
+        UsersGetRequest(school=school, school_classes=[], work_groups=[]),
+        "en",
+    )
+
+
+def _person(
+    identifier: str,
+    *,
+    roles: list[str],
+    schools: list[str],
+    school_classes: dict[str, list[str]] | None = None,
+    work_groups: dict[str, list[str]] | None = None,
+    legal_wards: list[str] | None = None,
+) -> User:
+    return User(
+        id=identifier,
+        attributes=UserAttributes(
+            last_name="L",
+            first_name="F",
+            username=identifier,
+            disabled=False,
+            schools=schools,
+            school_classes=school_classes or {},
+            work_groups=work_groups or {},
+            roles=roles,
+            legal_wards=legal_wards or [],
+        ),
+    )
+
+
+@dataclass
+class _Mocked:
+    """The ports, and the one mock the assertions are about."""
+
+    ports: Ports
+    users: AsyncMock
+
+
+def _mocked_ports(
+    mocker: MockerFixture,
+    actor: User,
+    *,
+    members: list[User],
+    by_id: dict[str, User] | None = None,
+) -> _Mocked:
+    """Ports that answer, so the assertions can be about which reads happened."""
+
+    def _granted(_actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
+        return {
+            target.old_target.id: [Permission.read_last_name] for target in targets if target.old_target
+        }
+
+    users = mocker.AsyncMock()
+    users.get_user.return_value = actor
+    users.get_users.return_value = members
+    users.get_users_by_id.return_value = by_id or {}
+    permissions = mocker.AsyncMock()
+    permissions.get_permissions.side_effect = _granted
+    schools = mocker.AsyncMock()
+    schools.get_schools.return_value = []
+    school_classes = mocker.AsyncMock()
+    school_classes.get_school_classes_by_name.return_value = []
+    work_groups = mocker.AsyncMock()
+    work_groups.get_work_groups_by_name.return_value = []
+    return _Mocked(
+        ports=Ports(
+            users=users,
+            schools=schools,
+            school_classes=school_classes,
+            work_groups=work_groups,
+            permissions=permissions,
+        ),
+        users=users,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_users_reads_the_actors_groups_not_the_school(mocker: MockerFixture):
+    """Reading the school and letting the permission filter discard it is work
+    proportional to the school for a result proportional to one teacher's classes."""
+    actor = _person(
+        "teach",
+        roles=["teacher:school:school1"],
+        schools=["school1"],
+        school_classes={"school1": ["1a"]},
+        work_groups={"school1": ["w1"]},
+    )
+    pupil = _person("pupil", roles=["student:school:school1"], schools=["school1"])
+    mocked = _mocked_ports(mocker, actor, members=[actor, pupil])
+
+    result = await _get_users_from(mocked.ports, "school1")
+
+    assert [user.id for user in result.users] == ["teach", "pupil"]
+    mocked.users.get_users.assert_awaited_once_with("school1", ["1a"], ["w1"])
+
+
+@pytest.mark.asyncio
+async def test_get_users_of_a_school_wide_role_still_reads_the_school(mocker: MockerFixture):
+    """The policy lets a school admin read every user of their school, so narrowing
+    the read to their own classes would hide rows they are allowed to see."""
+    actor = _person(
+        "admin",
+        roles=["school_admin:school:school1"],
+        schools=["school1"],
+        school_classes={"school1": ["1a"]},
+    )
+    mocked = _mocked_ports(mocker, actor, members=[])
+
+    await _get_users_from(mocked.ports, "school1")
+
+    mocked.users.get_users.assert_awaited_once_with("school1", [], [])
+
+
+@pytest.mark.asyncio
+async def test_get_users_lists_the_actors_wards(mocker: MockerFixture):
+    """A guardian may read their ward whatever group the ward is in, so a listing
+    built from the actor's own groups has to add them back."""
+    actor = _person(
+        "parent",
+        roles=["teacher:school:school1"],
+        schools=["school1"],
+        school_classes={"school1": ["1a"]},
+        legal_wards=["ward", "ward", "elsewhere", "gone"],
+    )
+    ward = _person("ward", roles=["student:school:school1"], schools=["school1"])
+    elsewhere = _person("elsewhere", roles=["student:school:school2"], schools=["school2"])
+    mocked = _mocked_ports(mocker, actor, members=[actor], by_id={"ward": ward, "elsewhere": elsewhere})
+
+    result = await _get_users_from(mocked.ports, "school1")
+
+    # Named twice but listed once, a ward of another school is not part of this
+    # school's listing, and one that no longer exists is simply absent.
+    assert [user.id for user in result.users] == ["parent", "ward"]
+    mocked.users.get_users_by_id.assert_awaited_once_with(["ward", "ward", "elsewhere", "gone"])
+
+
+@pytest.mark.asyncio
+async def test_get_users_lists_the_actor_who_is_in_no_group(mocker: MockerFixture):
+    """A listing that omits its own reader reads as an empty school rather than as
+    what it is, and the port would read the whole school if asked for no group."""
+    actor = _person("staffer", roles=["staff:school:school1"], schools=["school1"])
+    mocked = _mocked_ports(mocker, actor, members=[])
+
+    result = await _get_users_from(mocked.ports, "school1")
+
+    assert [user.id for user in result.users] == ["staffer"]
+    mocked.users.get_users.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_users_of_a_school_the_actor_has_nothing_in_lists_nobody(mocker: MockerFixture):
+    """A deep link can name any school; one the actor does not reach is empty, not
+    the whole school."""
+    actor = _person(
+        "teach",
+        roles=["teacher:school:school1"],
+        schools=["school1"],
+        school_classes={"school1": ["1a"]},
+    )
+    mocked = _mocked_ports(mocker, actor, members=[])
+
+    result = await _get_users_from(mocked.ports, "school2")
+
+    assert result.users == []
+    mocked.users.get_users.assert_not_awaited()
+
+
 # ---------------------------------------------------------------------------
 # get_schools / get_school_classes / get_work_groups
 # ---------------------------------------------------------------------------

@@ -37,6 +37,18 @@ class UserAttributes(BaseModel):
     birthday: datetime.date | None = None
     expiration_date: datetime.date | None = None
 
+    def role_names_in(self, school: str) -> set[str]:
+        """The UCS@school role names this user holds in ``school``.
+
+        A role arrives as a ``<name>:school:<school>`` triple; anything shaped
+        otherwise names a context this app does not model.
+        """
+        return {
+            parts[0]
+            for role in self.roles
+            if len(parts := role.split(":")) == 3 and parts[1] == "school" and parts[2] == school
+        }
+
 
 class User(BaseModel):
     id: str
@@ -82,6 +94,12 @@ class WorkGroup(SchoolClass):
 
 
 class UsersGetRequest(BaseModel):
+    """Which users a listing asks for.
+
+    Naming no group does not mean the whole school: it means everything the
+    actor reaches, which for most actors is the members of their own groups.
+    """
+
     school: str
     school_classes: list[str]
     work_groups: list[str]
