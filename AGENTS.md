@@ -306,15 +306,6 @@ beyond having `docker` (>= 25) installed.
 - `dev/dev_run.sh pre-commit run [-a]` — runs the pre-commit suite (see § Testing and Validation).
 - `dev/.env` is created from `dev/.env.example` on first run and is **git-ignored** — treat any
   `dev/.env*` file other than `.env.example` as local/untracked, never edit or commit it.
-- Product tests: the `dev/tests/product-tests/` project (a separate Playwright-driven Python project,
-  run against a fully installed instance) was **removed in `ff48630`**; a replacement is planned. Until
-  it lands, these references point at nothing — expect them to match no files rather than to work, and
-  reuse them when the new project arrives instead of reading them as live configuration:
-  - `.pre-commit-config.yaml` — a second `uv-lock` hook whose `files:` never matches, and exclude
-    patterns for the deleted baseline, `uv.lock` and `.python-version`.
-  - `REUSE.toml` — four paths under `dev/tests/product-tests/`.
-  - `dev/tests/playwright_product_test.sh` and `dev/tests/playwright2gitlab_junit.py` — orphaned; the
-    first `cd`s into the deleted directory, and nothing invokes either.
 - The frontend tests (`user-management-bff/tests/frontend/`) need a deployment to drive, so they are
   excluded from the normal backend test loop by the `frontend` marker. CI stands up their stack in
   the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, via

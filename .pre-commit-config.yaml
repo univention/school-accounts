@@ -8,7 +8,7 @@ repos:
   rev: v4.5.0
   hooks:
     - id: check-added-large-files
-      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$'
+      exclude: '^user-management-bff/basedpyright-baseline\.json$'
     - id: check-json
     - id: check-xml
     - id: check-yaml
@@ -19,7 +19,7 @@ repos:
       exclude: '^user-management-bff/user_management_bff/static/vendor/'
     - id: pretty-format-json
       args: [--autofix]
-      exclude: '^(user-management-bff|dev/tests/product-tests)/basedpyright-baseline\.json$|^user-management-bff/user_management_bff/static/vendor/'
+      exclude: '^user-management-bff/basedpyright-baseline\.json$|^user-management-bff/user_management_bff/static/vendor/'
 - repo: local
   hooks:
     - id: bff-translation-check
@@ -96,9 +96,6 @@ repos:
     - id: uv-lock
       files: user-management-bff/pyproject.toml
       args: [ --project, user-management-bff ]
-    - id: uv-lock
-      files: dev/tests/product-tests/pyproject.toml
-      args: [ --project, dev/tests/product-tests ]
 - repo: https://git.knut.univention.de/univention/infrastructure/pre-commit-hooks/pre-commit-copyright
   rev: 0.2.1
   hooks:
@@ -132,8 +129,6 @@ repos:
                 |^dev/data/.*[.]json$\
                 |^dev/tests/.*[.]json$\
                 |^dev/tests/.*[.]csv$\
-                |^dev/tests/product-tests/uv[.]lock$\
-                |^dev/tests/product-tests/[.]python-version$\
                 |^docs/ucsschool-user-management-module/spelling_wordlist$\
                 |^docs/ucsschool-user-management-module/_static/.*[.]pdf$\
                 |^user-management-bff/uv[.]lock$\

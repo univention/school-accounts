@@ -9,8 +9,6 @@ SPDX-PackageDownloadLocation = "https://www.univention.com/products/ucsschool/"
 # ENSURE this is in sync with the reuse annotate pre-commit hook
 [[annotations]]
 path = [
-    "/dev/tests/product-tests/basedpyright-baseline.json",
-    "/dev/tests/product-tests/pyrightconfig.json",
     "AGENTS.md",
     "appcenter-management/files/**.json",
     "basedpyright-baseline.json",
@@ -19,8 +17,6 @@ path = [
     "dev/data/fake-machine.secret",
     "dev/tests/**.csv",
     "dev/tests/**.json",
-    "dev/tests/product-tests/.python-version",
-    "dev/tests/product-tests/uv.lock",
     "docs/ucsschool-user-management-module/_static/**.pdf",
     "docs/ucsschool-user-management-module/spelling_wordlist",
     "renovate.json",
