@@ -426,6 +426,19 @@ def test_users_deep_link_preselects_filters(test_client: TestClient, group: str)
     assert f'value="{group}" selected' in body
 
 
+def test_users_deep_link_to_an_empty_work_group_keeps_the_selection(test_client: TestClient):
+    """A work group with no members still exists, so the filter stays and the table
+    is empty - the one case where listing nobody is not an answer in itself, and
+    the only one that still costs a lookup of its own."""
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school2", "group": "work_group:w1a"}
+    )
+    assert response.status_code == 200
+    body = response.text
+    assert 'value="work_group:w1a" selected' in body
+    assert "Select a class or work group to list its users." not in body
+
+
 @pytest.mark.parametrize(
     "group",
     [

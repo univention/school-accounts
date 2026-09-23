@@ -396,17 +396,21 @@ class _Listing:
             self.lang,
         )
 
-    async def holds(self, selection: "_GroupSelection") -> bool:
+    async def holds(self, selection: "_GroupSelection", data: presentation.UserListData) -> bool:
         """Whether the school still holds the selected group.
 
         A deep link outlives the group it names, and for a moment after a school
         change the results request still carries the previous school's
-        selection. Asked by name, so it is one lookup when this request builds
-        no control, and nothing at all when it does - the whole-school read the
-        control needs already answers it.
+        selection. A group that listed somebody plainly holds, so only an empty
+        result has to ask - and that read is the same group the listing just
+        fetched for its members. Asked by name, so it is one lookup when this
+        request builds no control, and nothing at all when it does - the
+        whole-school read the control needs already answers it.
         """
         if not self.known_school:
             return False
+        if data.users:
+            return True
         names = [selection.item_id]
         if selection.kind == presentation.SCHOOL_CLASS_KIND:
             return bool(await self.school_classes.get_school_classes_by_name(self.school, names))
@@ -423,11 +427,12 @@ async def _resolve_listing(
     same thing the request caches collapse it.
     """
     if selection.kind:
-        sections, usable, data = await asyncio.gather(
-            listing.group_sections(selection), listing.holds(selection), listing.users_of(selection)
-        )
-        if usable:
-            return sections, data, selection
+        # Started first so it runs alongside the listing; the listing is awaited
+        # first because whether the group holds is read off what it returned.
+        sections = asyncio.ensure_future(listing.group_sections(selection))
+        data = await listing.users_of(selection)
+        if await listing.holds(selection, data):
+            return await sections, data, selection
         logger.debug(
             "Dropped a group filter the selected school does not have.",
             school=listing.school,
@@ -436,7 +441,7 @@ async def _resolve_listing(
         )
         # Whatever the speculative read returned answers a question nobody
         # asked, so it goes with the selection.
-        return sections, None, _GroupSelection()
+        return await sections, None, _GroupSelection()
     if selection.lists_users:
         sections, data = await asyncio.gather(
             listing.group_sections(selection), listing.users_of(selection)
