@@ -6,9 +6,9 @@ These log in as somebody other than the default account, so they only run where
 the suite seeded those accounts itself -- `--kelvin_url`. Case ids refer to
 `RAM-product-test-matrix.md` in `univention/dev/internal/product-tests/ucsschool`.
 
-Most of that section is out of reach until the list view grows its selection and
-the password reset dialog: CP0017-CP0029 are all phrased in terms of checkboxes
-that do not exist yet.
+Most of that section is out of reach: CP0009-CP0020 create, edit and delete
+users, which the UI does not offer. The password reset has its own module,
+`test_password_reset.py`.
 """
 
 from __future__ import annotations
