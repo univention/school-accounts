@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
-from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.school_classes
 from user_management_bff.adapters.base import KelvinPersistenceAdapterSettings
@@ -97,6 +96,58 @@ class TestKelvinSchoolClassesPersistenceAdapter:
         assert await adapter.get_school_classes_by_name("school1", []) == []
         resource.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_names_are_asked_for_in_one_search(
+        self,
+        adapter: KelvinSchoolClassesPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        make_kelvin_school_from_data: Callable[[dict[str, str]], MagicMock],
+    ):
+        """Resolving the groups of a user list is a request per school, not per group."""
+        searched: list[list[str]] = []
+
+        class _Resource:
+            def __init__(self, session: Any = None) -> None:
+                pass
+
+            def search(self, school: str, name: list[str]) -> Any:
+                searched.append(name)
+
+                async def _gen() -> Any:
+                    for wanted in name:
+                        yield make_kelvin_school_from_data(
+                            {"id": wanted, "display_name": wanted.upper()}
+                        )
+
+                return _gen()
+
+        monkeypatch.setattr(
+            user_management_bff.adapters.school_classes, "SchoolClassResource", _Resource
+        )
+        await adapter.configure(dummy_settings)
+
+        result = await adapter.get_school_classes_by_name("school1", ["1a", "2b"])
+
+        assert [school_class.id for school_class in result] == ["1a", "2b"]
+        assert searched == [["1a", "2b"]]
+
+    @pytest.mark.asyncio
+    async def test_a_wildcard_name_is_never_asked_for(
+        self,
+        adapter: KelvinSchoolClassesPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+    ):
+        """Kelvin reads ``*`` as a wildcard, so such a value would widen the search
+        rather than name a group - and nothing is left to ask for."""
+        resource = mocker.MagicMock()
+        monkeypatch.setattr(user_management_bff.adapters.school_classes, "SchoolClassResource", resource)
+        await adapter.configure(dummy_settings)
+
+        assert await adapter.get_school_classes_by_name("school1", ["*"]) == []
+
 
 class TestFileSchoolClassesPersistenceAdapter:
     @pytest.fixture
@@ -173,13 +224,6 @@ def school_classes_adapter(
                 # with work the real service does for it.
                 for name in CONTRACT_SCHOOL_CLASSES.get(school, []):
                     yield make_kelvin_group_from_data(name, None)
-
-            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
-                # The real service answers a single-group URL with 404, which the
-                # client raises as NoObject.
-                if name not in CONTRACT_SCHOOL_CLASSES.get(school, []):
-                    raise NoObject(f"No group {name!r} in {school!r}.", status=404)
-                return make_kelvin_group_from_data(name, None)
 
         patch_kelvin_resource(
             user_management_bff.adapters.school_classes, "SchoolClassResource", MockResource()

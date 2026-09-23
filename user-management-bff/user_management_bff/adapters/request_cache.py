@@ -97,8 +97,8 @@ class _GroupCache(Generic[_Group]):
         if missing:
             # Reading the whole school already answers for a name still missing
             # afterwards: it does not exist, and asking again would not change
-            # that - including while that read is still in flight, which is what
-            # keeps the table off the per-name lookups the sidebar is superseding.
+            # that. Otherwise the names are asked for directly, which is one
+            # request however many of them there are.
             if self._complete.started(school):
                 await self.all_of(school)
             else:

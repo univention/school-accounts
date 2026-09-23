@@ -13,7 +13,7 @@ from ucsschool.kelvin.client import SchoolClassResource
 
 from ..models import SchoolClass
 from ..ports import SchoolClassesPersistencePort
-from .base import KelvinPersistenceBaseAdapter, fetch_each_by_name
+from .base import KelvinPersistenceBaseAdapter, fetch_groups_by_name
 
 
 class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, KelvinPersistenceBaseAdapter):
@@ -41,10 +41,13 @@ class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, Kelvin
         if not names:
             return []
         resource = SchoolClassResource(session=self.kelvin_session)
-        fetched = await fetch_each_by_name(
-            lambda name: resource.get(school=school, name=name), names, "school_class", school
+        fetched = await fetch_groups_by_name(
+            lambda chunk: resource.search(school=school, name=chunk),
+            names,
+            "school_class",
+            school,
         )
-        return [self._school_class(school_class, school) for school_class in fetched]
+        return [self._school_class(group, school) for group in fetched]
 
 
 @dataclass

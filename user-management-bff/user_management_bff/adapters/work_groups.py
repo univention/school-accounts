@@ -13,7 +13,7 @@ from ucsschool.kelvin.client import WorkGroupResource
 
 from ..models import WorkGroup
 from ..ports import WorkGroupsPersistencePort
-from .base import KelvinPersistenceBaseAdapter, fetch_each_by_name
+from .base import KelvinPersistenceBaseAdapter, fetch_groups_by_name
 
 
 class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersistenceBaseAdapter):
@@ -37,10 +37,13 @@ class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersis
         if not names:
             return []
         resource = WorkGroupResource(session=self.kelvin_session)
-        fetched = await fetch_each_by_name(
-            lambda name: resource.get(school=school, name=name), names, "work_group", school
+        fetched = await fetch_groups_by_name(
+            lambda chunk: resource.search(school=school, name=chunk),
+            names,
+            "work_group",
+            school,
         )
-        return [self._work_group(work_group, school) for work_group in fetched]
+        return [self._work_group(group, school) for group in fetched]
 
 
 @dataclass

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
-from ucsschool.kelvin.client import NoObject
 
 import user_management_bff.adapters.school_classes
 import user_management_bff.adapters.work_groups
@@ -175,13 +174,6 @@ def work_groups_adapter(
                 # with work the real service does for it.
                 for name in CONTRACT_WORK_GROUPS.get(school, []):
                     yield make_kelvin_group_from_data(name, None)
-
-            async def get(self, *_args: Any, school: str = "", name: str = "", **_kwargs: Any):
-                # The real service answers a single-group URL with 404, which the
-                # client raises as NoObject.
-                if name not in CONTRACT_WORK_GROUPS.get(school, []):
-                    raise NoObject(f"No group {name!r} in {school!r}.", status=404)
-                return make_kelvin_group_from_data(name, None)
 
         patch_kelvin_resource(
             user_management_bff.adapters.work_groups, "WorkGroupResource", MockResource()

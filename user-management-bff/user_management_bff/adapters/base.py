@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-import asyncio
 import os
 import time
 from abc import ABC
-from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Type, TypeVar
+from typing import Protocol, Type, TypeVar
+from urllib.parse import quote
 
 import httpx
 from async_property import async_property
@@ -16,10 +16,9 @@ from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
-from ucsschool.kelvin.client import NoObject, ServerError, Session
+from ucsschool.kelvin.client import ServerError, Session
 from ucsschool.kelvin.client.session import Token
 
-from ..constants import GROUP_LOOKUP_MAX_CONCURRENCY
 from ..errors import KelvinAPIUnavailableError
 
 # this app supports the Kelvin v2 API only, so the version is pinned here.
@@ -94,31 +93,26 @@ class SharedTokenSession(_KelvinSession):
         return value
 
 
-async def fetch_each_by_name(
-    fetch_one: Callable[[str], Awaitable[_T]], names: list[str], kind: str, school: str
-) -> list[_T]:
-    """Fetch each name concurrently, dropping the ones that no longer exist.
+# A whole selection travels as repeated ``name`` parameters in one request line,
+# and that line is capped - apache's LimitRequestLine defaults to 8190 bytes and
+# nothing in front of Kelvin raises it. Budgeted for the names alone, leaving the
+# rest to the collection URL.
+SEARCH_NAMES_BUDGET_BYTES = 6000
 
-    Kelvin has no bulk lookup, so a set of specific groups is one request each.
-    The semaphore is this call's own: it keeps a single school's lookups from
-    becoming a burst, not the whole request's.
-    """
-    semaphore = asyncio.Semaphore(GROUP_LOOKUP_MAX_CONCURRENCY)
 
-    async def _fetch(name: str) -> _T | None:
-        async with semaphore:
-            try:
-                return await fetch_one(name)
-            except NoObject:
-                # Deleted between reading the user that references it and now.
-                # The port promises to skip it rather than fail the whole list.
-                logger.warning(
-                    "Ignoring a group that no longer exists.", kind=kind, school=school, name=name
-                )
-                return None
-
-    fetched = await asyncio.gather(*(_fetch(name) for name in names))
-    return [group for group in fetched if group is not None]
+def name_chunks(identifiers: list[str]) -> Iterator[list[str]]:
+    """Split ``identifiers`` into the largest groups that still fit one request line."""
+    chunk: list[str] = []
+    used = 0
+    for identifier in identifiers:
+        cost = len("&name=") + len(quote(identifier, safe=""))
+        if chunk and used + cost > SEARCH_NAMES_BUDGET_BYTES:
+            yield chunk
+            chunk, used = [], 0
+        chunk.append(identifier)
+        used += cost
+    if chunk:
+        yield chunk
 
 
 @dataclass
@@ -240,3 +234,43 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
             # `Session.client` raises "Session is closed." until this runs.
             holder.session.open()
         return holder.session
+
+
+class _Named(Protocol):
+    """A Kelvin object a group lookup keys by."""
+
+    name: str
+
+
+_N = TypeVar("_N", bound=_Named)
+
+
+async def fetch_groups_by_name(
+    search: Callable[[list[str]], AsyncIterator[_N]],
+    names: list[str],
+    kind: str,
+    school: str,
+) -> list[_N]:
+    """The named groups of one school, in the order asked for, skipping what is gone.
+
+    One search names a page of groups at once, so resolving the display names of
+    a user list costs a request per school instead of a request per group - on a
+    class of 24 users that was 32 of the 35 requests a click made. This needs a
+    Kelvin whose v2 group collections take a repeated ``name``; an older one
+    answers for the last value alone, which the app declares a dependency
+    against rather than detects.
+    """
+    # Kelvin reads `*` in a name as a wildcard, so one arriving here would widen
+    # the search rather than name a group. Dropped as the user search drops it.
+    wanted = list(dict.fromkeys(name for name in names if name and "*" not in name))
+    if not wanted:
+        return []
+    found: dict[str, _N] = {}
+    for chunk in name_chunks(wanted):
+        async for group in search(chunk):
+            found[group.name] = group
+    if missing := [name for name in wanted if name not in found]:
+        # Deleted between reading the user that references it and now. The port
+        # promises to skip such a name rather than fail the whole list.
+        logger.warning("Ignoring groups that no longer exist.", kind=kind, school=school, names=missing)
+    return [found[name] for name in names if name in found]

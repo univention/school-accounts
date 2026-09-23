@@ -2926,8 +2926,8 @@
             {
                 "code": "reportDeprecated",
                 "range": {
-                    "startColumn": 19,
-                    "endColumn": 23,
+                    "startColumn": 29,
+                    "endColumn": 33,
                     "lineCount": 1
                 }
             },
@@ -3074,8 +3074,8 @@
             {
                 "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 25,
-                    "endColumn": 37,
+                    "startColumn": 26,
+                    "endColumn": 41,
                     "lineCount": 1
                 }
             }
@@ -3352,8 +3352,8 @@
             {
                 "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 25,
-                    "endColumn": 37,
+                    "startColumn": 26,
+                    "endColumn": 41,
                     "lineCount": 1
                 }
             },

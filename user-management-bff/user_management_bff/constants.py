@@ -29,12 +29,6 @@ PASSWORD_RESET_MAX_CONCURRENCY = int(
     os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY", "5")
 )
 
-# Resolving the group display names of a user list fetches each referenced group
-# on its own, so the payload stays proportional to what is rendered instead of to
-# the size of the school. Bounds how many of those lookups one school has in
-# flight at once (the Kelvin client creates a task limiter but never applies it).
-GROUP_LOOKUP_MAX_CONCURRENCY = int(os.environ.get("USER_MANAGEMENT__GROUP_LOOKUP_MAX_CONCURRENCY", "10"))
-
 # Number of max users/accounts that can be reset in a single password reset request
 PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS", "200"))
 
@@ -44,7 +38,7 @@ PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET
 # cost 4 s and 7 kB. The row names this many groups of each kind and counts the
 # rest, and the lookups are capped with it: a name the table will not show is a
 # name nobody has to resolve. High enough that an ordinary teacher's classes all
-# fit.
+# fit, and short enough that one row cannot fill a search on its own.
 USER_LIST_GROUPS_SHOWN = 10
 
 # Cut-of number for listing the users in the confirmation dialog
