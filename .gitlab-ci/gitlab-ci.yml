@@ -326,7 +326,7 @@ integration-tests:
     when: always
     paths:
       - primary_join.log
-      - "*_producttest_traces"
+      - "*_frontend_traces"
       - "*_kelvin_http.log"
     reports:
       junit: "*junit.xml"
