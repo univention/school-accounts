@@ -46,7 +46,6 @@ user_management_bff/
                              loading, supported languages
   correlation_id.py          request correlation-id ContextVar, read by the logging middleware
   logging.py                 loguru configuration
-  utils.py                  misc utils (currently just OAuth2 discovery via get_oauth2_settings)
   errors.py                 domain exceptions (PermissionsError, ObjectNotFoundError, ...)
   lang.py                   gettext-based i18n; _() translation helper, N_() extraction marker
   templates/
@@ -65,7 +64,7 @@ tests/
   data/                      small, test-owned JSON fixtures (mirror of dev/data/*.json shape)
   test_routes.py             route/HTTP-level tests: TestClient + dependency_overrides, assert on
                              rendered HTML, hx-* attributes, and response headers
-  test_adapter_registry.py, test_business_logic.py, test_presentation.py, test_utils.py, test_lang.py, ...
+  test_adapter_registry.py, test_business_logic.py, test_presentation.py, test_lang.py, ...
 ```
 
 ## Architecture and Dependency Boundaries
