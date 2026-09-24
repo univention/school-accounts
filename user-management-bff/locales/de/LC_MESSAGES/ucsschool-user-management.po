@@ -35,6 +35,9 @@ msgstr "Aktiviert"
 msgid "All classes and work groups"
 msgstr "Alle Klassen und Arbeitsgruppen"
 
+msgid "An unexpected error occurred. Please try again later."
+msgstr "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut."
+
 msgid "Cancel"
 msgstr "Abbrechen"
 

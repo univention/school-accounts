@@ -194,8 +194,6 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 
 @app.exception_handler(KelvinAPIUnavailableError)
 async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavailableError):
-    # Without this the failure is a bare 500, and htmx swaps nothing on a 5xx: the
-    # user sees the spinner stop and no message at all.
     logger.opt(exception=exc).error(
         "The user directory did not answer; the request could not be completed. Check that "
         "the Kelvin REST API is running and reachable from this host, and its log for this error.",
@@ -211,3 +209,15 @@ async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavail
         ),
         502,
     )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, _exc: Exception):
+    # Starlette re-raises after this, and uvicorn logs the traceback with the request id.
+    lang = get_lang(request)
+    response = _html_error(
+        request, _("An unexpected error occurred. Please try again later.", lang=lang), 500
+    )
+    if (correlation_id := correlation_id_ctx_var.get(None)) is not None:
+        response.headers[CORRELATION_ID_HEADER_NAME] = correlation_id
+    return response

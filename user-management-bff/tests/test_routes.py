@@ -174,6 +174,32 @@ def test_an_oversized_request_id_is_capped(test_client: TestClient):
     assert response.headers[CORRELATION_ID_HEADER_NAME] == "x" * CORRELATION_ID_MAX_LENGTH
 
 
+@pytest.mark.parametrize(
+    ("headers", "status_code", "retarget"),
+    [({}, 500, None), ({"HX-Request": "true"}, 200, "#toast-region")],
+    ids=["page", "htmx"],
+)
+def test_an_unhandled_error_still_carries_the_request_id(
+    test_client: TestClient,
+    mocker: MockerFixture,
+    headers: dict[str, str],
+    status_code: int,
+    retarget: str | None,
+):
+    mocker.patch.object(FileUsersPersistenceAdapter, "get_users", side_effect=RuntimeError("boom"))
+    # The session client's lifespan already configured the adapters; this one only stops re-raising.
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.get(
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "school1"},
+        headers={**headers, CORRELATION_ID_HEADER_NAME: "abc"},
+    )
+    assert response.status_code == status_code
+    assert response.headers.get("HX-Retarget") == retarget
+    assert response.headers[CORRELATION_ID_HEADER_NAME] == "abc"
+    assert "An unexpected error occurred" in response.text
+
+
 def test_users_list_renders_filter_form(test_client: TestClient):
     response = test_client.get(f"{FRONTEND_PREFIX}/users")
     assert response.status_code == 200
