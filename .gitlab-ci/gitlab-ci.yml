@@ -58,20 +58,6 @@ include:
       build_args: |
         commit=$CI_COMMIT_SHA
         date=$CI_JOB_STARTED_AT
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
-    inputs:
-      job_name: "build_keycloak_image"
-      stage: prepare
-      # The frontend tests run against a real login, so the image backing the
-      # Keycloak service container is built for every pipeline, like the dev image.
-      job_rules:
-        - when: on_success
-      build_context: "$CI_PROJECT_DIR/dev"
-      dockerfile_path: "$CI_PROJECT_DIR/dev/Keycloak.Dockerfile"
-      image_name: "$KEYCLOAK_IMAGE_NAME"
-      registry_image: "$CI_REGISTRY_IMAGE/$KEYCLOAK_IMAGE_NAME"
-      image_tag: "$KEYCLOAK_IMAGE_TAG"
-      image_tag_env_name: "KEYCLOAK_IMAGE_TAG"
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.16.2
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
@@ -104,8 +90,6 @@ variables:
   DOCS_DIR: "docs/$DOC_TARGET_NAME"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
-  KEYCLOAK_IMAGE_NAME: ci-keycloak
-  KEYCLOAK_IMAGE_TAG: $CI_REGISTRY_IMAGE/$KEYCLOAK_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
   UV_CACHE_DIR: .cache/uv
   # Keep in sync with the version/checksum used in dev/docker-compose.yaml and
@@ -129,9 +113,6 @@ build_dev_image:
   tags: ["dae-m"]
 
 build_docker_image_user_management:
-  tags: ["dae-m"]
-
-build_keycloak_image:
   tags: ["dae-m"]
 
 build_appcenter_files:
@@ -229,22 +210,29 @@ bff-test:
 # Kelvin and Cerbos are not part of it; those stay with the integration tests.
 bff-frontend-test:
   stage: test
-  needs: [build_dev_image, build_keycloak_image]
+  needs: [build_dev_image]
   tags: ["dae-m"]
   image: $DEV_IMAGE_TAG
   services:
-    - name: $KEYCLOAK_IMAGE_TAG
+    # Keep in sync with the base image of dev/Keycloak.Dockerfile. Nothing has to
+    # be built on top of it: `start` without `--optimized` builds Keycloak from
+    # the KC_* variables below when the container boots.
+    - name: docker.software-univention.de/keycloak-keycloak:26.6.3-ucs1@sha256:c469e88a2cad9fdd087303f2747dce185d49becc08f7e594a285f51ba01d0f15
       alias: keycloak
       command: ["start"]
       variables:
-        # The image is built for the compose stack, where Keycloak is addressed
-        # through the proxy. Here the issuer has to match KEYCLOAK_URL below or
-        # the redirect chain breaks, and both say localhost: these runners create
-        # service containers in host network mode, where the `keycloak` alias
-        # never resolves and the service is reachable on the job's own loopback.
-        # Spelling the path out is required either way: a hostname URL without
-        # one overrides KC_HTTP_RELATIVE_PATH, and the discovery document then
-        # advertises endpoints that are not served.
+        KC_DB: dev-file
+        KC_HTTP_ENABLED: "true"
+        KC_HTTP_RELATIVE_PATH: /keycloak
+        KEYCLOAK_ADMIN: admin
+        KEYCLOAK_ADMIN_PASSWORD: admin
+        # The issuer has to match KEYCLOAK_URL below or the redirect chain breaks,
+        # and both say localhost: these runners create service containers in host
+        # network mode, where the `keycloak` alias never resolves and the service
+        # is reachable on the job's own loopback. Spelling the path out is
+        # required either way: a hostname URL without one overrides
+        # KC_HTTP_RELATIVE_PATH, and the discovery document then advertises
+        # endpoints that are not served.
         KC_HOSTNAME: "http://localhost:8080/keycloak"
   variables:
     UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
