@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.frontend
 def test_login_through_keycloak_lands_on_the_user_list(
-    fresh_browser: Callable[..., Page], frontend_credentials: tuple[str, str]
+    fresh_browser: Callable[[], Page], frontend_credentials: tuple[str, str]
 ) -> None:
     """G0031: logging in happens via Keycloak and lands on the list view."""
     page = fresh_browser()
@@ -35,7 +35,7 @@ def test_login_through_keycloak_lands_on_the_user_list(
     strict=True,
 )
 def test_a_filtered_deep_link_survives_the_login(
-    fresh_browser: Callable[..., Page], frontend_credentials: tuple[str, str], school_id: str
+    fresh_browser: Callable[[], Page], frontend_credentials: tuple[str, str], school_id: str
 ) -> None:
     """G0032/G0039: a deep link is reopened after the login, filters and all."""
     page = fresh_browser()

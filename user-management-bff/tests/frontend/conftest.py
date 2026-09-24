@@ -98,6 +98,12 @@ def sign_in(page: Page, username: str, password: str, start: str = f"{FRONTEND_P
     expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
 
 
+def open_page(page: Page, path: str) -> Page:
+    page.goto(path)
+    expect(page).to_have_url(re.compile(re.escape(path)))
+    return page
+
+
 @pytest.fixture(scope="session")
 def authenticated_state(
     browser: Browser, base_url: str, frontend_credentials: tuple[str, str]
@@ -123,15 +129,13 @@ def context(new_context: CreateContextCallback, authenticated_state: StorageStat
 
 @pytest.fixture
 def signed_in(page: Page) -> Page:
-    page.goto(f"{FRONTEND_PREFIX}/users")
-    expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
-    return page
+    return open_page(page, f"{FRONTEND_PREFIX}/users")
 
 
 @pytest.fixture
-def fresh_browser(new_context: CreateContextCallback) -> Callable[..., Page]:
-    def _open(locale: str = "en-US") -> Page:
-        return new_context(locale=locale).new_page()
+def fresh_browser(new_context: CreateContextCallback) -> Callable[[], Page]:
+    def _open() -> Page:
+        return new_context(locale="en-US").new_page()
 
     return _open
 
@@ -142,15 +146,13 @@ def open_in_language(
 ) -> Callable[[str], Page]:
     def _open(language: str) -> Page:
         page = new_context(locale=language, storage_state=authenticated_state).new_page()
-        page.goto(f"{FRONTEND_PREFIX}/users")
-        expect(page).to_have_url(re.compile(rf"{re.escape(FRONTEND_PREFIX)}/users"))
-        return page
+        return open_page(page, f"{FRONTEND_PREFIX}/users")
 
     return _open
 
 
 @pytest.fixture
-def sign_in_as(fresh_browser: Callable[..., Page]) -> Callable[[str, str], Page]:
+def sign_in_as(fresh_browser: Callable[[], Page]) -> Callable[[str, str], Page]:
     def _sign_in_as(username: str, password: str) -> Page:
         page = fresh_browser()
         sign_in(page, username, password)
