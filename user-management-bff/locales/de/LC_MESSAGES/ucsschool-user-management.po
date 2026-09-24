@@ -112,9 +112,6 @@ msgstr "Keine Schulen gefunden."
 msgid "No users found."
 msgstr "Keine Benutzer gefunden."
 
-msgid "No users selected"
-msgstr "Keine Benutzer ausgewählt"
-
 msgid "None of the selected accounts can have their password reset by you."
 msgstr ""
 "Sie dürfen für keines der ausgewählten Konten das Passwort zurücksetzen."

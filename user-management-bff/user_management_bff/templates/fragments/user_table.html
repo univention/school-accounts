@@ -20,7 +20,6 @@ SPDX-License-Identifier: AGPL-3.0-only
     {# Outside the scrolling region, so the button stays reachable. #}
     <u-hstack justify="between" align="center">
       <span aria-live="polite">
-        <span x-show="selected === 0">{{ _("No users selected") }}</span>
         {# In a data attribute, not inline: a `| tojson` string starts with a
            double quote, which closes the attribute and leaves x-text empty. #}
         <span

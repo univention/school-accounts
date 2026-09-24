@@ -34,14 +34,12 @@ def test_ticking_a_user_counts_the_selection_and_enables_the_reset(
 ) -> None:
     list_school(school)
     button = signed_in.locator("#selection-form").get_by_role("button", name="Reset password")
-    # Visibility, not text: x-show hides the span but keeps its text in the DOM.
-    expect(signed_in.locator("#selection-form").get_by_text("No users selected")).to_be_visible()
     expect(button).to_be_disabled()
 
     tick(signed_in, listed_user)
 
+    # Visibility, not text: x-show hides the span but keeps its text in the DOM.
     expect(signed_in.locator("#selection-form").get_by_text("1 users selected")).to_be_visible()
-    expect(signed_in.locator("#selection-form").get_by_text("No users selected")).to_be_hidden()
     expect(button).to_be_enabled()
 
 
