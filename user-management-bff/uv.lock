@@ -867,17 +867,13 @@ wheels = [
 [[package]]
 name = "kelvin-rest-api-client"
 version = "2.5.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://git.knut.univention.de/univention/dev/libraries/kelvin-rest-api-client.git?rev=a6a1d3864248790bcdb4c2f503b1e0b221dfef97#a6a1d3864248790bcdb4c2f503b1e0b221dfef97" }
 dependencies = [
     { name = "async-property" },
     { name = "httpx" },
     { name = "lazy-object-proxy" },
     { name = "pyjwt" },
     { name = "tenacity" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/99/87/870a1a0de28ed9819f0321eeb58aa3f5104fd541b3c539d20828d8b0a46b/kelvin_rest_api_client-2.5.0.tar.gz", hash = "sha256:dc39fe7c6cb7d76876f7b76fbbc421eb1fa57765a6c61e1eaee3d130bf1894b0", size = 58886, upload-time = "2026-08-31T12:24:22.368Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/76/266fec599f88fc0e0949042111bb1650c69579616f2bd747b09134fb37eb/kelvin_rest_api_client-2.5.0-py3-none-any.whl", hash = "sha256:7ae394309b06e51e3f6b06e5602dc8a1c8af55fca03886501d41903057bcae23", size = 22820, upload-time = "2026-08-31T12:24:23.71Z" },
 ]
 
 [[package]]
@@ -1797,7 +1793,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=25.1.0" },
     { name = "itsdangerous", specifier = ">=2.1.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
-    { name = "kelvin-rest-api-client", specifier = ">=2.5.0" },
+    { name = "kelvin-rest-api-client", git = "https://git.knut.univention.de/univention/dev/libraries/kelvin-rest-api-client.git?rev=a6a1d3864248790bcdb4c2f503b1e0b221dfef97" },
     { name = "lazy-object-proxy", specifier = ">=1.10.0" },
     { name = "loguru", specifier = ">=0.7.2" },
     { name = "orjson", specifier = ">=3.9.12" },

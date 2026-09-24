@@ -27,7 +27,9 @@ class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersis
 
     @override
     async def get_work_groups(self, school: str) -> list[WorkGroup]:
-        kelvin_work_groups = WorkGroupResource(session=self.kelvin_session).search(school=school)
+        kelvin_work_groups = WorkGroupResource(session=self.kelvin_session).search(
+            school=school, exclude="users"
+        )
         work_groups = [self._work_group(work_group, school) async for work_group in kelvin_work_groups]
         logger.debug("Fetched work groups from the Kelvin API.", school=school, count=len(work_groups))
         return work_groups
@@ -38,7 +40,7 @@ class KelvinWorkGroupsPersistenceAdapter(WorkGroupsPersistencePort, KelvinPersis
             return []
         resource = WorkGroupResource(session=self.kelvin_session)
         fetched = await fetch_groups_by_name(
-            lambda chunk: resource.search(school=school, name=chunk),
+            lambda chunk: resource.search(school=school, name=chunk, exclude="users"),
             names,
             "work_group",
             school,

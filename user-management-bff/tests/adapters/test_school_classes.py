@@ -111,7 +111,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
             def __init__(self, session: Any = None) -> None:
                 pass
 
-            def search(self, school: str, name: list[str]) -> Any:
+            def search(self, school: str, name: list[str], exclude: str) -> Any:
                 searched.append(name)
 
                 async def _gen() -> Any:
@@ -147,6 +147,36 @@ class TestKelvinSchoolClassesPersistenceAdapter:
         await adapter.configure(dummy_settings)
 
         assert await adapter.get_school_classes_by_name("school1", ["*"]) == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("read", ["whole school", "by name"])
+    async def test_a_listing_leaves_the_members_out(
+        self,
+        adapter: KelvinSchoolClassesPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        patch_kelvin_resource: Callable[[Any, str, Any], None],
+        make_kelvin_group_from_data: Callable[[str, str | None], MagicMock],
+        read: str,
+    ):
+        """The members are most of what a group listing costs Kelvin, and all the
+        adapter keeps of a group is its name and description."""
+        asked: list[dict[str, Any]] = []
+
+        class _Resource:
+            async def search(self, **kwargs: Any):
+                asked.append(kwargs)
+                yield make_kelvin_group_from_data("1a", None)
+
+        patch_kelvin_resource(
+            user_management_bff.adapters.school_classes, "SchoolClassResource", _Resource()
+        )
+        await adapter.configure(dummy_settings)
+        if read == "whole school":
+            await adapter.get_school_classes("school1")
+        else:
+            await adapter.get_school_classes_by_name("school1", ["1a"])
+
+        assert [kwargs["exclude"] for kwargs in asked] == ["users"]
 
 
 class TestFileSchoolClassesPersistenceAdapter:

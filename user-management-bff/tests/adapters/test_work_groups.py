@@ -98,6 +98,34 @@ class TestKelvinWorkGroupsPersistenceAdapter:
         assert await adapter.get_work_groups_by_name("school1", []) == []
         resource.assert_not_called()
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("read", ["whole school", "by name"])
+    async def test_a_listing_leaves_the_members_out(
+        self,
+        adapter: KelvinWorkGroupsPersistenceAdapter,
+        dummy_settings: KelvinPersistenceAdapterSettings,
+        patch_kelvin_resource: Callable[[Any, str, Any], None],
+        make_kelvin_group_from_data: Callable[[str, str | None], MagicMock],
+        read: str,
+    ):
+        """The members are most of what a group listing costs Kelvin, and all the
+        adapter keeps of a group is its name and description."""
+        asked: list[dict[str, Any]] = []
+
+        class _Resource:
+            async def search(self, **kwargs: Any):
+                asked.append(kwargs)
+                yield make_kelvin_group_from_data("wg1", None)
+
+        patch_kelvin_resource(user_management_bff.adapters.work_groups, "WorkGroupResource", _Resource())
+        await adapter.configure(dummy_settings)
+        if read == "whole school":
+            await adapter.get_work_groups("school1")
+        else:
+            await adapter.get_work_groups_by_name("school1", ["wg1"])
+
+        assert [kwargs["exclude"] for kwargs in asked] == ["users"]
+
 
 class TestFileWorkGroupsPersistenceAdapter:
     @pytest.fixture

@@ -69,6 +69,7 @@ default-groups = "all"
 
 [tool.uv.sources]
 port-loader = { index = "port-loader" }
+kelvin-rest-api-client = { git = "https://git.knut.univention.de/univention/dev/libraries/kelvin-rest-api-client.git", rev = "a6a1d3864248790bcdb4c2f503b1e0b221dfef97" }
 
 [[tool.uv.index]]
 name = "port-loader"

@@ -27,7 +27,9 @@ class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, Kelvin
 
     @override
     async def get_school_classes(self, school: str) -> list[SchoolClass]:
-        kelvin_school_classes = SchoolClassResource(session=self.kelvin_session).search(school=school)
+        kelvin_school_classes = SchoolClassResource(session=self.kelvin_session).search(
+            school=school, exclude="users"
+        )
         school_classes = [
             self._school_class(school_class, school) async for school_class in kelvin_school_classes
         ]
@@ -42,7 +44,7 @@ class KelvinSchoolClassesPersistenceAdapter(SchoolClassesPersistencePort, Kelvin
             return []
         resource = SchoolClassResource(session=self.kelvin_session)
         fetched = await fetch_groups_by_name(
-            lambda chunk: resource.search(school=school, name=chunk),
+            lambda chunk: resource.search(school=school, name=chunk, exclude="users"),
             names,
             "school_class",
             school,
