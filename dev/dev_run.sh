@@ -51,7 +51,7 @@ run_task() {
     -f dev/docker-compose.yaml \
     --profile "$TASK" \
     up \
-    --build
+    --build "${@:3}"
     exit $?
   fi
   if [[ "$TASK" = "cerbos-compile" ]]; then

@@ -395,9 +395,11 @@ which is named by `--base-url` and nothing else.
 Against the dev server, start it first and then run:
 
 ```shell
-dev/dev_run.sh task dev-server
+dev/dev_run.sh task dev-server --detach --wait
 dev/dev_run.sh task pytest-frontend
 ```
+
+`--detach --wait` returns once the stack reports healthy.
 
 Against an installed system, point the same suite at it and give it a Kelvin URL.
 It then seeds the objects it needs through Kelvin --

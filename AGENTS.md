@@ -323,7 +323,7 @@ docker compose so no local Python/Node install is required.
 | Run backend unit/integration tests | `dev/dev_run.sh task pytest` |
 | Run a single test file/case | `dev/dev_run.sh task pytest user-management-bff/tests/test_routes.py::test_users_search_renders_results` |
 | Run backend e2e tests | see § Development Environment — requires a live `E2E_*` environment |
-| Run the frontend tests | `dev/dev_run.sh task dev-server`, then `dev/dev_run.sh task pytest-frontend` |
+| Run the frontend tests | `dev/dev_run.sh task dev-server --detach --wait`, then `dev/dev_run.sh task pytest-frontend` |
 | Watch a frontend test in a real browser | `dev/dev_run.sh task pytest-frontend-headed` |
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
