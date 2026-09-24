@@ -21,8 +21,8 @@ def tick(page: Page, username: str) -> None:
     page.locator(f'u-checkbox[name="user_id"][value="{username}"]').click()
 
 
-def open_reset_dialog(page: Page) -> Locator:
-    page.locator("#selection-form").get_by_role("button", name="Reset password").click()
+def open_reset_dialog(page: Page, button: str = "Reset password") -> Locator:
+    page.locator("#selection-form").get_by_role("button", name=button).click()
     dialog = page.locator("#password-reset-dialog")
     expect(dialog).to_be_visible()
     return dialog
@@ -63,6 +63,26 @@ def test_the_dialog_lists_the_selection_and_cancel_changes_nothing(
     expect(dialog).to_be_hidden()
     expect(signed_in.locator("#password-reset-result")).to_be_empty()
     expect(signed_in.locator("#selection-form")).to_contain_text("1 users selected")
+
+
+@pytest.mark.frontend
+def test_the_selection_count_and_the_dialog_are_localized(
+    open_in_language: Callable[[str], Page],
+    select_school: Callable[..., None],
+    school: str,
+    listed_user: str,
+) -> None:
+    """L0005/L0012: the live selection count and the confirmation dialog follow the browser language."""
+    page = open_in_language("de-DE")
+    select_school(school, page=page)
+    tick(page, listed_user)
+
+    expect(page.locator("#selection-form").get_by_text("1 Benutzer ausgewählt")).to_be_visible()
+
+    dialog = open_reset_dialog(page, button="Passwort zurücksetzen")
+
+    expect(dialog).to_contain_text("Für die folgenden 1 Konten wird ein neues Passwort gesetzt:")
+    expect(dialog.get_by_role("button", name="Passwort setzen")).to_be_disabled()
 
 
 @pytest.mark.frontend

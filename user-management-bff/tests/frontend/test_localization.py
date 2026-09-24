@@ -25,25 +25,15 @@ def _headers(page: Page) -> list[str]:
 @pytest.mark.frontend
 @pytest.mark.parametrize(
     ("language", "expected"),
-    [("en-US", ENGLISH_HEADERS), ("de-DE", GERMAN_HEADERS)],
+    [("en-US", ENGLISH_HEADERS), ("de-DE", GERMAN_HEADERS), ("fr-FR", ENGLISH_HEADERS)],
 )
 def test_the_language_follows_the_browser(
     open_in_language: Callable[[str], Page], language: str, expected: list[str]
 ) -> None:
-    """L0006/L0009: the table headers follow the language the browser asks for."""
+    """L0006/L0009/L0014: the table headers follow the browser, and fall back to English."""
     page = open_in_language(language)
 
     assert [header.casefold() for header in expected] == _headers(page)[: len(expected)]
-
-
-@pytest.mark.frontend
-def test_an_unsupported_language_falls_back_to_english(
-    open_in_language: Callable[[str], Page],
-) -> None:
-    """L0014: a browser language the module does not ship falls back to English."""
-    page = open_in_language("fr-FR")
-
-    assert [header.casefold() for header in ENGLISH_HEADERS] == _headers(page)[: len(ENGLISH_HEADERS)]
 
 
 @pytest.mark.frontend
