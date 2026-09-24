@@ -28,7 +28,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             hx-target="#results-region"
             hx-select="#results-region"
             hx-swap="outerHTML"
-            hx-disinherit="hx-select"
+            hx-indicator="#results-region"
+            hx-disinherit="hx-select hx-indicator"
           >
             <u-list-select
               id="school-list"
@@ -75,6 +76,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
   {{ layout.toast() }}
 </u-page>
+
+<style>
+  #results-region.htmx-request u-table > :not([slot="header"]) {
+    display: none;
+  }
+</style>
 
 <script>
   // The list select fires u-change even when the click re-picks the active item, and

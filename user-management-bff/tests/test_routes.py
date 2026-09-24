@@ -257,8 +257,14 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert "hx-push-url" not in body
     assert 'hx-select="#results-region"' in body
     # The cascade (school -> filters) must not inherit the form's select,
-    # or its fragment response would blank out the dependent filters.
-    assert 'hx-disinherit="hx-select"' in body
+    # or its fragment response would blank out the dependent filters. Nor its
+    # indicator, or typing in an option filter would show the table as loading.
+    assert 'hx-disinherit="hx-select hx-indicator"' in body
+    # While the results load, htmx marks the region and its bar shows.
+    assert 'hx-indicator="#results-region"' in body
+    assert '<progress class="progress htmx-indicator" aria-hidden="true"></progress>' in body
+    # ...and the rows it is about to replace go, the column headers stay.
+    assert '#results-region.htmx-request u-table > :not([slot="header"])' in body
     # htmx snapshots the page after the click that set the school but before the
     # results swap, so a restored snapshot pairs a school with the old table.
     assert 'hx-history="false"' in body
