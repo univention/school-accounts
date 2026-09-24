@@ -308,8 +308,8 @@ beyond having `docker` (>= 25) installed.
   `dev/.env*` file other than `.env.example` as local/untracked, never edit or commit it.
 - The frontend tests (`user-management-bff/tests/frontend/`) need a deployment to drive, so they are
   excluded from the normal backend test loop by the `frontend` marker. CI stands up their stack in
-  the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, via
-  `dev/scripts/start_frontend_test_stack.sh`); locally the `dev-server` stack is that deployment.
+  the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, started
+  from `dev/.env.example` in the job itself); locally the `dev-server` stack is that deployment.
   The manual `integration-tests` job also runs them, seeded through Kelvin, against the UCS VM it
   installs the app on (`dev/tests/run_frontend_tests.sh`, from `integration_tests.cfg`).
 

@@ -223,10 +223,13 @@ bff-frontend-test:
         KC_HOSTNAME: "http://localhost:8080/keycloak"
   variables:
     UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
-    PROJECT_DIR: $CI_PROJECT_DIR
     KEYCLOAK_URL: "http://localhost:8080/keycloak"
     FRONTEND_BASE_URL: "http://localhost:8000"
     PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+    # Take precedence over dev/.env.example, which addresses everything through the compose proxy.
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: "http://localhost:8080/keycloak/realms/ucs/.well-known/openid-configuration"
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: "http://localhost:8000/univention/ucsschool/user-management/ui/auth/callback"
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: "http://localhost:8000/univention/ucsschool/user-management/ui"
   cache:
     key:
       files:
@@ -234,9 +237,15 @@ bff-frontend-test:
     paths:
       - .cache/ms-playwright/
   before_script:
+    # dev/.env.example paths assume the compose bind mount at /src.
+    - rmdir /src && ln -s "$CI_PROJECT_DIR" /src
     - ./user-management-bff/scripts/test_setup.sh
     - uv run --project user-management-bff/ playwright install chromium
-    - ./dev/scripts/start_frontend_test_stack.sh
+    - curl -sf --retry 90 --retry-delay 2 --retry-all-errors -o /dev/null "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration"
+    - dev/scripts/provision_keycloak.sh
+    - mkdir -p .cache
+    - 'uv run --project user-management-bff/ --env-file dev/.env.example uvicorn --port 8000 user_management_bff.main:app > .cache/frontend-test-bff.log 2>&1 &'
+    - curl -sf --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "$FRONTEND_BASE_URL/univention/ucsschool/user-management/ui/"
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
