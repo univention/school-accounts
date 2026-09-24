@@ -203,20 +203,13 @@ bff-test:
         path: coverage.xml
       junit: report.xml
 
-# Drives a real browser against a real login. Keycloak runs as a service
-# container and the BFF is started next to it on the File adapters and the dev
-# fixture data, so the job covers the login redirect chain, the design system's
-# custom elements and the htmx swaps - none of which the in-process tests reach.
-# Kelvin and Cerbos are not part of it; those stay with the integration tests.
 bff-frontend-test:
   stage: test
   needs: [build_dev_image]
   tags: ["dae-m"]
   image: $DEV_IMAGE_TAG
   services:
-    # Keep in sync with the base image of dev/Keycloak.Dockerfile. Nothing has to
-    # be built on top of it: `start` without `--optimized` builds Keycloak from
-    # the KC_* variables below when the container boots.
+    # Keep in sync with dev/Keycloak.Dockerfile.
     - name: docker.software-univention.de/keycloak-keycloak:26.6.3-ucs1@sha256:c469e88a2cad9fdd087303f2747dce185d49becc08f7e594a285f51ba01d0f15
       alias: keycloak
       command: ["start"]
@@ -226,17 +219,10 @@ bff-frontend-test:
         KC_HTTP_RELATIVE_PATH: /keycloak
         KEYCLOAK_ADMIN: admin
         KEYCLOAK_ADMIN_PASSWORD: admin
-        # The issuer has to match KEYCLOAK_URL below or the redirect chain breaks,
-        # and both say localhost: these runners create service containers in host
-        # network mode, where the `keycloak` alias never resolves and the service
-        # is reachable on the job's own loopback. Spelling the path out is
-        # required either way: a hostname URL without one overrides
-        # KC_HTTP_RELATIVE_PATH, and the discovery document then advertises
-        # endpoints that are not served.
+        # Host-network runner, so localhost; without the path this overrides KC_HTTP_RELATIVE_PATH.
         KC_HOSTNAME: "http://localhost:8080/keycloak"
   variables:
     UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
-    # The dev image bakes PROJECT_DIR=/src for the compose bind mount.
     PROJECT_DIR: $CI_PROJECT_DIR
     KEYCLOAK_URL: "http://localhost:8080/keycloak"
     FRONTEND_BASE_URL: "http://localhost:8000"

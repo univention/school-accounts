@@ -1,28 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""The directory contents the frontend tests assert on, and how to put them there.
+"""Seeds the frontend test data through Kelvin, for runs given `--kelvin_url`.
 
-Against the compose dev stack the File adapters already serve `dev/data`, so
-nothing here runs. Against an installed system there is no telling what the
-directory holds, so the suite seeds its own objects through Kelvin and asserts
-on those instead -- which is what lets it be pointed at any test machine that
-has the app, rather than only at one seeded by hand.
-
-The people are the `dev/data` ones, names and roles unchanged, so both paths
-assert on the same usernames. The school is not: `dev/data`'s schools are
-scenery for the dev stack, and Kelvin exposes no DELETE on `/schools/`
-(confirmed against Kelvin 4.0.2), so every OU this creates stays on the machine
-for good. One short, obviously test-owned OU is a defensible thing to leave
-behind; ten German school names are not.
-
-Nothing is torn down afterwards, and that is deliberate rather than laziness.
-Deleting a user and creating it again under the same name leaves Keycloak's LDAP
-federation holding a stale record for it, and every later login as that name is
-rejected with "The authentication has failed" while a name Keycloak has never
-seen logs in immediately -- measured on UCS 5.2 with the two created seconds
-apart in this same OU. Since the OU is permanent anyway, its contents may as
-well be: seeding reconciles what is there instead, so a machine converges on
-this set and stays there, and repeat runs cost a handful of requests.
+Users are reconciled, never deleted: Keycloak rejects every login as a user that
+was deleted and re-created under the same name.
 """
 
 from __future__ import annotations
@@ -55,13 +36,6 @@ PASSWORD = "umtest.Password.2026"
 
 @dataclass(frozen=True)
 class SeedUser:
-    """One `dev/data` person, in the terms Kelvin takes them in.
-
-    `roles` are Kelvin's own role names; Kelvin derives the
-    `school_admin:school:umtest` form from them, and that derived form is what
-    the UI renders (see `adapters/users.py`).
-    """
-
     name: str
     firstname: str
     lastname: str
@@ -81,8 +55,6 @@ USERS = (
 
 
 def _session(credentials: Mapping[str, str]) -> Session:
-    # A test machine serves Kelvin under its own CA, which the dev container has
-    # no reason to carry.
     return Session(**credentials, verify=False)  # pyright: ignore[reportArgumentType]
 
 
@@ -135,10 +107,7 @@ async def _ensure_user(session: Session, seed_user: SeedUser) -> None:
         )
         await user.save()
         return
-    # Reconcile rather than recreate, so an edit to this file reaches a machine
-    # that already carries an older version of the same person. The password is
-    # set on creation only: UCS's password history rejects setting the same one
-    # again, which would fail every run after the first.
+    # No password: UCS's password history rejects setting the same one again.
     user.firstname = seed_user.firstname
     user.lastname = seed_user.lastname
     user.school = SCHOOL
@@ -149,12 +118,7 @@ async def _ensure_user(session: Session, seed_user: SeedUser) -> None:
 
 
 async def _ensure_work_group_members(session: Session) -> None:
-    """Membership is set from the group, not the user.
-
-    This client's `User` carries `school_classes` but no work-group field at all,
-    so a `work_groups=` argument is swallowed by its `**kwargs` and the member
-    list stays empty without anything failing.
-    """
+    """The client's `User` has no work-group field; `work_groups=` would vanish into `**kwargs`."""
     work_group = await WorkGroupResource(session=session).get(school=SCHOOL, name=WORK_GROUP)
     members = sorted(user.name for user in USERS if user.in_work_group)
     if sorted(work_group.users or []) == members:

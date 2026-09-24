@@ -1,13 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""The list view: what the harness has to get right, and the "UI Content" cases.
-
-The first three are the harness's own smoke tests -- the login redirect chain
-completes, a page renders through the design system's custom elements, and an
-htmx swap replaces the results region -- so a broken harness fails here rather
-than inside a product test written on top of it. The rest carry case ids from
-`RAM-product-test-matrix.md` in `univention/dev/internal/product-tests/ucsschool`.
-"""
 
 from __future__ import annotations
 
@@ -53,7 +45,7 @@ def test_a_group_narrows_the_result_further(
     """U0015: the list view can be scoped by school and by class or work group."""
     select_school(school)
 
-    # The first option is "All classes and work groups"; the next one is a real group.
+    # nth(0) is "All classes and work groups".
     signed_in.locator("#group-list").get_by_role("option").nth(1).click()
 
     expect(signed_in).to_have_url(re.compile(r"[?&]group="))

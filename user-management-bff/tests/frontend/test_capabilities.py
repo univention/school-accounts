@@ -1,15 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""The "Capabilities and permissions" cases that today's UI can answer.
-
-These log in as somebody other than the default account, so they only run where
-the suite seeded those accounts itself -- `--kelvin_url`. Case ids refer to
-`RAM-product-test-matrix.md` in `univention/dev/internal/product-tests/ucsschool`.
-
-Most of that section is out of reach: CP0009-CP0020 create, edit and delete
-users, which the UI does not offer. The password reset has its own module,
-`test_password_reset.py`.
-"""
 
 from __future__ import annotations
 

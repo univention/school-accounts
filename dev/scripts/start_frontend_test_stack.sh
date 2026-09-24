@@ -3,12 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-# Brings up everything the frontend tests need, for a runner that has a Keycloak
-# reachable but nothing else: provisions the realm, starts the BFF against the
-# File adapters and the dev fixture data, and returns once both answer.
-#
-# Locally the compose dev-server profile already provides this stack, so this is
-# the CI entry point rather than a second way to develop against.
+# The CI counterpart of the compose dev-server stack, next to a running Keycloak.
 
 set -euo pipefail
 
@@ -42,9 +37,6 @@ wait_for "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration"
 echo "Provisioning the ucs realm"
 "$PROJECT_DIR/dev/scripts/provision_keycloak.sh"
 
-# The adapter selection and the fixture data are the same ones the compose dev
-# stack runs on, so the tests see one deployment shape rather than two. Only the
-# paths and the URLs the browser has to reach differ from `.env.example`.
 set -a
 # shellcheck source=../.env.example
 . "$PROJECT_DIR/dev/.env.example"
@@ -53,11 +45,7 @@ COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL="$FRONTEND_BASE_URL/univenti
 COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL="$FRONTEND_BASE_URL/univention/ucsschool/user-management/ui"
 set +a
 
-# `.env.example` is written for the compose stack, which bind-mounts the repo at
-# /src; here the checkout is wherever CI put it, so every path it holds has to
-# move with it. Rewriting the prefix beats listing the variables, which is what
-# this did until a confidential client secret was added upstream and the job
-# failed on a setting it had never heard of.
+# `.env.example` paths assume the compose bind mount at /src.
 while read -r setting; do
     value="${!setting-}"
     if [[ "$value" == /src/* ]]; then

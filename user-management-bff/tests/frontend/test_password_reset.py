@@ -1,19 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""The bulk password reset: selecting users, the confirmation dialog, and the reset itself.
-
-The selection counter, the enabled button and the dialog opening itself are
-Alpine and an htmx swap of a fragment that calls `showModal()` - none of which
-the in-process tests execute.
-
-Only the test that submits the dialog changes anything, and it only runs where
-the suite seeded the directory itself (`--kelvin_url`). On the File adapters a
-reset rewrites the whole of `dev/data/users.json`, which would leave every
-developer who runs the suite against the compose stack with a dirty checkout.
-
-Case ids refer to `RAM-product-test-matrix.md` in
-`univention/dev/internal/product-tests/ucsschool`.
-"""
 
 from __future__ import annotations
 
@@ -32,7 +18,6 @@ if TYPE_CHECKING:
 
 
 def tick(page: Page, username: str) -> None:
-    """Select one row; by value, since a dot in the username breaks an id selector."""
     page.locator(f'u-checkbox[name="user_id"][value="{username}"]').click()
 
 
@@ -49,8 +34,7 @@ def test_ticking_a_user_counts_the_selection_and_enables_the_reset(
 ) -> None:
     select_school(school)
     button = signed_in.locator("#selection-form").get_by_role("button", name="Reset password")
-    # Visibility, not text: Alpine's x-show hides the span without removing it,
-    # so its text is in the form whatever the counter says.
+    # Visibility, not text: x-show hides the span but keeps its text in the DOM.
     expect(signed_in.locator("#selection-form").get_by_text("No users selected")).to_be_visible()
     expect(button).to_be_disabled()
 
@@ -89,11 +73,9 @@ def test_a_reset_password_is_the_one_the_account_logs_in_with(
     sign_in_as: Callable[[str, str], Page],
     school: str,
 ) -> None:
-    """A school admin resets a teacher, and the teacher logs in with the new password.
+    """U0029: a school admin resets a teacher, who then logs in with the new password.
 
-    The target is a person no other test logs in as, so leaving the password
-    changed breaks nothing. A fresh password per run keeps UCS's password
-    history out of it even where Kelvin does not map the override.
+    Seeded runs only: on the File adapters the reset rewrites `dev/data/users.json`.
     """
     target = next(user for user in seed.USERS if user.name == "maria.kaiser")
     password = f"umtest.{uuid.uuid4().hex[:12]}.Reset"

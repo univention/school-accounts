@@ -1,14 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Login, logout and deep links, from the "General" product tests.
-
-These are the only tests that log in for themselves. Everything else starts from
-the session `authenticated_state` holds, because a login is the slowest thing
-the suite does and it is exercised here.
-
-Case ids refer to `RAM-product-test-matrix.md` in
-`univention/dev/internal/product-tests/ucsschool`.
-"""
 
 from __future__ import annotations
 
@@ -46,12 +37,7 @@ def test_login_through_keycloak_lands_on_the_user_list(
 def test_a_filtered_deep_link_survives_the_login(
     fresh_browser: Callable[..., Page], frontend_credentials: tuple[str, str], school_id: str
 ) -> None:
-    """G0032/G0039: a deep link is reopened after the login, filters and all.
-
-    The path half of this passes; the query string is dropped, which is what the
-    matrix records as the known gap. Marked strict, so it fails loudly once the
-    login carries the query string and this becomes a passing case.
-    """
+    """G0032/G0039: a deep link is reopened after the login, filters and all."""
     page = fresh_browser()
 
     sign_in(page, *frontend_credentials, start=f"{FRONTEND_PREFIX}/users?school={school_id}")
@@ -65,20 +51,14 @@ def test_logging_out_ends_the_session(
 ) -> None:
     """G0033: logout ends the session and the next request needs a new login.
 
-    Logs in for itself rather than starting from `authenticated_state`. The
-    logout ends the Keycloak session the ID token belongs to, and every other
-    test's cookies carry that same token: they would keep working only until the
-    access token expires and the refresh is refused.
+    Logs in for itself: logging out the shared session would break every later test's refresh.
     """
     signed_in = sign_in_as(*frontend_credentials)
     logout = signed_in.locator("form[action$='/auth/logout'] u-button")
-    # Named before it is clicked: a deployment without the logout button should
-    # say so, rather than spend the click timeout on a locator that never resolves.
     expect(logout).to_be_visible()
 
     logout.click()
-    # Not a URL: a UCS system follows the post-logout redirect straight back into
-    # a fresh login, past the logout endpoint before an assertion can see it.
+    # Not a URL: UCS redirects on into a fresh login before an assertion could see it.
     expect(signed_in.get_by_label("Username or email")).to_be_visible()
 
     signed_in.goto(f"{FRONTEND_PREFIX}/users")
