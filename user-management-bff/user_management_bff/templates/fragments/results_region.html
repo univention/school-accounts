@@ -10,6 +10,11 @@ SPDX-License-Identifier: AGPL-3.0-only
   <progress class="progress htmx-indicator" aria-hidden="true"></progress>
   {# innerHTML keeps this element, so its handler outlives every swap into it -
      unlike a script in the swapped fragment. #}
-  <div id="password-reset-result" hx-on::after-swap="narrowSelectionToFailures(this)"></div>
+  <div
+    id="password-reset-result"
+    hidden
+    hx-on::after-swap="narrowSelectionToFailures(this); syncResultVisibility(this)"
+    hx-on:u-close="this.innerHTML = ''; syncResultVisibility(this)"
+  ></div>
   {% include "fragments/user_table.html" %}
 </u-vstack>

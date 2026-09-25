@@ -99,10 +99,16 @@ SPDX-License-Identifier: AGPL-3.0-only
     return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? "")
   }
 
+  // A successful reset still swaps in an empty <output>, and either way the region
+  // stays a flex item of the results column - one that would keep its gap.
+  function syncResultVisibility(region) {
+    region.hidden = !region.querySelector("u-card")
+  }
+
   // Leaves only the failures ticked, so a retry is one click. Empty = all succeeded.
   function narrowSelectionToFailures(region) {
     const failed = new Set(
-      Array.from(region.querySelectorAll("u-tr[data-target-id]"), (row) => row.dataset.targetId),
+      Array.from(region.querySelectorAll("[data-target-id]"), (el) => el.dataset.targetId),
     )
     Alpine.$data(document.querySelector("#selection-form [x-data]")).keepOnly(failed)
   }
