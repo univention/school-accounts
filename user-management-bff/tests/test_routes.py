@@ -871,12 +871,9 @@ def test_users_list_pushed_url_keeps_the_group_filter(test_client: TestClient):
 
 
 def test_users_list_reads_each_school_once_per_request(test_client: TestClient, mocker: MockerFixture):
-    """The filter sidebar and the table overlap; the request-scoped cache in the DI
-    layer is what stops the overlap being fetched twice.
-
-    The sidebar has to load the selected school in full, so the table's groups for
-    that school come out of the cache - what reaches the backend a second time is
-    only the other schools, and only the names actually rendered.
+    """The sidebar and the table both need the school list; the request-scoped
+    cache in the DI layer is what stops it being fetched twice. The table shows
+    no groups, so the sidebar's reads are the only group reads.
     """
     schools_spy = mocker.spy(FileSchoolsPersistenceAdapter, "get_schools")
     all_classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
@@ -893,11 +890,8 @@ def test_users_list_reads_each_school_once_per_request(test_client: TestClient, 
     # ``args[0]`` is the adapter instance - these spy on the class.
     assert [call.args[1] for call in all_classes_spy.call_args_list] == ["school2"]
     assert [call.args[1] for call in all_work_groups_spy.call_args_list] == ["school2"]
-    # school1 comes from user3, who is listed under school2 but holds classes in
-    # school1. school2's own groups are already cached from the sidebar, so the
-    # table's lookup for it never reaches the adapter.
-    assert [call.args[1:] for call in classes_spy.call_args_list] == [("school1", ["1a", "2b"])]
-    assert [call.args[1:] for call in work_groups_spy.call_args_list] == [("school1", ["w2b"])]
+    classes_spy.assert_not_called()
+    work_groups_spy.assert_not_called()
 
 
 def test_password_reset_confirm_renders_the_dialog(test_client: TestClient):

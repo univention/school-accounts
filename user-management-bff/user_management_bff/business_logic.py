@@ -7,7 +7,6 @@ from typing import Protocol, TypeVar
 
 from loguru import logger
 
-from . import presentation
 from .constants import PASSWORD_RESET_MAX_CONCURRENCY, PASSWORD_RESET_MAX_TARGETS
 from .errors import (
     NoSchoolUserError,
@@ -150,49 +149,6 @@ async def _filterable(
     return _usable_as_filter(fetched, permissions, actor_id=actor.id, **context)
 
 
-async def _resolve_groups(
-    fetch: Callable[[str, list[str]], Awaitable[list[_Group]]],
-    needed: dict[str, set[str]],
-) -> dict[str, list[_Group]]:
-    """Look up the named groups of every school in ``needed``, concurrently."""
-    schools = sorted(needed)
-    fetched = await asyncio.gather(*(fetch(school, sorted(needed[school])) for school in schools))
-    return dict(zip(schools, fetched, strict=False))
-
-
-async def _fetch_groups(
-    school_classes_get_adapter: SchoolClassesPersistencePort,
-    work_groups_get_adapter: WorkGroupsPersistencePort,
-    users: list[User],
-) -> tuple[dict[str, list[SchoolClass]], dict[str, list[WorkGroup]]]:
-    """Resolve the group display names the given users' rows will render.
-
-    Asks for exactly the groups those users are in. The whole-school lookup would
-    answer the same question in one request per school, but a school can hold
-    hundreds of groups, each carrying its full membership - a large, slow response
-    almost entirely made of groups nobody is going to render.
-    """
-    needed_classes: dict[str, set[str]] = {}
-    needed_groups: dict[str, set[str]] = {}
-    for user in users:
-        # Only what the row will show: one user in every class of their school
-        # would otherwise pull that whole school in to render a cell nobody can
-        # read. ``shown_groups`` is the same cap the row applies.
-        classes_by_school, _hidden_classes = presentation.shown_groups(user.attributes.school_classes)
-        work_groups_by_school, _hidden_groups = presentation.shown_groups(user.attributes.work_groups)
-        for school, classes in classes_by_school.items():
-            needed_classes.setdefault(school, set()).update(classes)
-        for school, groups in work_groups_by_school.items():
-            needed_groups.setdefault(school, set()).update(groups)
-    # Keyed by school even where the set is empty: the table indexes these by the
-    # schools on the user, and a school with no group of one kind still has a row
-    # asking for it.
-    return await asyncio.gather(
-        _resolve_groups(school_classes_get_adapter.get_school_classes_by_name, needed_classes),
-        _resolve_groups(work_groups_get_adapter.get_work_groups_by_name, needed_groups),
-    )
-
-
 # The roles the policy lets read every user of a school rather than the users of
 # their own groups - see ``school_user_resource.yaml``. Widening this costs a
 # school-wide read; narrowing it hides rows the policy allows, so the permission
@@ -275,8 +231,6 @@ async def _reachable_users(
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
-    school_classes_get_adapter: SchoolClassesPersistencePort,
-    work_groups_get_adapter: WorkGroupsPersistencePort,
     permissions_port: PermissionsPort,
     actor_id: str,
     request_data: UsersGetRequest,
@@ -295,27 +249,11 @@ async def get_users(
         user_count=len(users),
         permitted_user_count=sum(1 for user in users if permissions.get(user.id)),
     )
-    # A user the actor holds no permission on at all is not listed, so their
-    # groups are never rendered either. Dropping them before the lookups is what
-    # keeps those proportional to what ends up on screen: an unfiltered school
-    # listing returns every user of the school, and each one would otherwise pull
-    # in the groups of every school they belong to.
+    # A user the actor holds no permission on at all is not listed.
     users = [user for user in users if permissions.get(user.id)]
-    schools, (school_classes, work_groups) = await asyncio.gather(
-        schools_get_adapter.get_schools(),
-        _fetch_groups(school_classes_get_adapter, work_groups_get_adapter, users),
-    )
-    logger.debug(
-        "Loaded the group names needed to render the list.",
-        schools_scanned=len(school_classes),
-        school_class_count=sum(len(items) for items in school_classes.values()),
-        work_group_count=sum(len(items) for items in work_groups.values()),
-    )
     return UserListData(
         users=users,
-        schools=schools,
-        school_classes=school_classes,
-        work_groups=work_groups,
+        schools=await schools_get_adapter.get_schools(),
         permissions=permissions,
     )
 

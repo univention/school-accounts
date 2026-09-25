@@ -87,13 +87,13 @@ class SchoolClassesPersistencePort(ABC):
         This method returns the named school classes of a given school, in the order asked for.
 
         Separate from ``get_school_classes`` because the two have very different
-        costs: turning the class ids on a user list into display names needs a
-        handful of specific classes, while the whole-school variant ships every
-        class of the school with its full membership to answer the same question.
+        costs: confirming that a selected class still exists needs that one
+        class, while the whole-school variant ships every class of the school to
+        answer the same question.
 
-        A name with no class behind it is skipped rather than raising - a class
-        can be deleted between reading a user and resolving their classes. An
-        empty ``names`` returns an empty list without any I/O.
+        A name with no class behind it is skipped rather than raising - a deep
+        link can outlive the class it names. An empty ``names`` returns an empty
+        list without any I/O.
         """
 
 

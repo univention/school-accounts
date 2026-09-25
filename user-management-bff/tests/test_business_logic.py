@@ -28,10 +28,8 @@ else:
 from user_management_bff import business_logic, presentation
 from user_management_bff.adapter_registry import ADAPTER_REGISTRY
 from user_management_bff.adapters.permissions import FilePermissionsAdapter
-from user_management_bff.adapters.school_classes import FileSchoolClassesPersistenceAdapter
 from user_management_bff.adapters.users import FileUsersPersistenceAdapter
 from user_management_bff.business_logic import get_schools
-from user_management_bff.constants import USER_LIST_GROUPS_SHOWN
 from user_management_bff.errors import (
     NoSchoolUserError,
     ObjectNotFoundError,
@@ -110,8 +108,6 @@ async def _get_users(ports: Ports, school: str, *, lang: str = "en"):
     return await business_logic.get_users(
         ports.users,
         ports.schools,
-        ports.school_classes,
-        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UsersGetRequest(school=school, school_classes=[], work_groups=[]),
@@ -134,23 +130,17 @@ async def test_get_users(ports: Ports, school: str, expected_ids: set[str]):
 
 
 @pytest.mark.asyncio
-async def test_get_users_looks_up_only_the_groups_the_rows_render(ports: Ports, mocker: MockerFixture):
-    all_classes_spy = mocker.spy(ports.school_classes, "get_school_classes")
-    all_work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups")
-    classes_spy = mocker.spy(ports.school_classes, "get_school_classes_by_name")
-    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups_by_name")
-    await _get_users(ports, "test_school2")
-    # test_user3 is listed for test_school2 but holds classes in test_school1, and the
-    # list renders those with their display names - hence more than the selected school,
-    # but not all seven of them. Only the names on those users are asked for, never a
-    # whole school: the whole-school lookup ships every group with its full membership.
-    assert [call.args for call in classes_spy.call_args_list] == [
-        ("test_school1", ["1a", "2b"]),
-        ("test_school2", ["1a", "2b", "3c"]),
+async def test_get_users_reads_no_groups(ports: Ports, mocker: MockerFixture):
+    """The table shows no classes or work groups, so listing users costs no group read."""
+    spies = [
+        mocker.spy(ports.school_classes, "get_school_classes"),
+        mocker.spy(ports.work_groups, "get_work_groups"),
+        mocker.spy(ports.school_classes, "get_school_classes_by_name"),
+        mocker.spy(ports.work_groups, "get_work_groups_by_name"),
     ]
-    assert [call.args for call in work_groups_spy.call_args_list] == [("test_school2", ["w1a"])]
-    all_classes_spy.assert_not_called()
-    all_work_groups_spy.assert_not_called()
+    await _get_users(ports, "test_school2")
+    for spy in spies:
+        spy.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -159,18 +149,9 @@ async def test_get_users_looks_up_only_the_groups_the_rows_render(ports: Ports, 
     "get_permissions",
     return_value={"test_user2": [Permission.read_last_name]},
 )
-async def test_get_users_group_lookups_skip_users_the_actor_cannot_see(
-    _permissions_mock: MagicMock, ports: Ports, mocker: MockerFixture
-):
-    classes_spy = mocker.spy(ports.school_classes, "get_school_classes_by_name")
-    work_groups_spy = mocker.spy(ports.work_groups, "get_work_groups_by_name")
+async def test_get_users_drops_users_the_actor_cannot_see(_permissions_mock: MagicMock, ports: Ports):
     result = await _get_users(ports, "test_school2")
-    # test_school1 is only reachable through test_user3, who is now invisible, so
-    # nothing renders their groups and nothing looks them up either - and 3c drops
-    # out of the test_school2 lookup with them.
     assert [user.id for user in result.users] == ["test_user2"]
-    assert [call.args for call in classes_spy.call_args_list] == [("test_school2", ["1a", "2b"])]
-    assert [call.args for call in work_groups_spy.call_args_list] == [("test_school2", ["w1a"])]
 
 
 @pytest.mark.asyncio
@@ -185,8 +166,6 @@ async def _get_users_from(ports: Ports, school: str):
     return await business_logic.get_users(
         ports.users,
         ports.schools,
-        ports.school_classes,
-        ports.work_groups,
         ports.permissions,
         ACTOR_ID,
         UsersGetRequest(school=school, school_classes=[], work_groups=[]),
@@ -988,30 +967,3 @@ async def test_get_group_filters_reads_both_kinds_and_the_actor_once(
     # Resolving it per kind would put the actor lookup back into the race the two
     # whole-school reads now run in.
     assert get_user_spy.call_count == 1
-
-
-@pytest.mark.asyncio
-async def test_fetch_groups_asks_only_for_the_names_the_row_shows(ports: Ports, mocker: MockerFixture):
-    """A user in every class of their school would otherwise pull the whole
-    school in to resolve display names for a cell that is capped anyway."""
-    by_name_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes_by_name")
-    crowded = User(
-        id="crowded",
-        attributes=UserAttributes(
-            last_name="Klein",
-            first_name="Kim",
-            username="crowded",
-            disabled=False,
-            schools=["school1"],
-            school_classes={"school1": [f"c{index}" for index in range(USER_LIST_GROUPS_SHOWN + 20)]},
-            work_groups={},
-            roles=[],
-        ),
-    )
-
-    await business_logic._fetch_groups(ports.school_classes, ports.work_groups, [crowded])
-
-    # ``args[0]`` is the adapter instance - this spies on the class.
-    assert [call.args[2] for call in by_name_spy.call_args_list] == [
-        sorted(f"c{index}" for index in range(USER_LIST_GROUPS_SHOWN))
-    ]

@@ -253,12 +253,9 @@ async def fetch_groups_by_name(
 ) -> list[_N]:
     """The named groups of one school, in the order asked for, skipping what is gone.
 
-    One search names a page of groups at once, so resolving the display names of
-    a user list costs a request per school instead of a request per group - on a
-    class of 24 users that was 32 of the 35 requests a click made. This needs a
-    Kelvin whose v2 group collections take a repeated ``name``; an older one
-    answers for the last value alone, which the app declares a dependency
-    against rather than detects.
+    One search names a page of groups at once. Asking for more than one name
+    needs a Kelvin whose v2 group collections take a repeated ``name``; an older
+    one answers for the last value alone.
     """
     # Kelvin reads `*` in a name as a wildcard, so one arriving here would widen
     # the search rather than name a group. Dropped as the user search drops it.
@@ -270,7 +267,7 @@ async def fetch_groups_by_name(
         async for group in search(chunk):
             found[group.name] = group
     if missing := [name for name in wanted if name not in found]:
-        # Deleted between reading the user that references it and now. The port
-        # promises to skip such a name rather than fail the whole list.
-        logger.warning("Ignoring groups that no longer exist.", kind=kind, school=school, names=missing)
+        # A deep link that outlived its group. The port promises to skip such a
+        # name rather than fail.
+        logger.debug("Skipped groups the school does not have.", kind=kind, school=school, names=missing)
     return [found[name] for name in names if name in found]

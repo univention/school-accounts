@@ -247,10 +247,6 @@ msgstr "Benutzername"
 msgid "Work Groups"
 msgstr "Arbeitsgruppen"
 
-#, python-brace-format
-msgid "and {count} more"
-msgstr "und {count} weitere"
-
 msgid "logout"
 msgstr "abmelden"
 

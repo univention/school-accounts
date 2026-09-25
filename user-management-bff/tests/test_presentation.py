@@ -11,7 +11,6 @@ from user_management_bff import presentation
 from user_management_bff.constants import (
     PASSWORD_RESET_BULK_THRESHOLD,
     PASSWORD_RESET_NAMED_LIMIT,
-    USER_LIST_GROUPS_SHOWN,
 )
 from user_management_bff.models import (
     AttributeAccess,
@@ -165,8 +164,6 @@ def test_list_columns_labels():
         "First name",
         "Username",
         "Roles",
-        "Classes",
-        "Work Groups",
         "Schools",
         "Activated",
     ]
@@ -198,8 +195,6 @@ def _list_data(user: User, permissions: list[Permission]) -> presentation.UserLi
     return presentation.UserListData(
         users=[user],
         schools=[School(id="school1", display_name="School 1")],
-        school_classes={"school1": [SchoolClass(id="1a", display_name="1a", school="school1")]},
-        work_groups={"school1": [WorkGroup(id="w1a", display_name="w1a", school="school1")]},
         permissions={user.id: permissions},
     )
 
@@ -210,10 +205,8 @@ def test_build_user_list_full_access():
     assert cells[0].kind == "text" and cells[0].visible and cells[0].text == "Klein"
     assert cells[2].text == "kim"
     assert cells[3].items == ["Teacher (School 1)"]
-    assert cells[4].items == ["1a (School 1)"]
-    assert cells[5].items == ["w1a (School 1)"]
-    assert cells[6].items == ["School 1"]
-    assert cells[7].kind == "boolean" and cells[7].activated is True and cells[7].text == "Activated"
+    assert cells[4].items == ["School 1"]
+    assert cells[5].kind == "boolean" and cells[5].activated is True and cells[5].text == "Activated"
 
 
 @pytest.mark.parametrize(
@@ -241,16 +234,16 @@ def test_build_user_list_hidden_cells_and_deactivated():
     assert row.cells[1].visible is False  # first_name not granted
     assert row.cells[2].visible is True  # username implicitly readable
     assert row.cells[3].visible is False and row.cells[3].items == []  # roles hidden
-    assert row.cells[7].activated is False and row.cells[7].text == "Deactivated"
-    assert row.cells[7].visible is False
+    assert row.cells[5].activated is False and row.cells[5].text == "Deactivated"
+    assert row.cells[5].visible is False
 
 
 @pytest.mark.parametrize(
     "user_overrides,data_overrides",
-    [({"schools": ["ghost"]}, {}), ({}, {"school_classes": {}})],
+    [({"schools": ["ghost"]}, {}), ({}, {"schools": []})],
     ids=["dangling-reference", "collection-not-loaded"],
 )
-def test_a_dangling_group_reference_breaks_the_list(
+def test_a_dangling_school_reference_breaks_the_list(
     user_overrides: dict[str, object], data_overrides: dict[str, object]
 ):
     data = replace(_list_data(_user(**user_overrides), list(Permission)), **data_overrides)
@@ -259,9 +252,7 @@ def test_a_dangling_group_reference_breaks_the_list(
 
 
 def test_build_user_list_skips_users_without_permissions():
-    data = presentation.UserListData(
-        users=[_user()], schools=[], school_classes={}, work_groups={}, permissions={}
-    )
+    data = presentation.UserListData(users=[_user()], schools=[], permissions={})
     view = presentation.build_user_list(data, "en")
     assert view.rows == []
 
@@ -485,51 +476,3 @@ def test_build_password_reset_confirmation_escalates_only_above_the_threshold(
 def test_build_password_reset_confirmation_reports_dropped_accounts():
     confirmation = presentation.build_password_reset_confirmation(_selection(_user(), denied=3), "en")
     assert confirmation.denied == 3
-
-
-def test_shown_groups_keeps_everything_under_the_cap():
-    by_school = {"school1": ["1a", "1b"], "school2": ["2a"]}
-    assert presentation.shown_groups(by_school) == (by_school, 0)
-
-
-def test_shown_groups_caps_a_user_in_too_many():
-    names = [f"c{i}" for i in range(USER_LIST_GROUPS_SHOWN + 5)]
-    shown, hidden = presentation.shown_groups({"school1": names})
-    assert shown == {"school1": names[:USER_LIST_GROUPS_SHOWN]}
-    assert hidden == 5
-
-
-def test_shown_groups_spends_one_budget_across_schools():
-    """The cap is per row, not per school, or a user in ten schools is back where
-    they started."""
-    shown, hidden = presentation.shown_groups(
-        {
-            "school1": [f"a{i}" for i in range(USER_LIST_GROUPS_SHOWN - 1)],
-            "school2": ["b1", "b2", "b3"],
-            "school3": ["c1"],
-        }
-    )
-    assert shown == {
-        "school1": [f"a{i}" for i in range(USER_LIST_GROUPS_SHOWN - 1)],
-        "school2": ["b1"],
-    }
-    # school3 never got a turn, and its one class counts as left out.
-    assert hidden == 3
-
-
-def test_a_capped_cell_says_how_many_it_left_out():
-    classes = [f"c{i}" for i in range(USER_LIST_GROUPS_SHOWN + 3)]
-    data = _list_data(_user(school_classes={"school1": classes}), list(Permission))
-    data.school_classes = {
-        "school1": [SchoolClass(id=name, display_name=name, school="school1") for name in classes]
-    }
-
-    cell = presentation.build_user_list(data, "en").rows[0].cells[4]
-
-    assert len(cell.items) == USER_LIST_GROUPS_SHOWN
-    assert cell.text == "and 3 more"
-
-
-def test_an_uncapped_cell_has_no_overflow_line():
-    cell = presentation.build_user_list(_list_data(_user(), list(Permission)), "en").rows[0].cells[4]
-    assert cell.items == ["1a (School 1)"] and cell.text is None

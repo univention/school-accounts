@@ -9,7 +9,7 @@ representation port/adapter.
 """
 
 from collections import Counter
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Protocol, TypeVar
@@ -20,7 +20,6 @@ from .constants import (
     PASSWORD_RESET_BULK_THRESHOLD,
     PASSWORD_RESET_MAX_TARGETS,
     PASSWORD_RESET_NAMED_LIMIT,
-    USER_LIST_GROUPS_SHOWN,
 )
 from .lang import N_, _
 from .models import (
@@ -47,8 +46,6 @@ _Identifiable = TypeVar("_Identifiable", bound=_HasId)
 class UserListData:
     users: list[User]
     schools: list[School]
-    school_classes: dict[str, list[SchoolClass]]
-    work_groups: dict[str, list[WorkGroup]]
     permissions: dict[str, list[Permission]]
 
 
@@ -258,22 +255,6 @@ def _format_school(schools: list[School], school_id: str) -> str:
     return _find_by_id(schools, school_id).display_name
 
 
-def _format_school_class(
-    schools: list[School], classes: list[SchoolClass], school_id: str, class_id: str
-) -> str:
-    school = _find_by_id(schools, school_id)
-    school_class = _find_by_id(classes, class_id)
-    return f"{school_class.display_name} ({school.display_name})"
-
-
-def _format_work_group(
-    schools: list[School], work_groups: list[WorkGroup], school_id: str, work_group_id: str
-) -> str:
-    school = _find_by_id(schools, school_id)
-    work_group = _find_by_id(work_groups, work_group_id)
-    return f"{work_group.display_name} ({school.display_name})"
-
-
 # Literals, not derived from the role id: a computed msgid is invisible to extraction.
 _ROLE_LABELS = {
     "student": N_("Student"),
@@ -312,37 +293,9 @@ def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Ce
     return Cell(visible=visible, kind="text", text=value)
 
 
-def _list_cell(
-    name: str, items: list[str], permissions: set[Permission], lang: str, more: int = 0
-) -> Cell:
+def _list_cell(name: str, items: list[str], permissions: set[Permission]) -> Cell:
     visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
-    return Cell(
-        visible=visible,
-        kind="list",
-        items=items if visible else [],
-        # A list cell has no text of its own, so the overflow line borrows it.
-        text=(_("and {count} more", lang=lang).format(count=more) if visible and more else None),
-    )
-
-
-def shown_groups(by_school: Mapping[str, list[str]]) -> tuple[dict[str, list[str]], int]:
-    """The group names one row shows, by school, and how many it leaves out.
-
-    Both the row and the lookups behind it go through this, or the table would
-    ask for a display name nothing fetched. Schools are taken in order until the
-    budget runs out; a school that contributes nothing still gets its key, which
-    is what the group lookups are indexed by.
-    """
-    shown: dict[str, list[str]] = {}
-    taken = 0
-    hidden = 0
-    for school, names in by_school.items():
-        room = max(USER_LIST_GROUPS_SHOWN - taken, 0)
-        if room:
-            shown[school] = names[:room]
-            taken += len(shown[school])
-        hidden += len(names) - min(room, len(names))
-    return shown, hidden
+    return Cell(visible=visible, kind="list", items=items if visible else [])
 
 
 def _boolean_cell(name: str, activated: bool, permissions: set[Permission], lang: str) -> Cell:
@@ -442,8 +395,6 @@ def list_columns(lang: str) -> list[Column]:
         Column(label=_("First name", lang=lang)),
         Column(label=_("Username", lang=lang)),
         Column(label=_("Roles", lang=lang)),
-        Column(label=_("Classes", lang=lang)),
-        Column(label=_("Work Groups", lang=lang)),
         Column(label=_("Schools", lang=lang)),
         Column(label=_("Activated", lang=lang)),
     ]
@@ -451,10 +402,6 @@ def list_columns(lang: str) -> list[Column]:
 
 def _user_cells(user: User, data: UserListData, permissions: set[Permission], lang: str) -> list[Cell]:
     attributes = user.attributes
-    # Capped here and in ``_fetch_groups`` by the same rule, so the names the
-    # row skips are never looked up in the first place.
-    classes_by_school, hidden_classes = shown_groups(attributes.school_classes)
-    work_groups_by_school, hidden_work_groups = shown_groups(attributes.work_groups)
     return [
         _text_cell("last_name", attributes.last_name, permissions),
         _text_cell("first_name", attributes.first_name, permissions),
@@ -463,37 +410,11 @@ def _user_cells(user: User, data: UserListData, permissions: set[Permission], la
             "roles",
             [_format_role(data.schools, role, lang) for role in attributes.roles],
             permissions,
-            lang,
-        ),
-        _list_cell(
-            "school_classes",
-            [
-                _format_school_class(
-                    data.schools, data.school_classes.get(school, []), school, school_class
-                )
-                for school, classes in classes_by_school.items()
-                for school_class in classes
-            ],
-            permissions,
-            lang,
-            more=hidden_classes,
-        ),
-        _list_cell(
-            "work_groups",
-            [
-                _format_work_group(data.schools, data.work_groups.get(school, []), school, work_group)
-                for school, groups in work_groups_by_school.items()
-                for work_group in groups
-            ],
-            permissions,
-            lang,
-            more=hidden_work_groups,
         ),
         _list_cell(
             "schools",
             [_format_school(data.schools, school) for school in attributes.schools],
             permissions,
-            lang,
         ),
         _boolean_cell("activated", not attributes.disabled, permissions, lang),
     ]
@@ -515,8 +436,8 @@ def build_user_list(data: UserListData, lang: str) -> UserListView:
             # TODO univention/dev/education/user-management#214
             #      Handle this properly and context dependent, e.g. as a toast for the user.
             logger.error(
-                "Cannot render the user list: a user belongs to a school, class or work group "
-                "that the backend did not return. Check that user's groups in the Kelvin REST API.",
+                "Cannot render the user list: a user belongs to a school that the backend did "
+                "not return. Check that user's schools in the Kelvin REST API.",
                 user_id=user.id,
                 missing_id=exc.args[0],
                 candidate_count=exc.args[1],

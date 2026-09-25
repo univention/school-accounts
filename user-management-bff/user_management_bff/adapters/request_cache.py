@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Port decorators that memoize a read for the lifetime of one request.
 
-The list route needs the same school's data twice: once as the whole set, to
-build the filter sidebar, and once as the handful of groups a listed user is in,
-to render their display names. The two overlap but neither contains the other, so
-the group caches here are keyed per group and the whole-school read populates
-them - which makes the second read of a school the sidebar already loaded free.
+The list route can need the same school's data twice: once as the whole set, to
+build the filter sidebar, and once as the selected group, to confirm the school
+still has it. The two overlap but neither contains the other, so the group
+caches here are keyed per group and the whole-school read populates them - which
+makes the second read of a school the sidebar already loaded free.
 
 Deliberately per request, not a process-wide cache: a group renamed in Kelvin
 has to appear on the next reload, and there is no invalidation channel that
@@ -38,7 +38,7 @@ _Value = TypeVar("_Value")
 class _SingleFlight(Generic[_Key, _Value]):
     """Run at most one ``fetch`` per key, however many callers ask concurrently.
 
-    The route builds the sidebar and the table at the same time and both read the
+    The route builds the sidebar while the listing runs, and both can read the
     same school, so a cache of finished results would still let the second read
     start before the first one lands. Keeping the task, not its value, is what
     collapses them into one request.

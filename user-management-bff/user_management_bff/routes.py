@@ -384,8 +384,6 @@ class _Listing:
         return business_logic.get_users(
             self.users,
             self.schools,
-            self.school_classes,
-            self.work_groups,
             self.permissions,
             self.actor,
             UsersGetRequest(

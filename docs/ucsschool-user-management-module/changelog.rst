@@ -25,7 +25,7 @@ This section lists the changes to the User Management Module.
 * The page header shows the logged in user and a button that ends the session.
 * The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
   ignored if still set.
-* Add work groups as a new attribute to the list view.
+* The list view no longer shows the school classes and work groups of each user.
 * Reset the password of one or more selected users from the list view, with a confirmation
   dialog stating who is affected and per-user results.
 * Add school classes and work groups as filter options to the list view.

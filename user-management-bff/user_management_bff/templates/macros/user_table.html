@@ -8,8 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <u-badge variant="{{ 'success' if cell.activated else 'ghost' }}">{{ cell.text }}</u-badge>
   {%- elif cell.kind == "list" -%}
     {%- if cell.items -%}
-      {# cell.text on a list is the "and N more" line for what the cap left out. #}
-      <u-vstack gap="xs">{% for item in cell.items %}<span>{{ item }}</span>{% endfor %}{% if cell.text %}<span>{{ cell.text }}</span>{% endif %}</u-vstack>
+      <u-vstack gap="xs">{% for item in cell.items %}<span>{{ item }}</span>{% endfor %}</u-vstack>
     {%- else -%}—{%- endif -%}
   {%- else -%}
     {{ cell.text if cell.text else "—" }}
