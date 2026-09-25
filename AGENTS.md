@@ -193,8 +193,9 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 - **No per-route `HX-Request` branching for page content.** The list route (`GET /users`) always
   renders the *complete* `pages/user_list.html`; the htmx form uses `hx-select="#results-region"` to
   extract just the results client-side (`templates/pages/user_list.html`). This makes filtered URLs
-  directly bookmarkable/shareable (`hx-push-url="true"`) — a bare `GET /users?school=...` reproduces
-  the same state a click would. Prefer this `hx-select` pattern over adding `HX-Request` checks when
+  directly bookmarkable/shareable (the route's `HX-Push-Url` header, not an `hx-push-url` attribute,
+  which would also push after an error toast) — a bare `GET /users?school=...` reproduces the same
+  state a click would. Prefer this `hx-select` pattern over adding `HX-Request` checks when
   a full page and its htmx-triggered update should show identical content.
 - `HX-Request` **is** checked, but only in the global error/redirect handling (`main.py:_html_error`,
   `not_authenticated_exception_handler`) and nowhere else — keep it that way; don't sprinkle

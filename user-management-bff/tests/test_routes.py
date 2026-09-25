@@ -247,13 +247,13 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # class or work group is chosen.
     assert 'value="all" selected' in body
     assert "All classes and work groups" in body
-    # Search submits to /users and pushes the searched URL for deep-linking,
-    # swapping only the results region.
-    assert 'hx-push-url="true"' in body
+    # Only the route's HX-Push-Url pushes: the attribute would also push after an
+    # error toast, recording a filter whose results never loaded.
+    assert "hx-push-url" not in body
     assert 'hx-select="#results-region"' in body
-    # The cascade (school -> filters) must not inherit the form's select/push-url,
+    # The cascade (school -> filters) must not inherit the form's select,
     # or its fragment response would blank out the dependent filters.
-    assert 'hx-disinherit="hx-select hx-push-url"' in body
+    assert 'hx-disinherit="hx-select"' in body
     # htmx snapshots the page after the click that set the school but before the
     # results swap, so a restored snapshot pairs a school with the old table.
     assert 'hx-history="false"' in body
