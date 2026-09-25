@@ -105,8 +105,9 @@ async def test_get_schools_actor_not_found(
     expected = _("The logged in user '{user}' is not a valid UCS@school user.", lang=lang).format(
         user=user
     )
+    schools, permissions = mocker.AsyncMock(), mocker.AsyncMock()
     with pytest.raises(NoSchoolUserError, match=re.escape(expected)) as exc_info:
-        await get_schools(mocker.AsyncMock(), mocker.AsyncMock(), users_get_not_found_mock, "USER", lang)
+        await get_schools(schools, permissions, users_get_not_found_mock, "USER", lang)
     assert exc_info.value.identifier == "USER"
 
 

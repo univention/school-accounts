@@ -358,8 +358,9 @@ class TestCookieSessionAuthenticationAdapter:
         self, wired: CookieSessionAuthenticationAdapter, client: MagicMock, mocker: MockerFixture
     ):
         client.authorize_access_token = mocker.AsyncMock(side_effect=OAuthError("bad state"))
+        request = self._request(mocker, session={})
         with pytest.raises(NotAuthenticatedError, match="Not authenticated"):
-            await wired.complete_login(self._request(mocker, session={}))
+            await wired.complete_login(request)
 
     @pytest.mark.asyncio
     async def test_complete_login_missing_identifier_claim(
@@ -368,8 +369,9 @@ class TestCookieSessionAuthenticationAdapter:
         client.authorize_access_token = mocker.AsyncMock(
             return_value={"userinfo": {"sub": "SUB"}, "expires_in": 60}
         )
+        request = self._request(mocker, session={})
         with pytest.raises(RuntimeError, match="does not contain the identifier claim"):
-            await wired.complete_login(self._request(mocker, session={}))
+            await wired.complete_login(request)
 
     # --- logout -------------------------------------------------------------------
 
@@ -761,10 +763,12 @@ class TestNeverAuthenticatedAdapter:
 
     @pytest.mark.asyncio
     async def test_get_authentication_dependency(self, adapter: NeverAuthenticatedAdapter):
+        dependency = await adapter.get_authentication_dependency()
         with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
-            await (await adapter.get_authentication_dependency())()
+            await dependency()
 
     @pytest.mark.asyncio
     async def test_get_authenticated_id(self, adapter: NeverAuthenticatedAdapter, mocker: MockerFixture):
+        request = mocker.Mock()
         with pytest.raises(NotAuthenticatedError, match="Never authenticated."):
-            await adapter.get_authenticated_id(mocker.Mock())
+            await adapter.get_authenticated_id(request)

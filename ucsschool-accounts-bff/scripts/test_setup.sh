@@ -5,11 +5,9 @@
 # Setup script for automated tests
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-UV_SYSTEM_PYTHON=1
 
 cd $PROJECT_DIR
 
-pip install uv=="$UV_VERSION"
-uv pip install .
+pip install --only-binary :all: uv=="$UV_VERSION"
 
 ./scripts/translate.sh
