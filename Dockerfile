@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # Calculate Python dependencies
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-525:0.23.0@sha256:afd982bfba8077a08a873e0e2c567dbc9b2c8e943eefac68b1d06a784b0f1859 AS backend_builder
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.3@sha256:42db06d912f4e60c0698a4818fbf9dc2d319fc6f0e6e13992164333df47b7c59 AS backend_builder
 WORKDIR /build
 ENV UV_PROJECT_ENVIRONMENT="/venv"
 ENV UV_VERSION=0.11.21
@@ -20,7 +20,7 @@ RUN uv sync --frozen --no-install-project
 COPY ucsschool-accounts-bff/ ./
 RUN uv sync --frozen --no-editable
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-525:0.23.0@sha256:afd982bfba8077a08a873e0e2c567dbc9b2c8e943eefac68b1d06a784b0f1859 AS runtime
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.3@sha256:42db06d912f4e60c0698a4818fbf9dc2d319fc6f0e6e13992164333df47b7c59 AS runtime
 
 EXPOSE 8000
 

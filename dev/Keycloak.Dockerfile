@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM docker.software-univention.de/keycloak-keycloak:26.6.3-ucs1@sha256:c469e88a2cad9fdd087303f2747dce185d49becc08f7e594a285f51ba01d0f15
+FROM artifacts.software-univention.de/nubus/images/keycloak:26.7.4-nubus2@sha256:6a4a2da058ae28dce96c8b43663dd5faf2a0f1b290cc0c5e688156c6681bb5f4
 
 # Configure a database vendor. Problem with dev-mem, set to default dev-file
 ENV KC_DB=dev-file

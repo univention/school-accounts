@@ -224,7 +224,7 @@ bff-frontend-test:
   image: $DEV_IMAGE_TAG
   services:
     # Keep in sync with dev/Keycloak.Dockerfile.
-    - name: docker.software-univention.de/keycloak-keycloak:26.6.3-ucs1@sha256:c469e88a2cad9fdd087303f2747dce185d49becc08f7e594a285f51ba01d0f15
+    - name: gitregistry.knut.univention.de/univention/dev/projects/keycloak/keycloak-app/keycloak:26.7.4-nubus1@sha256:f7ce4d5346d494502e281607959767b657918f57dc01fa8d39b0a98661098bff
       alias: keycloak
       command: ["start"]
       variables:
