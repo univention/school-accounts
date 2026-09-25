@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 {% macro cell(cell) -%}
 {%- if cell.visible -%}
   {%- if cell.kind == "boolean" -%}
-    <u-badge variant="{{ 'success' if cell.activated else 'ghost' }}">{{ cell.text }}</u-badge>
+    <u-badge variant="{{ 'primary' if cell.activated else 'ghost' }}">{{ cell.text }}</u-badge>
   {%- elif cell.kind == "list" -%}
     {%- if cell.items -%}
       <u-vstack gap="xs">{% for item in cell.items %}<span>{{ item }}</span>{% endfor %}</u-vstack>

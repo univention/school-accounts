@@ -16,64 +16,66 @@ SPDX-License-Identifier: AGPL-3.0-only
   hx-on::before-request="this.querySelector('u-button[type=submit]').loading = true"
   hx-on::after-request="this.querySelector('u-button[type=submit]').loading = false"
 >
-  <u-vstack gap="md" grow x-data="selection">
-    {# Outside the scrolling region, so the button stays reachable. #}
-    <u-hstack justify="between" align="center">
-      <span aria-live="polite">
-        {# In a data attribute, not inline: a `| tojson` string starts with a
-           double quote, which closes the attribute and leaves x-text empty. #}
-        <span
-          x-show="selected > 0"
-          data-template="{{ _('{count} users selected') }}"
-          x-text="$el.dataset.template.replace('{count}', selected)"
-        ></span>
-      </span>
-      <u-button type="submit" variant="primary" x-bind:disabled="selected === 0">
-        {{ _("Reset password") }}
-      </u-button>
-    </u-hstack>
+    <u-card grow tone>
+        <u-vstack gap="md" grow align="stretch" justify="start" x-data="selection">
+          {# Outside the scrolling region, so the button stays reachable. #}
+          <u-hstack justify="between" align="center" gap="md">
+            <span aria-live="polite">
+              {# In a data attribute, not inline: a `| tojson` string starts with a
+                 double quote, which closes the attribute and leaves x-text empty. #}
+              <span
+                x-show="selected > 0"
+                data-template="{{ _('{count} users selected') }}"
+                x-text="$el.dataset.template.replace('{count}', selected)"
+              ></span>
+            </span>
+            <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
+              {{ _("Reset password") }}
+            </u-button>
+          </u-hstack>
 
-    <u-vstack grow scroll>
-    {% if view.rows %}
-    <u-table sticky-header>
-      <u-tr slot="header">
-        <u-th>
-          <label for="select-all">
-            <u-checkbox id="select-all" x-ref="all" x-on:change="toggleAll($event.target.checked)"></u-checkbox>
-            <span class="sr-only">{{ _("Select all resettable users on this page") }}</span>
-          </label>
-        </u-th>
-        {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
-      </u-tr>
-      <u-tbody>
-        {% for row in view.rows %}
-        <u-tr>
-          <u-td>
-            {% if row.selectable %}
-            <label for="select-{{ row.id }}">
-              <u-checkbox
-                id="select-{{ row.id }}"
-                name="user_id"
-                value="{{ row.id }}"
-                x-on:change="sync()"
-              ></u-checkbox>
-              <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
-            </label>
-            {% endif %}
-          </u-td>
-          {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
-        </u-tr>
-        {% endfor %}
-      </u-tbody>
-    </u-table>
-    {% else %}
-    <u-table empty sticky-header>
-      <u-tr slot="header">
-        {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
-      </u-tr>
-      <span slot="empty">{{ view.hint or _('No users found.') }}</span>
-    </u-table>
-    {% endif %}
-    </u-vstack>
-  </u-vstack>
+          <u-vstack grow scroll style="overflow-x: auto" gap="md" align="stretch" justify="start">
+          {% if view.rows %}
+          <u-table sticky-header striped role="table">
+            <u-tr slot="header" role="row">
+              <u-th role="columnheader" direction="none">
+                <label for="select-all">
+                  <u-checkbox id="select-all" x-ref="all" x-on:change="toggleAll($event.target.checked)"></u-checkbox>
+                  <span class="sr-only">{{ _("Select all resettable users on this page") }}</span>
+                </label>
+              </u-th>
+              {% for column in view.columns %}<u-th role="columnheader" direction="none">{{ column.label }}</u-th>{% endfor %}
+            </u-tr>
+            <u-tbody role="rowgroup">
+              {% for row in view.rows %}
+              <u-tr role="row">
+                <u-td role="cell">
+                  {% if row.selectable %}
+                  <label for="select-{{ row.id }}">
+                    <u-checkbox
+                      id="select-{{ row.id }}"
+                      name="user_id"
+                      value="{{ row.id }}"
+                      x-on:change="sync()"
+                    ></u-checkbox>
+                    <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
+                  </label>
+                  {% endif %}
+                </u-td>
+                {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
+              </u-tr>
+              {% endfor %}
+            </u-tbody>
+          </u-table>
+          {% else %}
+          <u-table empty sticky-header>
+            <u-tr slot="header" role="row">
+              {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
+            </u-tr>
+            <span slot="empty">{{ view.hint or _('No users found.') }}</span>
+          </u-table>
+          {% endif %}
+          </u-vstack>
+        </u-vstack>
+    </u-card>
 </u-form>

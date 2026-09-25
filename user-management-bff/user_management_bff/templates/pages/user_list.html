@@ -11,13 +11,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 {# htmx's history snapshot is taken after the click that set the list's value but
    before the results swap, so a restored page shows a school with the old table. #}
 <u-page variant="fixed" hx-history="false">
-  <u-container grow>
-    <u-vstack gap="md" grow>
+  <u-container grow style="padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2) calc(var(--spacing) * 6)">
+    <u-vstack gap="sm" grow align="stretch" justify="start">
       {{ layout.page_header() }}
       {# `align="stretch"` overrides the default `center`, which would collapse
          both columns to their content height. #}
-      <u-hstack gap="lg" align="stretch" grow>
-        <u-vstack basis="sm">
+      <u-hstack gap="lg" align="stretch" grow justify="start">
+        <u-vstack basis="sm" gap="md" align="stretch" justify="start">
           {# The delay is required, not cosmetic: a list select publishes its new
              form value in a Lit update, one tick after the event, so serialising
              immediately would send the previous selection. #}
@@ -31,38 +31,44 @@ SPDX-License-Identifier: AGPL-3.0-only
             hx-indicator="#results-region"
             hx-disinherit="hx-select hx-indicator"
           >
-            <u-list-select
-              id="school-list"
-              name="school"
-              required
-              size="sm"
-              filterable
-              heading="{{ _('School') }}"
-              placeholder="{{ _('Filter schools') }}"
-              {% if selected_school %}value="{{ selected_school }}"{% endif %}
-              hx-get="{{ frontend_prefix }}/users/schools"
-              hx-trigger="u-search delay:300ms"
-              hx-target="this"
-              hx-swap="innerHTML"
-              hx-vals="js:{q: event.detail.query}"
-            >
-              {% include "fragments/school_options.html" %}
-            </u-list-select>
+              <u-vstack gap="lg" grow align="stretch" justify="start">
+                  <u-card tone>
+                    <u-list-select
+                    id="school-list"
+                    name="school"
+                    required
+                    size="auto"
+                    filterable
+                    heading="{{ _('School') }}"
+                    placeholder="{{ _('Filter schools') }}"
+                    {% if selected_school %}value="{{ selected_school }}"{% endif %}
+                    hx-get="{{ frontend_prefix }}/users/schools"
+                    hx-trigger="u-search delay:300ms"
+                    hx-target="this"
+                    hx-swap="innerHTML"
+                    hx-vals="js:{q: event.detail.query}"
+                    >
+                        {% include "fragments/school_options.html" %}
+                    </u-list-select>
+                  </u-card>
+                  <u-card grow tone>
 
-            {# Swapping this wrapper replaces the whole control, which is what
-               drops the previous school's group selection - u-list-select keeps
-               its value across an item swap. #}
-            <u-vstack
-              id="dependent-filters"
-              grow
-              hx-get="{{ frontend_prefix }}/users/filters"
-              hx-trigger="u-change[filterChanged(event)] from:#school-list"
-              hx-target="this"
-              hx-swap="innerHTML"
-              hx-vals="js:{school: event.detail.value}"
-            >
-              {% include "fragments/user_filters.html" %}
-            </u-vstack>
+                    {# Swapping this wrapper replaces the whole control, which is what
+                    drops the previous school's group selection - u-list-select keeps
+                    its value across an item swap. #}
+                    <u-vstack
+                    id="dependent-filters"
+                    grow
+                    hx-get="{{ frontend_prefix }}/users/filters"
+                    hx-trigger="u-change[filterChanged(event)] from:#school-list"
+                    hx-target="this"
+                    hx-swap="innerHTML"
+                    hx-vals="js:{school: event.detail.value}"
+                    >
+                    {% include "fragments/user_filters.html" %}
+                    </u-vstack>
+                  </u-card>
+              </u-vstack>
           </u-form>
         </u-vstack>
 
