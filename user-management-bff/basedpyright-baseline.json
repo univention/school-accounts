@@ -526,42 +526,34 @@
                 }
             },
             {
-                "code": "reportUnknownParameterType",
+                "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 53,
-                    "endColumn": 68,
+                    "startColumn": 21,
+                    "endColumn": 32,
                     "lineCount": 1
                 }
             },
             {
-                "code": "reportMissingParameterType",
+                "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 53,
-                    "endColumn": 68,
+                    "startColumn": 18,
+                    "endColumn": 29,
                     "lineCount": 1
                 }
             },
             {
-                "code": "reportGeneralTypeIssues",
+                "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 10,
-                    "endColumn": 23,
+                    "startColumn": 18,
+                    "endColumn": 29,
                     "lineCount": 1
                 }
             },
             {
-                "code": "reportGeneralTypeIssues",
+                "code": "reportUnknownMemberType",
                 "range": {
-                    "startColumn": 10,
-                    "endColumn": 23,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportGeneralTypeIssues",
-                "range": {
-                    "startColumn": 10,
-                    "endColumn": 23,
+                    "startColumn": 18,
+                    "endColumn": 29,
                     "lineCount": 1
                 }
             },
@@ -3014,8 +3006,8 @@
             {
                 "code": "reportUnknownArgumentType",
                 "range": {
-                    "startColumn": 52,
-                    "endColumn": 57,
+                    "startColumn": 39,
+                    "endColumn": 44,
                     "lineCount": 1
                 }
             },
@@ -3024,6 +3016,70 @@
                 "range": {
                     "startColumn": 15,
                     "endColumn": 20,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 25,
+                    "endColumn": 40,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownVariableType",
+                "range": {
+                    "startColumn": 8,
+                    "endColumn": 15,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 25,
+                    "endColumn": 40,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownArgumentType",
+                "range": {
+                    "startColumn": 64,
+                    "endColumn": 71,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnannotatedClassAttribute",
+                "range": {
+                    "startColumn": 13,
+                    "endColumn": 19,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownVariableType",
+                "range": {
+                    "startColumn": 8,
+                    "endColumn": 15,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownMemberType",
+                "range": {
+                    "startColumn": 21,
+                    "endColumn": 36,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownArgumentType",
+                "range": {
+                    "startColumn": 85,
+                    "endColumn": 92,
                     "lineCount": 1
                 }
             },

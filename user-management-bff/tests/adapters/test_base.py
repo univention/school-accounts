@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from __future__ import annotations
+
 import time
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock
@@ -10,7 +12,7 @@ import jwt
 import pytest
 from async_property import async_property
 from pytest_mock import MockerFixture
-from ucsschool.kelvin.client import ServerError, Session
+from ucsschool.kelvin.client import InvalidRequest, ServerError, Session
 
 from user_management_bff.adapters import base as adapters_base
 from user_management_bff.adapters.base import (
@@ -161,29 +163,99 @@ async def test_the_token_outlives_the_session_that_minted_it(
     assert len(minted) == 1
 
 
+def _kelvin(tokens: list[str], refused: set[str], seen: list[str]) -> httpx.MockTransport:
+    """A Kelvin that hands out ``tokens`` in order and answers 401 to any in ``refused``."""
+    minted = iter(tokens)
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": next(minted)})
+        token = request.headers["Authorization"].removeprefix("Bearer ")
+        seen.append(token)
+        if token in refused:
+            return httpx.Response(401, json={"detail": "Could not validate credentials"})
+        return httpx.Response(200, json={"name": "DEMOSCHOOL"})
+
+    return httpx.MockTransport(handle)
+
+
 @pytest.mark.asyncio
-async def test_a_token_is_not_reused_past_its_window(no_shared_token, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("no_shared_token")
+async def test_a_refused_shared_token_is_replaced_and_the_request_sent_again():
     """Kelvin restarting with a new signing key makes a cached token unusable,
     and the client cannot tell - it only checks the expiry."""
-    minted: list[str] = []
+    stale, fresh = _token_valid_for(3600), _token_valid_for(3601)
+    seen: list[str] = []
+    transport = _kelvin([stale, fresh], refused={stale}, seen=seen)
 
-    async def _mint(self: Session) -> str:
-        minted.append("again")
-        return _token_valid_for(3600)
+    async with adapters_base.SharedTokenSession(
+        "actor", "secret", "kelvin.test", transport=transport
+    ) as session:
+        assert await session.get("https://kelvin.test/schools/DEMOSCHOOL") == {"name": "DEMOSCHOOL"}
 
-    monkeypatch.setattr(Session, "token", async_property(_mint))
-    now = [0.0]
-    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    assert seen == [stale, fresh]
+    assert adapters_base._shared_token is not None
+    assert adapters_base._shared_token.value == fresh
 
-    session = adapters_base.SharedTokenSession("actor", "secret", "kelvin.test")
-    await session.token
-    now[0] = adapters_base.KELVIN_TOKEN_REUSE_SECONDS - 1
-    await session.token
-    assert len(minted) == 1, "still inside the window"
 
-    now[0] = adapters_base.KELVIN_TOKEN_REUSE_SECONDS + 1
-    await session.token
-    assert len(minted) == 2
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_shared_token")
+async def test_a_fresh_token_that_is_refused_too_is_not_retried_again():
+    """A second 401 is not a stale token, and retrying would never end."""
+    first, second = _token_valid_for(3600), _token_valid_for(3601)
+    seen: list[str] = []
+    transport = _kelvin([first, second], refused={first, second}, seen=seen)
+
+    async with adapters_base.SharedTokenSession(
+        "actor", "secret", "kelvin.test", transport=transport
+    ) as session:
+        with pytest.raises(InvalidRequest) as exc_info:
+            await session.get("https://kelvin.test/schools/DEMOSCHOOL")
+
+    assert exc_info.value.status == 401
+    assert seen == [first, second]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_shared_token")
+async def test_other_client_errors_are_not_retried():
+    seen: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": _token_valid_for(3600)})
+        seen.append(request.url.path)
+        return httpx.Response(403, json={"detail": "Forbidden"})
+
+    transport = httpx.MockTransport(handle)
+    async with adapters_base.SharedTokenSession(
+        "actor", "secret", "kelvin.test", transport=transport
+    ) as session:
+        with pytest.raises(InvalidRequest) as exc_info:
+            await session.get("https://kelvin.test/schools/DEMOSCHOOL")
+
+    assert exc_info.value.status == 403
+    assert len(seen) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_shared_token")
+async def test_a_refused_login_is_not_retried():
+    """A 401 on the login is the service account's password; no fresh token fixes that."""
+    logins: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        logins.append(request.url.path)
+        return httpx.Response(401, json={"detail": "Incorrect username or password"})
+
+    transport = httpx.MockTransport(handle)
+    async with adapters_base.SharedTokenSession(
+        "actor", "secret", "kelvin.test", transport=transport
+    ) as session:
+        with pytest.raises(InvalidRequest):
+            await session.get("https://kelvin.test/schools/DEMOSCHOOL")
+
+    assert len(logins) == 1
 
 
 @pytest.mark.asyncio

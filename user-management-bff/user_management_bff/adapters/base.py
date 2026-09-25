@@ -1,12 +1,14 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 import os
-import time
 from abc import ABC
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from http import HTTPStatus
 from typing import Protocol, Type, TypeVar
 from urllib.parse import quote
 
@@ -16,7 +18,7 @@ from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
 from typing_extensions import override
-from ucsschool.kelvin.client import ServerError, Session
+from ucsschool.kelvin.client import InvalidRequest, ServerError, Session
 from ucsschool.kelvin.client.session import Token
 
 from ..errors import KelvinAPIUnavailableError
@@ -32,27 +34,10 @@ KELVIN_TIMEOUT_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TIMEOUT_S
 # The client keeps its token on the session and a session lives for one request,
 # so every page view re-authenticated: a password verification against LDAP for
 # a credential Kelvin issues with an hour's life. The token is the service
-# account's, not the request's, so it is shared across requests - but for far
-# less than its life. If Kelvin restarts with a new signing key, a cached token
-# is refused and the client will not know to refresh it, because `Token.is_valid`
-# only looks at the expiry; this window bounds how long that can last.
-KELVIN_TOKEN_REUSE_SECONDS = float(os.environ.get("USER_MANAGEMENT__KELVIN_TOKEN_REUSE_SECONDS", "300"))
-
-_T = TypeVar("_T")
-
-
-@dataclass
-class _SharedToken:
-    token: Token
-    minted: float
-
-    def usable(self) -> bool:
-        """Still valid to the client, and minted recently enough to trust."""
-        return self.token.is_valid() and time.monotonic() - self.minted < KELVIN_TOKEN_REUSE_SECONDS
-
-
+# account's, not the request's, so it is shared across requests for as long as
+# the client considers it valid.
 # Process-wide on purpose: what it saves is exactly the per-request login.
-_shared_token: _SharedToken | None = None
+_shared_token: Token | None = None
 
 
 def forget_shared_token() -> None:
@@ -86,11 +71,48 @@ class SharedTokenSession(_KelvinSession):
     async def token(self) -> str:
         global _shared_token
         shared = _shared_token
-        if shared is not None and shared.usable():
-            return shared.token.value
+        if shared is not None and shared.is_valid():
+            return shared.value
         value = await super().token
-        _shared_token = _SharedToken(Token.from_str(value), time.monotonic())
+        _shared_token = Token.from_str(value)
         return value
+
+    @override
+    async def request(
+        self,
+        async_request_method: Callable[..., Awaitable[httpx.Response]],
+        url: str,
+        return_json: bool = True,
+        **kwargs: object,
+    ) -> str | int | dict[str, object]:
+        """Send once more with a fresh token when Kelvin refuses the shared one.
+
+        `Token.is_valid` only looks at the expiry, so a token Kelvin stopped
+        accepting - a restart with a new signing key - would otherwise be sent
+        until it expires, failing every request of every worker for up to an
+        hour. A 401 means Kelvin turned the request away before acting on it,
+        so sending a write again does not apply it twice.
+        """
+        if "headers" in kwargs:
+            # Only the login brings its own headers, and a 401 there is the
+            # service account's password, which no fresh token fixes.
+            return await super().request(async_request_method, url, return_json, **kwargs)
+        # Outside the `try`: a 401 while minting is the login's.
+        headers = await self.json_headers  # pyright: ignore[reportGeneralTypeIssues]
+        try:
+            return await super().request(
+                async_request_method, url, return_json, headers=headers, **kwargs
+            )
+        except InvalidRequest as exc:
+            if exc.status != HTTPStatus.UNAUTHORIZED:
+                raise
+        logger.debug("Kelvin refused the shared token; retrying once with a fresh one.", url=url)
+        # A concurrent request may have minted a replacement already, and this
+        # drops that one too, which costs one extra login.
+        forget_shared_token()
+        self._token = None
+        headers = await self.json_headers  # pyright: ignore[reportGeneralTypeIssues]
+        return await super().request(async_request_method, url, return_json, headers=headers, **kwargs)
 
 
 # A whole selection travels as repeated ``name`` parameters in one request line,
