@@ -201,7 +201,7 @@ def test_an_unhandled_error_still_carries_the_request_id(
     client = TestClient(app, raise_server_exceptions=False)
     response = client.get(
         f"{FRONTEND_PREFIX}/users",
-        params={"school": "school1"},
+        params={"school": "school1", "group": "school_class:1a"},
         headers={**headers, CORRELATION_ID_HEADER_NAME: "abc"},
     )
     assert response.status_code == status_code
@@ -1084,7 +1084,9 @@ def test_a_kelvin_failure_becomes_a_toast_for_htmx(test_client: TestClient, mock
         FileUsersPersistenceAdapter, "get_users", side_effect=KelvinAPIUnavailableError()
     )
     response = test_client.get(
-        f"{FRONTEND_PREFIX}/users", params={"school": "school1"}, headers={"HX-Request": "true"}
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "school1", "group": "school_class:1a"},
+        headers={"HX-Request": "true"},
     )
     assert response.status_code == 200
     assert response.headers["HX-Retarget"] == "#toast-region"
@@ -1100,7 +1102,9 @@ def test_a_kelvin_failure_becomes_a_message_page_without_htmx(
     mocker.patch.object(
         FileUsersPersistenceAdapter, "get_users", side_effect=KelvinAPIUnavailableError()
     )
-    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1"})
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "school_class:1a"}
+    )
     assert response.status_code == 502
     assert "currently unavailable" in response.text
 
