@@ -39,7 +39,7 @@ from user_management_bff.main import (
     CORRELATION_ID_MAX_LENGTH,
     app,
 )
-from user_management_bff.models import Permission
+from user_management_bff.models import Permission, Target, TargetObjectType, User
 from user_management_bff.ports import FastAPIAuthenticationPort
 from user_management_bff.presentation import OptionGroup
 from user_management_bff.routes import _abandon, auth_port, render_static
@@ -479,6 +479,41 @@ def test_users_deep_link_ignores_unusable_group(test_client: TestClient, group: 
     # Degrading to the whole school would list thousands nobody asked for.
     assert "max.muster" not in body
     assert "Select a class or work group to list its users." in body
+
+
+@pytest.mark.parametrize("group", ["school_class:1a", "work_group:w1a"])
+@pytest.mark.parametrize("htmx_headers", [{}, {"HX-Request": "true", "HX-Target": "results-region"}])
+def test_users_deep_link_ignores_a_group_the_actor_may_not_filter_by(
+    test_client: TestClient, mocker: MockerFixture, group: str, htmx_headers: dict[str, str]
+):
+    """The link names the group whose members the service account reads, so it
+    reaches no further than the filter control - also where no control is built."""
+    get_permissions = FilePermissionsAdapter.get_permissions
+
+    async def _no_group_filters(
+        self: FilePermissionsAdapter, actor: User, targets: list[Target]
+    ) -> dict[str, list[Permission]]:
+        permissions = await get_permissions(self, actor, targets)
+        for target in targets:
+            if target.old_target and target.old_target.type in (
+                TargetObjectType.SCHOOL_CLASS,
+                TargetObjectType.WORK_GROUP,
+            ):
+                permissions[target.old_target.id] = []
+        return permissions
+
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", _no_group_filters)
+    get_users_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users")
+
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": group}, headers=htmx_headers
+    )
+
+    assert response.status_code == 200
+    assert f'value="{group}" selected' not in response.text
+    assert "Select a class or work group to list its users." in response.text
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1"
+    assert get_users_spy.call_count == 0
 
 
 def test_users_deep_link_to_all_groups_lists_the_school(test_client: TestClient):

@@ -185,6 +185,45 @@ async def _wards_of(users_get_adapter: UsersPersistencePort, actor: User) -> lis
     return [found[identifier] for identifier in dict.fromkeys(ward_ids) if identifier in found]
 
 
+async def _may_filter_by(
+    permissions_port: PermissionsPort, actor: User, request_data: UsersGetRequest
+) -> bool:
+    """Whether the actor may filter by every group ``request_data`` names.
+
+    Decided on the id and school the request carries, not on a read of each
+    group: the policies look at nothing else, so the check costs one PDP round
+    trip and no Kelvin request. A group the school does not have passes it and
+    lists nobody, which the caller tells apart from an empty group.
+    """
+    school = request_data.school
+    groups = [(TargetObjectType.SCHOOL_CLASS, group) for group in request_data.school_classes] + [
+        (TargetObjectType.WORK_GROUP, group) for group in request_data.work_groups
+    ]
+    if not groups:
+        return True
+    permissions = await permissions_port.get_permissions(
+        actor,
+        [
+            Target(
+                old_target=TargetObject(id=group, type=kind, attributes={"id": group, "school": school}),
+                new_target=None,
+            )
+            for kind, group in groups
+        ],
+    )
+    refused = [
+        group for _, group in groups if Permission.use_as_filter not in permissions.get(group, [])
+    ]
+    if refused:
+        logger.debug(
+            "Refused to list a group the actor may not filter by.",
+            actor_id=actor.id,
+            school=school,
+            refused=refused,
+        )
+    return not refused
+
+
 async def _reachable_users(
     users_get_adapter: UsersPersistencePort,
     actor: User,
@@ -235,8 +274,17 @@ async def get_users(
     actor_id: str,
     request_data: UsersGetRequest,
     lang: str,
-) -> UserListData:
+) -> UserListData | None:
+    """The users of ``request_data`` the actor may see, or None for a group they may not name.
+
+    Naming a group makes the service account read every member of it, so a
+    hand-edited link must not reach further than a click on the filter control:
+    the groups it names have to pass the use-as-filter check that decides which
+    groups the control offers.
+    """
     actor = await get_actor(actor_id, users_get_adapter, lang)
+    if not await _may_filter_by(permissions_port, actor, request_data):
+        return None
     users = await _reachable_users(users_get_adapter, actor, request_data)
     permissions = await permissions_port.get_permissions(
         actor,

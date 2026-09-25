@@ -37,7 +37,14 @@ from user_management_bff.errors import (
     PasswordResetRejectedError,
 )
 from user_management_bff.lang import _
-from user_management_bff.models import Permission, Target, User, UserAttributes, UsersGetRequest
+from user_management_bff.models import (
+    Permission,
+    Target,
+    TargetObjectType,
+    User,
+    UserAttributes,
+    UsersGetRequest,
+)
 from user_management_bff.ports import (
     PermissionsPort,
     SchoolClassesPersistencePort,
@@ -104,8 +111,8 @@ async def test_get_schools_actor_not_found(
 # ---------------------------------------------------------------------------
 # get_users
 # ---------------------------------------------------------------------------
-async def _get_users(ports: Ports, school: str, *, lang: str = "en"):
-    return await business_logic.get_users(
+async def _get_users(ports: Ports, school: str, *, lang: str = "en") -> presentation.UserListData:
+    result = await business_logic.get_users(
         ports.users,
         ports.schools,
         ports.permissions,
@@ -113,6 +120,9 @@ async def _get_users(ports: Ports, school: str, *, lang: str = "en"):
         UsersGetRequest(school=school, school_classes=[], work_groups=[]),
         lang,
     )
+    # A listing that names no group has no group to refuse.
+    assert result is not None
+    return result
 
 
 @pytest.mark.asyncio
@@ -162,8 +172,60 @@ async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Por
     assert presentation.build_user_list(result, "en").rows == []
 
 
-async def _get_users_from(ports: Ports, school: str):
-    return await business_logic.get_users(
+@pytest.mark.asyncio
+async def test_get_users_lists_a_group_the_actor_may_filter_by(ports: Ports, mocker: MockerFixture):
+    get_permissions_spy = mocker.spy(ports.permissions, "get_permissions")
+
+    result = await business_logic.get_users(
+        ports.users,
+        ports.schools,
+        ports.permissions,
+        ACTOR_ID,
+        UsersGetRequest(school="test_school1", school_classes=["1a"], work_groups=[]),
+        "en",
+    )
+
+    assert result is not None
+    # The policy decides on the id and school alone, so the group is not read for it.
+    group_target = get_permissions_spy.call_args_list[0].args[1][0].old_target
+    assert (group_target.id, group_target.type, group_target.attributes) == (
+        "1a",
+        TargetObjectType.SCHOOL_CLASS,
+        {"id": "1a", "school": "test_school1"},
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("school_classes,work_groups", [(["2b"], []), ([], ["w1a"]), (["1a"], ["w1a"])])
+async def test_get_users_refuses_a_group_the_actor_may_not_filter_by(
+    ports: Ports, mocker: MockerFixture, school_classes: list[str], work_groups: list[str]
+):
+    """Naming a group makes the service account read all of its members, so every
+    group named has to pass - one the actor may use does not carry another."""
+    mocker.patch.object(
+        ports.permissions,
+        "get_permissions",
+        mocker.AsyncMock(
+            return_value={"1a": [Permission.use_as_filter], "2b": [Permission.read_last_name]}
+        ),
+    )
+    get_users_spy = mocker.spy(ports.users, "get_users")
+
+    result = await business_logic.get_users(
+        ports.users,
+        ports.schools,
+        ports.permissions,
+        ACTOR_ID,
+        UsersGetRequest(school="test_school1", school_classes=school_classes, work_groups=work_groups),
+        "en",
+    )
+
+    assert result is None
+    get_users_spy.assert_not_called()
+
+
+async def _get_users_from(ports: Ports, school: str) -> presentation.UserListData:
+    result = await business_logic.get_users(
         ports.users,
         ports.schools,
         ports.permissions,
@@ -171,6 +233,9 @@ async def _get_users_from(ports: Ports, school: str):
         UsersGetRequest(school=school, school_classes=[], work_groups=[]),
         "en",
     )
+    # A listing that names no group has no group to refuse.
+    assert result is not None
+    return result
 
 
 def _person(

@@ -385,7 +385,7 @@ class _Listing:
             selected=selection.value if selection.kind else "",
         )
 
-    def users_of(self, selection: _GroupSelection) -> Awaitable[presentation.UserListData]:
+    def users_of(self, selection: _GroupSelection) -> Awaitable[presentation.UserListData | None]:
         return business_logic.get_users(
             self.users,
             self.schools,
@@ -436,18 +436,19 @@ async def _resolve_listing(
     sections = asyncio.create_task(listing.group_sections(selection))
     try:
         data = await listing.users_of(selection)
-        held = not selection.kind or await listing.holds(selection, data)
+        held = data is not None and (not selection.kind or await listing.holds(selection, data))
     except BaseException:
         await _abandon(sections)
         raise
     if held:
         return await sections, data, selection
-    logger.debug(
-        "Dropped a group filter the selected school does not have.",
-        school=listing.school,
-        group_kind=selection.kind,
-        group_id=selection.item_id,
-    )
+    if data is not None:
+        logger.debug(
+            "Dropped a group filter the selected school does not have.",
+            school=listing.school,
+            group_kind=selection.kind,
+            group_id=selection.item_id,
+        )
     # Whatever the speculative read returned answers a question nobody
     # asked, so it goes with the selection.
     return await sections, None, _GroupSelection()
