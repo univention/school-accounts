@@ -246,6 +246,10 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # triggers are guarded: the list select fires u-change on a click that re-picks
     # the active item too, and refetching would discard the selection.
     assert 'hx-trigger="u-change[filterChanged(event)] delay:100ms"' in body
+    # The guard reads an absent group as nothing selected. Reading it as the
+    # all-groups option would swallow the first click on that option after a
+    # school pick, whose pushed URL carries no group at all.
+    assert '.get(name) ?? "")' in body
     assert 'type="submit"' not in body[body.index("<u-form") : body.index("</u-form>")]
     # The reset option is offered but never preselected: listing a whole school
     # is a choice, and the table says so instead of making it.

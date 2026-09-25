@@ -88,9 +88,9 @@ SPDX-License-Identifier: AGPL-3.0-only
   // refetching would throw the selection away. The pushed URL is the applied filter.
   function filterChanged(event) {
     const name = event.target.getAttribute("name")
-    // An absent group parameter is the all-groups option; an absent school is no school.
-    const unset = name === "group" ? "{{ all_groups_value }}" : ""
-    return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? unset)
+    // An absent parameter is nothing selected, for the group as for the school: the
+    // all-groups option is pushed as group=all, so picking it is always a change.
+    return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? "")
   }
 
   // Leaves only the failures ticked, so a retry is one click. Empty = all succeeded.

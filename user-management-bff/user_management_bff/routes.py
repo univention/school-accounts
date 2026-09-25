@@ -474,7 +474,7 @@ def _push_url(school: str | None, selected_group: str) -> str:
     """The canonical, shareable URL for a filter state.
 
     Set unconditionally as ``HX-Push-Url``, which htmx prefers over the request
-    URL - that is what drops the all-groups default from the address bar.
+    URL - that is what keeps an empty group selection out of the address bar.
     """
     params = {"school": school} if school else {}
     if selected_group:
