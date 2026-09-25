@@ -13,7 +13,7 @@ ARG GID=1000
 ARG BASEDPYRIGHT_VERSION=1.39.8
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential python3-dev git pipx && \
+    apt-get install -y --no-install-recommends build-essential git pipx python3-dev && \
     rm -rf /var/lib/apt/lists/* && \
     pipx install "basedpyright==${BASEDPYRIGHT_VERSION}" && \
     groupadd --gid "${GID}" precommit && \

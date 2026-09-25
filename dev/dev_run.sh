@@ -32,7 +32,7 @@ EOF
 
 run_task() {
   TASK=$2
-  if [ -z "$TASK" ]; then
+  if [[ -z "$TASK" ]]; then
     print_help
     exit 1
   fi
@@ -155,7 +155,7 @@ run_task() {
     .
     exit $?
   fi
-  if [ "$TASK" = "translate" ]; then
+  if [[ "$TASK" = "translate" ]]; then
     run_command env ./ucsschool-accounts-bff/scripts/check_translations.sh
   fi
   echo "Task '$TASK' does not exist."
@@ -193,7 +193,7 @@ prepare_kelvin_env () {
 }
 
 run_command () {
-  if [ -z "$COMMAND" ]; then
+  if [[ -z "$COMMAND" ]]; then
     print_help
     exit 1
   fi

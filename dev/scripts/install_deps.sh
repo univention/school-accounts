@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+uv --project "$PROJECT_DIR/ucsschool-accounts-bff" sync --locked --no-build --no-install-project
+# Builds only this project; every dependency was installed above without building.
 uv --project "$PROJECT_DIR/ucsschool-accounts-bff" sync --locked
-uv run --no-sync --project "ucsschool-accounts-bff" playwright install
+uv run --no-sync --no-build --project "ucsschool-accounts-bff" playwright install
 "$PROJECT_DIR/ucsschool-accounts-bff/scripts/translate.sh"

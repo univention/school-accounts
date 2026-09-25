@@ -12,12 +12,13 @@ RUN apt-get update && \
         python3-pip && \
     rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
-RUN pip install uv=="$UV_VERSION"
+RUN pip install --only-binary :all: uv=="$UV_VERSION"
 COPY ucsschool-accounts-bff/pyproject.toml ucsschool-accounts-bff/uv.lock ./
 # Install all dependencies (prod + dev) and backend
 # Currently necessary, as the integration and production tests need this
-RUN uv sync --frozen --no-install-project
+RUN uv sync --frozen --no-build --no-install-project
 COPY ucsschool-accounts-bff/ ./
+# Builds only this project; every dependency was installed above without building.
 RUN uv sync --frozen --no-editable
 
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.3@sha256:42db06d912f4e60c0698a4818fbf9dc2d319fc6f0e6e13992164333df47b7c59 AS runtime

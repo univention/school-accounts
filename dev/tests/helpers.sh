@@ -21,7 +21,7 @@ install_local_app_version () {
   local docker_image=$2
   shift 2
   sed -i "s/Version = .*/Version = 0.0.0-ci/" appcenter-management/ini
-  if [ -n "$docker_image" ]; then
+  if [[ -n "$docker_image" ]]; then
     echo "Using $docker_image for app install."
     sed -i "s#image: .*#image: $docker_image#" appcenter-management/compose
   else

@@ -66,7 +66,7 @@ RUN apt-get update && \
     sudo && \
     rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED && \
-    pip install pre-commit==3.6.0 python-keycloak reuse==2.1.0 uv=="$UV_VERSION"
+    pip install --only-binary=:all: --no-binary=reuse pre-commit==3.6.0 reuse==2.1.0 uv=="$UV_VERSION"
 ENV PROJECT_DIR="/src"
 ENV PYTHONPYCACHEPREFIX=$PROJECT_DIR/.cache/cpython
 ENV UV_CACHE_DIR=$PROJECT_DIR/.cache/uv
