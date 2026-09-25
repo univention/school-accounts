@@ -15,6 +15,7 @@ path = [
     "dev/data/**.json",
     "dev/data/client.secret",
     "dev/data/fake-machine.secret",
+    "dev/data/session.secret",
     "dev/tests/**.csv",
     "dev/tests/**.json",
     "docs/ucsschool-accounts-module/_static/**.pdf",
