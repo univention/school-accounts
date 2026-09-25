@@ -1032,3 +1032,32 @@ async def test_get_group_filters_reads_both_kinds_and_the_actor_once(
     # Resolving it per kind would put the actor lookup back into the race the two
     # whole-school reads now run in.
     assert get_user_spy.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_group_filter_read_leaves_no_read_behind(mocker: MockerFixture):
+    """A failed listing cancels the group control before its reads run. A read
+    created up front would then be a coroutine nobody awaits."""
+    school_classes = mocker.AsyncMock()
+    work_groups = mocker.AsyncMock()
+    mocker.patch.object(business_logic, "get_actor", mocker.AsyncMock())
+
+    task = asyncio.create_task(
+        business_logic.get_group_filters(
+            school_classes,
+            work_groups,
+            mocker.AsyncMock(),
+            mocker.AsyncMock(),
+            ACTOR_ID,
+            "school1",
+            "en",
+        )
+    )
+    # One step runs it up to the gather, whose reads are scheduled but not started.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    school_classes.get_school_classes.assert_not_called()
+    work_groups.get_work_groups.assert_not_called()

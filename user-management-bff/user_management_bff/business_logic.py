@@ -3,6 +3,7 @@
 import asyncio
 from collections import Counter
 from collections.abc import Awaitable, Callable
+from functools import partial
 from typing import Protocol, TypeVar
 
 from loguru import logger
@@ -137,14 +138,19 @@ _Group = TypeVar("_Group", SchoolClass, WorkGroup)
 
 
 async def _filterable(
-    groups: Awaitable[list[_Group]],
+    read: Callable[[], Awaitable[list[_Group]]],
     to_target: Callable[[_Group], Target],
     permissions_port: PermissionsPort,
     actor: User,
     **context: object,
 ) -> list[_Group]:
-    """The groups of ``groups`` the actor is allowed to filter by, in the order read."""
-    fetched = await groups
+    """The groups ``read`` returns that the actor is allowed to filter by, in the order read.
+
+    Takes the read, not its coroutine: a caller cancelled before this starts,
+    as a failed listing cancels the group control, would otherwise leave the
+    coroutine it already created unawaited.
+    """
+    fetched = await read()
     permissions = await permissions_port.get_permissions(actor, [to_target(group) for group in fetched])
     return _usable_as_filter(fetched, permissions, actor_id=actor.id, **context)
 
@@ -336,7 +342,7 @@ async def get_school_classes(
 ) -> list[SchoolClass]:
     actor = await get_actor(actor_id, users_get_adapter, lang)
     return await _filterable(
-        schools_get_adapter.get_school_classes(school_id),
+        partial(schools_get_adapter.get_school_classes, school_id),
         school_class_to_target,
         permissions_port,
         actor,
@@ -355,7 +361,7 @@ async def get_work_groups(
 ) -> list[WorkGroup]:
     actor = await get_actor(actor_id, users_get_adapter, lang)
     return await _filterable(
-        schools_get_adapter.get_work_groups(school_id),
+        partial(schools_get_adapter.get_work_groups, school_id),
         work_group_to_target,
         permissions_port,
         actor,
@@ -382,7 +388,7 @@ async def get_group_filters(
     actor = await get_actor(actor_id, users_get_adapter, lang)
     return await asyncio.gather(
         _filterable(
-            school_classes_get_adapter.get_school_classes(school_id),
+            partial(school_classes_get_adapter.get_school_classes, school_id),
             school_class_to_target,
             permissions_port,
             actor,
@@ -390,7 +396,7 @@ async def get_group_filters(
             school=school_id,
         ),
         _filterable(
-            work_groups_get_adapter.get_work_groups(school_id),
+            partial(work_groups_get_adapter.get_work_groups, school_id),
             work_group_to_target,
             permissions_port,
             actor,
