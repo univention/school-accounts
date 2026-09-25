@@ -44,7 +44,7 @@ from .constants import (
 )
 from .errors import PermissionsError
 from .lang import _, get_lang
-from .models import UsersGetRequest
+from .models import School, UsersGetRequest
 from .ports import (
     FastAPIAuthenticationPort,
     PermissionsPort,
@@ -243,6 +243,7 @@ async def users_list(
         schools_adapter, permissions_adapter, users_adapter, actor, lang
     )
     school_options = presentation.build_school_options(schools, selected=school or "")
+    selected_school = next((sch for sch in schools.schools if sch.id == school), None)
 
     if school is None:
         response = await render(
@@ -254,7 +255,7 @@ async def users_list(
             selected_group="",
             group_sections=[],
             query="",
-            view=_list_view(None, lang, known_school=False),
+            view=_list_view(None, lang, known_school=False, selected_school=None),
         )
         response.headers["HX-Push-Url"] = _push_url(None, "")
         return response
@@ -293,7 +294,7 @@ async def users_list(
         selected_group=selection.value,
         group_sections=group_sections,
         query="",
-        view=_list_view(data, lang, listing.known_school),
+        view=_list_view(data, lang, listing.known_school, selected_school),
     )
     response.headers["HX-Push-Url"] = _push_url(school, selection.value)
     # One URL, two bodies. A browser going back to a pushed URL may otherwise
@@ -471,6 +472,7 @@ def _list_view(
     data: presentation.UserListData | None,
     lang: str,
     known_school: bool,
+    selected_school: School | None,
 ) -> presentation.UserListView:
     """The table, or the reason there is not one yet.
 
@@ -478,7 +480,7 @@ def _list_view(
     a group have been picked - so say which of the two is missing.
     """
     if data is not None:
-        return presentation.build_user_list(data, lang)
+        return presentation.build_user_list(data, lang, selected_school)
     if known_school:
         hint = _("Select a class or work group to list its users.", lang=lang)
     else:

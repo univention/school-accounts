@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-user-management-bff\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-09-24 13:36+0000\n"
+"POT-Creation-Date: 2026-09-25 08:36+0200\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
-"Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
-"de>\n"
+"Last-Translator: UCS@school Maintainers <ucsschool-"
+"maintainers@univention.de>\n"
 "Language-Team: UCS@school Maintainers <ucsschool-maintainers@univention.de>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
@@ -146,9 +146,6 @@ msgstr "Schule"
 
 msgid "School Admin"
 msgstr "Schuladmin"
-
-msgid "Schools"
-msgstr "Schulen"
 
 msgid "Select a class or work group to list its users."
 msgstr ""
@@ -320,6 +317,9 @@ msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "School of the user"
 #~ msgstr "Schule des Benutzers"
+
+#~ msgid "Schools"
+#~ msgstr "Schulen"
 
 #~ msgid "Success"
 #~ msgstr "Erfolg"

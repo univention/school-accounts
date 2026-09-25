@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Unit tests for the presentation view-model builders."""
 
-from dataclasses import replace
-
 import pytest
 from pytest_mock import MockerFixture
 
@@ -164,7 +162,6 @@ def test_list_columns_labels():
         "First name",
         "Username",
         "Roles",
-        "Schools",
         "Activated",
     ]
 
@@ -175,6 +172,10 @@ def test_list_columns_are_translated():
         "Vorname",
         "Benutzername",
     ]
+
+
+_SCHOOL1 = School(id="school1", display_name="School 1")
+_SCHOOL2 = School(id="school2", display_name="School 2")
 
 
 def _user(**overrides: object) -> User:
@@ -194,66 +195,72 @@ def _user(**overrides: object) -> User:
 def _list_data(user: User, permissions: list[Permission]) -> presentation.UserListData:
     return presentation.UserListData(
         users=[user],
-        schools=[School(id="school1", display_name="School 1")],
+        schools=[_SCHOOL1, _SCHOOL2],
         permissions={user.id: permissions},
     )
 
 
 def test_build_user_list_full_access():
-    view = presentation.build_user_list(_list_data(_user(), list(Permission)), "en")
+    view = presentation.build_user_list(_list_data(_user(), list(Permission)), "en", _SCHOOL1)
     cells = view.rows[0].cells
     assert cells[0].kind == "text" and cells[0].visible and cells[0].text == "Klein"
     assert cells[2].text == "kim"
-    assert cells[3].items == ["Teacher (School 1)"]
-    assert cells[4].items == ["School 1"]
-    assert cells[5].kind == "boolean" and cells[5].activated is True and cells[5].text == "Activated"
+    assert cells[3].items == ["Teacher"]
+    assert cells[4].kind == "boolean" and cells[4].activated is True and cells[4].text == "Activated"
+
+
+@pytest.mark.parametrize(
+    "selected,expected",
+    [
+        (_SCHOOL1, ["Teacher", "Student (School 2)"]),
+        (_SCHOOL2, ["Teacher (School 1)", "Student"]),
+    ],
+)
+def test_role_cell_names_the_school_only_for_a_role_held_outside_the_selected_one(
+    selected: School, expected: list[str]
+):
+    user = _user(roles=["teacher:school:school1", "student:school:school2"])
+    view = presentation.build_user_list(_list_data(user, list(Permission)), "en", selected)
+    assert view.rows[0].cells[3].items == expected
 
 
 @pytest.mark.parametrize(
     "role,lang,expected",
     [
-        ("student:school:school1", "de", "Schüler (School 1)"),
-        ("teacher:school:school1", "de", "Lehrer (School 1)"),
-        ("staff:school:school1", "de", "Mitarbeiter (School 1)"),
-        ("school_admin:school:school1", "de", "Schuladmin (School 1)"),
-        ("legal_guardian:school:school1", "de", "Erziehungsberechtigter (School 1)"),
-        ("teacher:school:school1", "en", "Teacher (School 1)"),
+        ("student:school:school1", "de", "Schüler"),
+        ("teacher:school:school1", "de", "Lehrer"),
+        ("staff:school:school1", "de", "Mitarbeiter"),
+        ("school_admin:school:school1", "de", "Schuladmin"),
+        ("legal_guardian:school:school1", "de", "Erziehungsberechtigter"),
+        ("teacher:school:school1", "en", "Teacher"),
     ],
 )
 def test_role_cell_is_translated(role: str, lang: str, expected: str):
     data = _list_data(_user(roles=[role]), list(Permission))
-    view = presentation.build_user_list(data, lang)
+    view = presentation.build_user_list(data, lang, _SCHOOL1)
     assert view.rows[0].cells[3].items == [expected]
 
 
 def test_build_user_list_hidden_cells_and_deactivated():
     user = _user(disabled=True, school_classes={}, work_groups={}, roles=[])
-    view = presentation.build_user_list(_list_data(user, [Permission.read_last_name]), "en")
+    view = presentation.build_user_list(_list_data(user, [Permission.read_last_name]), "en", _SCHOOL1)
     row = view.rows[0]
     assert row.cells[0].visible is True  # last_name readable
     assert row.cells[1].visible is False  # first_name not granted
     assert row.cells[2].visible is True  # username implicitly readable
     assert row.cells[3].visible is False and row.cells[3].items == []  # roles hidden
-    assert row.cells[5].activated is False and row.cells[5].text == "Deactivated"
-    assert row.cells[5].visible is False
+    assert row.cells[4].activated is False and row.cells[4].text == "Deactivated"
+    assert row.cells[4].visible is False
 
 
-@pytest.mark.parametrize(
-    "user_overrides,data_overrides",
-    [({"schools": ["ghost"]}, {}), ({}, {"schools": []})],
-    ids=["dangling-reference", "collection-not-loaded"],
-)
-def test_a_dangling_school_reference_breaks_the_list(
-    user_overrides: dict[str, object], data_overrides: dict[str, object]
-):
-    data = replace(_list_data(_user(**user_overrides), list(Permission)), **data_overrides)
+def test_a_dangling_school_reference_in_a_role_breaks_the_list():
+    data = _list_data(_user(roles=["teacher:school:ghost"]), list(Permission))
     with pytest.raises(KeyError):
-        presentation.build_user_list(data, "en")
+        presentation.build_user_list(data, "en", _SCHOOL1)
 
 
 def test_build_user_list_skips_users_without_permissions():
-    data = presentation.UserListData(users=[_user()], schools=[], permissions={})
-    view = presentation.build_user_list(data, "en")
+    view = presentation.build_user_list(_list_data(_user(), []), "en", _SCHOOL1)
     assert view.rows == []
 
 
@@ -388,7 +395,7 @@ def _selection(*users: User, denied: int = 0):
 
 def test_build_user_list_carries_the_row_id_and_marks_it_selectable():
     view = presentation.build_user_list(
-        _list_data(_user(), [Permission.read_last_name, Permission.write_password]), "en"
+        _list_data(_user(), [Permission.read_last_name, Permission.write_password]), "en", _SCHOOL1
     )
     assert [row.id for row in view.rows] == ["u1"]
     assert view.rows[0].selectable is True
@@ -396,7 +403,7 @@ def test_build_user_list_carries_the_row_id_and_marks_it_selectable():
 
 
 def test_build_user_list_row_without_write_password_is_not_selectable():
-    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en")
+    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en", _SCHOOL1)
     assert view.rows[0].selectable is False
 
 

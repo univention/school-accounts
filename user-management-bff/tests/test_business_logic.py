@@ -39,6 +39,7 @@ from user_management_bff.errors import (
 from user_management_bff.lang import _
 from user_management_bff.models import (
     Permission,
+    School,
     Target,
     TargetObjectType,
     User,
@@ -56,6 +57,7 @@ from user_management_bff.presentation import PasswordResetOutcomeCode
 
 # The actor id supplied by AlwaysAuthenticatedAdapter in the test environment.
 ACTOR_ID = "dev"
+TEST_SCHOOL1 = School(id="test_school1", display_name="Test School 1")
 
 
 @dataclass
@@ -169,7 +171,7 @@ async def test_get_users_drops_users_the_actor_cannot_see(_permissions_mock: Mag
 async def test_get_users_no_permissions(_permissions_mock: MagicMock, ports: Ports):
     # Users for whom the actor holds no permissions are omitted from the view.
     result = await _get_users(ports, "test_school1")
-    assert presentation.build_user_list(result, "en").rows == []
+    assert presentation.build_user_list(result, "en", TEST_SCHOOL1).rows == []
 
 
 @pytest.mark.asyncio
@@ -535,7 +537,7 @@ async def test_get_users_partial_visibility(ports: Ports, mocker: MockerFixture)
     result = await _get_users(ports, "test_school1")
     # test_school1 also contains test_user4, but the actor has no permission for it,
     # so only test_user1 is rendered into a row.
-    view = presentation.build_user_list(result, "en")
+    view = presentation.build_user_list(result, "en", TEST_SCHOOL1)
     # The username cell is the third column and is always readable.
     assert [row.cells[2].text for row in view.rows] == ["firstname.lastname"]
 

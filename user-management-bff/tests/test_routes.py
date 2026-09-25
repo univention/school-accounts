@@ -363,13 +363,14 @@ def test_users_search_renders_results(test_client: TestClient):
     body = response.text
     assert "<u-table" in body
     assert "max.muster" in body  # user1's username
-    assert "Teacher (School 1)" in body  # formatted role cell
+    assert ">Teacher<" in body  # a role in the listed school renders without it
+    assert ">Student (School 2)<" in body  # a role elsewhere names its school
     assert "<u-badge" in body  # activated status badge
     # The searched school is preselected on the school list (deep-link friendly).
     assert 'value="school1" selected' in body
 
 
-def _users_page(test_client: TestClient, accept_language: str, **params: str) -> str:
+def _users_page(test_client: TestClient, accept_language: str, **params: str | list[str]) -> str:
     # Starlette annotates TestClient against httpx2, which this project does not
     # install, so every httpx type in its signature resolves to Unknown. The cast
     # confines that to one call site instead of leaking into every assertion.
@@ -401,8 +402,10 @@ def test_german_accept_language_renders_german_template_strings(test_client: Tes
 def test_german_accept_language_translates_runtime_composed_role_msgids(test_client: TestClient):
     """The role label reaches `_()` through a variable, so only `N_` markers extract it."""
     body = _users_page(test_client, "de", school="school1", group="all")
-    assert "Lehrer (School 1)" in body
-    assert "Teacher (School 1)" not in body
+    assert ">Lehrer<" in body
+    assert ">Schüler (School 2)<" in body
+    assert ">Teacher<" not in body
+    assert ">Student (School 2)<" not in body
 
 
 def test_german_accept_language_renders_the_password_reset_dialog_in_german(
@@ -918,17 +921,16 @@ def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
     and a request naming them anyway gets a list with nothing selected.
 
     A group is named because the table only lists once one is chosen."""
-    body = test_client.get(
-        f"{FRONTEND_PREFIX}/users",
-        params={
-            "school": "school1",
-            "group": "school_class:1a",
-            "user_id": ["user1", "elsewhere"],
-        },
-    ).text
+    body = _users_page(
+        test_client,
+        "en",
+        school="school1",
+        group="school_class:1a",
+        user_id=["user1", "elsewhere"],
+    )
     filter_form, selection_form = body.split('id="selection-form"', 1)
     assert "hx-include" not in filter_form
-    rows = selection_form[selection_form.index("<u-tbody>") : selection_form.index("</u-tbody>")]
+    rows = selection_form[selection_form.index("<u-tbody") : selection_form.index("</u-tbody>")]
     assert "checked" not in rows
     assert '<input type="hidden" name="user_id"' not in selection_form
 

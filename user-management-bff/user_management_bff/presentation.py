@@ -251,10 +251,6 @@ def _find_by_id(items: Collection[_Identifiable], item_id: str) -> _Identifiable
         raise KeyError(item_id, len(items))
 
 
-def _format_school(schools: list[School], school_id: str) -> str:
-    return _find_by_id(schools, school_id).display_name
-
-
 # Literals, not derived from the role id: a computed msgid is invisible to extraction.
 _ROLE_LABELS = {
     "student": N_("Student"),
@@ -283,9 +279,12 @@ def _role_label(role: str, lang: str) -> str:
     return _(_ROLE_LABELS.get(key, key.replace("_", " ").title()), lang=lang)
 
 
-def _format_role(schools: list[School], role: str, lang: str) -> str:
+def _format_role(schools: list[School], role: str, lang: str, selected_school: School | None) -> str:
     school = _find_by_id(schools, role.rsplit(":", 1)[1])
-    return f"{_role_label(role, lang)} ({school.display_name})"
+    if selected_school is not None and school.id == selected_school.id:
+        return f"{_role_label(role, lang)}"
+    else:
+        return f"{_role_label(role, lang)} ({school.display_name})"
 
 
 def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Cell:
@@ -395,12 +394,17 @@ def list_columns(lang: str) -> list[Column]:
         Column(label=_("First name", lang=lang)),
         Column(label=_("Username", lang=lang)),
         Column(label=_("Roles", lang=lang)),
-        Column(label=_("Schools", lang=lang)),
         Column(label=_("Activated", lang=lang)),
     ]
 
 
-def _user_cells(user: User, data: UserListData, permissions: set[Permission], lang: str) -> list[Cell]:
+def _user_cells(
+    user: User,
+    data: UserListData,
+    permissions: set[Permission],
+    lang: str,
+    selected_school: School | None,
+) -> list[Cell]:
     attributes = user.attributes
     return [
         _text_cell("last_name", attributes.last_name, permissions),
@@ -408,19 +412,14 @@ def _user_cells(user: User, data: UserListData, permissions: set[Permission], la
         _text_cell("username", attributes.username, permissions),
         _list_cell(
             "roles",
-            [_format_role(data.schools, role, lang) for role in attributes.roles],
-            permissions,
-        ),
-        _list_cell(
-            "schools",
-            [_format_school(data.schools, school) for school in attributes.schools],
+            [_format_role(data.schools, role, lang, selected_school) for role in attributes.roles],
             permissions,
         ),
         _boolean_cell("activated", not attributes.disabled, permissions, lang),
     ]
 
 
-def build_user_list(data: UserListData, lang: str) -> UserListView:
+def build_user_list(data: UserListData, lang: str, selected_school: School | None) -> UserListView:
     rows: list[Row] = []
     hidden = 0
     for user in data.users:
@@ -431,7 +430,7 @@ def build_user_list(data: UserListData, lang: str) -> UserListView:
             hidden += 1
             continue
         try:
-            cells = _user_cells(user, data, permissions, lang)
+            cells = _user_cells(user, data, permissions, lang, selected_school)
         except KeyError as exc:
             # TODO univention/dev/education/user-management#214
             #      Handle this properly and context dependent, e.g. as a toast for the user.
