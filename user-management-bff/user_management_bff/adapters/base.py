@@ -49,7 +49,11 @@ def forget_shared_token() -> None:
 class _KelvinSession(Session):
     @override
     async def request(
-        self, async_request_method: object, url: str, return_json: bool = True, **kwargs: object
+        self,
+        async_request_method: Callable[..., Awaitable[httpx.Response]],
+        url: str,
+        return_json: bool = True,
+        **kwargs: object,
     ) -> str | int | dict[str, object]:
         # Every Kelvin call, the token login included, passes through here; the client
         # re-raises network errors and timeouts unchanged, and a 5xx as ServerError.
@@ -142,8 +146,6 @@ class KelvinPersistenceAdapterSettings:
     url: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.url"})
     username: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.username"})
     password: str = field(metadata={SETTINGS_NAME_METADATA: "kelvin_persistence_adapter.password"})
-
-
 
 
 @dataclass
