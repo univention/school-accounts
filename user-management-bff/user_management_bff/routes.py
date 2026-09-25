@@ -426,28 +426,41 @@ async def _resolve_listing(
     own, so the page cost their sum while they ran in turn. Where they read the
     same thing the request caches collapse it.
     """
-    if selection.kind:
-        # Started first so it runs alongside the listing; the listing is awaited
-        # first because whether the group holds is read off what it returned.
-        sections = asyncio.ensure_future(listing.group_sections(selection))
+    if not selection.lists_users:
+        return await listing.group_sections(selection), None, selection
+    # Started first so it runs alongside the listing; the listing is awaited
+    # first because whether the group holds is read off what it returned.
+    sections = asyncio.create_task(listing.group_sections(selection))
+    try:
         data = await listing.users_of(selection)
-        if await listing.holds(selection, data):
-            return await sections, data, selection
-        logger.debug(
-            "Dropped a group filter the selected school does not have.",
-            school=listing.school,
-            group_kind=selection.kind,
-            group_id=selection.item_id,
-        )
-        # Whatever the speculative read returned answers a question nobody
-        # asked, so it goes with the selection.
-        return await sections, None, _GroupSelection()
-    if selection.lists_users:
-        sections, data = await asyncio.gather(
-            listing.group_sections(selection), listing.users_of(selection)
-        )
-        return sections, data, selection
-    return await listing.group_sections(selection), None, selection
+        held = not selection.kind or await listing.holds(selection, data)
+    except BaseException:
+        await _abandon(sections)
+        raise
+    if held:
+        return await sections, data, selection
+    logger.debug(
+        "Dropped a group filter the selected school does not have.",
+        school=listing.school,
+        group_kind=selection.kind,
+        group_id=selection.item_id,
+    )
+    # Whatever the speculative read returned answers a question nobody
+    # asked, so it goes with the selection.
+    return await sections, None, _GroupSelection()
+
+
+async def _abandon(task: asyncio.Task[list[presentation.OptionGroup]]) -> None:
+    """Cancel ``task`` and wait until it is done.
+
+    Left running, it would go on using the request's Kelvin session after the
+    scope closed it, and fail unawaited - logged by asyncio later, without the
+    request's correlation id, as a second traceback pointing away from the
+    error that ended the request. Cancelling a task that already failed marks
+    its error as seen, so that one is not logged either.
+    """
+    task.cancel()
+    await asyncio.wait([task])
 
 
 def _list_view(

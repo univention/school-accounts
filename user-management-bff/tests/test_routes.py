@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Tests for the UI router (shell + interactive-login routes)."""
 
+from __future__ import annotations
+
+import asyncio
+import gc
 import re
 import sys
 from typing import Any, Callable, Coroutine, Generator, cast
@@ -28,6 +32,7 @@ from user_management_bff.errors import (
     ObjectNotFoundError,
     PasswordChangeOnNextLoginUnsupportedError,
     PasswordResetRejectedError,
+    PermissionsError,
 )
 from user_management_bff.main import (
     CORRELATION_ID_HEADER_NAME,
@@ -36,7 +41,8 @@ from user_management_bff.main import (
 )
 from user_management_bff.models import Permission
 from user_management_bff.ports import FastAPIAuthenticationPort
-from user_management_bff.routes import auth_port, render_static
+from user_management_bff.presentation import OptionGroup
+from user_management_bff.routes import _abandon, auth_port, render_static
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -531,6 +537,55 @@ def test_a_group_of_a_vanished_school_is_not_looked_up(test_client: TestClient, 
     assert "Select a school and a group to list users." in body
     assert 'value="school_class:1a" selected' not in body
     assert by_name_spy.call_count == 0
+
+
+@pytest.mark.parametrize("group", ["school_class:1a", "all"])
+def test_a_failed_listing_cancels_the_group_lookup_it_started(
+    test_client: TestClient, mocker: MockerFixture, group: str
+):
+    """Left running, the lookup would outlive the request's Kelvin session and
+    fail unawaited, with nothing tying the traceback to the request."""
+    started = asyncio.Event()
+    cancelled: list[bool] = []
+
+    async def _blocks(*_args: object) -> None:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.append(True)
+            raise
+
+    async def _fails(*_args: object, **_kwargs: object) -> None:
+        await started.wait()
+        raise PermissionsError("Kelvin said no.")
+
+    mocker.patch.object(FileSchoolClassesPersistenceAdapter, "get_school_classes", _blocks)
+    mocker.patch.object(FileUsersPersistenceAdapter, "get_users", _fails)
+
+    response = test_client.get(f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": group})
+
+    assert response.status_code == 403
+    assert cancelled == [True]
+
+
+@pytest.mark.asyncio
+async def test_abandoning_a_lookup_that_already_failed_keeps_its_error_quiet():
+    """Otherwise asyncio reports it once the task is collected, detached from the
+    request - the second traceback the cancel is there to prevent."""
+    reported: list[dict[str, object]] = []
+    asyncio.get_running_loop().set_exception_handler(lambda _loop, context: reported.append(context))
+
+    async def _fails() -> list[OptionGroup]:
+        raise RuntimeError("the group lookup broke too")
+
+    task = asyncio.create_task(_fails())
+    await asyncio.wait([task])
+    await _abandon(task)
+    del task
+    gc.collect()
+
+    assert reported == []
 
 
 def test_login_route_redirects_to_idp(
