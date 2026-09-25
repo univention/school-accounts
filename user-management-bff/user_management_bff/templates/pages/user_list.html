@@ -38,7 +38,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     name="school"
                     required
                     size="auto"
-                    filterable
+                    {% if schools | length > 5 %}filterable{% endif %}
                     heading="{{ _('School') }}"
                     placeholder="{{ _('Filter schools') }}"
                     {% if selected_school %}value="{{ selected_school }}"{% endif %}

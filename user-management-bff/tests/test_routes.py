@@ -303,6 +303,70 @@ def test_users_filters_returns_combined_control_for_school(test_client: TestClie
     assert "hx-include=" not in body
 
 
+def _fragment(test_client: TestClient, path: str, **params: str) -> str:
+    response = cast(
+        httpx.Response,
+        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}{path}",
+            params=params,
+        ),
+    )
+    assert response.status_code == 200
+    return response.text
+
+
+def _list_select_tag(body: str, element_id: str) -> str:
+    match = re.search(rf'<u-list-select[^>]*id="{element_id}"[^>]*>', body)
+    assert match is not None
+    return match.group()
+
+
+def _schools_visible_to_actor(mocker: MockerFixture, count: int) -> None:
+    async def _get_permissions(_actor: object, targets: list[Target]) -> dict[str, list[Permission]]:
+        return {
+            target.old_target.id: [Permission.use_as_filter]
+            for target in targets[:count]
+            if target.old_target is not None
+        }
+
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", side_effect=_get_permissions)
+
+
+def test_school_list_is_filterable_beyond_five_schools(test_client: TestClient):
+    # The fixture holds seven schools, all of them usable as a filter by ``dev``.
+    body = _users_page(test_client, "en")
+    assert "filterable" in _list_select_tag(body, "school-list")
+
+
+def test_school_list_drops_the_filter_at_five_schools(test_client: TestClient, mocker: MockerFixture):
+    _schools_visible_to_actor(mocker, 5)
+    body = _users_page(test_client, "en")
+    assert "filterable" not in _list_select_tag(body, "school-list")
+
+
+def test_group_list_is_filterable_beyond_five_options(test_client: TestClient):
+    # school1 contributes 2 classes + 2 work groups + the reset item; school2 one more of each.
+    few = _fragment(test_client, "/users/filters", school="school1")
+    assert "filterable" not in _list_select_tag(few, "group-list")
+    many = _fragment(test_client, "/users/filters", school="school2")
+    assert "filterable" in _list_select_tag(many, "group-list")
+
+
+def test_option_search_never_rerenders_the_control(test_client: TestClient):
+    """Filterability is decided on the unfiltered set: a query returns items only.
+
+    Were the control itself swapped here, a query matching five or fewer options
+    would pull the search box out from under the cursor.
+    """
+    for path, params in (
+        ("/users/schools", {"q": "Test"}),
+        ("/users/groups", {"school": "school1", "q": "w"}),
+    ):
+        body = _fragment(test_client, path, **params)
+        assert "<u-list-select-item" in body
+        assert re.search(r"<u-list-select[ >]", body) is None
+
+
 def test_users_school_options_filtered_by_query(test_client: TestClient):
     # Only schools whose display name contains the query come back as options.
     response = test_client.get(f"{FRONTEND_PREFIX}/users/schools", params={"q": "Test"})

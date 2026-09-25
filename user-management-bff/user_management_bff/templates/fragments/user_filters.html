@@ -4,12 +4,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 #}
 {# Classes and work groups share one single-select control, so each item value
    carries its kind as a prefix and the route splits it apart again. #}
+{% set group_count = (group_sections | map(attribute='options') | map('length') | sum) + (0 if query else 1) %}
 <u-list-select
   id="group-list"
   name="group"
   grow
   size="md"
-  filterable
+  {% if group_count > 5 %}filterable{% endif %}
   heading="{{ _('Classes & Work Groups') }}"
   placeholder="{{ _('Filter classes and work groups') }}"
   {% if selected_group %}value="{{ selected_group }}"{% endif %}
