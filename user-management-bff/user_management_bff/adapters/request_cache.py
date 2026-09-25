@@ -17,6 +17,8 @@ are applied in the DI layer (``routes.py``) instead of being registered as
 adapters themselves.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Generic, TypeVar

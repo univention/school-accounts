@@ -10,6 +10,8 @@ except the interactive-login routes (login / callback / logout), which establish
 or tear down that session.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import AsyncIterator, Awaitable
 from dataclasses import dataclass
@@ -311,7 +313,7 @@ class _GroupSelection:
     all_groups: bool = False
 
     @classmethod
-    def from_value(cls, value: str | None) -> "_GroupSelection":
+    def from_value(cls, value: str | None) -> _GroupSelection:
         kind, item_id = presentation.split_group_value(value)
         return cls(kind, item_id, (value or "") == presentation.ALL_GROUPS)
 
@@ -359,7 +361,7 @@ class _Listing:
     # would discard is not built.
     results_only: bool
 
-    async def group_sections(self, selection: "_GroupSelection") -> list[presentation.OptionGroup]:
+    async def group_sections(self, selection: _GroupSelection) -> list[presentation.OptionGroup]:
         if not self.known_school:
             logger.debug(
                 "Requested a school the actor cannot filter by; rendering it without group filters.",
@@ -380,7 +382,7 @@ class _Listing:
             selected=selection.value if selection.kind else "",
         )
 
-    def users_of(self, selection: "_GroupSelection") -> Awaitable[presentation.UserListData]:
+    def users_of(self, selection: _GroupSelection) -> Awaitable[presentation.UserListData]:
         return business_logic.get_users(
             self.users,
             self.schools,
@@ -394,7 +396,7 @@ class _Listing:
             self.lang,
         )
 
-    async def holds(self, selection: "_GroupSelection", data: presentation.UserListData) -> bool:
+    async def holds(self, selection: _GroupSelection, data: presentation.UserListData) -> bool:
         """Whether the school still holds the selected group.
 
         A deep link outlives the group it names, and for a moment after a school
@@ -416,8 +418,8 @@ class _Listing:
 
 
 async def _resolve_listing(
-    listing: _Listing, selection: "_GroupSelection"
-) -> tuple[list[presentation.OptionGroup], presentation.UserListData | None, "_GroupSelection"]:
+    listing: _Listing, selection: _GroupSelection
+) -> tuple[list[presentation.OptionGroup], presentation.UserListData | None, _GroupSelection]:
     """The filter control, the table's data and the selection that survived.
 
     None of the three reads needs another's result, and each is a read of its
