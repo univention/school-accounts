@@ -207,16 +207,32 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 - **Every response is HTML.** `main.py` sets `default_response_class=HTMLResponse` and
   `openapi_url=None` — there is no JSON API surface. Do not add JSON endpoints; extend the HTML/htmx
   pattern instead.
-- **No per-route `HX-Request` branching for page content.** The list route (`GET /users`) always
-  renders the *complete* `pages/user_list.html`; the htmx form uses `hx-select="#results-region"` to
-  extract just the results client-side (`templates/pages/user_list.html`). This makes filtered URLs
-  directly bookmarkable/shareable (the route's `HX-Push-Url` header, not an `hx-push-url` attribute,
-  which would also push after an error toast) — a bare `GET /users?school=...` reproduces the same
-  state a click would. Prefer this `hx-select` pattern over adding `HX-Request` checks when
-  a full page and its htmx-triggered update should show identical content.
-- `HX-Request` **is** checked, but only in the global error/redirect handling (`main.py:_html_error`,
-  `not_authenticated_exception_handler`) and nowhere else — keep it that way; don't sprinkle
-  `request.headers.get("HX-Request")` checks into individual route handlers.
+- **A route may answer an htmx request with only the fragment it swaps, keyed on `HX-Target`.**
+  `GET /users` does:
+  the filter form targets `#results-region`,
+  and for that request the route renders `fragments/results_region.html`
+  instead of `pages/user_list.html` (`_Listing.results_only` in `routes.py`),
+  skipping the group control the swap would discard —
+  2.9 s of a 3.3 s request on a school with 501 groups.
+  What keeps such a branch safe:
+  - Every other request gets the full page.
+    A pushed URL must reproduce on a reload or a shared link
+    what the click showed, so filtered URLs stay bookmarkable.
+    The route pushes it with `HX-Push-Url`;
+    an `hx-push-url` attribute would also push after an error toast.
+  - Key on `HX-Target`, not on `HX-Request` alone.
+    A history restore after a cache miss sends `HX-Request: true` as well
+    (`historyRestoreAsHxRequest` is on by default in htmx 2) but names no target,
+    and needs the whole page.
+  - Render the fragment the page itself includes, so both responses show the same region,
+    and keep `hx-select` on the trigger:
+    `GET /users` still answers the filter form with the full page while no school is chosen.
+  - Send `Vary: HX-Request, HX-Target`, as `GET /users` does.
+    One URL has two bodies, and a browser going back to a pushed URL
+    can otherwise show the cached fragment as the whole page.
+- The global error/redirect handling (`main.py:_html_error`, `not_authenticated_exception_handler`)
+  branches on `HX-Request` too,
+  answering an htmx request with `HX-Redirect` or a toast instead of a page.
 - **The UI is read-only apart from the password reset and the header's logout** (first-release
   scope). When a mutating endpoint is added, a success response should return
   `Response(status_code=200, headers={"HX-Redirect": ...})` (which htmx follows client-side) rather
@@ -511,9 +527,9 @@ no access token is stored) rather than restating what the code does.
 
 ## Common Pitfalls
 
-- Reading `request.headers.get("HX-Request")` inside a route handler to branch page content — the
-  established pattern is `hx-select` on an always-full-page response (§ HTMX Request and Rendering
-  Model). Only the global error handlers branch on this header.
+- Branching page content on `HX-Request` alone, or without `Vary` —
+  a history restore and a cached back navigation then get a fragment where the page belongs
+  (§ HTMX Request and Rendering Model).
 - Rendering a table cell without going through `presentation.py`'s `visible`/`kind` computation —
   this bypasses the mechanism that makes leaking an unauthorized attribute structurally impossible.
 - Assuming the school/class/work-group option filtering scales: the query happens in-memory over

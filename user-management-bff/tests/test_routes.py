@@ -1125,6 +1125,23 @@ def test_a_filter_change_renders_only_the_results_region(test_client: TestClient
     )
 
 
+@pytest.mark.parametrize("htmx_headers", [{}, {"HX-Request": "true", "HX-Target": "results-region"}])
+def test_the_list_says_it_varies_by_the_htmx_target(
+    test_client: TestClient, htmx_headers: dict[str, str]
+):
+    """A filter change pushes the URL it got a fragment for, so a cache keyed by
+    the URL alone would hand that fragment back as the page."""
+    response = test_client.get(
+        f"{FRONTEND_PREFIX}/users",
+        params={"school": "school1", "group": "school_class:1a"},
+        headers=htmx_headers,
+    )
+
+    assert {"hx-request", "hx-target"} <= {
+        value.strip().lower() for value in response.headers["Vary"].split(",")
+    }
+
+
 def test_a_filter_change_still_rejects_a_group_the_school_lacks(
     test_client: TestClient, mocker: MockerFixture
 ):

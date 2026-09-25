@@ -296,6 +296,9 @@ async def users_list(
         view=_list_view(data, lang, listing.known_school),
     )
     response.headers["HX-Push-Url"] = _push_url(school, selection.value)
+    # One URL, two bodies. A browser going back to a pushed URL may otherwise
+    # show the fragment it cached for it as the whole page.
+    response.headers.add_vary_header("HX-Request, HX-Target")
     return response
 
 
