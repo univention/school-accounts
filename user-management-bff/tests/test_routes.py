@@ -458,7 +458,7 @@ def test_german_accept_language_renders_german_template_strings(test_client: Tes
     assert "<title>UCS@school Benutzerverwaltung</title>" in body  # base.html
     assert "Benutzerverwaltung</u-page-header>" in body  # macros/layout.html
     assert "Zum dunklen Design wechseln" in body  # macros/layout.html
-    assert "Klassen &amp; Arbeitsgruppen" in body  # fragments/user_filters.html, escaped "&"
+    assert "Klassen &amp; Arbeitsgruppen" in body  # pages/user_list.html, escaped "&"
     assert "Alle Klassen und Arbeitsgruppen" in body  # fragments/group_options.html
     assert "Schulen filtern" in body  # pages/user_list.html
 

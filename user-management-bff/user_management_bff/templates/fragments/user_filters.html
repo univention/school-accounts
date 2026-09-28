@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
   grow
   size="md"
   {% if group_count > 5 %}filterable{% endif %}
-  heading="{{ _('Classes & Work Groups') }}"
+  label="{{ _('Classes & Work Groups') }}"
   placeholder="{{ _('Filter classes and work groups') }}"
   {% if selected_group %}value="{{ selected_group }}"{% endif %}
   hx-get="{{ frontend_prefix }}/users/groups"

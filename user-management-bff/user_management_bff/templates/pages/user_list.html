@@ -33,13 +33,14 @@ SPDX-License-Identifier: AGPL-3.0-only
           >
               <u-vstack gap="lg" grow align="stretch" justify="start">
                   <u-card tone>
+                    <h2 slot="title" class="ml-2">{{ _('School') }}</h2>
                     <u-list-select
                     id="school-list"
                     name="school"
                     required
                     size="auto"
                     {% if schools | length > 5 %}filterable{% endif %}
-                    heading="{{ _('School') }}"
+                    label="{{ _('School') }}"
                     placeholder="{{ _('Filter schools') }}"
                     {% if selected_school %}value="{{ selected_school }}"{% endif %}
                     hx-get="{{ frontend_prefix }}/users/schools"
@@ -52,6 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </u-list-select>
                   </u-card>
                   <u-card grow tone>
+                    <h2 slot="title" class="ml-2">{{ _('Classes & Work Groups') }}</h2>
 
                     {# Swapping this wrapper replaces the whole control, which is what
                     drops the previous school's group selection - u-list-select keeps
