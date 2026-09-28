@@ -866,7 +866,7 @@ wheels = [
 
 [[package]]
 name = "kelvin-rest-api-client"
-version = "2.5.0"
+version = "2.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "async-property" },
@@ -875,9 +875,9 @@ dependencies = [
     { name = "pyjwt" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/87/870a1a0de28ed9819f0321eeb58aa3f5104fd541b3c539d20828d8b0a46b/kelvin_rest_api_client-2.5.0.tar.gz", hash = "sha256:dc39fe7c6cb7d76876f7b76fbbc421eb1fa57765a6c61e1eaee3d130bf1894b0", size = 58886, upload-time = "2026-08-31T12:24:22.368Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/bc/5fa59851d94fd8e64a0a3853d042366d58c5c2698d619751bd10ff58bda8/kelvin_rest_api_client-2.6.0.tar.gz", hash = "sha256:fb60ba13b15f0048d703d4e5d372839f92464acc6adf03c0253dd75920426447", size = 60730, upload-time = "2026-09-28T12:15:56.965Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/76/266fec599f88fc0e0949042111bb1650c69579616f2bd747b09134fb37eb/kelvin_rest_api_client-2.5.0-py3-none-any.whl", hash = "sha256:7ae394309b06e51e3f6b06e5602dc8a1c8af55fca03886501d41903057bcae23", size = 22820, upload-time = "2026-08-31T12:24:23.71Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/01/41041d346dd82f8e5a72014655bc6b7d8f4bba7f5780aef65dd8ec4b3533/kelvin_rest_api_client-2.6.0-py3-none-any.whl", hash = "sha256:6718908ef4a1ab52cbc41424b4415f33401f6b99ce2490033b347a846a75763a", size = 22978, upload-time = "2026-09-28T12:15:58.169Z" },
 ]
 
 [[package]]
@@ -1797,7 +1797,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=25.1.0" },
     { name = "itsdangerous", specifier = ">=2.1.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
-    { name = "kelvin-rest-api-client", specifier = ">=2.5.0" },
+    { name = "kelvin-rest-api-client", specifier = ">=2.6.0" },
     { name = "lazy-object-proxy", specifier = ">=1.10.0" },
     { name = "loguru", specifier = ">=0.7.2" },
     { name = "orjson", specifier = ">=3.9.12" },
