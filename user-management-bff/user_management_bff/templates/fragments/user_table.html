@@ -25,15 +25,14 @@ SPDX-License-Identifier: AGPL-3.0-only
               {% if view.school %}
               <strong class="text-xl">{{ view.school }}{% if view.group %}<span aria-hidden="true"> › </span>{{ view.group }}{% endif %}</strong>
               {% endif %}
-              <span aria-live="polite" class="text-sm">
+              <u-collapsible aria-live="polite" class="text-sm" x-bind:visible="selected > 0">
                 {# In a data attribute, not inline: a `| tojson` string starts with a
                    double quote, which closes the attribute and leaves x-text empty. #}
                 <span
-                  x-show="selected > 0"
                   data-template="{{ _('{count} users selected') }}"
-                  x-text="$el.dataset.template.replace('{count}', selected)"
+                  x-text="$el.dataset.template.replace('{count}', selected || lastCount)"
                 ></span>
-              </span>
+              </u-collapsible>
             </u-vstack>
             <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
               {{ _("Reset password") }}

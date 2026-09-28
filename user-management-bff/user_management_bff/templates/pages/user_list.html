@@ -118,6 +118,7 @@ SPDX-License-Identifier: AGPL-3.0-only
       // Written by sync(): Alpine only re-evaluates its own reactive values, so a
       // getter over box.checked froze the count.
       selected: 0,
+      lastCount: 0,
       boxes() {
         return Array.from(this.$root.querySelectorAll("u-checkbox[name=user_id]"))
       },
@@ -128,6 +129,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         const boxes = this.boxes()
         const checked = boxes.filter((box) => box.checked)
         this.selected = checked.length
+        if (this.selected > 0) this.lastCount = this.selected
         for (const box of boxes) box.closest("u-tr").toggleAttribute("selected", box.checked)
         // Absent when this filter matched no rows; the toolbar still renders.
         if (this.$refs.all) {
