@@ -285,6 +285,7 @@ async def users_list(
     # PASSWORD_RESET_MAX_TARGETS anyway, so nobody should wait for one they did
     # not ask for.
     group_sections, data, selection = await _resolve_listing(listing, _GroupSelection.from_value(group))
+    group_label = await listing.group_label(selection)
     response = await render(
         request,
         "fragments/results_region.html" if listing.results_only else "pages/user_list.html",
@@ -294,7 +295,7 @@ async def users_list(
         selected_group=selection.value,
         group_sections=group_sections,
         query="",
-        view=_list_view(data, lang, listing.known_school, selected_school),
+        view=_list_view(data, lang, listing.known_school, selected_school, group_label),
     )
     response.headers["HX-Push-Url"] = _push_url(school, selection.value)
     # One URL, two bodies. A browser going back to a pushed URL may otherwise
@@ -420,6 +421,23 @@ class _Listing:
             return bool(await self.school_classes.get_school_classes_by_name(self.school, names))
         return bool(await self.work_groups.get_work_groups_by_name(self.school, names))
 
+    async def group_label(self, selection: _GroupSelection) -> str:
+        """The display name of the selected group, for the results heading.
+
+        Read by name, not off the filter control: a results-only request never
+        builds one, and where one is built the whole-school read behind it has
+        already answered this.
+        """
+        if not self.known_school or not selection.kind:
+            return ""
+        names = [selection.item_id]
+        groups = (
+            await self.school_classes.get_school_classes_by_name(self.school, names)
+            if selection.kind == presentation.SCHOOL_CLASS_KIND
+            else await self.work_groups.get_work_groups_by_name(self.school, names)
+        )
+        return groups[0].display_name if groups else ""
+
 
 async def _resolve_listing(
     listing: _Listing, selection: _GroupSelection
@@ -473,6 +491,7 @@ def _list_view(
     lang: str,
     known_school: bool,
     selected_school: School | None,
+    group_label: str = "",
 ) -> presentation.UserListView:
     """The table, or the reason there is not one yet.
 
@@ -480,13 +499,18 @@ def _list_view(
     a group have been picked - so say which of the two is missing.
     """
     if data is not None:
-        return presentation.build_user_list(data, lang, selected_school)
+        return presentation.build_user_list(data, lang, selected_school, group_label)
     if known_school:
         hint = _("Select a class or work group to list its users.", lang=lang)
     else:
         # A link to a school that is gone has no groups to offer.
         hint = _("Select a school and a group to list users.", lang=lang)
-    return presentation.empty_user_list_view(lang, hint=hint)
+    return presentation.empty_user_list_view(
+        lang,
+        hint=hint,
+        school=selected_school.display_name if selected_school else "",
+        group=group_label,
+    )
 
 
 def _push_url(school: str | None, selected_group: str) -> str:

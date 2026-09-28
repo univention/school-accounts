@@ -18,17 +18,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
     <u-card grow tone>
         <u-vstack gap="md" grow align="stretch" justify="start" x-data="selection">
-          {# Outside the scrolling region, so the button stays reachable. #}
-          <u-hstack justify="between" align="center" gap="md">
-            <span aria-live="polite">
-              {# In a data attribute, not inline: a `| tojson` string starts with a
-                 double quote, which closes the attribute and leaves x-text empty. #}
-              <span
-                x-show="selected > 0"
-                data-template="{{ _('{count} users selected') }}"
-                x-text="$el.dataset.template.replace('{count}', selected)"
-              ></span>
-            </span>
+          {# Outside the scrolling region, so the heading, the selection count and the
+             submit button stay visible while the table scrolls. #}
+          <u-hstack justify="between" align="start" gap="md">
+            <u-vstack gap="xs">
+              {% if view.school %}
+              <strong class="text-xl">{{ view.school }}{% if view.group %}<span aria-hidden="true"> › </span>{{ view.group }}{% endif %}</strong>
+              {% endif %}
+              <span aria-live="polite" class="text-sm">
+                {# In a data attribute, not inline: a `| tojson` string starts with a
+                   double quote, which closes the attribute and leaves x-text empty. #}
+                <span
+                  x-show="selected > 0"
+                  data-template="{{ _('{count} users selected') }}"
+                  x-text="$el.dataset.template.replace('{count}', selected)"
+                ></span>
+              </span>
+            </u-vstack>
             <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
               {{ _("Reset password") }}
             </u-button>

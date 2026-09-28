@@ -264,6 +264,19 @@ def test_build_user_list_skips_users_without_permissions():
     assert view.rows == []
 
 
+@pytest.mark.parametrize("group_label", ["", "1a"])
+def test_build_user_list_names_the_filtered_school_and_group(group_label: str):
+    view = presentation.build_user_list(
+        _list_data(_user(), list(Permission)), "en", _SCHOOL1, group_label
+    )
+    assert (view.school, view.group) == ("School 1", group_label)
+
+
+def test_empty_user_list_view_names_nothing():
+    view = presentation.empty_user_list_view("en")
+    assert (view.school, view.group) == ("", "")
+
+
 def test_build_password_reset_summary_all_succeeded():
     data = presentation.PasswordResetResultData(
         outcomes=[

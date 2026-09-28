@@ -182,6 +182,8 @@ class UserListView:
     # What to say instead of "No users found." when the list was never asked
     # for. An empty table and an unanswered question look alike otherwise.
     hint: str = ""
+    school: str = ""
+    group: str = ""
 
 
 @dataclass
@@ -383,9 +385,9 @@ def build_group_options(
     return groups
 
 
-def empty_user_list_view(lang: str, hint: str = "") -> UserListView:
+def empty_user_list_view(lang: str, hint: str = "", school: str = "", group: str = "") -> UserListView:
     """A table with no rows, saying why rather than showing an empty result."""
-    return UserListView(columns=list_columns(lang), rows=[], hint=hint)
+    return UserListView(columns=list_columns(lang), rows=[], hint=hint, school=school, group=group)
 
 
 def list_columns(lang: str) -> list[Column]:
@@ -419,7 +421,9 @@ def _user_cells(
     ]
 
 
-def build_user_list(data: UserListData, lang: str, selected_school: School | None) -> UserListView:
+def build_user_list(
+    data: UserListData, lang: str, selected_school: School | None, group_label: str = ""
+) -> UserListView:
     rows: list[Row] = []
     hidden = 0
     for user in data.users:
@@ -456,7 +460,12 @@ def build_user_list(data: UserListData, lang: str, selected_school: School | Non
             hidden_count=hidden,
             fetched_count=len(data.users),
         )
-    return UserListView(columns=list_columns(lang), rows=rows)
+    return UserListView(
+        columns=list_columns(lang),
+        rows=rows,
+        school=selected_school.display_name if selected_school else "",
+        group=group_label,
+    )
 
 
 def build_password_reset_confirmation(

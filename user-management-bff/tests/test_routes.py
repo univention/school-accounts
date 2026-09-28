@@ -1021,6 +1021,56 @@ def test_only_the_posting_form_sends_the_csrf_token(
     assert "hx-headers" not in filter_form
 
 
+def _selection_form(body: str) -> str:
+    return body[body.index('id="selection-form"') :]
+
+
+def _results_heading(test_client: TestClient, **params: str) -> str:
+    form = _selection_form(_users_page(test_client, "en", **params))
+    start = form.index("<strong")
+    return form[start : form.index("</strong>", start)]
+
+
+def test_the_results_heading_names_the_school(test_client: TestClient):
+    assert "School 1" in _results_heading(test_client, school="school1")
+
+
+@pytest.mark.parametrize("group,expected", [("school_class:1a", "1a"), ("work_group:w1a", "w1a")])
+def test_the_results_heading_appends_the_picked_group(
+    test_client: TestClient, group: str, expected: str
+):
+    heading = _results_heading(test_client, school="school1", group=group)
+    assert "School 1" in heading
+    assert "›" in heading
+    assert expected in heading
+
+
+def test_the_results_heading_keeps_the_group_on_a_filter_change(test_client: TestClient):
+    """A results-only request builds no group control, so a heading taking the
+    label off one would drop the group the click just picked."""
+    response = cast(
+        httpx.Response,
+        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users",
+            params={"school": "school1", "group": "school_class:1a"},
+            headers={"HX-Request": "true", "HX-Target": "results-region"},
+        ),
+    )
+    body = response.text
+    start = body.index("<strong")
+    heading = body[start : body.index("</strong>", start)]
+    assert "School 1" in heading
+    assert "1a" in heading
+
+
+def test_the_results_heading_drops_the_all_groups_filter(test_client: TestClient):
+    assert "›" not in _results_heading(test_client, school="school1", group="all")
+
+
+def test_the_results_card_has_no_heading_without_a_school(test_client: TestClient):
+    assert "<strong" not in _selection_form(_users_page(test_client, "en"))
+
+
 def test_users_list_pushed_url_keeps_the_group_filter(test_client: TestClient):
     response = test_client.get(
         f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "school_class:1a"}
