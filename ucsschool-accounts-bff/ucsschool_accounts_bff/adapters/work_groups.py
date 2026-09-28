@@ -4,6 +4,7 @@
 import json
 from dataclasses import dataclass, field
 
+import aiofiles
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -70,8 +71,8 @@ class FileWorkGroupsPersistenceAdapter(
         return FileWorkGroupsPersistenceAdapterSettings
 
     async def configure(self, settings: FileWorkGroupsPersistenceAdapterSettings):
-        with open(settings.source, "r") as fd:
-            self._data = json.load(fd)
+        async with aiofiles.open(settings.source) as fd:
+            self._data = json.loads(await fd.read())
 
     @override
     async def get_work_groups(self, school: str) -> list[WorkGroup]:

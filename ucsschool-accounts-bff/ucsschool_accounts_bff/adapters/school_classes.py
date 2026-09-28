@@ -4,6 +4,7 @@
 import json
 from dataclasses import dataclass, field
 
+import aiofiles
 from loguru import logger
 from port_loader import AsyncConfiguredAdapterMixin
 from port_loader.models import SETTINGS_NAME_METADATA
@@ -79,8 +80,8 @@ class FileSchoolClassesPersistenceAdapter(
 
     @override
     async def configure(self, settings: FileSchoolClassesPersistenceAdapterSettings):
-        with open(settings.source, "r") as fd:
-            self._data = json.load(fd)
+        async with aiofiles.open(settings.source) as fd:
+            self._data = json.loads(await fd.read())
 
     @override
     async def get_school_classes(self, school: str) -> list[SchoolClass]:

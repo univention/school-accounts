@@ -9,6 +9,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, TypeAlias, TypeVar, cast
 
+import aiofiles
 import grpc
 
 # reportMissingTypeStubs (pyright) on the 4 imports below: cerbos ships these as implicit
@@ -322,8 +323,8 @@ class FilePermissionsAdapter(
 
     @override
     async def configure(self, settings: FilePermissionsAdapterSettings):
-        with open(settings.source, "r") as fd:
-            self._data = json.load(fd)
+        async with aiofiles.open(settings.source) as fd:
+            self._data = json.loads(await fd.read())
         logger.warning(
             "Authorization is not enforced by Cerbos: permissions come from a file. Outside "
             "development, select CerbosPermissionsAdapter instead.",
