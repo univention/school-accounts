@@ -119,7 +119,15 @@ def authenticated_state(
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
     # No locale or cookies here: a test could not override them in new_context.
-    return {**browser_context_args, "ignore_https_errors": True}
+    # The smallest window the list view fits in, and so the smallest one supported.
+    # The page is fixed: below this height the filter column has no room left for
+    # the group control, and no scrollbar to reach it with. An iPad 10 in landscape
+    # (820) is under it - raising the pin is not free, it drops a device.
+    return {
+        **browser_context_args,
+        "ignore_https_errors": True,
+        "viewport": {"width": 1180, "height": 840},
+    }
 
 
 @pytest.fixture

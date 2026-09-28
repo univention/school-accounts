@@ -468,6 +468,18 @@ The module docstring in
 [user-management-bff/tests/frontend/seed.py](user-management-bff/tests/frontend/seed.py)
 has the detail.
 
+Every context runs at a fixed 1180x840 viewport,
+set in `browser_context_args` in
+[user-management-bff/tests/frontend/conftest.py](user-management-bff/tests/frontend/conftest.py),
+rather than at Playwright's 1280x720 default.
+840 is the smallest height the list view fits in:
+the page does not scroll, so below it the filter column
+keeps no room for the group control and no way to reach it.
+The number is what today's layout happens to need,
+not a minimum the design commits to --
+an iPad 10 in landscape (820) already falls under it.
+Lowering the pin means making the sidebar fit.
+
 The domain names have to resolve --
 see [Running e2e tests for the Backend](#running-e2e-tests-for-the-backend)
 for the `/etc/hosts` entries, if DNS does not already answer for them.
