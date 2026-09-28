@@ -102,10 +102,10 @@ class KeycloakClient:
             self.keycloak_admin.create_client(payload=client_data, skip_exists=ignore_exists)
 
     def __sorted_union_urls(self, urls: list[str], urls_append: list[str]):
-        return sorted(list(set(urls).union(canonicalize_url(u) for u in urls_append)))
+        return sorted(set(urls).union(canonicalize_url(u) for u in urls_append))
 
     def __sorted_difference_urls(self, urls: list[str], urls_remove: list[str]):
-        return sorted(list(set(urls).difference(canonicalize_url(u) for u in urls_remove)))
+        return sorted(set(urls).difference(canonicalize_url(u) for u in urls_remove))
 
     def modify_client(
         self,

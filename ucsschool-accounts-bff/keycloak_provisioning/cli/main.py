@@ -26,9 +26,7 @@ def main_callback(
     realm: Annotated[str, Option(help="Realm to login to")] = "ucs",
     user_realm: Annotated[
         Optional[str],
-        Option(
-            help="Realm of the user to authenticate with.\n" "Only required if it differs from realm."
-        ),
+        Option(help="Realm of the user to authenticate with.\nOnly required if it differs from realm."),
     ] = None,
     secure: Annotated[
         bool, Option(help="Ignore SSL verification if False. Do not disable this option in production!")

@@ -43,10 +43,9 @@ class TestKeycloakClient:
     def test_init_keycloak_error(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         connect_mock = mocker.Mock(side_effect=KeycloakError("THIS IS THE MESSAGE!"))
         monkeypatch.setattr(keycloak_provisioning.keycloak.KeycloakClient, "connect", connect_mock)
+        credentials = LoginCredentials(username="user", password="password", url="url", realm="realm")
         with pytest.raises(KeycloakClientError, match="THIS IS THE MESSAGE!"):
-            KeycloakClient(
-                LoginCredentials(username="user", password="password", url="url", realm="realm")
-            )
+            KeycloakClient(credentials)
 
     def test__connect(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         kc_oidc_mock = mocker.Mock()

@@ -91,6 +91,18 @@ async def add_correlation_id(request: Request, call_next: RequestResponseEndpoin
         return response
 
 
+# Holds the transient OAuth state (`state` + PKCE `code_verifier`) between the
+# login redirect and the callback. The authenticated session itself lives in a
+# separate, encrypted cookie owned by the authentication adapter.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_MIDDLEWARE_SECRET,
+    same_site="lax",
+    https_only=SESSION_COOKIE_SECURE,
+    path=SESSION_COOKIE_PATH,
+)
+
+
 # FastAPI doesn't allow adding middleware after the app has been started,
 # so unfortunately we can't put this in the lifespan to make use of the
 # settings_port.
@@ -102,18 +114,6 @@ if CORS_ALLOWED_ORIGINS:
         allow_methods=["*"],
         allow_headers=["Authorization", CORRELATION_ID_HEADER_NAME],
     )  # pragma: no cover
-
-
-# Holds the transient OAuth state (`state` + PKCE `code_verifier`) between the
-# login redirect and the callback. The authenticated session itself lives in a
-# separate, encrypted cookie owned by the authentication adapter.
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SESSION_MIDDLEWARE_SECRET,
-    same_site="lax",
-    https_only=SESSION_COOKIE_SECURE,
-    path=SESSION_COOKIE_PATH,
-)
 
 
 # Serve the HTML/HTMX UI: vendored static assets + the UI router.
