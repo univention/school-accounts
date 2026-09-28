@@ -695,12 +695,12 @@ class TestAlwaysAuthenticatedAdapter:
         assert await adapter.get_authenticated_id(mocker.Mock())
 
     @pytest.mark.asyncio
-    async def test_default_login_redirect_with_next(
+    async def test_default_login_redirect_ignores_next(
         self, adapter: AlwaysAuthenticatedAdapter, mocker: MockerFixture
     ):
         response = await adapter.login_redirect(mocker.Mock(), "/ui/users")
         assert response.status_code == 303
-        assert response.headers["location"] == "/ui/users"
+        assert response.headers["location"] == FRONTEND_PREFIX
 
     @pytest.mark.asyncio
     async def test_default_login_redirect_without_next(

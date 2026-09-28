@@ -140,14 +140,14 @@ class FastAPIAuthenticationPort(ABC):
     async def login_redirect(  # NOSONAR(S7503)
         self,
         _request: Request,
-        next_url: str = "",
+        _next_url: str = "",
     ) -> Response:
         """Start an interactive login, returning a redirect to the identity provider.
 
-        The default implementation is a no-op redirect for adapters that do not
-        implement an interactive flow (e.g. the dev/test doubles).
+        The default implementation is a no-op redirect to the start page for adapters that
+        do not implement an interactive flow (e.g. the dev/test doubles).
         """
-        return RedirectResponse(next_url or FRONTEND_PREFIX, status_code=303)
+        return RedirectResponse(FRONTEND_PREFIX, status_code=303)
 
     # Async is required by the authentication port contract.
     async def complete_login(  # NOSONAR(S7503)
