@@ -434,6 +434,12 @@ def test_build_password_reset_confirmation_falls_back_to_the_username_without_a_
     assert confirmation.accounts[0].name == "kim"
 
 
+def test_build_password_reset_confirmation_still_names_a_selection_at_the_limit():
+    users = [User(id=f"u{i}", attributes=_user().attributes) for i in range(PASSWORD_RESET_NAMED_LIMIT)]
+    confirmation = presentation.build_password_reset_confirmation(_selection(*users), "en")
+    assert len(confirmation.accounts) == PASSWORD_RESET_NAMED_LIMIT
+
+
 def test_build_password_reset_confirmation_stops_naming_above_the_limit():
     users = [
         User(id=f"u{i}", attributes=_user().attributes) for i in range(PASSWORD_RESET_NAMED_LIMIT + 1)

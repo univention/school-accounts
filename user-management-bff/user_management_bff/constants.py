@@ -33,8 +33,8 @@ PASSWORD_RESET_MAX_CONCURRENCY = int(
 PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS", "200"))
 
 # Cut-of number for listing the users in the confirmation dialog
-# >10, no individual listing
-PASSWORD_RESET_NAMED_LIMIT = 10
+# >5, no individual listing
+PASSWORD_RESET_NAMED_LIMIT = 5
 
 # Threshold of selected users for showing the mass action warning
 # >30, mass action warning is shown
