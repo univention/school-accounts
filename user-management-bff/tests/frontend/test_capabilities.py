@@ -31,12 +31,12 @@ def test_only_the_schools_the_actor_is_enrolled_in_can_be_filtered_by(
 
 @pytest.mark.frontend
 def test_a_student_sees_no_user_data(
-    sign_in_as: Callable[[str, str], Page], select_school: Callable[..., None], school: str
+    sign_in_as: Callable[[str, str], Page], list_school: Callable[..., None], school: str
 ) -> None:
     """CP0006: a user whose only role is student reads nothing, not even themselves."""
     student = next(user for user in seed.USERS if user.roles == ["student"])
 
     page = sign_in_as(student.name, seed.PASSWORD)
-    select_school(school, page)
+    list_school(school, page)
 
     expect(page.locator("#results-region")).to_contain_text("No users found.")

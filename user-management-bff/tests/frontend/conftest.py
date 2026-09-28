@@ -171,8 +171,25 @@ def seeded_only(seeded: bool) -> None:
 def select_school(request: pytest.FixtureRequest) -> Callable[..., None]:
     def _select(school: str, page: Page | None = None) -> None:
         page = page or cast("Page", request.getfixturevalue("signed_in"))
-        page.get_by_role("option", name=school, exact=True).click()
+        # The group control is swapped separately from the results, and until then
+        # it still offers the previous school's options.
+        with page.expect_response(re.compile(r"/users/filters\?")):
+            page.get_by_role("option", name=school, exact=True).click()
         # The pushed URL is the one sign that the htmx swap finished, not just started.
         expect(page).to_have_url(re.compile(r"[?&]school="))
 
     return _select
+
+
+@pytest.fixture
+def list_school(
+    request: pytest.FixtureRequest, select_school: Callable[..., None]
+) -> Callable[..., None]:
+    def _list(school: str, page: Page | None = None) -> None:
+        page = page or cast("Page", request.getfixturevalue("signed_in"))
+        select_school(school, page=page)
+        # By value, not label: the label follows the browser language.
+        page.locator('#group-list u-list-select-item[value="all"]').click()
+        expect(page).to_have_url(re.compile(r"[?&]group=all(&|$)"))
+
+    return _list

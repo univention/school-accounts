@@ -38,10 +38,10 @@ def test_the_language_follows_the_browser(
 
 @pytest.mark.frontend
 def test_role_names_are_localized(
-    open_in_language: Callable[[str], Page], school: str, select_school: Callable[..., None]
+    open_in_language: Callable[[str], Page], school: str, list_school: Callable[..., None]
 ) -> None:
     """L0011: role names are localized; the logged-in school admin's own row carries one."""
     page = open_in_language("de-DE")
-    select_school(school, page=page)
+    list_school(school, page=page)
 
     expect(page.locator("#results-region")).to_contain_text("Schuladmin")

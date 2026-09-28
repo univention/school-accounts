@@ -30,9 +30,9 @@ def open_reset_dialog(page: Page, button: str = "Reset password") -> Locator:
 
 @pytest.mark.frontend
 def test_ticking_a_user_counts_the_selection_and_enables_the_reset(
-    signed_in: Page, select_school: Callable[..., None], school: str, listed_user: str
+    signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
 ) -> None:
-    select_school(school)
+    list_school(school)
     button = signed_in.locator("#selection-form").get_by_role("button", name="Reset password")
     # Visibility, not text: x-show hides the span but keeps its text in the DOM.
     expect(signed_in.locator("#selection-form").get_by_text("No users selected")).to_be_visible()
@@ -47,9 +47,9 @@ def test_ticking_a_user_counts_the_selection_and_enables_the_reset(
 
 @pytest.mark.frontend
 def test_the_dialog_lists_the_selection_and_cancel_changes_nothing(
-    signed_in: Page, select_school: Callable[..., None], school: str, listed_user: str
+    signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
 ) -> None:
-    select_school(school)
+    list_school(school)
     tick(signed_in, listed_user)
 
     dialog = open_reset_dialog(signed_in)
@@ -68,13 +68,13 @@ def test_the_dialog_lists_the_selection_and_cancel_changes_nothing(
 @pytest.mark.frontend
 def test_the_selection_count_and_the_dialog_are_localized(
     open_in_language: Callable[[str], Page],
-    select_school: Callable[..., None],
+    list_school: Callable[..., None],
     school: str,
     listed_user: str,
 ) -> None:
     """L0005/L0012: the live selection count and the confirmation dialog follow the browser language."""
     page = open_in_language("de-DE")
-    select_school(school, page=page)
+    list_school(school, page=page)
     tick(page, listed_user)
 
     expect(page.locator("#selection-form").get_by_text("1 Benutzer ausgewählt")).to_be_visible()
@@ -89,7 +89,7 @@ def test_the_selection_count_and_the_dialog_are_localized(
 @pytest.mark.usefixtures("seeded_only")
 def test_a_reset_password_is_the_one_the_account_logs_in_with(
     signed_in: Page,
-    select_school: Callable[..., None],
+    list_school: Callable[..., None],
     sign_in_as: Callable[[str, str], Page],
     school: str,
 ) -> None:
@@ -99,7 +99,7 @@ def test_a_reset_password_is_the_one_the_account_logs_in_with(
     """
     target = next(user for user in seed.USERS if user.name == "maria.kaiser")
     password = f"umtest.{uuid.uuid4().hex[:12]}.Reset"
-    select_school(school)
+    list_school(school)
     tick(signed_in, target.name)
     dialog = open_reset_dialog(signed_in)
 
