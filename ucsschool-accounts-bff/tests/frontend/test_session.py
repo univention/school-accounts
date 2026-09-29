@@ -58,7 +58,10 @@ def test_logging_out_ends_the_session(
     expect(logout).to_be_visible()
 
     logout.click()
-    # Not a URL: UCS redirects on into a fresh login before an assertion could see it.
+    expect(signed_in.get_by_text("You have been logged out.")).to_be_visible()
+    expect(logout).not_to_be_attached()
+
+    signed_in.get_by_role("link", name="Log in again").click()
     expect(signed_in.get_by_label("Username or email")).to_be_visible()
 
     signed_in.goto(f"{FRONTEND_PREFIX}/users")

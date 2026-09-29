@@ -21,6 +21,9 @@ FRAME_ANCESTORS = os.environ.get("UCSSCHOOL_ACCOUNTS__FRAME_ANCESTORS") or "'sel
 AUTH_LOGIN_PATH = "/auth/login"
 AUTH_CALLBACK_PATH = "/auth/callback"
 AUTH_LOGOUT_PATH = "/auth/logout"
+# Where Keycloak sends the browser after the logout. Any page behind the login
+# would start a new one right away.
+AUTH_LOGGED_OUT_PATH = "/auth/logged-out"
 
 # Request header carrying the per-session CSRF token on mutating (unsafe) UI
 # requests. The submit form sends it via htmx hx-headers; the server compares

@@ -36,6 +36,7 @@ from .adapters.request_cache import (
 )
 from .constants import (
     AUTH_CALLBACK_PATH,
+    AUTH_LOGGED_OUT_PATH,
     AUTH_LOGIN_PATH,
     AUTH_LOGOUT_PATH,
     CSRF_HEADER_NAME,
@@ -211,6 +212,12 @@ async def auth_callback(request: Request, auth: AuthDep) -> Response:
 async def logout(request: Request, auth: AuthDep) -> Response:
     """End the local session and redirect into Keycloak's RP-initiated logout."""
     return await auth.logout(request)
+
+
+@router.get(AUTH_LOGGED_OUT_PATH, response_class=HTMLResponse)
+def logged_out(request: Request) -> HTMLResponse:
+    """Confirm the logout where it happened, which is inside the portal frame when embedded."""
+    return render_static(request, "pages/logged_out.html")
 
 
 @router.get("", response_class=HTMLResponse)

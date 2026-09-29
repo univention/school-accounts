@@ -725,6 +725,14 @@ def test_logout_route(
     assert response.headers["location"] == "https://kc/logout"
 
 
+def test_logged_out_offers_a_new_login(test_client: TestClient):
+    response = test_client.get(f"{FRONTEND_PREFIX}/auth/logged-out", follow_redirects=False)
+    assert response.status_code == 200
+    assert "You have been logged out." in response.text
+    assert f'<u-link href="{FRONTEND_PREFIX}/">Log in again</u-link>' in response.text
+    assert "/auth/logout" not in response.text
+
+
 def test_logout_route_rejects_get(
     test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
 ):

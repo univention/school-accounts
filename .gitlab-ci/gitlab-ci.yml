@@ -276,7 +276,7 @@ bff-frontend-test:
     # Take precedence over dev/.env.example, which addresses everything through the compose proxy.
     COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: "http://localhost:8080/keycloak/realms/ucs/.well-known/openid-configuration"
     COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: "http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui/auth/callback"
-    COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: "http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui"
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: "http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui/auth/logged-out"
   cache:
     key:
       files:

@@ -54,7 +54,7 @@ well_known_url = f"{keycloak_url}/realms/ucs/.well-known/openid-configuration"
 app_base_url = f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/univention/ucsschool/ucsschool-accounts/ui"
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: {app_base_url}/auth/callback")
-print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}", end='')@!@
+print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}/auth/logged-out", end='')@!@
       CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'
       # The on-prem Cerbos sidecar runs over a plain Docker network with no TLS today, so disable
       # the gRPC TLS handshake.
