@@ -142,7 +142,7 @@ html_static_path = ["_static"]
 
 numfig = True
 
-rst_epilog = """
+rst_epilog = r"""
 .. |UCSUAS| replace:: UCS\@school
 .. |UASUMM| replace:: School Accounts
 """
