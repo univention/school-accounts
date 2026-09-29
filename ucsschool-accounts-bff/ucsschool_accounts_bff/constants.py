@@ -12,8 +12,8 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 APP_NAME = "ucsschool-accounts"
 
 # Sources allowed to frame the UI, such as the portal, sent as `Content-Security-Policy:
-# frame-ancestors`. The UCS Apache in front of /univention/ sets `frame-ancestors 'none'`
-# on every response that carries no policy of its own.
+# frame-ancestors`. The join script drops the `frame-ancestors 'none'` the UCS Apache
+# in front of /univention/ adds, which would otherwise be sent alongside this one.
 FRAME_ANCESTORS = os.environ.get("UCSSCHOOL_ACCOUNTS__FRAME_ANCESTORS") or "'self'"
 
 # UI auth routes (relative to FRONTEND_PREFIX). The callback path must match the

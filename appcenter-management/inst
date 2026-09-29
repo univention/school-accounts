@@ -33,6 +33,16 @@ univention-directory-manager portals/entry create "$@" --ignore_exists \
     --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/ucsschool-accounts/ui/"' \
     --set linkTarget=embedded || die
 
+cat > "/etc/apache2/ucs-sites.conf.d/$APP.conf" <<'EOF' || die
+# Written by the join script of the app ucsschool-accounts.
+# Drops the "frame-ancestors 'none'" that univention.conf adds to every /univention/ response,
+# so the portal can embed the app. The app sends its own frame-ancestors instead.
+<Location "/univention/ucsschool/ucsschool-accounts/">
+	Header always unset "Content-Security-Policy"
+</Location>
+EOF
+systemctl reload apache2 || die
+
 COMPONENT_ID="$(univention-app get "$APP" component_id | cut -f 2 -d ':' | tr -d '[:space:]')"
 ICON_FILE="$ICON_DIR/apps-$COMPONENT_ID.svg"
 if [ -f "$ICON_FILE" ]; then

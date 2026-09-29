@@ -29,6 +29,9 @@ univention-directory-manager portals/category modify "$@" --ignore_not_exists \
 univention-directory-manager portals/entry remove "$@" --ignore_not_exists \
     --dn "cn=$APP_ID,cn=entry,cn=portals,cn=univention,$ldap_base" || die
 
+rm -f "/etc/apache2/ucs-sites.conf.d/$APP_ID.conf"
+systemctl reload apache2 || die
+
 joinscript_remove_script_from_status_file "$APP_ID"
 
 exit 0
