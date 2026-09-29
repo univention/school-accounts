@@ -31,12 +31,12 @@ Some rules apply whatever role a user holds:
   school classes or work groups they're a member of.
 * No user can reset their own password.
 * A password reset requires the user doing it to be allowed to reset *every*
-  role the target holds, not just one of them.
+  role the target holds, not only one of them.
   A teacher can reset a student's password, but not the password of a student
   who is also a staff member, a legal guardian, or a teacher, because a teacher
   can reset none of those.
 * A role only allows a reset at the schools the user holds it in, and the target
-  has to be enrolled in one of them.
+  must be enrolled in one of them.
   A teacher who administers a second school gains nothing over the users of the
   school they teach in.
   Once the target is enrolled in such a school, the role covers every role the
@@ -69,10 +69,10 @@ permissions on every user in their own school:
 
   * - Permission
     - Description
-  * - ``Read``
+  * - ``read-*``
     - Read all readable attributes.
       For more information, see :ref:`permissions`.
-  * - ``Write Password``
+  * - ``write-password``
     - Reset the password, unless the target user holds the ``school_admin`` role
       in any school.
 
@@ -92,10 +92,10 @@ share a class with them in the same school:
 
   * - Permission
     - Description
-  * - ``Read``
+  * - ``read-*``
     - Read all readable attributes.
       For more information, see :ref:`permissions`.
-  * - ``Write Password``
+  * - ``write-password``
     - Reset the password of a student, unless the student holds any other role.
 
 Staff
@@ -113,7 +113,7 @@ Student
 
 A user whose only role is ``student`` has no permissions on user data.
 Such a user can't read the data of other users, and can't read their own data either.
-The ``Use As Filter`` permission on their own schools, school classes, and work
+The ``use-as-filter`` permission on their own schools, school classes, and work
 groups is all they keep, so they can still filter the list view, but the list of
 users stays empty.
 
@@ -143,10 +143,10 @@ permissions on that ward:
 
   * - Permission
     - Description
-  * - ``Read``
+  * - ``read-*``
     - Read all readable attributes.
       For more information, see :ref:`permissions`.
-  * - ``Write Password``
+  * - ``write-password``
     - Reset the password, but only while ``student`` is the ward's only role.
 
 The directory service does give a guardian the ``legal_guardian`` role in the
@@ -187,37 +187,37 @@ earlier hold on other users:
   :align: left
   :widths: 30 70
 
-  * - Permission name
+  * - Permission
     - Description
-  * - ``Read First Name``
-    - Read the ``First Name`` attribute.
-  * - ``Read Last Name``
-    - Read the ``Last Name`` attribute.
-  * - ``Read Disabled``
-    - Read the ``Disabled`` attribute.
-  * - ``Read Activated``
-    - Read the ``Activated`` attribute.
-  * - ``Read Email``
-    - Read the ``Email`` attribute.
-  * - ``Read Birthday``
-    - Read the ``Birthday`` attribute.
-  * - ``Read Expiration Date``
-    - Read the ``Expiration Date`` attribute.
-  * - ``Read Roles``
-    - Read the ``Roles`` attribute.
-  * - ``Read School Classes``
-    - Read the ``School Classes`` attribute.
-  * - ``Read Work Groups``
-    - Read the ``Work Groups`` attribute.
-  * - ``Read Schools``
-    - Read the ``Schools`` attribute.
-  * - ``Write Password``
-    - Write the ``Password`` attribute.
-  * - ``Use As Filter``
+  * - ``read-first_name``
+    - Read the ``first_name`` attribute.
+  * - ``read-last_name``
+    - Read the ``last_name`` attribute.
+  * - ``read-disabled``
+    - Read the ``disabled`` attribute.
+  * - ``read-activated``
+    - Read the ``activated`` attribute.
+  * - ``read-email``
+    - Read the ``email`` attribute.
+  * - ``read-birthday``
+    - Read the ``birthday`` attribute.
+  * - ``read-expiration_date``
+    - Read the ``expiration_date`` attribute.
+  * - ``read-roles``
+    - Read the ``roles`` attribute.
+  * - ``read-school_classes``
+    - Read the ``school_classes`` attribute.
+  * - ``read-work_groups``
+    - Read the ``work_groups`` attribute.
+  * - ``read-schools``
+    - Read the ``schools`` attribute.
+  * - ``write-password``
+    - Write the ``password`` attribute.
+  * - ``use-as-filter``
     - Filter the list view by a school, school class, or work group.
 
-Permissions of the form ``Read <attribute>`` refer to an attribute of a target
-user object and correspond, with some exceptions, to a
+Each ``read-ATTRIBUTE`` and ``write-ATTRIBUTE`` permission refers to an attribute
+of a target user object, and most attributes correspond to a
 :external+uv-school-kelvin:doc:`Kelvin <index>` attribute:
 
 .. list-table::
@@ -227,33 +227,34 @@ user object and correspond, with some exceptions, to a
 
   * - |UASUMM| attribute
     - Kelvin attribute
-  * - ``First Name``
+  * - ``first_name``
     - ``firstname``
-  * - ``Last Name``
+  * - ``last_name``
     - ``lastname``
-  * - ``Disabled``
+  * - ``disabled``
     - ``disabled``
-  * - ``Activated``
+  * - ``activated``
     - negated ``disabled``
-  * - ``Email``
+  * - ``email``
     - ``email``
-  * - ``Birthday``
+  * - ``birthday``
     - ``birthday``
-  * - ``Expiration Date``
+  * - ``expiration_date``
     - ``expiration_date``
-  * - ``Roles``
+  * - ``roles``
     - not applicable
-  * - ``School Classes``
+  * - ``school_classes``
     - ``school_classes``
-  * - ``Work Groups``
+  * - ``work_groups``
     - ``workgroups``
-  * - ``Schools``
+  * - ``schools``
     - ``schools``
-  * - ``Password``
+  * - ``password``
     - ``password``
 
 .. note::
-    The policy bundle of the |UASUMM| fixes the roles and permissions described
-    in this section.
-    The |UASUMM| provides no administrative interface for creating custom roles
-    or changing which permissions a role has.
+
+   The policy bundle of the |UASUMM| app fixes the roles and permissions described
+   in this section.
+   The |UASUMM| app provides no administrative interface for creating custom roles
+   or changing which permissions a role has.

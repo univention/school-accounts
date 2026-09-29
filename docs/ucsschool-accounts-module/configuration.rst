@@ -7,46 +7,58 @@
 Configuration
 *************
 
-Portal tile for the |UASUMM|
-==============================
+.. _configuration-portal-tile:
 
-The portal tile of the |UASUMM| is visible to everyone,
-including visitors who aren't logged in.
-Selecting it asks them to log in first.
-You can restrict the visibility
-by following the UCS manual section about the :external+uv-ucs-manual:ref:`Portal <central-portal>`.
+Choose who sees the portal tile
+===============================
 
-As a quick example for the command line,
-to show the tile only to the domain users of the school ``DEMOSCHOOL``, you can run:
+The installation adds a |UASUMM| tile to the
+:external+uv-ucs-manual:ref:`Univention Portal <central-portal>`
+and shows it to everyone,
+including visitors who aren't signed in.
+Selecting the tile asks them to sign in first.
+The tile doesn't grant any permission.
+The app shows every user only what their roles allow,
+as described in :ref:`roles-permissions-and-conditions`.
 
-.. code:: bash
+To show the tile only to the users of the school ``DEMOSCHOOL``,
+add the ``Domain Users DEMOSCHOOL`` group of that school to the portal entry:
 
-   udm portals/entry modify --dn "cn=ucsschool-accounts,cn=entry,cn=portals,cn=univention,$(ucr get ldap/base)"\
-   --append allowedGroups="cn=Domain Users DEMOSCHOOL,cn=groups,ou=DEMOSCHOOL,$(ucr get ldap/base)"
+.. code-block:: console
+   :caption: Show the portal tile only to the users of one school
+
+   $ univention-directory-manager portals/entry modify \
+       --dn "cn=ucsschool-accounts,cn=entry,cn=portals,cn=univention,$(ucr get ldap/base)" \
+       --append allowedGroups="cn=Domain Users DEMOSCHOOL,cn=groups,ou=DEMOSCHOOL,$(ucr get ldap/base)"
+
+To add further schools, repeat the ``--append`` option for each of them.
 
 User visibility
 ===============
 
-User visibility in the list view can only be changed implicitly:
-The user of the |UASUMM| can see other users in the list view for which Cerbos
-has granted at least one permission.
+You can't configure which users appear in the list view.
+The list view shows a user when the Guardian grants the signed-in user
+at least one permission on them.
+For the permissions of each role, see :ref:`roles-permissions-and-conditions`.
+
+.. _configuration-sessions:
 
 Sessions
 ========
 
-After an interactive login, the |UASUMM| keeps the session entirely in an
-encrypted browser cookie. No session data is stored on the server, so every
+After a user signs in, the |UASUMM| app keeps the session entirely in an
+encrypted browser cookie. The server stores no session data, so every
 worker process of the app can serve any request, and a session survives both a
 restart of the app and an app update.
 
-The cookie is encrypted, not only signed, because it carries the tokens the app
-needs to renew the login against Keycloak without prompting the user again.
-The key is derived from a secret that the app generates once per host during
+The app encrypts the cookie rather than only signing it, because it carries the tokens the app
+needs to renew the sign-in against Keycloak without prompting the user again.
+The app derives the key from a secret that it generates once per host during
 installation, in
 :file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/session.secret`.
 An update reuses an existing file and therefore keeps existing sessions valid.
 
-The app logs users in through a confidential Keycloak client. It proves its own
+The app signs users in through a confidential Keycloak client. It proves its own
 identity to Keycloak with a client secret in
 :file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret`.
 The secret never reaches the browser.
@@ -58,91 +70,96 @@ Keycloak already holds and restarts the app. Keycloak therefore keeps the
 authoritative copy: to change the secret, change it in Keycloak and then run
 :command:`univention-run-join-scripts` on every host that runs the app.
 
-A session lasts at most eight hours.
-Renewing the tokens extends the login within that window but never beyond it.
+A session lasts at most 8 hours.
+Renewing the tokens extends the sign-in within that window but never beyond it.
 
 Eight hours is the ceiling the app enforces, not the lifetime users experience.
 Keycloak applies its own session limits on top of it,
 and those usually end the session earlier.
-The app renews the login only after the access token has expired,
+The app renews the sign-in only after the access token has expired,
 and Keycloak refuses that renewal once it has closed the user's session:
 after the realm's *SSO Session Idle* has passed
 without the user working in the app,
 or at the latest after its *SSO Session Max*.
 A client can override both with *Client Session Idle* and *Client Session Max*.
-Whichever limit runs out first is the one that sends users back to the login.
+Whichever limit runs out first is the one that sends users back to the sign-in page.
 
-This model has three limitations that administrators should know about:
+This model has the following three limitations:
 
 No revocation before expiry
-   The app cannot invalidate an individual session.
+   The app can't invalidate an individual session.
    A copy of the cookie keeps working for the rest of the session's lifetime.
-   Logging out shortens that:
+   Signing out shortens that:
    it ends the session in Keycloak as well,
-   so the copy stops working once the app next renews the login against Keycloak,
+   so the copy stops working once the app next renews the sign-in against Keycloak,
    which happens within the lifetime of an access token.
 
 One app session per UCS system
    Each host generates its own secret,
    so the session from the
    :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node`
-   is not valid on a
+   isn't valid on a
    :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`,
    or the other way round.
    Users pass through Keycloak again on the second system.
    Keycloak keeps its own session for the user, independently of this app,
    so as long as that session is still open,
-   they see only a redirect and are not asked for their credentials again.
+   they see only a redirect and Keycloak doesn't ask for their credentials again.
 
-Replacing the secret ends the app sessions, but does not sign anybody out
-   Writing a new secret into the :file:`session.secret` file and restarting the
-   app invalidates every cookie on that host at once,
+Replacing the secret ends the app sessions, but doesn't sign anybody out
+   To invalidate every cookie on a host at once,
+   write a new secret into the :file:`session.secret` file and restart the app,
    for example with :command:`openssl rand -hex 32 > session.secret`.
-   This does not lock users out.
+   This doesn't lock users out.
    Their Keycloak sessions survive it,
    so the next request takes them through Keycloak
    and back into the app without a credential prompt.
-   Ending the sessions in Keycloak is what forces users to authenticate again.
-   Do not delete the :file:`session.secret` file:
-   the app only generates it during installation and refuses to start without it.
+   To force users to authenticate again, end their sessions in Keycloak.
+   Don't delete the :file:`session.secret` file:
+   the app generates it only during installation and refuses to start without it.
 
-App Settings
+.. _app-settings:
+
+App settings
 ============
 
-This section is a reference for all app settings of the |UASUMM|.
-Administrators can configure the settings using
-either the :command:`univention-app` command
-or the app settings dialog in the
+This section is a reference for all app settings of the |UASUMM| app.
+You can configure the settings
+with the :command:`univention-app` command
+or in the app settings dialog of the
 :external+uv-ucs-manual:ref:`App Center UMC module <software-appcenter>`.
 
-The App Center automatically restarts the application after changing any setting.
+The App Center restarts the app after you change any setting.
 
 Kelvin
 ------
 
 .. envvar:: ucsschool-accounts/kelvin/url
 
-   Defines the URL of the Kelvin REST API for data queries. If not set, the URL is generated from hostname and domain name.
+   Defines the hostname of the system that runs the Kelvin REST API.
+   If unset, the app uses the fully qualified domain name of the system that it runs on.
 
 Logging
 -------
 
 .. envvar:: ucsschool-accounts/logging/level
 
-   Sets the log level of the application.
-   Possible values are ``TRACE``, ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR`` and ``CRITICAL``,
+   Sets the log level of the app.
+   Possible values are ``TRACE``, ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, and ``CRITICAL``,
    written in any case, with ``INFO`` as the default.
-   ``DEBUG`` adds the technical context of each request and is what a bug report should contain.
-   A value that names no level logs a warning saying so and leaves the application at ``INFO``,
-   rather than keeping it from starting.
+   ``DEBUG`` adds the technical context of each request,
+   which helps with a bug report.
+   ``TRACE`` additionally logs the start and end of every request.
+   A value that names no level doesn't keep the app from starting:
+   the app logs a warning and uses ``INFO``.
 
 .. envvar:: ucsschool-accounts/logging/structured
 
-   If set to ``True``, the application writes each log record as a single JSON object,
+   If set to ``True``, the app writes each log record as a single JSON object,
    which a log aggregator can parse without a pattern.
    The default is ``False``, which writes the format described in :ref:`troubleshooting-log-format`.
 
-   The format itself is not configurable.
+   You can't configure the format itself.
    Both variants follow the Univention log format,
    so that logs stay consistent across the products of a domain.
 
@@ -151,7 +168,7 @@ Authentication
 
 .. envvar:: ucsschool-accounts/oauth/keycloak-uri
 
-   Defines the base URI of the Keycloak server for authentication.
-   If unset, the application tries to derive the URL from the UCR variable
-   :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`
-   or falls back to the domain name of the UCS system where you installed the application.
+   Defines the base URI of the Keycloak server that signs users in.
+   If unset, the app uses the UCR variable
+   :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`,
+   and if that is unset too, ``ucs-sso-ng`` followed by the domain name.
