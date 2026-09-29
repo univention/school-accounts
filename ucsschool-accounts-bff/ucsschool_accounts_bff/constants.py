@@ -11,6 +11,11 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templ
 STATIC_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 APP_NAME = "ucsschool-accounts"
 
+# Sources allowed to frame the UI, such as the portal, sent as `Content-Security-Policy:
+# frame-ancestors`. The UCS Apache in front of /univention/ sets `frame-ancestors 'none'`
+# on every response that carries no policy of its own.
+FRAME_ANCESTORS = os.environ.get("UCSSCHOOL_ACCOUNTS__FRAME_ANCESTORS") or "'self'"
+
 # UI auth routes (relative to FRONTEND_PREFIX). The callback path must match the
 # redirect URI registered for the public `-ui` Keycloak client.
 AUTH_LOGIN_PATH = "/auth/login"

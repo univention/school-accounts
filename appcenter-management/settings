@@ -36,3 +36,12 @@ Description[de] = Wird der Wert auf `True` gesetzt, wird jeder Logeintrag als ei
 Group = Logging
 Scope = outside
 Show = Install,Settings
+
+[ucsschool-accounts/frame-ancestors]
+Type = String
+InitialValue = 'self'
+Description = Space separated list of the sites allowed to show the app inside a frame, such as the portal, in the syntax of the Content-Security-Policy directive frame-ancestors. The default 'self' covers a portal on the system where the app is installed. Add the URL of every other system whose portal opens the app, for example https://primary.example.org.
+Description[de] = Leerzeichen-getrennte Liste der Seiten, die die App in einem Frame anzeigen dürfen, etwa das Portal, in der Syntax der Content-Security-Policy-Direktive frame-ancestors. Der Standardwert 'self' deckt ein Portal auf dem System ab, auf dem die App installiert ist. Für jedes weitere System, dessen Portal die App öffnet, muss dessen URL ergänzt werden, zum Beispiel https://primary.example.org.
+Group = Portal
+Scope = outside
+Show = Install,Settings

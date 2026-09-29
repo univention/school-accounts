@@ -180,6 +180,19 @@ Logging
    Both variants follow the Univention log format,
    so that logs stay consistent across the products of a domain.
 
+Portal
+------
+
+.. envvar:: ucsschool-accounts/frame-ancestors
+
+   Defines the sites allowed to show the application inside a frame,
+   as a space separated list of sources of the ``Content-Security-Policy`` directive ``frame-ancestors``.
+   The portal opens the application inside a frame,
+   so the list must contain every system whose portal links to it.
+   The default ``'self'`` covers a portal on the UCS system where you installed the application.
+   Add the URL of any other system, for example ``https://primary.example.org``.
+   Without a matching entry, the browser refuses to show the application inside the portal.
+
 Authentication
 --------------
 

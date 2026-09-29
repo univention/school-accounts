@@ -177,6 +177,11 @@ def test_root_redirects_to_users(test_client: TestClient):
     assert response.headers["location"].endswith("/users")
 
 
+def test_a_page_may_be_framed_by_its_own_origin(test_client: TestClient):
+    response = test_client.get(f"{FRONTEND_PREFIX}/users")
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+
+
 def test_an_oversized_request_id_is_capped(test_client: TestClient):
     response = test_client.get(
         f"{FRONTEND_PREFIX}/users", headers={CORRELATION_ID_HEADER_NAME: "x" * 5000}
@@ -207,6 +212,7 @@ def test_an_unhandled_error_still_carries_the_request_id(
     assert response.status_code == status_code
     assert response.headers.get("HX-Retarget") == retarget
     assert response.headers[CORRELATION_ID_HEADER_NAME] == "abc"
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
     assert "An unexpected error occurred" in response.text
 
 

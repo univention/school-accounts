@@ -19,6 +19,7 @@ from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_a
 from .constants import (
     AUTH_LOGIN_PATH,
     CORS_ALLOWED_ORIGINS,
+    FRAME_ANCESTORS,
     FRONTEND_PREFIX,
     SESSION_COOKIE_PATH,
     SESSION_COOKIE_SECURE,
@@ -66,6 +67,7 @@ CORRELATION_ID_HEADER_NAME = "X-Request-ID"
 # Caps a client-supplied id, as echoed and logged in full. Fits upstream formats uncut
 # (UUID 36, W3C `traceparent` 55), so they still match those systems' logs.
 CORRELATION_ID_MAX_LENGTH = 64
+CONTENT_SECURITY_POLICY = f"frame-ancestors {FRAME_ANCESTORS}"
 
 
 # Added first so it runs inside the correlation-id middleware below.
@@ -74,7 +76,7 @@ app.add_middleware(SessionCookieMiddleware)
 
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next: RequestResponseEndpoint):
-    """Add correlation id to request object and contextualize logger
+    """Add correlation id to request object and contextualize logger, and let the portal frame the UI
 
     The contextualize method uses Python `contextvars` so the are unique to each thread/task.
     """
@@ -87,6 +89,7 @@ async def add_correlation_id(request: Request, call_next: RequestResponseEndpoin
         logger.trace("Handling request.", method=request.method, path=request.url.path)
         response = await call_next(request)
         response.headers[CORRELATION_ID_HEADER_NAME] = correlation_id
+        response.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
         logger.trace("Handled request.", status_code=response.status_code)
         return response
 
@@ -218,6 +221,7 @@ async def unhandled_exception_handler(request: Request, _exc: Exception):
     response = _html_error(
         request, _("An unexpected error occurred. Please try again later.", lang=lang), 500
     )
+    response.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
     if (correlation_id := correlation_id_ctx_var.get(None)) is not None:
         response.headers[CORRELATION_ID_HEADER_NAME] = correlation_id
     return response
