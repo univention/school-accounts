@@ -19,6 +19,8 @@ This section lists the changes to the School Accounts app.
   ``ucsschool-user-management`` and install ``ucsschool-accounts``. The web interface moves to
   ``/univention/ucsschool/ucsschool-accounts/``, the settings to ``ucsschool-accounts/*`` and the
   Keycloak client to ``ucsschool-accounts-ui``.
+* The app requires the Kelvin REST API in version 4.1.0 or later in the domain.
+  The installation and the update abort otherwise.
 * Sessions are now kept in an encrypted browser cookie instead of in the memory of a single
   process, so they survive a restart of the app and an app update.
 * A session now ends at the latest eight hours after the login, even if it is used continuously.

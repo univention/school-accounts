@@ -169,6 +169,28 @@ compile-policies:
       fi
     - .cerbos-bin/cerbos compile --no-color appcenter-management/files/policies
 
+test_appcenter_scripts:
+  stage: test
+  needs: []
+  tags: ["dae-m"]
+  image: debian:stable-slim
+  rules:
+    - changes:
+        - appcenter-management/tests/**/*
+        - appcenter-management/templates/**/*
+        - appcenter-management/scripts/generate-preinst
+  script:
+    - |
+      set -eu
+      apt-get -qq update
+      apt-get -yqq install --no-install-recommends python3 bats
+    - mkdir -p bats-report
+    - bats --report-formatter junit --output bats-report appcenter-management/tests/
+  artifacts:
+    when: always
+    reports:
+      junit: bats-report/report.xml
+
 # Guards against editing a shipped Cerbos policy without bumping VERSION in
 # appcenter-management/inst - see the script for why that combination fails
 # silently on the target system.

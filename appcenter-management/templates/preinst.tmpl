@@ -6,6 +6,39 @@
 
 set -e
 
+errorfile=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--error-file)
+			errorfile="$2"
+			shift 2
+			;;
+		*)
+			shift
+			;;
+	esac
+done
+
+# The App Center shows the content of the error file when the preinst fails.
+fail() {
+	echo "$1" | tee "${errorfile:-/dev/null}" >&2
+	exit 1
+}
+
+/%KELVIN_VERSION_CHECK%/
+
+kelvin_version_status=0
+check_kelvin_version || kelvin_version_status=$?
+case "$kelvin_version_status" in
+	0) ;;
+	1)
+		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app to be installed in the domain. Please install it before installing or updating School Accounts."
+		;;
+	*)
+		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app in at least version ${MIN_KELVIN_VERSION} to be installed in the domain. Please upgrade it (e.g. 'univention-app upgrade ucsschool-kelvin-rest-api' on the host where it is installed) before installing or updating School Accounts."
+		;;
+esac
+
 APP_ID="ucsschool-accounts"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 SCRIPTS_DIR="$APP_DIR/scripts"

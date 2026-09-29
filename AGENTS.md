@@ -489,6 +489,7 @@ no access token is stored) rather than restating what the code does.
 | New adapter or port method | The relevant `tests/adapters/test_*.py` + `test_adapter_registry.py` if wiring changed |
 | New translatable string | `dev/dev_run.sh task translate` (fails loudly on untranslated/fuzzy strings) before running tests |
 | Any backend code change | Full `dev/dev_run.sh task pytest`, since CI enforces 100% coverage on non-omitted files |
+| App Center preinst (`appcenter-management/templates/`, `scripts/generate-preinst`) | `bats appcenter-management/tests/` (needs `bats` and Python >= 3.10; CI job `test_appcenter_scripts`) |
 | App Center / Cerbos policy change (`appcenter-management/files/policies/`) | `dev/dev_run.sh task cerbos-compile` (also wired into pre-commit as manual stage `cerbos-policy-check-docker`) — lints/tests via `cerbos compile`, using each policy's `*_test.yaml` |
 
 ## Generated and Sensitive Files
