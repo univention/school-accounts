@@ -85,17 +85,19 @@ include:
       doc_target_name: "ucsschool-user-management-module"
       doc_target_path: "ucsschool-user-management-module/$DOC_TARGET_VERSION"
       job_rules:
-        - changes: &docs_changes
+        - changes: &docs_build_changes
             - "docs/ucsschool-user-management-module/**/*"
+            - ".gitlab-ci/gitlab-ci.yml"
       merge_rules:
         - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-          changes: *docs_changes
+          changes: *docs_build_changes
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-          changes: *docs_changes
+          changes: *docs_build_changes
           when: manual
       production_rules:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-          changes: *docs_changes
+          changes:
+            - "docs/ucsschool-user-management-module/**/*"
 
 variables:
   UV_VERSION: "0.11.21"
@@ -340,4 +342,4 @@ pages:
     publish: "out/ucsschool-user-management-module/$DOC_TARGET_VERSION"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes: *docs_changes
+      changes: *docs_build_changes
