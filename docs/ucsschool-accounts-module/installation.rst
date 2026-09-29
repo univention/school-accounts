@@ -28,11 +28,9 @@ Before installing the School Accounts app, the following prerequisites are neede
   See :external+uv-ucs-operation:ref:`iam-authorization-engine-install`
   for further instructions.
 * The :external+uv-school-kelvin:doc:`Kelvin Rest API <index>` in version 4.1.0 or later
-  is installed and configured in the domain.
+  is installed and configured
+  on the same system as the |UASUMM|.
   The installation and the update of the |UASUMM| abort otherwise.
-  By default, the |UASUMM| expects the Kelvin REST API on the same system.
-  If the Kelvin REST API runs on a different system,
-  set the :envvar:`ucsschool-accounts/kelvin/url` variable to its URL.
 * Keycloak is installed and configured in the domain as the identity provider.
   For more information about installing Keycloak,
   see the :external+uv-keycloak:ref:`Univention Keycloak app documentation <app-installation>`.

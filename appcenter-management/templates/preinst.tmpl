@@ -32,10 +32,10 @@ check_kelvin_version || kelvin_version_status=$?
 case "$kelvin_version_status" in
 	0) ;;
 	1)
-		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app to be installed in the domain. Please install it before installing or updating School Accounts."
+		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app to be installed on this system. Please install it before installing or updating School Accounts."
 		;;
 	*)
-		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app in at least version ${MIN_KELVIN_VERSION} to be installed in the domain. Please upgrade it (e.g. 'univention-app upgrade ucsschool-kelvin-rest-api' on the host where it is installed) before installing or updating School Accounts."
+		fail "The application 'School Accounts' requires the 'UCS@school Kelvin REST API' app in at least version ${MIN_KELVIN_VERSION} to be installed on this system. Please upgrade it (e.g. 'univention-app upgrade ucsschool-kelvin-rest-api') before installing or updating School Accounts."
 		;;
 esac
 

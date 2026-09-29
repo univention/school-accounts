@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Mock for `ucr get` used by the bats tests.
+#
+# `ucr get appcenter/apps/ucsschool-kelvin-rest-api/<key>` prints the value of
+# MOCK_UCR_KELVIN_<KEY> (status, version), or nothing when it is unset, like
+# `ucr get` does for an unset variable.
+#
+# The invocation is logged to MOCK_CALLS (if set) so tests can assert the
+# expected variables were read.
+
+if [ -n "$MOCK_CALLS" ]; then
+    printf 'ucr %s\n' "$*" >> "$MOCK_CALLS"
+fi
+
+case "$1 $2" in
+    "get appcenter/apps/ucsschool-kelvin-rest-api/status")
+        [ -n "$MOCK_UCR_KELVIN_STATUS" ] && printf '%s\n' "$MOCK_UCR_KELVIN_STATUS"
+        ;;
+    "get appcenter/apps/ucsschool-kelvin-rest-api/version")
+        [ -n "$MOCK_UCR_KELVIN_VERSION" ] && printf '%s\n' "$MOCK_UCR_KELVIN_VERSION"
+        ;;
+esac
+exit 0
