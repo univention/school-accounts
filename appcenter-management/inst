@@ -64,7 +64,12 @@ univention-directory-manager groups/group modify "$@" \
   --append users="$appcenter_apps_ucsschool_accounts_hostdn" || die
 
 
-keycloak_url=$(ucr get keycloak/server/sso/fqdn)
+keycloak_url=$(ucr get ucsschool-accounts/oauth/keycloak-uri)
+
+if [ -z "$keycloak_url" ]
+    then
+    keycloak_url=$(ucr get keycloak/server/sso/fqdn)
+fi
 
 if [ -z "$keycloak_url" ]
     then

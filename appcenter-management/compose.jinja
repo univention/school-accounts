@@ -45,7 +45,7 @@ print(kelvin_url, end='')@!@
       UCSSCHOOL_ACCOUNTS__PASSWORD_RESET_MAX_TARGETS: "200"
 @!@
 ucr = configRegistry
-keycloak_url = ucr.get('guardian-management-ui/oauth/keycloak-uri')
+keycloak_url = ucr.get('ucsschool-accounts/oauth/keycloak-uri')
 if not keycloak_url:
     keycloak_url = ucr.get('keycloak/server/sso/fqdn', f"ucs-sso-ng.{ucr.get('domainname')}")
 if not keycloak_url.startswith('http'):

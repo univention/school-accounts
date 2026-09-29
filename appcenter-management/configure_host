@@ -14,7 +14,12 @@ if [ "$action" = "remove" ]; then
     eval "$(ucr shell hostname domainname)"
     machine_username="${hostname:?}$"
     machine_pw="$(cat /etc/machine.secret)"
-    keycloak_url=$(ucr get keycloak/server/sso/fqdn)
+    keycloak_url=$(ucr get ucsschool-accounts/oauth/keycloak-uri)
+
+    if [ -z "$keycloak_url" ]
+        then
+        keycloak_url=$(ucr get keycloak/server/sso/fqdn)
+    fi
 
     if [ -z "$keycloak_url" ]
         then

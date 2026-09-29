@@ -11,8 +11,8 @@ Show = Install,Settings
 
 [ucsschool-accounts/oauth/keycloak-uri]
 Type = String
-Description = Base URI of the Keycloak server for authentication. If unset the joinscript will attempt to set this value automatically.
-Description[de] = URL des Keycloak-Servers zur Authentifizierung. Falls dieser Wert nicht gesetzt wird, versucht das Joinscript diesen Wert automatisch zu ermitteln.
+Description = Base URI of the Keycloak server for authentication. If unset, the app uses the UCR variable keycloak/server/sso/fqdn, or ucs-sso-ng followed by the domain name.
+Description[de] = Basis-URI des Keycloak-Servers zur Authentifizierung. Falls nicht gesetzt, verwendet die App die UCR-Variable keycloak/server/sso/fqdn oder ucs-sso-ng gefolgt vom Domainnamen.
 Group = Authentication
 Scope = outside
 Show = Install,Settings
