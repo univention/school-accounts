@@ -31,7 +31,7 @@ univention-directory-manager portals/entry create "$@" --ignore_exists \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
     --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
     --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/ucsschool-accounts/ui/"' \
-    --set linkTarget=newwindow || die
+    --set linkTarget=embedded || die
 
 COMPONENT_ID="$(univention-app get "$APP" component_id | cut -f 2 -d ':' | tr -d '[:space:]')"
 ICON_FILE="$ICON_DIR/apps-$COMPONENT_ID.svg"
