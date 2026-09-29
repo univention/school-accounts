@@ -23,7 +23,7 @@ Top-level areas:
   UI/business-logic changes.
 - [docs/ucsschool-user-management-module/](docs/ucsschool-user-management-module/) — the published
   Sphinx user manual (installation, configuration, troubleshooting, changelog). User-facing, built
-  in CI (`docs-*` jobs); not developer documentation.
+  in CI (`docs:*` jobs from the `sphinx-docs` CI component); not developer documentation.
 - [dev/](dev/) — local dev environment (Docker Compose, Keycloak provisioning, fixture data,
   scripts, integration-test config). See § Development Environment.
 
@@ -522,8 +522,10 @@ no access token is stored) rather than restating what the code does.
   [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) (it is maintained as a living design
   doc, not a point-in-time snapshot — it currently documents up to commit `176b03d`).
 - Sphinx manual changes (`docs/ucsschool-user-management-module/`) are validated in CI by
-  `docs-linkcheck`, `docs-spelling` (uses `spelling_wordlist`), `docs-html`, and `docs-pdf` jobs, all
-  gated on changes under that path.
+  `docs:linkcheck`, `docs:spelling` (uses `spelling_wordlist`), `docs:html`, and `docs:pdf` jobs, all
+  gated on changes under that path. They come from the `sphinx-docs` component of `ci-components`;
+  configure them through its inputs in `.gitlab-ci/gitlab-ci.yml`, not by adding jobs. The `pages`
+  job publishes the default branch's build to the project's GitLab Pages site.
 
 ## Common Pitfalls
 

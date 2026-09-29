@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 include:
-  - project: 'univention/dev/docs/sphinx-docker'
-    file: 'pipeline/sphinx.yml'
   - project: univention/dev/tooling/ci-components
     file: fragments/openstack.yaml
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.16.2
@@ -81,13 +79,27 @@ include:
     inputs:
       job_name: "build-sonar"
       stage: build
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.16.2
+    inputs:
+      docs_dir: "docs/ucsschool-user-management-module"
+      doc_target_name: "ucsschool-user-management-module"
+      doc_target_path: "ucsschool-user-management-module/$DOC_TARGET_VERSION"
+      job_rules:
+        - changes: &docs_changes
+            - "docs/ucsschool-user-management-module/**/*"
+      merge_rules:
+        - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+          changes: *docs_changes
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+          changes: *docs_changes
+          when: manual
+      production_rules:
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+          changes: *docs_changes
 
 variables:
   UV_VERSION: "0.11.21"
   DOC_TARGET_VERSION: "0.2.0"
-  DOC_TARGET_NAME: "ucsschool-user-management-module"
-  DOC_TARGET_PATH: "$DOC_TARGET_NAME/$DOC_TARGET_VERSION"
-  DOCS_DIR: "docs/$DOC_TARGET_NAME"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
@@ -314,55 +326,18 @@ integration-tests:
     reports:
       junit: "*junit.xml"
 
-docs-linkcheck:
-  extends: .sphinx-linkcheck-template
-  rules:
-    - changes:
-      - docs/ucsschool-user-management-module/**/*
-
-docs-spelling:
-  extends: .sphinx-spelling-template
-  rules:
-    - changes:
-      - docs/ucsschool-user-management-module/**/*
-
-docs-html:
-  extends: .sphinx-html-template
-  rules:
-    - changes:
-      - docs/ucsschool-user-management-module/**/*
-
-docs-pdf:
-  extends: .sphinx-pdf-template
-  rules:
-    - changes:
-      - docs/ucsschool-user-management-module/**/*
-
-docs-merge-to-one-artifact:
-  extends: .sphinx-merge-template
+pages:
+  stage: production
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/busybox:latest
+  variables:
+    GIT_STRATEGY: none
   needs:
-    - job: docs-html
-    - job: docs-pdf
-    - job: docs-spelling
-      artifacts: false
-    - job: docs-linkcheck
-      artifacts: false
+    - job: docs:html
+    - job: docs:pdf
+  script:
+    - "true"
+  pages:
+    publish: "out/ucsschool-user-management-module/$DOC_TARGET_VERSION"
   rules:
-    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-      changes:
-      - docs/ucsschool-user-management-module/**/*
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-      - docs/ucsschool-user-management-module/**/*
-      when: manual
-
-# The template has inherit:variables:false to prevent the passing of pipeline
-# variables to downstream, and therefore $DOCS_DIR is not available here.
-docs-create-production-merge-request:
-  extends: .sphinx-docs-merge-request-template
-  needs:
-    - job: docs-merge-to-one-artifact
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes:
-      - docs/**/*
+      changes: *docs_changes
