@@ -30,6 +30,8 @@ This section lists the changes to the School Accounts app.
   the domain generates the secret; later installations and app updates adopt the one
   already registered at Keycloak.
 * The page header shows the logged in user and a button that ends the session.
+* The portal tile is visible to everyone instead of only to the members of ``Domain Users``,
+  which left out the users of the schools.
 * The internal setting ``USER_MANAGEMENT__ADAPTER__SESSION_STORE`` has been removed and is
   ignored if still set.
 * The list view no longer shows the school classes and work groups of each user.

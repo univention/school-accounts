@@ -31,7 +31,6 @@ univention-directory-manager portals/entry create "$@" --ignore_exists \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
     --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
     --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/ucsschool-accounts/ui/"' \
-    --append allowedGroups="cn=Domain Users,cn=groups,$ldap_base" \
     --set linkTarget=newwindow || die
 
 COMPONENT_ID="$(univention-app get "$APP" component_id | cut -f 2 -d ':' | tr -d '[:space:]')"

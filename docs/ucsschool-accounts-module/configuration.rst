@@ -10,10 +10,14 @@ Configuration
 Portal tile for the |UASUMM|
 ==============================
 
-You can adjust the portal tile visibility of the |UASUMM|
+The portal tile of the |UASUMM| is visible to everyone,
+including visitors who aren't logged in.
+Selecting it asks them to log in first.
+You can restrict the visibility
 by following the UCS manual section about the :external+uv-ucs-manual:ref:`Portal <central-portal>`.
 
-As a quick example for the command line, to add all domain users of the school ``DEMOSCHOOL``, you can run:
+As a quick example for the command line,
+to show the tile only to the domain users of the school ``DEMOSCHOOL``, you can run:
 
 .. code:: bash
 

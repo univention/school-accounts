@@ -7,13 +7,6 @@
 Troubleshooting
 ***************
 
-The |UASUMM| tile on the portal page is not visible for a user
-==============================================================
-
-The module is only visible for users which are members of a group which is in turn
-added to the attribute ``allowedGroups`` of the portal entry object. Refer to the
-:external+uv-ucs-manual:ref:`Portal <central-portal>` section of the UCS Manual.
-
 Backend returns Status code 403: Forbidden
 ==========================================
 
