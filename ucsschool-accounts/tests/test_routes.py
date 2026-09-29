@@ -474,6 +474,15 @@ def _users_page(test_client: TestClient, accept_language: str, **params: str | l
     return _users_response(test_client, {"Accept-Language": accept_language}, **params).text
 
 
+@pytest.mark.parametrize(("accept_language", "sent"), [("de-DE,de;q=0.9", "de"), ("", "en")])
+def test_kelvin_is_asked_for_the_language_the_ui_renders_in(
+    test_client: TestClient, mocker: MockerFixture, accept_language: str, sent: str
+):
+    scope = mocker.spy(routes, "kelvin_session_scope")
+    _users_page(test_client, accept_language)
+    assert scope.call_args.kwargs["language"] == sent
+
+
 def test_german_accept_language_renders_german_template_strings(test_client: TestClient):
     """Every string asserted here lives in a Jinja template, not in Python."""
     body = _users_page(test_client, "de-DE,de;q=0.9")

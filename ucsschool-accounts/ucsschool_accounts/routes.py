@@ -77,13 +77,13 @@ env_globals["all_groups_value"] = presentation.ALL_GROUPS
 RESULTS_REGION_ID = "results-region"
 
 
-async def kelvin_session() -> AsyncIterator[None]:
+async def kelvin_session(request: Request) -> AsyncIterator[None]:
     """Give every route one Kelvin session, closed when the response is done.
 
     Declared on the router so a new route cannot forget it, and so the adapters
     keep their own signatures - they read the scope rather than being handed it.
     """
-    async with kelvin_session_scope(request_id=correlation_id_ctx_var.get()):
+    async with kelvin_session_scope(request_id=correlation_id_ctx_var.get(), language=get_lang(request)):
         yield
 
 

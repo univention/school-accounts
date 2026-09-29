@@ -158,6 +158,8 @@ class _SessionHolder:
 
     request_id: str
     session: Session | None = None
+    # Sent as Accept-Language, so UDM's messages come back in the UI's language; empty sends none.
+    language: str = ""
     # Kelvin objects this request already fetched, by name.
     fetched: dict[str, object] = field(default_factory=dict)
 
@@ -166,9 +168,9 @@ _session_holder: ContextVar[_SessionHolder | None] = ContextVar("kelvin_session_
 
 
 @contextmanager
-def enter_session_scope(request_id: str) -> Generator[_SessionHolder]:
+def enter_session_scope(request_id: str, language: str = "") -> Generator[_SessionHolder]:
     """Open a scope without closing what lands in it - the caller owns that."""
-    holder = _SessionHolder(request_id=request_id)
+    holder = _SessionHolder(request_id=request_id, language=language)
     token = _session_holder.set(holder)
     try:
         yield holder
@@ -177,7 +179,7 @@ def enter_session_scope(request_id: str) -> Generator[_SessionHolder]:
 
 
 @asynccontextmanager
-async def kelvin_session_scope(request_id: str) -> AsyncGenerator[None]:
+async def kelvin_session_scope(request_id: str, language: str = "") -> AsyncGenerator[None]:
     """Bind one Kelvin session to the work inside, then close it.
 
     Every adapter in the scope shares it, so a request opens one set of connections
@@ -185,7 +187,7 @@ async def kelvin_session_scope(request_id: str) -> AsyncGenerator[None]:
     carries to the next one. The login itself outlives the scope - see
     ``SharedTokenSession``.
     """
-    with enter_session_scope(request_id=request_id) as holder:
+    with enter_session_scope(request_id=request_id, language=language) as holder:
         try:
             yield
         finally:
@@ -256,6 +258,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 verify=os.environ.get("SSL_CERT_FILE"),
                 timeout=KELVIN_TIMEOUT_SECONDS,
                 request_id=holder.request_id,
+                language=holder.language,
             )
             # `Session.client` raises "Session is closed." until this runs.
             holder.session.open()

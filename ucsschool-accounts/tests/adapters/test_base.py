@@ -93,6 +93,14 @@ class TestKelvinPersistenceBaseAdapter:
         async with kelvin_session_scope(request_id="the-request"):
             assert adapter.kelvin_session.request_id == "the-request"
 
+    @pytest.mark.asyncio
+    async def test_the_session_asks_kelvin_for_the_scopes_language(
+        self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
+    ):
+        adapter._settings = dummy_settings
+        async with kelvin_session_scope(request_id="the-request", language="de"):
+            assert adapter.kelvin_session.language == "de"
+
     def test_no_session_outside_a_scope(
         self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
     ):

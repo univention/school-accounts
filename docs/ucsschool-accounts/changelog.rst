@@ -18,6 +18,10 @@ v1.1.0 (unreleased)
   The role filter applies to the roles that users hold at the selected school.
   The browser address contains the selected role,
   so a bookmark or a shared link opens the same list.
+* Error messages from Univention Directory Manager (UDM),
+  such as the reason a password reset was refused,
+  now appear in the language of the user interface.
+  Other error messages from the Kelvin REST API remain in English.
 
 .. _release-1-0-0:
 
