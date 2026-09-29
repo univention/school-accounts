@@ -17,35 +17,35 @@ path = [
     "dev/data/fake-machine.secret",
     "dev/tests/**.csv",
     "dev/tests/**.json",
-    "docs/ucsschool-user-management-module/_static/**.pdf",
-    "docs/ucsschool-user-management-module/spelling_wordlist",
+    "docs/ucsschool-accounts-module/_static/**.pdf",
+    "docs/ucsschool-accounts-module/spelling_wordlist",
     "renovate.json",
-    "user-management-bff/basedpyright-baseline.json",
-    "user-management-bff/pyrightconfig.json",
-    "user-management-bff/tests/data/**.json",
-    "user-management-bff/uv.lock"
+    "ucsschool-accounts-bff/basedpyright-baseline.json",
+    "ucsschool-accounts-bff/pyrightconfig.json",
+    "ucsschool-accounts-bff/tests/data/**.json",
+    "ucsschool-accounts-bff/uv.lock"
 ]
 SPDX-FileCopyrightText = "2024-2026 Univention GmbH"
 SPDX-License-Identifier = "AGPL-3.0-only"
 
 [[annotations]]
 path = [
-    "user-management-bff/user_management_bff/static/vendor/alpine.min.js",
+    "ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/alpine.min.js",
 ]
 SPDX-FileCopyrightText = "2019 Caleb Porzio and contributors"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = [
-    "user-management-bff/user_management_bff/static/vendor/htmx.min.js",
+    "ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/htmx.min.js",
 ]
 SPDX-FileCopyrightText = "2020 Big Sky Software"
 SPDX-License-Identifier = "0BSD"
 
 [[annotations]]
 path = [
-    "user-management-bff/user_management_bff/static/vendor/univention-design-system.js",
-    "user-management-bff/user_management_bff/static/vendor/univention-design-system.css",
+    "ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system.js",
+    "ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system.css",
 ]
 SPDX-FileCopyrightText = "2026 Univention GmbH"
 SPDX-License-Identifier = "AGPL-3.0-only"

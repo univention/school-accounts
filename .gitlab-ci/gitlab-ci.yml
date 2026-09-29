@@ -6,15 +6,15 @@ include:
     file: fragments/openstack.yaml
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/app-release@2.16.2
     inputs:
-      app_id: "ucsschool-user-management"
+      app_id: "ucsschool-accounts"
       mail_sender: "ucsschool-maintainers@univention.de"
       author_alias: "The ByteBenders"
-      changelog_link: "https://docs.software-univention.de/ucsschool-user-management-module/${APP_VERSION}/changelog.html"
+      changelog_link: "https://docs.software-univention.de/ucsschool-accounts-module/${APP_VERSION}/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#ucsschool"
       ucs_base_version: "5.2"
       additional_update_appcenter_needs:
-        - job: build_docker_image_user_management
+        - job: build_docker_image_ucsschool_accounts
         - job: build_appcenter_files
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
@@ -36,21 +36,21 @@ include:
         date=$CI_JOB_STARTED_AT
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
     inputs:
-      job_name: "build_docker_image_user_management"
+      job_name: "build_docker_image_ucsschool_accounts"
       stage: prepare
-      image_name: "ucsschool-user-management"
-      registry_image: "$CI_REGISTRY_IMAGE/ucsschool-user-management"
+      image_name: "ucsschool-accounts"
+      registry_image: "$CI_REGISTRY_IMAGE/ucsschool-accounts"
       # Tag the released image with the plain version, without the tag prefix
       # that triggers the release pipeline.
       tag_prefix: "release-"
       # Keep the build cache in the project registry, also for the tag pipeline
       # that pushes the image itself to the public registry.
-      cache_image: "$CI_REGISTRY_IMAGE/ucsschool-user-management/cache"
+      cache_image: "$CI_REGISTRY_IMAGE/ucsschool-accounts/cache"
       job_rules:
         - if: "$CI_COMMIT_TAG"
           variables:
             REGISTRY: "artifacts.software-univention.de"
-            REGISTRY_IMAGE: "$REGISTRY/ucsschool/ucsschool-user-management"
+            REGISTRY_IMAGE: "$REGISTRY/ucsschool/ucsschool-accounts"
         - if: $CI_MERGE_REQUEST_ID
         - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       build_args: |
@@ -63,16 +63,16 @@ include:
     inputs:
       job_prefix: "bff_"
       pipeline_stage: build
-      python_paths: --project user-management-bff/pyrightconfig.json user-management-bff
+      python_paths: --project ucsschool-accounts-bff/pyrightconfig.json ucsschool-accounts-bff
       python_version: "3.11"
       basedpyright_version: "1.39.8"
-      baseline_file: user-management-bff/basedpyright-baseline.json
+      baseline_file: ucsschool-accounts-bff/basedpyright-baseline.json
       before_script:
-        - uv sync --project user-management-bff --python 3.11
+        - uv sync --project ucsschool-accounts-bff --python 3.11
       job_rules:
         - if: $CI_MERGE_REQUEST_ID
           changes:
-            - user-management-bff/**/*
+            - ucsschool-accounts-bff/**/*
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.16.2
@@ -81,12 +81,12 @@ include:
       stage: build
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.16.2
     inputs:
-      docs_dir: "docs/ucsschool-user-management-module"
-      doc_target_name: "ucsschool-user-management-module"
-      doc_target_path: "ucsschool-user-management-module/$DOC_TARGET_VERSION"
+      docs_dir: "docs/ucsschool-accounts-module"
+      doc_target_name: "ucsschool-accounts-module"
+      doc_target_path: "ucsschool-accounts-module/$DOC_TARGET_VERSION"
       job_rules:
         - changes: &docs_build_changes
-            - "docs/ucsschool-user-management-module/**/*"
+            - "docs/ucsschool-accounts-module/**/*"
             - ".gitlab-ci/gitlab-ci.yml"
       merge_rules:
         - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
@@ -97,7 +97,7 @@ include:
       production_rules:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
           changes:
-            - "docs/ucsschool-user-management-module/**/*"
+            - "docs/ucsschool-accounts-module/**/*"
 
 variables:
   UV_VERSION: "0.11.21"
@@ -126,7 +126,7 @@ stages:
 build_dev_image:
   tags: ["dae-m"]
 
-build_docker_image_user_management:
+build_docker_image_ucsschool_accounts:
   tags: ["dae-m"]
 
 build_appcenter_files:
@@ -196,19 +196,19 @@ bff-test:
     BFF_COVERAGE_LIMIT: "100"
     UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
   before_script:
-    - ./user-management-bff/scripts/test_setup.sh
+    - ./ucsschool-accounts-bff/scripts/test_setup.sh
     - pip install uv=="$UV_VERSION"
-    - uv pip install user-management-bff/
+    - uv pip install ucsschool-accounts-bff/
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
-        - user-management-bff/**/*
+        - ucsschool-accounts-bff/**/*
     - if: $CI_COMMIT_REF_PROTECTED == "true"
     - if: $CI_COMMIT_TAG
     - when: manual
       allow_failure: true
   script:
-    - uv run --project user-management-bff/ pytest -vv -m "not e2e and not frontend" --junitxml=report.xml --cov --cov-config=user-management-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" user-management-bff/
+    - uv run --project ucsschool-accounts-bff/ pytest -vv -m "not e2e and not frontend" --junitxml=report.xml --cov --cov-config=ucsschool-accounts-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" ucsschool-accounts-bff/
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
@@ -242,37 +242,37 @@ bff-frontend-test:
     PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
     # Take precedence over dev/.env.example, which addresses everything through the compose proxy.
     COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: "http://localhost:8080/keycloak/realms/ucs/.well-known/openid-configuration"
-    COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: "http://localhost:8000/univention/ucsschool/user-management/ui/auth/callback"
-    COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: "http://localhost:8000/univention/ucsschool/user-management/ui"
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: "http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui/auth/callback"
+    COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: "http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui"
   cache:
     key:
       files:
-        - user-management-bff/uv.lock
+        - ucsschool-accounts-bff/uv.lock
     paths:
       - .cache/ms-playwright/
   before_script:
     # dev/.env.example paths assume the compose bind mount at /src.
     - rmdir /src && ln -s "$CI_PROJECT_DIR" /src
-    - ./user-management-bff/scripts/test_setup.sh
-    - uv run --project user-management-bff/ playwright install chromium
+    - ./ucsschool-accounts-bff/scripts/test_setup.sh
+    - uv run --project ucsschool-accounts-bff/ playwright install chromium
     - curl -sf --retry 90 --retry-delay 2 --retry-all-errors -o /dev/null "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration"
     - dev/scripts/provision_keycloak.sh
     - mkdir -p .cache
-    - 'uv run --project user-management-bff/ --env-file dev/.env.example uvicorn --port 8000 user_management_bff.main:app > .cache/frontend-test-bff.log 2>&1 &'
-    - curl -sf --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "$FRONTEND_BASE_URL/univention/ucsschool/user-management/ui/"
+    - 'uv run --project ucsschool-accounts-bff/ --env-file dev/.env.example uvicorn --port 8000 ucsschool_accounts_bff.main:app > .cache/frontend-test-bff.log 2>&1 &'
+    - curl -sf --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "$FRONTEND_BASE_URL/univention/ucsschool/ucsschool-accounts/ui/"
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
-        - user-management-bff/**/*
+        - ucsschool-accounts-bff/**/*
         - dev/**/*
-        - appcenter-management/files/ucsschool-user-management_client_ui.json
+        - appcenter-management/files/ucsschool-accounts_client_ui.json
         - .gitlab-ci/gitlab-ci.yml
     - if: $CI_COMMIT_REF_PROTECTED == "true"
     - if: $CI_COMMIT_TAG
     - when: manual
       allow_failure: true
   script:
-    - uv run --project user-management-bff/ pytest -vv -m frontend --base-url "$FRONTEND_BASE_URL" --browser chromium --screenshot only-on-failure --tracing retain-on-failure --output .cache/frontend-test-results --junitxml=frontend-report.xml user-management-bff/tests/frontend
+    - uv run --project ucsschool-accounts-bff/ pytest -vv -m frontend --base-url "$FRONTEND_BASE_URL" --browser chromium --screenshot only-on-failure --tracing retain-on-failure --output .cache/frontend-test-results --junitxml=frontend-report.xml ucsschool-accounts-bff/tests/frontend
   artifacts:
     when: always
     paths:
@@ -285,10 +285,10 @@ repo_tar:
   stage: prepare
   image: $EC2_TOOLS_IMAGE
   script:
-    - git archive --format=tar --prefix user-management/ --output user-management.tar HEAD
+    - git archive --format=tar --prefix ucsschool-accounts/ --output ucsschool-accounts.tar HEAD
   artifacts:
     paths:
-      - user-management.tar
+      - ucsschool-accounts.tar
 
 integration-tests:
   stage: integration_test
@@ -301,7 +301,7 @@ integration-tests:
     - job: update_appcenter
   rules:
     - changes:
-        - user-management-bff/**/*
+        - ucsschool-accounts-bff/**/*
         - appcenter-management/**/*
         - dev/tests/**/*
       when: manual
@@ -312,7 +312,7 @@ integration-tests:
     TARGET_VERSION: "5.2-6"
     OPENSTACK_CFG_FILE: "dev/tests/integration_tests.cfg"
     PACKAGES_TO_INSTALL: ""
-    UCSSCHOOL_USER_MANAGEMENT_VERSION: $APP_VERSION
+    UCSSCHOOL_ACCOUNTS_VERSION: $APP_VERSION
     SSH_KEY: $SSH_PRIVATE_KEY_TECH
   script:
     - !reference [.run_openstack_cfg, script]
@@ -339,7 +339,7 @@ pages:
   script:
     - "true"
   pages:
-    publish: "out/ucsschool-user-management-module/$DOC_TARGET_VERSION"
+    publish: "out/ucsschool-accounts-module/$DOC_TARGET_VERSION"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes: *docs_build_changes

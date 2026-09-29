@@ -6,7 +6,7 @@
 
 set -e
 
-APP_ID="ucsschool-user-management"
+APP_ID="ucsschool-accounts"
 APP_DIR="/var/lib/univention-appcenter/apps/$APP_ID"
 SCRIPTS_DIR="$APP_DIR/scripts"
 POLICIES_DIR="$SCRIPTS_DIR/policies"
@@ -37,7 +37,7 @@ else
 	openssl rand -hex 32 > "$SESSION_SECRET_FILE"
 fi
 
-# Authenticates the app as the confidential ucsschool-user-management-ui client at
+# Authenticates the app as the confidential ucsschool-accounts-ui client at
 # Keycloak's token endpoint. Generated here rather than in the join script because
 # the container copies it out of this directory at boot, which happens first.
 # Only a first installation in the domain keeps this value: the client belongs to
@@ -54,10 +54,10 @@ else
 	openssl rand -hex 32 > "$CLIENT_SECRET_FILE"
 fi
 
-# ucsschool-user-management-ui keycloak client config
-ucsschool_user_management_ui_client_path="$CONF_DIR/ucsschool-user-management_client_ui.json"
+# ucsschool-accounts-ui keycloak client config
+ucsschool_accounts_ui_client_path="$CONF_DIR/ucsschool-accounts_client_ui.json"
 echo "Installing Keycloak client config for the UI"
-	cat <<'%EOF' >"$ucsschool_user_management_ui_client_path"
+	cat <<'%EOF' >"$ucsschool_accounts_ui_client_path"
 %UI_CLIENT%
 %EOF
-chmod 644 "$ucsschool_user_management_ui_client_path"
+chmod 644 "$ucsschool_accounts_ui_client_path"

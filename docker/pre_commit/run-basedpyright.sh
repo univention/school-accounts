@@ -13,7 +13,7 @@ project_dir="$1"
 mode="$2"
 shift 2
 
-image="ucsschool-user-management-precommit-basedpyright:latest"
+image="ucsschool-accounts-precommit-basedpyright:latest"
 
 docker build -f docker/pre_commit/Dockerfile -t "$image" \
     --build-arg UID="$(id -u)" \

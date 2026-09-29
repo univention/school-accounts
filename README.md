@@ -3,14 +3,14 @@ SPDX-FileCopyrightText: 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-# UCS@school User Management
+# School Accounts
 
-This is the repository for the new UCS@school User Management Module.
+This is the repository for the new School Accounts app.
 **Table of content**
 
 [[TOC]]
 
-- [UCS@school User Management](#ucsschool-user-management)
+- [School Accounts](#school-accounts)
   - [Development](#development)
     - [Prerequisites](#prerequisites)
     - [Gitlab Pipeline](#gitlab-pipeline)
@@ -44,7 +44,7 @@ This is the repository for the new UCS@school User Management Module.
 
 ### Prerequisites
 
-To develop the UCS@school User Management Module you just need [docker](https://www.docker.com/).
+To develop the School Accounts app you just need [docker](https://www.docker.com/).
 Installation instructions for Ubuntu can be found [here](https://docs.docker.com/engine/install/ubuntu/).
 You must have at least Docker version 25.
 
@@ -53,8 +53,8 @@ You must have at least Docker version 25.
 #### Frontend Tests
 
 The `bff-frontend-test` job runs the Playwright tests in
-[user-management-bff/tests/frontend](user-management-bff/tests/frontend) on every merge request
-that touches `user-management-bff/` or `dev/`.
+[ucsschool-accounts-bff/tests/frontend](ucsschool-accounts-bff/tests/frontend) on every merge request
+that touches `ucsschool-accounts-bff/` or `dev/`.
 It starts Keycloak as a service container and,
 next to it, the BFF on the File adapters and the fixture data from `dev/data/`,
 so a real browser drives a real login against the same stack the dev server uses.
@@ -78,7 +78,7 @@ The following variables are important:
 
 If you abort the pipeline job or set the `TERMINATE_INSTANCE` variable, make sure to clean up your VMs after.
 
-They are named `build_ucsschool-user-management_$JOB_ID-{primary,backup1}`.
+They are named `build_ucsschool-accounts_$JOB_ID-{primary,backup1}`.
 The IP addresses of the VMs can be extracted from the job log.
 
 The job automatically determines which docker image to use for the app install. If the same pipeline builds a docker
@@ -156,11 +156,11 @@ dev/dev_run.sh task dev-server
 Make sure that the `.env` is up-to-date: `cp dev/.env.example dev/.env`
 
 For Keycloak to work properly in the dev-server, you need to access the routes with the hostname
-`user-management-proxy`. This means your browser needs to be able to resolve this hostname.
+`ucsschool-accounts-proxy`. This means your browser needs to be able to resolve this hostname.
 One way to achieve this, would be adapting your `/etc/hosts`:
 
 ```shell
-echo "127.0.0.1    user-management-proxy" | sudo tee -a /etc/hosts
+echo "127.0.0.1    ucsschool-accounts-proxy" | sudo tee -a /etc/hosts
 ```
 
 #### Start development server against a real Kelvin
@@ -195,19 +195,19 @@ so re-run `dev/scripts/fetch_ucs_ca.sh` yourself after recreating one.
 
 ```shell
 curl -s -o /dev/null -w '%{time_total}\n' \
-  'http://localhost/univention/ucsschool/user-management/ui/users?school=school2&group=all'
+  'http://localhost/univention/ucsschool/ucsschool-accounts/ui/users?school=school2&group=all'
 ```
 
 #### Reachable URLS
 
-The frontend page is served by the API at http://user-management-proxy/univention/ucsschool/user-management/ui/ .
+The frontend page is served by the API at http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/ui/ .
 Use "dev:univention" for the login at the frontend page.
 
-The API can be accessed at http://user-management-proxy/univention/ucsschool/user-management/bff/docs
+The API can be accessed at http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/bff/docs
 
 The API reacts to code changes without the need to restart the environment.
 
-Keycloak can be accessed with "admin:admin" at http://user-management-proxy/keycloak/admin/
+Keycloak can be accessed with "admin:admin" at http://ucsschool-accounts-proxy/keycloak/admin/
 
 #### Generating Backend Translations
 
@@ -215,7 +215,7 @@ When adding a new string that will be returned to the frontend,
 you need to mark it as translatable:
 
 ```python
-from user_management_bff.lang import _
+from ucsschool_accounts_bff.lang import _
 
 some_string = _("This needs to be translated")
 ```
@@ -227,14 +227,14 @@ In a Jinja template, use the `_` that `routes.render()` binds into the context:
 ```
 
 Extraction covers both: `pybabel extract` reads `*.py` and `templates/**.html`
-through `user-management-bff/babel.cfg`, so a literal left untranslated in a
+through `ucsschool-accounts-bff/babel.cfg`, so a literal left untranslated in a
 template fails the check the same way a Python one does.
 
 If the msgid is only ever reached through a variable, extraction cannot see the
 literal - mark it where it is defined and translate it at the point of use:
 
 ```python
-from user_management_bff.lang import N_, _
+from ucsschool_accounts_bff.lang import N_, _
 
 _ROLE_LABELS = {"student": N_("Student")}
 label = _(_ROLE_LABELS[role_id], lang=lang)
@@ -248,7 +248,7 @@ dev/dev_run.sh task translate
 ```
 
 The script will tell you to fill in any translation strings it finds that are incomplete.
-You can find the translation file in `user-management-bff/locales/de/LC_MESSAGES/ucsschool-user-mangement.po`.
+You can find the translation file in `ucsschool-accounts-bff/locales/de/LC_MESSAGES/ucsschool-accounts.po`.
 
 **Note: Per default there is no `.mo` file present in the repository, therefore it is required to run the aforementioned task once, if localization is needed for development.**
 
@@ -275,7 +275,7 @@ This might be integrated into the `dev-server` task if the adapter is rewritten.
 If you want to check if a CEL expression is interpreted correctly you can run
 
 ```shell
-docker exec -it ucsschool-user-management-ccerbos /cerbos repl
+docker exec -it ucsschool-accounts-cerbos /cerbos repl
 ```
 
 This will open a cerbos terminal in which you can type in the expressions, if you have the necessary data beforehand,
@@ -338,7 +338,7 @@ dev/dev_run.sh task pytest --pdb
 
 The e2e tests need a deployed environment. The integration-test pipeline job creates one -- start it with
 the `TERMINATE_INSTANCE` variable set to anything but true to keep it afterwards -- and runs the tests
-on that machine with `univention-app shell ucsschool-user-management python3 -m pytest -m "e2e"`.
+on that machine with `univention-app shell ucsschool-accounts python3 -m pytest -m "e2e"`.
 
 Running them from your laptop against such an environment takes three preparations.
 
@@ -374,15 +374,15 @@ dev/dev_run.sh task cerbos-server
 Then run the tests **outside** the dev container, from the BFF's own virtualenv:
 
 ```shell
-uv sync --inexact --project user-management-bff
-cd user-management-bff
+uv sync --inexact --project ucsschool-accounts-bff
+cd ucsschool-accounts-bff
 env SSL_CERT_FILE=../dev/local/ca-bundle.crt \
     REQUESTS_CA_BUNDLE=../dev/local/ca-bundle.crt \
     KELVIN_PERSISTENCE_ADAPTER__URL=primary.ucsschool.test \
     KELVIN_PERSISTENCE_ADAPTER__USERNAME=Administrator \
     KELVIN_PERSISTENCE_ADAPTER__PASSWORD=univention \
   uv run pytest -m "e2e" \
-    --base_url "https://primary.ucsschool.test/univention/ucsschool/user-management" \
+    --base_url "https://primary.ucsschool.test/univention/ucsschool/ucsschool-accounts" \
     --kelvin_url primary.ucsschool.test \
     --cerbos_url localhost:3593
 ```
@@ -409,7 +409,7 @@ SSL_CERT_FILE=/src/dev/local/ca-bundle.crt
 ```
 
 ```shell
-E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/user-management" \
+E2E_BASE_URL="https://primary.ucsschool.test/univention/ucsschool/ucsschool-accounts" \
 E2E_CERBOS_URL="cerbos:3593" \
 E2E_KELVIN_URL="primary.ucsschool.test" \
 dev/dev_run.sh task pytest-e2e
@@ -438,7 +438,7 @@ dev/dev_run.sh task pytest-frontend
 
 Against an installed system, point the same suite at it and give it a Kelvin URL.
 It then seeds the objects it needs through Kelvin --
-a `umtest` school, a class, a work group,
+an `accountstest` school, a class, a work group,
 and four of the `dev/data` people under their own names --
 and logs in as one of them,
 so the assertions hold on any machine that has the app installed,
@@ -465,12 +465,12 @@ leaves Keycloak rejecting every later login as that name.
 Seeding reconciles what is already there,
 so a machine converges on that set and repeat runs are cheap.
 The module docstring in
-[user-management-bff/tests/frontend/seed.py](user-management-bff/tests/frontend/seed.py)
+[ucsschool-accounts-bff/tests/frontend/seed.py](ucsschool-accounts-bff/tests/frontend/seed.py)
 has the detail.
 
 Every context runs at a fixed 1180x840 viewport,
 set in `browser_context_args` in
-[user-management-bff/tests/frontend/conftest.py](user-management-bff/tests/frontend/conftest.py),
+[ucsschool-accounts-bff/tests/frontend/conftest.py](ucsschool-accounts-bff/tests/frontend/conftest.py),
 rather than at Playwright's 1280x720 default.
 840 is the smallest height the list view fits in:
 the page does not scroll, so below it the filter column
@@ -510,22 +510,22 @@ Technical QA is focused on the code quality and basic runability of the code.
 All Technical QA steps should also be performed by the implementer before handing over to QA.
 
 - [ ] Code review on the merge request:
-  - [ ] Changelogs are present (`README_UPDATE_*`-files and `docs/ucsschool-user-management-module/changelog.rst`)
+  - [ ] Changelogs are present (`README_UPDATE_*`-files and `docs/ucsschool-accounts-module/changelog.rst`)
   - [ ] Tests sufficiently cover the changed lines of code.
 - [ ] Pipelines pass.
 - [ ] App installation succeeds on a test VM.
 - [ ] App update succeeds on a test VM.
 - [ ] Basic smoke test:
   - [ ] If a service was changed (added, modified) the service is running after the installation and restarting works without problems. If it was removed, it must not be running anymore.
-  - [ ] The app user-management are running.
-  - [ ] Log in to the user-management ui as `alex.admin` and try to list and modify users.
+  - [ ] The School Accounts app is running.
+  - [ ] Log in to the School Accounts UI as `alex.admin` and try to list and modify users.
   - [ ] New Cron jobs, listeners, etc. actually run.
   - [ ] Permissions are checked for new files (e.g., a script must be executable, right ownership of directories and created files in regard to data security).
   - [ ] New tests pass.
 
 ### Functional QA
 
-Functional QA focuses on the user using the User Management UI.
+Functional QA focuses on the user using the School Accounts UI.
 
 - [ ] Post a QA plan on the gitlab issue of what will be tested:
   - [ ] Include a happy path and multiple non-happy path scenarios.
@@ -584,6 +584,6 @@ cd appcenter-management
 
 ### Issues
 
-- if the `user-management` is used **locally**, it can happen that `keycloak` crashes after inactivitiy --> the `docker-containers` need to be restarted afterwards
+- if the `ucsschool-accounts` dev stack is used **locally**, it can happen that `keycloak` crashes after inactivitiy --> the `docker-containers` need to be restarted afterwards
 - error messages coming from Kelvin are currently not displayed properly `[{"loc":["body","name"],"msg":"Username must only contain numbers, letters and dots!","type":"value_error"}]`
 - the `FileAdapters` are currently not setup to check the validity of user input e.g. escape-characters, special characters and username-collision

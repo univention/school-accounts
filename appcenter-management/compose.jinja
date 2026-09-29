@@ -3,7 +3,7 @@
 
 version: '3.1'
 services:
-  user-management:
+  ucsschool-accounts:
     image: {{ IMAGE_TAG }}
     security_opt:
       - seccomp:/etc/docker/seccomp-systemd.json
@@ -13,36 +13,36 @@ services:
     environment:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-      USER_MANAGEMENT__API_PREFIX: "/univention/ucsschool/user-management/bff"
-      USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
-      USER_MANAGEMENT__CORS__ALLOWED_ORIGINS: "*"
-      USER_MANAGEMENT__ADAPTER__USERS_PERSISTENCE: "user_management_bff.adapters.users:KelvinUsersPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__SCHOOLS_PERSISTENCE: "user_management_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "user_management_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__WORK_GROUPS_PERSISTENCE: "user_management_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
-      USER_MANAGEMENT__ADAPTER__PERMISSIONS: "user_management_bff.adapters.permissions:CerbosPermissionsAdapter"
+      UCSSCHOOL_ACCOUNTS__API_PREFIX: "/univention/ucsschool/ucsschool-accounts/bff"
+      UCSSCHOOL_ACCOUNTS__FRONTEND_PREFIX: "/univention/ucsschool/ucsschool-accounts/ui"
+      UCSSCHOOL_ACCOUNTS__CORS__ALLOWED_ORIGINS: "*"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__USERS_PERSISTENCE: "ucsschool_accounts_bff.adapters.users:KelvinUsersPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOLS_PERSISTENCE: "ucsschool_accounts_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "ucsschool_accounts_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__WORK_GROUPS_PERSISTENCE: "ucsschool_accounts_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__PERMISSIONS: "ucsschool_accounts_bff.adapters.permissions:CerbosPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /run/secrets/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /run/secrets/machine.secret
       KELVIN_PERSISTENCE_ADAPTER__URL: @!@
 ucr = configRegistry
 kelvin_url = ucr.get(
-    'ucsschool-user-management/kelvin/url',
+    'ucsschool-accounts/kelvin/url',
     f"{ucr.get('hostname')}.{ucr.get('domainname')}",
 )
 print(kelvin_url, end='')@!@
-      USER_MANAGEMENT__ADAPTER__AUTHENTICATION: "user_management_bff.adapters.authentication:CookieSessionAuthenticationAdapter"
-      COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_ID: "ucsschool-user-management-ui"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__AUTHENTICATION: "ucsschool_accounts_bff.adapters.authentication:CookieSessionAuthenticationAdapter"
+      COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_ID: "ucsschool-accounts-ui"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__COOKIE_SECRET_FILE: "/run/secrets/session.secret"
-      USER_MANAGEMENT__SESSION_SECRET_FILE: "/run/secrets/session.secret"
+      UCSSCHOOL_ACCOUNTS__SESSION_SECRET_FILE: "/run/secrets/session.secret"
       # Bounds how many concurrent set_password calls a bulk password reset has in
       # flight against Kelvin at once. 5 matches the app default.
-      USER_MANAGEMENT__PASSWORD_RESET_MAX_CONCURRENCY: "5"
+      UCSSCHOOL_ACCOUNTS__PASSWORD_RESET_MAX_CONCURRENCY: "5"
       # Rejects a bulk password reset outright once the (deduplicated) selection exceeds this
       # many users, since the request is a single synchronous call with no background job.
       # 200 matches the app default.
-      USER_MANAGEMENT__PASSWORD_RESET_MAX_TARGETS: "200"
+      UCSSCHOOL_ACCOUNTS__PASSWORD_RESET_MAX_TARGETS: "200"
 @!@
 ucr = configRegistry
 keycloak_url = ucr.get('guardian-management-ui/oauth/keycloak-uri')
@@ -51,7 +51,7 @@ if not keycloak_url:
 if not keycloak_url.startswith('http'):
     keycloak_url = f'https://{keycloak_url}'
 well_known_url = f"{keycloak_url}/realms/ucs/.well-known/openid-configuration"
-app_base_url = f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/univention/ucsschool/user-management/ui"
+app_base_url = f"https://{ucr.get('hostname')}.{ucr.get('domainname')}/univention/ucsschool/ucsschool-accounts/ui"
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__WELL_KNOWN_URL: {well_known_url}")
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__REDIRECT_URL: {app_base_url}/auth/callback")
 print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {app_base_url}", end='')@!@
@@ -59,8 +59,8 @@ print(f"      COOKIE_SESSION_AUTHENTICATION_ADAPTER__POST_LOGOUT_REDIRECT_URL: {
       # The on-prem Cerbos sidecar runs over a plain Docker network with no TLS today, so disable
       # the gRPC TLS handshake.
       CERBOS_PERMISSIONS_ADAPTER__TLS_VERIFY: "false"
-      USER_MANAGEMENT__LOGGING__LEVEL: @%@ucsschool-user-management/logging/level@%@
-      USER_MANAGEMENT__LOGGING__STRUCTURED: "@%@ucsschool-user-management/logging/structured@%@"
+      UCSSCHOOL_ACCOUNTS__LOGGING__LEVEL: @%@ucsschool-accounts/logging/level@%@
+      UCSSCHOOL_ACCOUNTS__LOGGING__STRUCTURED: "@%@ucsschool-accounts/logging/structured@%@"
     networks:
       - guardian
 

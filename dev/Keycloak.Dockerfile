@@ -20,7 +20,7 @@ ENV KEYCLOAK_ADMIN=admin
 ENV KEYCLOAK_ADMIN_PASSWORD=admin
 
 # configuring keycloak
-ENV KC_HOSTNAME=user-management-proxy
+ENV KC_HOSTNAME=ucsschool-accounts-proxy
 ENV KC_HTTP_ENABLED=true
 ENV KC_PROXY=edge
 ENV KC_HOSTNAME_STRICT_HTTPS=false

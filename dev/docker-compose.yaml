@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-name: ucsschool-user-management
+name: ucsschool-accounts
 services:
   install_deps:
-    image: ucsschool-user-management-dev:latest
+    image: ucsschool-accounts-dev:latest
     build: &docker-build
       dockerfile: dev/Dockerfile
       context: ../
-    container_name: ucsschool-user-management-install_deps
+    container_name: ucsschool-accounts-install_deps
     environment: &uv-project-environment
       # The repo is bind-mounted at /src here, but lives at a different absolute path on the host
       # (and in the dev container), and uv bakes absolute interpreter paths into the venv's
@@ -16,7 +16,7 @@ services:
       # Give the compose stack its own environment directory. Same reasoning as
       # docker/pre_commit/run-basedpyright.sh, but a distinct directory so a basedpyright run
       # cannot re-sync the environment of a running dev server.
-      UV_PROJECT_ENVIRONMENT: /src/user-management-bff/.compose_venv
+      UV_PROJECT_ENVIRONMENT: /src/ucsschool-accounts-bff/.compose_venv
     command: ["dev/scripts/install_deps.sh"]
     profiles:
       - clean-profile
@@ -32,9 +32,9 @@ services:
     env_file: &env-files
       - path: .env
   run_command:
-    image: ucsschool-user-management-dev:latest
+    image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-user-management-run_command
+    container_name: ucsschool-accounts-run_command
     environment: *uv-project-environment
     command: [ "echo", "'You should provide a command.'" ]
     profiles:
@@ -48,7 +48,7 @@ services:
     env_file: *env-files
   cerbos:
     image: ghcr.io/cerbos/cerbos:0.54.0
-    container_name: ucsschool-user-management-cerbos
+    container_name: ucsschool-accounts-cerbos
     profiles:
       - clean-profile
       - cerbos-server
@@ -75,8 +75,8 @@ services:
       - "--set=audit.backend=file"
   proxy:
     image: traefik:v2.11
-    container_name: ucsschool-user-management-proxy
-    hostname: user-management-proxy
+    container_name: ucsschool-accounts-proxy
+    hostname: ucsschool-accounts-proxy
     command:
       - --providers.docker
       - --entryPoints.web.address=:80
@@ -93,9 +93,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: *env-files
   keycloak_provisioning:
-    image: ucsschool-user-management-dev:latest
+    image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-user-management-keycloak_provisioning
+    container_name: ucsschool-accounts-keycloak_provisioning
     environment: *uv-project-environment
     command: ["dev/scripts/provision_keycloak.sh"]
     profiles:
@@ -112,8 +112,8 @@ services:
     volumes: *default-volumes
     env_file: *env-files
   keycloak:
-    container_name: ucsschool-user-management-keycloak
-    image: ucsschool-user-management-keycloak:latest
+    container_name: ucsschool-accounts-keycloak
+    image: ucsschool-accounts-keycloak:latest
     build:
       context: ./
       dockerfile: Keycloak.Dockerfile
@@ -141,31 +141,31 @@ services:
       traefik.http.middlewares.customheaders.headers.customrequestheaders.X-Forwarded-Proto: http
       traefik.http.routers.keycloak.middlewares: customheaders
   bff:
-    image: ucsschool-user-management-dev:latest
+    image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-user-management-bff
+    container_name: ucsschool-accounts-bff
     environment: *uv-project-environment
     command: &bff-command
       - "uv"
       - "run"
       - "--project"
-      - "user-management-bff"
+      - "ucsschool-accounts-bff"
       - "uvicorn"
       - "--reload"
       - "--reload-dir"
-      - "user-management-bff/user_management_bff"
+      - "ucsschool-accounts-bff/ucsschool_accounts_bff"
       - "--log-level"
       - "debug"
       - "--host"
       - "0.0.0.0"
       - "--port"
       - "8000"
-      - "user_management_bff.main:app"
+      - "ucsschool_accounts_bff.main:app"
     profiles:
       - clean-profile
       - dev-server
     healthcheck:
-      test: "curl -sf -o /dev/null http://localhost:8000/univention/ucsschool/user-management/ui/"
+      test: "curl -sf -o /dev/null http://localhost:8000/univention/ucsschool/ucsschool-accounts/ui/"
       interval: 30s
       timeout: 10s
       retries: 30
@@ -184,20 +184,20 @@ services:
     env_file: *env-files
     labels: &bff-labels
       traefik.http.routers.bff.entrypoints: web
-      traefik.http.routers.bff.rule: PathPrefix(`${USER_MANAGEMENT__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/user-management/ui`)
+      traefik.http.routers.bff.rule: PathPrefix(`${UCSSCHOOL_ACCOUNTS__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/ucsschool-accounts/ui`)
       traefik.http.routers.bff.service: bff
       traefik.http.services.bff.loadbalancer.server.port: 8000
     develop: &bff-develop
       watch:
         # backend project
         - action: sync
-          path: ../user-management-bff
-          target: /src/user-management-bff
+          path: ../ucsschool-accounts-bff
+          target: /src/ucsschool-accounts-bff
         # backend dependencies
         - action: rebuild
-          path: ../user-management-bff/pyproject.toml
+          path: ../ucsschool-accounts-bff/pyproject.toml
         - action: rebuild
-          path: ../user-management-bff/uv.lock
+          path: ../ucsschool-accounts-bff/uv.lock
         # dev Dockerfile
         - action: rebuild
           path: Dockerfile
@@ -206,9 +206,9 @@ services:
   # be measured against a populated environment with plain curl. `.env.kelvin`
   # carries the overrides and comes after `.env`, so it wins.
   bff_kelvin:
-    image: ucsschool-user-management-dev:latest
+    image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-user-management-bff-kelvin
+    container_name: ucsschool-accounts-bff-kelvin
     environment: *uv-project-environment
     command: *bff-command
     profiles:
@@ -236,12 +236,12 @@ services:
     labels: *bff-labels
     develop: *bff-develop
   production_container:
-    image: ucsschool-user-management-prod:latest
+    image: ucsschool-accounts-prod:latest
     build:
       context: ../
       extra_hosts:
         - git.knut.univention.de:${GITLAB_IP}
-    container_name: ucsschool-user-management-production
+    container_name: ucsschool-accounts-production
     profiles:
       - clean-profile
       - prod-server
@@ -256,17 +256,17 @@ services:
       - ./data/fake-machine.secret:/etc/machine.secret:ro
     env_file: *env-files
     environment:
-      USER_MANAGEMENT__FRONTEND_PREFIX: "/univention/ucsschool/user-management/ui"
+      UCSSCHOOL_ACCOUNTS__FRONTEND_PREFIX: "/univention/ucsschool/ucsschool-accounts/ui"
     labels:
       traefik.http.routers.prod.entrypoints: web
-      traefik.http.routers.prod.rule: PathPrefix(`/univention/ucsschool/user-management/`)
+      traefik.http.routers.prod.rule: PathPrefix(`/univention/ucsschool/ucsschool-accounts/`)
       traefik.http.routers.prod.service: prod
       traefik.http.services.prod.loadbalancer.server.port: 8000
   sphinx:
     image: docker-registry.knut.univention.de/sphinx:latest
     pull_policy: always
-    container_name: ucsschool-user-management-sphinx
-    command: ["make", "-C", "docs/ucsschool-user-management-module/", "livehtml"]
+    container_name: ucsschool-accounts-sphinx
+    command: ["make", "-C", "docs/ucsschool-accounts-module/", "livehtml"]
     working_dir: /project
     profiles:
       - sphinx

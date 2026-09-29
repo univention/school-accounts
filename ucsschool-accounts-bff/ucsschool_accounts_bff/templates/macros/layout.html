@@ -1,0 +1,28 @@
+{#
+SPDX-FileCopyrightText: 2026 Univention GmbH
+SPDX-License-Identifier: AGPL-3.0-only
+#}
+{# Shared page chrome. Import "with context" so the macros see `_`, `lang`, etc. #}
+{% macro page_header() %}
+<u-hstack justify="between" align="center" gap="md">
+  <u-page-header style="margin-left: calc(var(--radius-box) / 2)">{{ _("School Accounts") }}</u-page-header>
+  <u-hstack gap="sm" align="center">
+    {% if actor_name %}
+    {# Not hx-post: the 303 goes to Keycloak's cross-origin end_session_endpoint. #}
+    <form method="post" action="{{ frontend_prefix }}/auth/logout">
+      <u-button type="submit" variant="ghost" size="sm">
+        {{ actor_name }} ({{ _("logout") }})
+      </u-button>
+    </form>
+    {% endif %}
+    <u-theme-toggle
+      label-light="{{ _('Switch to light theme') }}"
+      label-dark="{{ _('Switch to dark theme') }}"
+    ></u-theme-toggle>
+  </u-hstack>
+</u-hstack>
+{% endmacro %}
+
+{% macro toast() %}
+<u-toast id="toast-region" aria-live="polite"></u-toast>
+{% endmacro %}

@@ -195,7 +195,7 @@ resources:
     id: alice
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -204,7 +204,7 @@ resources:
     id: student1
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -215,7 +215,7 @@ resources:
     id: student2
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -226,7 +226,7 @@ resources:
     id: student3
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -235,7 +235,7 @@ resources:
     id: teacher1
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school1}
@@ -244,7 +244,7 @@ resources:
     id: admin2
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: school_admin, context: school1}
@@ -253,7 +253,7 @@ resources:
     id: staff2
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: staff, context: school1}
@@ -262,7 +262,7 @@ resources:
     id: bob
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school1}
@@ -273,7 +273,7 @@ resources:
     id: dave
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: school_admin, context: school1}
@@ -285,7 +285,7 @@ resources:
     id: judy
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school1}
@@ -299,7 +299,7 @@ resources:
     id: ward1
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -310,7 +310,7 @@ resources:
     id: ward3
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -320,7 +320,7 @@ resources:
     id: ward2
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -330,7 +330,7 @@ resources:
     id: eve
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school1}
@@ -342,7 +342,7 @@ resources:
     id: mallory
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: legal_guardian, context: school2}
@@ -351,7 +351,7 @@ resources:
     id: quinn
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles: []
 
@@ -359,7 +359,7 @@ resources:
     id: oscar
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -369,7 +369,7 @@ resources:
     id: grace
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: staff, context: school1}
@@ -381,7 +381,7 @@ resources:
     id: zoe
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -397,7 +397,7 @@ resources:
     id: control
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -412,7 +412,7 @@ resources:
     id: yannick
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -427,7 +427,7 @@ resources:
     id: frank
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -439,7 +439,7 @@ resources:
     id: teacher2
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school2}
@@ -454,7 +454,7 @@ resources:
     id: teacher3
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -467,7 +467,7 @@ resources:
     id: ward4
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles: []
         legal_guardians: ["mallory"]
@@ -477,7 +477,7 @@ resources:
     id: ward5
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: teacher, context: school2}
@@ -489,7 +489,7 @@ resources:
     id: ward6
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -501,7 +501,7 @@ resources:
     id: ward8
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}
@@ -513,7 +513,7 @@ resources:
     id: parentstaff
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: staff, context: school1}
@@ -524,7 +524,7 @@ resources:
     id: parentpupil
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -538,7 +538,7 @@ resources:
     id: staffpupil
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -552,7 +552,7 @@ resources:
     id: staffonly
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: staff, context: school1}
@@ -564,7 +564,7 @@ resources:
     id: parentonly
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: legal_guardian, context: school1}
@@ -577,7 +577,7 @@ resources:
     id: pupilteacher
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -592,7 +592,7 @@ resources:
     id: ward7
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school1}
@@ -607,7 +607,7 @@ resources:
     id: zack
     kind: "ucsschool:user"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: student, context: school2}

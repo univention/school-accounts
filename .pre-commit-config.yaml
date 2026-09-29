@@ -8,7 +8,7 @@ repos:
   rev: v4.5.0
   hooks:
     - id: check-added-large-files
-      exclude: '^user-management-bff/basedpyright-baseline\.json$'
+      exclude: '^ucsschool-accounts-bff/basedpyright-baseline\.json$'
     - id: check-json
     - id: check-xml
     - id: check-yaml
@@ -16,15 +16,15 @@ repos:
       args: [--unsafe]
     - id: check-toml
     - id: trailing-whitespace
-      exclude: '^user-management-bff/user_management_bff/static/vendor/'
+      exclude: '^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/'
     - id: pretty-format-json
       args: [--autofix]
-      exclude: '^user-management-bff/basedpyright-baseline\.json$|^user-management-bff/user_management_bff/static/vendor/'
+      exclude: '^ucsschool-accounts-bff/basedpyright-baseline\.json$|^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/'
 - repo: local
   hooks:
     - id: bff-translation-check
       name: bff-translation-check
-      entry: user-management-bff/scripts/check_translations.sh
+      entry: ucsschool-accounts-bff/scripts/check_translations.sh
       language: script
       pass_filenames: false
 - repo: local
@@ -37,7 +37,7 @@ repos:
       name: basedpyright (bff, relative to baseline, native)
       language: system
       entry: |
-        sh -c 'cd user-management-bff && uv sync --python 3.11 && \
+        sh -c 'cd ucsschool-accounts-bff && uv sync --python 3.11 && \
           uv pip install basedpyright==1.39.8 && \
           .venv/bin/basedpyright \
             --project pyrightconfig.json \
@@ -45,30 +45,30 @@ repos:
             --baselinemode=auto' --
       pass_filenames: false
       types: [python]
-      files: ^user-management-bff/
+      files: ^ucsschool-accounts-bff/
     - id: basedpyright-bff-container-baseline
       name: basedpyright (bff, relative to baseline, docker)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh user-management-bff baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff baseline
       stages: [manual]
       pass_filenames: false
       types: [python]
-      files: ^user-management-bff/
+      files: ^ucsschool-accounts-bff/
     - id: basedpyright-bff-container-no-baseline
       name: basedpyright (bff, lint file, no baseline)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh user-management-bff no-baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff no-baseline
       stages: [manual]
       pass_filenames: true
       types: [python]
-      files: ^user-management-bff/
+      files: ^ucsschool-accounts-bff/
     - id: basedpyright-bff-container-write-baseline
       name: basedpyright (bff, write baseline)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh user-management-bff write-baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff write-baseline
       stages: [manual]
       pass_filenames: false
-      files: ^user-management-bff/
+      files: ^ucsschool-accounts-bff/
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:
@@ -94,8 +94,8 @@ repos:
   hooks:
     # Ensure uv lock is up-to-date
     - id: uv-lock
-      files: user-management-bff/pyproject.toml
-      args: [ --project, user-management-bff ]
+      files: ucsschool-accounts-bff/pyproject.toml
+      args: [ --project, ucsschool-accounts-bff ]
 - repo: https://git.knut.univention.de/univention/infrastructure/pre-commit-hooks/pre-commit-copyright
   rev: 0.2.1
   hooks:
@@ -129,14 +129,14 @@ repos:
                 |^dev/data/.*[.]json$\
                 |^dev/tests/.*[.]json$\
                 |^dev/tests/.*[.]csv$\
-                |^docs/ucsschool-user-management-module/spelling_wordlist$\
-                |^docs/ucsschool-user-management-module/_static/.*[.]pdf$\
-                |^user-management-bff/uv[.]lock$\
-                |^user-management-bff/tests/data/.*[.]json$\
-                |^user-management-bff/user_management_bff/static/vendor/alpine[.]min[.]js$\
-                |^user-management-bff/user_management_bff/static/vendor/htmx[.]min[.]js$\
-                |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]js$\
-                |^user-management-bff/user_management_bff/static/vendor/univention-design-system[.]css$\
+                |^docs/ucsschool-accounts-module/spelling_wordlist$\
+                |^docs/ucsschool-accounts-module/_static/.*[.]pdf$\
+                |^ucsschool-accounts-bff/uv[.]lock$\
+                |^ucsschool-accounts-bff/tests/data/.*[.]json$\
+                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/alpine[.]min[.]js$\
+                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/htmx[.]min[.]js$\
+                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system[.]js$\
+                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system[.]css$\
                 "
       language_version: python3.11
     - id: reuse

@@ -10,7 +10,7 @@
 
 VERSION=1
 
-APP_ID="ucsschool-user-management"
+APP_ID="ucsschool-accounts"
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 
@@ -20,7 +20,7 @@ eval "$(ucr shell ldap/base)"
 
 . /usr/share/univention-lib/all.sh
 
-ucs_unregisterLDAPExtension "$@" --data ucsschool-user-management-policies || die
+ucs_unregisterLDAPExtension "$@" --data ucsschool-accounts-policies || die
 
 univention-directory-manager portals/category modify "$@" --ignore_not_exists \
     --dn "cn=domain-admin,cn=category,cn=portals,cn=univention,${ldap_base:?}" \

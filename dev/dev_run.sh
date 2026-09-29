@@ -38,7 +38,7 @@ run_task() {
   fi
   echo "Running task $TASK"
   if [[ "$TASK" = "clean" ]]; then
-    rm -rf .cache docs/user-management-manual/_build
+    rm -rf .cache docs/ucsschool-accounts-module/_build
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "clean-profile" \
@@ -90,17 +90,17 @@ run_task() {
     exit $?
   fi
   if [[ "$TASK" = "pytest" ]]; then
-    run_command env --chdir=user-management-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts-bff/ uv run \
     pytest \
     -vv \
-    --cov=user_management_bff \
+    --cov=ucsschool_accounts_bff \
     --cov=keycloak_provisioning \
     -m "not e2e and not frontend" "${@:3}" \
     .
     exit $?
   fi
   if [[ "$TASK" = "pytest-e2e" ]]; then
-    run_command env --chdir=user-management-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts-bff/ uv run \
     pytest \
     -vv \
     --screenshot only-on-failure \
@@ -114,14 +114,14 @@ run_task() {
     exit $?
   fi
   if [[ "$TASK" = "pytest-frontend" ]]; then
-    run_command env --chdir=user-management-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts-bff/ uv run \
     pytest \
     -vv \
     --screenshot only-on-failure \
     --tracing retain-on-failure \
     --output "/src/.cache/frontend-test-results" \
     -m "frontend" \
-    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" "${@:3}" \
+    --base-url "${FRONTEND_BASE_URL:-http://ucsschool-accounts-proxy}" "${@:3}" \
     .
     exit $?
   fi
@@ -144,19 +144,19 @@ run_task() {
     if [[ -n "$PWDEBUG" ]]; then
       RUN_COMMAND_ARGS+=(-e "PWDEBUG=$PWDEBUG")
     fi
-    run_command env --chdir=user-management-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts-bff/ uv run \
     pytest \
     -vv \
     --headed \
     --slowmo "${SLOWMO:-500}" \
     --output "/src/.cache/frontend-test-results" \
     -m "frontend" \
-    --base-url "${FRONTEND_BASE_URL:-http://user-management-proxy}" "${@:3}" \
+    --base-url "${FRONTEND_BASE_URL:-http://ucsschool-accounts-proxy}" "${@:3}" \
     .
     exit $?
   fi
   if [ "$TASK" = "translate" ]; then
-    run_command env ./user-management-bff/scripts/check_translations.sh
+    run_command env ./ucsschool-accounts-bff/scripts/check_translations.sh
   fi
   echo "Task '$TASK' does not exist."
   exit 1

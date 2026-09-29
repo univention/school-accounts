@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-# User Management KPIs
+# School Accounts KPIs
 
 Those KPIs are defined such that they are reached for 95% of all requests.
 These KPIs expect the school server (running Kelvin and UDM REST) to have at least

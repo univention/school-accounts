@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 Univention GmbH
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <svg id="LOGO" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 144.8 144.4" role="img" aria-labelledby="TITLE">
-  <title id="TITLE">UCS@school User Management (Preview)</title>
+  <title id="TITLE">School Accounts (Preview)</title>
   <defs>
     <style>
       .cls-1 {

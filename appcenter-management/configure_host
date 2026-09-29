@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-APP_ID="ucsschool-user-management"
+APP_ID="ucsschool-accounts"
 
 action=$1
 
 if [ "$action" = "settings" ]; then
-  univention-app reinitialize ucsschool-user-management
+  univention-app reinitialize ucsschool-accounts
 fi
 
 if [ "$action" = "remove" ]; then
@@ -29,6 +29,6 @@ if [ "$action" = "remove" ]; then
           --url "$keycloak_url" \
           --realm ucs \
           --user-realm master \
-          clients modify ucsschool-user-management-ui \
-          --remove-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*"
+          clients modify ucsschool-accounts-ui \
+          --remove-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/ucsschool-accounts/*"
 fi

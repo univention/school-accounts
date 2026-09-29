@@ -1,8 +1,13 @@
+<!--
+SPDX-FileCopyrightText: 2026 Univention GmbH
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 # Repository Guidelines
 
 ## Project Overview
 
-UCS@school User Management: a single deployable app (`ucsschool-user-management`) combining a
+School Accounts: a single deployable app (`ucsschool-accounts`) combining a
 Python/FastAPI backend-for-frontend with a server-rendered HTMX UI, plus the UCS "App Center"
 packaging that installs it into a UCS@school domain. There is **no separate frontend project** —
 the old Vue SPA (`user-management-ui/`) was removed; see
@@ -12,7 +17,7 @@ read the former before making any non-trivial UI/architecture change.
 
 Top-level areas:
 
-- [user-management-bff/](user-management-bff/) — the application: FastAPI + Jinja2 + htmx. Nearly
+- [ucsschool-accounts-bff/](ucsschool-accounts-bff/) — the application: FastAPI + Jinja2 + htmx. Nearly
   all day-to-day work happens here.
 - [appcenter-management/](appcenter-management/) — UCS App Center install/config scripts, Docker
   Compose templates, and Cerbos authorization policies (`.yaml` resource/derived-role policies under
@@ -21,16 +26,16 @@ Top-level areas:
   Independent from the BFF's own permission adapter (§ Architecture) — only touch this when changing
   how the app is *installed* or how Cerbos policies are evaluated for this app, not for
   UI/business-logic changes.
-- [docs/ucsschool-user-management-module/](docs/ucsschool-user-management-module/) — the published
+- [docs/ucsschool-accounts-module/](docs/ucsschool-accounts-module/) — the published
   Sphinx user manual (installation, configuration, troubleshooting, changelog). User-facing, built
   in CI (`docs:*` jobs from the `sphinx-docs` CI component); not developer documentation.
 - [dev/](dev/) — local dev environment (Docker Compose, Keycloak provisioning, fixture data,
   scripts, integration-test config). See § Development Environment.
 
-## Repository Structure (`user-management-bff/`)
+## Repository Structure (`ucsschool-accounts-bff/`)
 
 ```text
-user_management_bff/
+ucsschool_accounts_bff/
   main.py                   FastAPI app, middleware, global exception -> HTML handlers
   routes.py                 all UI routes (thin handlers), render() helper
   business_logic.py         domain rules + permission checks; no I/O of its own, calls only ports
@@ -54,7 +59,7 @@ user_management_bff/
     fragments/                htmx partials (user_table, user_filters, school_options, group_options, toast)
     macros/                   layout.py-style Jinja macros: page_header/toast, cell() cell-kind dispatch
   static/vendor/             vendored htmx, Alpine.js, Univention design-system (CSS/JS/web components)
-locales/                    gettext catalogs (de/LC_MESSAGES/...) — sibling of user_management_bff/, not nested under it
+locales/                    gettext catalogs (de/LC_MESSAGES/...) — sibling of ucsschool_accounts_bff/, not nested under it
 keycloak_provisioning/       separate Typer CLI: seeds Keycloak realms/clients/users for dev/test only;
                              unrelated to the adapters above, not for production use
 tests/
@@ -120,11 +125,9 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   `User`/`Target` objects to Cerbos `Principal`/`Resource` (Protobuf messages, built via
   `google.protobuf.struct_pb2.Struct` for attribute maps) per the policies in
   `appcenter-management/files/policies/` — the resource-kind/role strings in that YAML are
-  authoritative. The old `GUARDIAN_PERMISSIONS_ADAPTER__GUARDIAN_URL` env var (and the
-  `ucsschool-user-management/guardian/url` UCR variable that used to back it) are gone; `compose.jinja`
-  now hardcodes `CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'`, a bare `host:port` gRPC
-  target rather than a URL, with no UCR variable/App Center setting behind it and no OAuth2 step
-  anymore.
+  authoritative. `compose.jinja` hardcodes `CERBOS_PERMISSIONS_ADAPTER__CERBOS_TARGET: 'cerbos:3593'`,
+  a bare `host:port` gRPC target rather than a URL, with no UCR variable/App Center setting behind
+  it and no OAuth2 step.
 - **Cerbos policies are additive**: every rule in `appcenter-management/files/policies/` is
   `EFFECT_ALLOW`. Never add an `EFFECT_DENY` rule. A restriction is an extra condition on each
   grant it limits, so a rule granting reads and `write-password` over the same set gets split in
@@ -153,7 +156,7 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   builds the map eagerly and errors on principals lacking an optional attribute. Authority is
   `all()` over the resource's roles and the binding is `exists()`; swapping either breaks a
   pinned test.
-- Which adapter backs each port is selected only via `USER_MANAGEMENT__ADAPTER__*` env vars
+- Which adapter backs each port is selected only via `UCSSCHOOL_ACCOUNTS__ADAPTER__*` env vars
   (`dev/.env.example` documents all of them); never gate adapter choice on anything else.
 
 ## Logging, Correlation IDs, and Sessions
@@ -296,7 +299,7 @@ already keeps a cross-site POST from carrying it.
   expressed as an htmx-observable DOM event, and don't add a new JS bundling/build step without
   discussing it first (none exists today).
 - htmx, Alpine, and the design-system bundle are **vendored** under
-  `user_management_bff/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
+  `ucsschool_accounts_bff/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
   Files before touching them.
 - The design-system CSS is loaded as a render-blocking `<link>` deliberately (commit `66a610f`, fixed
   a flash-of-unstyled-content bug) — don't revert to runtime style injection.
@@ -311,8 +314,8 @@ beyond having `docker` (>= 25) installed.
 - `dev/dev_run.sh task TASK` — runs a predefined task; run `dev/dev_run.sh --help` for the current
   list. Key tasks:
   - `dev-server` — starts the FastAPI dev server + Keycloak (via `dev/docker-compose.yaml`); code
-    changes are picked up live. Requires `user-management-proxy` to resolve (add it to `/etc/hosts`).
-    UI: `http://user-management-proxy/univention/ucsschool/user-management/ui/`. API docs:
+    changes are picked up live. Requires `ucsschool-accounts-proxy` to resolve (add it to `/etc/hosts`).
+    UI: `http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/ui/`. API docs:
     `.../bff/docs`. Keycloak admin: `.../keycloak/admin/` (`admin:admin`).
   - `pytest` — unit/integration tests (excludes the `e2e`- and `frontend`-marked tests); forwards
     any further arguments to pytest, e.g. `dev/dev_run.sh task pytest --pdb`.
@@ -340,7 +343,7 @@ beyond having `docker` (>= 25) installed.
 - `dev/dev_run.sh pre-commit run [-a]` — runs the pre-commit suite (see § Testing and Validation).
 - `dev/.env` is created from `dev/.env.example` on first run and is **git-ignored** — treat any
   `dev/.env*` file other than `.env.example` as local/untracked, never edit or commit it.
-- The frontend tests (`user-management-bff/tests/frontend/`) need a deployment to drive, so they are
+- The frontend tests (`ucsschool-accounts-bff/tests/frontend/`) need a deployment to drive, so they are
   excluded from the normal backend test loop by the `frontend` marker. CI stands up their stack in
   the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, started
   from `dev/.env.example` in the job itself); locally the `dev-server` stack is that deployment.
@@ -355,7 +358,7 @@ docker compose so no local Python/Node install is required.
 | Goal | Command |
 | --- | --- |
 | Run backend unit/integration tests | `dev/dev_run.sh task pytest` |
-| Run a single test file/case | `dev/dev_run.sh task pytest user-management-bff/tests/test_routes.py::test_users_search_renders_results` |
+| Run a single test file/case | `dev/dev_run.sh task pytest ucsschool-accounts-bff/tests/test_routes.py::test_users_search_renders_results` |
 | Run backend e2e tests | see § Development Environment — requires a live `E2E_*` environment |
 | Run the frontend tests | `dev/dev_run.sh task dev-server --detach --wait`, then `dev/dev_run.sh task pytest-frontend` |
 | Watch a frontend test in a real browser | `dev/dev_run.sh task pytest-frontend-headed` |
@@ -372,7 +375,7 @@ docker compose so no local Python/Node install is required.
 | Regenerate the App Center `inst` script | `cd appcenter-management && ./scripts/generate-preinst` |
 
 CI (`.gitlab-ci/gitlab-ci.yml`) runs the equivalent of `pytest -m "not e2e and not frontend"` with **coverage gated via
-the `BFF_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `user_management_bff` +
+the `BFF_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `ucsschool_accounts_bff` +
 `keycloak_provisioning` (excluding `main.py` and `constants.py` — see
 `[tool.coverage.run] omit` in `pyproject.toml`). New code outside those three omitted files must be
 fully covered or CI fails.
@@ -383,8 +386,8 @@ Enforced by tooling (pre-commit, see `.pre-commit-config.yaml`) — treat these 
 optional:
 
 - **black** (line length 105, target py311) and **ruff** (`E, F, I, B`, `B008`/`B904` ignored,
-  `--fix`) — both configured in `user-management-bff/pyproject.toml`.
-- **basedpyright** on the package (config: `user-management-bff/pyrightconfig.json`) with a committed
+  `--fix`) — both configured in `ucsschool-accounts-bff/pyproject.toml`.
+- **basedpyright** on the package (config: `ucsschool-accounts-bff/pyrightconfig.json`) with a committed
   baseline (`basedpyright-baseline.json`) suppressing pre-existing findings — only *new*
   diagnostics fail the pre-commit hook/CI job. The default `basedpyright-*-native-baseline` hooks run
   against the host's `uv`-managed venv; for a precise type check that matches CI exactly, run the
@@ -399,10 +402,10 @@ optional:
 - Commit messages: **Conventional Commits, strictly enforced** (`conventional-pre-commit --strict`),
   plus a required issue reference trailer (`Issue <project>#<number>` or `Bug #<number>`) checked by
   the local `issue-reference` hook.
-- User-facing strings must be wrapped in `_()` from `user_management_bff.lang` (see
-  `from user_management_bff.lang import _`) so they flow into the translation catalog — see next
+- User-facing strings must be wrapped in `_()` from `ucsschool_accounts_bff.lang` (see
+  `from ucsschool_accounts_bff.lang import _`) so they flow into the translation catalog — see next
   section for the follow-up step this requires. This applies to Jinja templates too: extraction
-  runs `pybabel extract` over `*.py` **and** `templates/**.html` via `user-management-bff/babel.cfg`,
+  runs `pybabel extract` over `*.py` **and** `templates/**.html` via `ucsschool-accounts-bff/babel.cfg`,
   so an untranslated `{{ _("...") }}` fails the check exactly like a Python one.
 - A msgid that is only ever reached through a variable (a role label looked up by id, say) is
   invisible to extraction. Mark the literal with `N_()` where it is defined — see `_ROLE_LABELS` in
@@ -490,14 +493,14 @@ no access token is stored) rather than restating what the code does.
 
 ## Generated and Sensitive Files
 
-- **Do not hand-edit**: `user-management-bff/locales/de/LC_MESSAGES/*.mo` (compiled, git-ignored —
+- **Do not hand-edit**: `ucsschool-accounts-bff/locales/de/LC_MESSAGES/*.mo` (compiled, git-ignored —
   regenerate with `dev/dev_run.sh task translate`), anything under `.cache/` (git-ignored build/test
   cache), `appcenter-management/preinst` (git-ignored, generated by
   `appcenter-management/scripts/generate-preinst` from `templates/preinst.tmpl`). Note: `README.md`
   says `inst` is generated from `templates/inst.tmpl` — that template doesn't exist in this tree and
   `inst` is a normal tracked file; treat the README claim as stale and confirm before editing `inst`
   as if it were hand-authored.
-- **Vendored, not authored here**: `user_management_bff/static/vendor/{htmx,alpine}.min.js` and
+- **Vendored, not authored here**: `ucsschool_accounts_bff/static/vendor/{htmx,alpine}.min.js` and
   `univention-design-system.{css,js}`. Upgrading these means replacing the vendored file and its
   `.license` sidecar (see commit `19772ef`), not patching them in place.
 - **Secrets / local-only**: `dev/.env` (git-ignored, created from `dev/.env.example`) and anything
@@ -506,22 +509,22 @@ no access token is stored) rather than restating what the code does.
 - **`*.license` sidecar files**: required by the `reuse` tool for any file it can't auto-annotate
   (JSON fixtures, binary assets, `.po` files). Generate with `dev/dev_run.sh task reuse`; if reuse
   still fails afterward, create the `.license` file by hand following the existing ones' format.
-- `user-management-bff/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
+- `ucsschool-accounts-bff/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
   `uv add <package>` inside the relevant package directory, which updates that package's
   `pyproject.toml` and lockfile together, instead of editing either file manually.
 
 ## Documentation and Changelog Requirements
 
 - New user-facing strings: wrap in `_()`, then run `dev/dev_run.sh task translate` — it will report
-  any untranslated/fuzzy entries in `locales/de/LC_MESSAGES/ucsschool-user-management.po` for you to
+  any untranslated/fuzzy entries in `locales/de/LC_MESSAGES/ucsschool-accounts.po` for you to
   fill in before it will compile the `.mo` file.
 - User-visible changes should update the release changelogs the QA checklist in
   [README.md](README.md#qa-checklist) explicitly asks for: `appcenter-management/README_UPDATE_DE`,
-  `appcenter-management/README_UPDATE_EN`, and `docs/ucsschool-user-management-module/changelog.rst`.
+  `appcenter-management/README_UPDATE_EN`, and `docs/ucsschool-accounts-module/changelog.rst`.
 - Architectural or HTMX-pattern changes of any significance should be reflected in
   [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) (it is maintained as a living design
   doc, not a point-in-time snapshot — it currently documents up to commit `176b03d`).
-- Sphinx manual changes (`docs/ucsschool-user-management-module/`) are validated in CI by
+- Sphinx manual changes (`docs/ucsschool-accounts-module/`) are validated in CI by
   `docs:linkcheck`, `docs:spelling` (uses `spelling_wordlist`), `docs:html`, and `docs:pdf` jobs, all
   gated on changes under that path. They come from the `sphinx-docs` component of `ci-components`;
   configure them through its inputs in `.gitlab-ci/gitlab-ci.yml`, not by adding jobs. The `pages`

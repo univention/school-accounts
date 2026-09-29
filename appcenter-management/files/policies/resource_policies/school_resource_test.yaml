@@ -44,7 +44,7 @@ resources:
     id: school1
     kind: "ucsschool:school"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: school, context: school1}
@@ -53,7 +53,7 @@ resources:
     id: school2
     kind: "ucsschool:school"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         cerbos_roles:
           - {name: school, context: school2}

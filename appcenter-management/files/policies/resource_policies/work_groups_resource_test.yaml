@@ -45,7 +45,7 @@ resources:
     id: chess-club
     kind: "ucsschool:workgroup"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         school: school1
         cerbos_roles:
@@ -55,7 +55,7 @@ resources:
     id: robotics-club
     kind: "ucsschool:workgroup"
     attr:
-      app_name: ucsschool-user-management
+      app_name: ucsschool-accounts
       old:
         school: school2
         cerbos_roles:

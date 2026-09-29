@@ -1,6 +1,12 @@
 <h1>Changelog</h1>
 <h2>v0.2.0 (XXXX-XX-XX)</h2>
 <ul>
+    <li>The app has been renamed from UCS@school User Management
+        (<code>ucsschool-user-management</code>) to School Accounts (<code>ucsschool-accounts</code>).
+        The App Center treats it as a new app: remove <code>ucsschool-user-management</code> and
+        install <code>ucsschool-accounts</code>. The web interface moves to
+        <code>/univention/ucsschool/ucsschool-accounts/</code>, the settings to
+        <code>ucsschool-accounts/*</code> and the Keycloak client to <code>ucsschool-accounts-ui</code>.</li>
     <li>The app requires the Guardian on the same system, and the Kelvin REST API and Keycloak in the domain.</li>
     <li>Sessions are now kept in an encrypted browser cookie instead of in the memory of a single
         process, so they survive a restart of the app and an app update.</li>

@@ -14,7 +14,7 @@ POLICIES_SOURCE_DIR="$FILES_DIR/policies"
 
 cp $PREINST_TEMPLATE preinst
 
-sed -i -e "/%UI_CLIENT%/r $FILES_DIR/ucsschool-user-management_client_ui.json" -e "/%UI_CLIENT%/d" preinst
+sed -i -e "/%UI_CLIENT%/r $FILES_DIR/ucsschool-accounts_client_ui.json" -e "/%UI_CLIENT%/d" preinst
 
 # Generate one heredoc block per non-test policy YAML file (plain text, no
 # tar/base64 involved), so a new policy file ships automatically without

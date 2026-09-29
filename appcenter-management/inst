@@ -9,7 +9,7 @@
 #
 
 # shellcheck disable=SC2034
-VERSION=5
+VERSION=6
 
 . /usr/share/univention-join/joinscripthelper.lib || exit 1
 . /usr/share/univention-appcenter/joinscripthelper.sh || exit 1
@@ -21,16 +21,16 @@ ICON_DIR="/usr/share/univention-management-console-frontend/js/dijit/themes/umc/
 
 joinscript_init
 
-eval "$(ucr shell hostname domainname ldap/base appcenter/apps/ucsschool-user-management/hostdn)"
+eval "$(ucr shell hostname domainname ldap/base appcenter/apps/ucsschool-accounts/hostdn)"
 
 univention-directory-manager portals/entry create "$@" --ignore_exists \
     --position "cn=entry,cn=portals,cn=univention,${ldap_base:?}" \
     --set name=$APP \
-    --append displayName='"en_US" "UCS@school User Management"' \
-    --append displayName='"de_DE" "UCS@school Benutzerverwaltung"' \
+    --append displayName='"en_US" "School Accounts"' \
+    --append displayName='"de_DE" "Schulzugänge"' \
     --append description='"en_US" "Administration of the UCS@school users with advanced permissions"' \
     --append description='"de_DE" "Verwaltung der UCS@school-Benutzer mit erweiterten Rechten"' \
-    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/user-management/ui/"' \
+    --append link='"en_US" "//'"${hostname:?}.${domainname:?}"'/univention/ucsschool/ucsschool-accounts/ui/"' \
     --append allowedGroups="cn=Domain Users,cn=groups,$ldap_base" \
     --set linkTarget=newwindow || die
 
@@ -59,10 +59,10 @@ univention-directory-manager portals/portal modify "$@" \
 
 KELVIN_REST_GROUP_DN="cn=ucsschool-kelvin-rest-api-admins,cn=groups,$ldap_base"
 
-echo "Adding UCS@school User Management machine account '${appcenter_apps_ucsschool_user_management_hostdn:?}' to group 'ucsschool-kelvin-rest-api-admins'."
+echo "Adding School Accounts machine account '${appcenter_apps_ucsschool_accounts_hostdn:?}' to group 'ucsschool-kelvin-rest-api-admins'."
 univention-directory-manager groups/group modify "$@" \
   --dn "$KELVIN_REST_GROUP_DN" \
-  --append users="$appcenter_apps_ucsschool_user_management_hostdn" || die
+  --append users="$appcenter_apps_ucsschool_accounts_hostdn" || die
 
 
 keycloak_url=$(ucr get keycloak/server/sso/fqdn)
@@ -99,7 +99,7 @@ tar -C "$POLICIES_DIR" -cf "$BUNDLE_TAR" . || die
 # Do not replace it with the app version: the UDM syntax is DebianPackageVersion.
 . /usr/share/univention-lib/all.sh &&
 ucs_registerLDAPExtension "$@" \
-    --name ucsschool-user-management-policies \
+    --name ucsschool-accounts-policies \
     --packagename "$APP" \
     --packageversion "$VERSION" \
     --data "$BUNDLE_TAR" \
@@ -124,16 +124,16 @@ keycloak_provisioning () {
 # This client is used by the frontend to communicate with the bff.
 # Runs on every join, not only the first one, so that an update also reaches a
 # client an earlier version registered as a public one.
-keycloak_provisioning clients add "$CONF_DIR/ucsschool-user-management_client_ui.json" \
+keycloak_provisioning clients add "$CONF_DIR/ucsschool-accounts_client_ui.json" \
     --ignore-exists \
-    --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/" || die
+    --home-url "https://${hostname:?}.${domainname:?}/univention/ucsschool/ucsschool-accounts/" || die
 
 # The client lives in the domain-wide `ucs` realm, so an earlier installation —
 # a previous version here, or another host — may already have registered it, and
 # every host that did authenticates with the secret Keycloak holds. Adopt that
 # secret; registering the one the preinst generated would lock those hosts out.
 CLIENT_SECRET_FILE="$CONF_DIR/client.secret"
-registered_secret="$(keycloak_provisioning clients get-secret ucsschool-user-management-ui)" || die
+registered_secret="$(keycloak_provisioning clients get-secret ucsschool-accounts-ui)" || die
 registered_secret="${registered_secret//[[:space:]]/}"
 adopted_secret=false
 if [ -n "$registered_secret" ] && [ "$registered_secret" != "$(cat "$CLIENT_SECRET_FILE")" ]; then
@@ -142,8 +142,8 @@ if [ -n "$registered_secret" ] && [ "$registered_secret" != "$(cat "$CLIENT_SECR
     adopted_secret=true
 fi
 
-keycloak_provisioning clients modify ucsschool-user-management-ui \
-    --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/user-management/*" \
+keycloak_provisioning clients modify ucsschool-accounts-ui \
+    --append-redirect-urls "https://${hostname:?}.${domainname:?}/univention/ucsschool/ucsschool-accounts/*" \
     --secret-file "$CLIENT_SECRET_FILE" || die
 
 if [ "$adopted_secret" = true ]; then

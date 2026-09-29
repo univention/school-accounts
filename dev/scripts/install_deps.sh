@@ -5,6 +5,6 @@
 
 set -euo pipefail
 
-uv --project "$PROJECT_DIR/user-management-bff" sync --locked
-uv run --project "user-management-bff" playwright install
-"$PROJECT_DIR/user-management-bff/scripts/translate.sh"
+uv --project "$PROJECT_DIR/ucsschool-accounts-bff" sync --locked
+uv run --no-sync --project "ucsschool-accounts-bff" playwright install
+"$PROJECT_DIR/ucsschool-accounts-bff/scripts/translate.sh"

@@ -28,8 +28,8 @@ install -m 400 -o appuser -g appuser /etc/machine.user /run/secrets/machine.user
 # Written by the preinst before this container exists, so it is always there.
 # set read permissions for appuser
 install -m 400 -o appuser -g appuser \
-    /var/lib/univention-appcenter/apps/ucsschool-user-management/conf/session.secret \
+    /var/lib/univention-appcenter/apps/ucsschool-accounts/conf/session.secret \
     /run/secrets/session.secret
 install -m 400 -o appuser -g appuser \
-    /var/lib/univention-appcenter/apps/ucsschool-user-management/conf/client.secret \
+    /var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret \
     /run/secrets/client.secret

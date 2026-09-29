@@ -11,7 +11,7 @@ junit_file="$2"
 junit_prefix="$3"
 output_dir="$4"
 
-cd "$(dirname "$0")/../../user-management-bff"
+cd "$(dirname "$0")/../../ucsschool-accounts-bff"
 
 apt-get update -qq
 apt-get install -y -qq gettext >/dev/null

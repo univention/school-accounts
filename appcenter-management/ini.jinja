@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 [Application]
-ID = ucsschool-user-management
-Code = 4G
+ID = ucsschool-accounts
+Code = 54
 Version = {{ APP_VERSION }}
-Name = UCS@school User Management
+Name = School Accounts
 Vendor = Univention GmbH
 Logo = logo.svg
 DockerScriptRestoreDataAfterSetup =
@@ -16,8 +16,8 @@ DockerScriptUpdatePackages =
 DockerScriptUpdateAppVersion =
 DockerScriptUpdateRelease =
 DockerScriptSetup =
-DockerMainService = user-management
-Description = UCS@school User Management
+DockerMainService = ucsschool-accounts
+Description = School Accounts
 LongDescription = This app is part of the UCS product component UCS@school, used for managing UCS@school users. It implements Role and Access Management, using the Guardian.
 AppCategories = Education
 SupportUrl = https://www.univention.com/products/support/enterprise-support/
@@ -25,12 +25,12 @@ Contact = sales@univention.de
 WebsiteVendor = https://www.univention.com/
 NotificationEmail = appcenter-reporting@univention.de
 License = trial
-WebInterface = /univention/ucsschool/user-management/
-WebInterfaceName = UCS@school User Management
+WebInterface = /univention/ucsschool/ucsschool-accounts/
+WebInterfaceName = School Accounts
 WebInterfacePortHttp = 8000
 WebInterfacePortHttps = 8000
 WebInterfaceProxyScheme = http
-DockerScriptConfigure = /tmp/ucsschool-user-management-configure
+DockerScriptConfigure = /tmp/ucsschool-accounts-configure
 RequiredApps = univention-guardian
 RequiredAppsInDomain = keycloak, ucsschool-kelvin-rest-api
 NotifyVendor = True
@@ -40,7 +40,7 @@ ServerRole = domaincontroller_master, domaincontroller_backup
 SupportedUcsVersions = 5.2-6 errata569
 
 [de]
-Description = UCS@school Benutzerverwaltung
+Description = Schulzugänge
 LongDescription = Diese App ist Teil der UCS-Produktkomponente UCS@school, die für die Verwaltung von UCS@school-Benutzern verwendet wird. Sie implementiert das Rollen- und Zugriffsmanagement unter Verwendung des Guardian.
 SupportUrl = https://www.univention.de/produkte/support/enterprise-support/
 WebsiteVendor = https://www.univention.de/

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-[ucsschool-user-management/kelvin/url]
+[ucsschool-accounts/kelvin/url]
 Type = String
 Description = The hostname of the Kelvin REST API for data queries. If not set, the url is generated from hostname and domainname.
 Description[de] = Der Hostname der Kelvin REST API, welche zum Abrufen von Daten genutzt wird. Wenn nicht gesetzt, wird die URL aus Hostname und Domainname generiert.
@@ -9,7 +9,7 @@ Group = Kelvin
 Scope = outside
 Show = Install,Settings
 
-[ucsschool-user-management/oauth/keycloak-uri]
+[ucsschool-accounts/oauth/keycloak-uri]
 Type = String
 Description = Base URI of the Keycloak server for authentication. If unset the joinscript will attempt to set this value automatically.
 Description[de] = URL des Keycloak-Servers zur Authentifizierung. Falls dieser Wert nicht gesetzt wird, versucht das Joinscript diesen Wert automatisch zu ermitteln.
@@ -17,7 +17,7 @@ Group = Authentication
 Scope = outside
 Show = Install,Settings
 
-[ucsschool-user-management/logging/level]
+[ucsschool-accounts/logging/level]
 Type = List
 InitialValue = INFO
 Values = TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -28,7 +28,7 @@ Group = Logging
 Scope = outside
 Show = Install,Settings
 
-[ucsschool-user-management/logging/structured]
+[ucsschool-accounts/logging/structured]
 Type = Bool
 InitialValue = false
 Description = If set to True, each log record is written as a single JSON object. If set to False, the records follow the Univention log format.

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Common dynamic roles used within UCS@school user-management's Cerbos
+# Common dynamic roles used within the School Accounts app's Cerbos
 # policies.
 #
 # yaml-language-server: $schema=https://api.cerbos.dev/latest/cerbos/policy/v1/Policy.schema.json
