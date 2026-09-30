@@ -27,7 +27,7 @@ from ucsschool.kelvin.client import (
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-SCHOOL = "accountstest"
+SCHOOL = "acctest"
 SCHOOL_DISPLAY_NAME = "School Accounts Test School"
 SCHOOL_CLASS = "10b"
 WORK_GROUP = "Erste-Hilfe-AG"

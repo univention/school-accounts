@@ -438,7 +438,7 @@ dev/dev_run.sh task pytest-frontend
 
 Against an installed system, point the same suite at it and give it a Kelvin URL.
 It then seeds the objects it needs through Kelvin --
-an `accountstest` school, a class, a work group,
+an `acctest` school, a class, a work group,
 and four of the `dev/data` people under their own names --
 and logs in as one of them,
 so the assertions hold on any machine that has the app installed,
