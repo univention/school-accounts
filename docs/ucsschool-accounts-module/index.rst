@@ -5,7 +5,7 @@
 Introduction
 ############
 
-The School Accounts app lists the users of a UCS\@school school
+The |UASUMM| app lists the users of a UCS\@school school
 and lets authorized users reset their passwords.
 This manual explains how to install, configure, and use the app,
 and which roles and permissions decide what each user can see and do.
@@ -22,14 +22,17 @@ see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 
 .. caution::
 
-   The School Accounts app is a technical preview.
-   Univention doesn't support it.
+   The |UASUMM| app is a preview.
+   Its features and configuration may change incompatibly in future releases.
+   Univention supports it on a best-effort basis to help you test it.
+   We're happy to receive your feedback.
 
 .. _audience-for-this-manual:
 
 Audience
 ========
 
-This manual is for administrators who install and operate the School Accounts app.
-It doesn't assume any specific technical knowledge.
-When possible, all instructions use a web browser.
+This manual is for administrators who install and operate the |UASUMM| app.
+It assumes that you can run commands on the command line of a UCS system.
+The chapter :ref:`usage` is for the users of the app
+and uses only a web browser.

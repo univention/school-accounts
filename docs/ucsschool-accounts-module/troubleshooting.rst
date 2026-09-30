@@ -29,7 +29,7 @@ User not found
    The account doesn't exist anymore.
 
 Rejected
-   The directory service refused the new password,
+   UCS refused the new password,
    for example because it doesn't meet the password policy.
    The message that follows states the reason.
 
@@ -38,7 +38,7 @@ A user sees "Invalid or missing security token"
 
 The page that the user worked on is older than their current session,
 for example after they signed in again in another browser tab.
-Reloading the page solves the problem.
+To solve the problem, reload the page.
 
 A user sees "not a valid UCS\@school user"
 ==========================================
@@ -56,10 +56,11 @@ with the account in the data section as ``actor_id``.
 Logging
 =======
 
-When an error occurs, the app logs more details and context.
+When an error occurs, the app logs the error with its details and context.
 To read the logs, run the following command:
 
 .. code-block:: console
+   :caption: Read the logs of the |UASUMM| app
 
    $ univention-app logs ucsschool-accounts
 
@@ -81,13 +82,15 @@ Log format
 Each log record follows the Univention log format and looks like the following example:
 
 .. code-block:: text
+   :caption: Log record in the text format
 
    2026-09-10T08:22:57.275+00:00 WARNING  [31f863092a] Actor is not a UCS@school user, so this module is unusable for them. Assign a UCS@school role, or use a school account.	| actor_id="administrator" module="ucsschool_accounts_bff.business_logic" line=50 pid=8 request_id="31f863092ade1cb"
 
 A record consists of the following five parts:
 
-.. list-table::
+.. list-table:: Parts of a log record
    :header-rows: 1
+   :align: left
    :widths: 20 80
 
    * - Part
@@ -98,7 +101,7 @@ A record consists of the following five parts:
    * - Severity
      - The log level, padded to a fixed width.
    * - Request ID
-     - In square brackets, shortened to ten characters.
+     - In square brackets, shortened to 10 characters.
        It identifies the browser request that produced the record,
        and is a hyphen for records written outside a request, such as during startup.
    * - Message

@@ -18,7 +18,7 @@ Install the app
 You can install the |UASUMM| app on a
 :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` or on a
 :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`
-that runs UCS 5.2-6 with erratum 569 or later.
+that runs Univention Corporate Server (UCS) 5.2-6 with :uv:erratum:`5.2x569` or later.
 
 Your domain must meet the following prerequisites before you install the app:
 
@@ -40,8 +40,7 @@ run the following command:
 .. code-block:: console
    :caption: Install the |UASUMM| app from the command line
 
-   $ univention-app install \
-       ucsschool-accounts
+   $ univention-app install ucsschool-accounts
 
 After the installation,
 users reach the app through the
@@ -55,17 +54,15 @@ Migrate from UCS\@school User Management
 
 The |UASUMM| app replaces the UCS\@school User Management app
 (``ucsschool-user-management``).
-The App Center treats it as a different app,
+The Univention App Center treats it as a different app,
 so an upgrade doesn't turn one into the other.
 To migrate, remove the old app and install the new one on every system that runs it:
 
 .. code-block:: console
    :caption: Replace UCS\@school User Management with |UASUMM|
 
-   $ univention-app remove \
-       ucsschool-user-management
-   $ univention-app install \
-       ucsschool-accounts
+   $ univention-app remove ucsschool-user-management
+   $ univention-app install ucsschool-accounts
 
 The app settings don't carry over,
 because the setting names changed
@@ -87,8 +84,7 @@ run the following command:
 .. code-block:: console
    :caption: Upgrade the |UASUMM| app from the command line
 
-   $ univention-app upgrade \
-       ucsschool-accounts
+   $ univention-app upgrade ucsschool-accounts
 
 .. _removal:
 
@@ -101,8 +97,7 @@ run the following command:
 .. code-block:: console
    :caption: Remove the |UASUMM| app from the command line
 
-   $ univention-app remove \
-       ucsschool-accounts
+   $ univention-app remove ucsschool-accounts
 
 The removal deletes the portal tile and the policies of the app.
 It keeps the Keycloak client,
@@ -115,10 +110,10 @@ Remove the Keycloak client
 
 The |UASUMM| app signs users in through the Keycloak client ``ucsschool-accounts-ui``
 in the ``ucs`` realm.
-After you have removed the app from every system in the domain,
+After you remove the app from every system in the domain,
 you can delete that client in the Keycloak administration console at
-``https://ucs-sso-ng.DOMAIN_NAME/admin/master/console/``.
+:samp:`https://ucs-sso-ng.{DOMAIN_NAME}/admin/master/console/`.
 Replace ``DOMAIN_NAME`` with the domain name of your UCS domain.
-If you have set the UCR variable
+If you have set the Univention Configuration Registry (UCR) variable
 :external+uv-keycloak:envvar:`keycloak/server/sso/fqdn`,
-use its value instead of ``ucs-sso-ng.DOMAIN_NAME``.
+use its value instead of :samp:`ucs-sso-ng.{DOMAIN_NAME}`.

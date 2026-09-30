@@ -21,16 +21,17 @@ To list the users of a school class or a work group,
 follow these steps:
 
 #. Open the |UASUMM| tile in the
-   :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`
-   and sign in, if Keycloak asks for your credentials.
+   :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`.
+   If Keycloak asks for your credentials, sign in.
 
 #. In the :guilabel:`School` list, select the school.
    The list contains only the schools that you can filter by.
 
 #. In the :guilabel:`Classes & Work Groups` list, select the class or work group.
    To find it in a long list, enter part of its name.
+   To list every user of the school, select :guilabel:`All classes and work groups`.
 
-The list view shows the users of that class or work group
+The list view shows the users of your selection
 with the columns *Last name*, *First name*, *Username*, *Roles*, and *Activated*.
 It shows only the users whose data you may read.
 
@@ -62,9 +63,10 @@ To reset passwords, follow these steps:
 #. Optional: To make the users choose their own password when they sign in next,
    select :guilabel:`User has to change the password at the next login`.
    The dialog offers this option only when the Kelvin REST API
-   exposes the UDM property ``pwdChangeNextLogin`` of users.
+   exposes the Univention Directory Manager (UDM) property ``pwdChangeNextLogin`` of users.
 
-#. Confirm the reset and click :guilabel:`Set password`.
+#. Select the checkbox that states how many passwords the reset affects,
+   and click :guilabel:`Set password`.
 
 The app then shows how many passwords it has reset
 and lists every account whose password it couldn't reset, with the reason.
