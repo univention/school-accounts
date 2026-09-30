@@ -519,9 +519,12 @@ no access token is stored) rather than restating what the code does.
 - New user-facing strings: wrap in `_()`, then run `dev/dev_run.sh task translate` — it will report
   any untranslated/fuzzy entries in `locales/de/LC_MESSAGES/ucsschool-accounts.po` for you to
   fill in before it will compile the `.mo` file.
-- User-visible changes should update the release changelogs the QA checklist in
-  [README.md](README.md#qa-checklist) explicitly asks for: `appcenter-management/README_UPDATE_DE`,
-  `appcenter-management/README_UPDATE_EN`, and `docs/ucsschool-accounts-module/changelog.rst`.
+- User-visible changes should update `docs/ucsschool-accounts-module/changelog.rst`, as the QA
+  checklist in [README.md](README.md#qa-checklist) asks. It is the only changelog: the
+  `build_changelog_html` CI job renders it into `changelog.html`, which
+  `appcenter-management/README_UPDATE_{DE,EN}.jinja` extend for the App Center. Don't hand-write
+  `README_UPDATE_*` files; run `appcenter-management/scripts/build-changelog-html` in the sphinx
+  image to preview the result.
 - Architectural or HTMX-pattern changes of any significance should be reflected in
   [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) (it is maintained as a living design
   doc, not a point-in-time snapshot — it currently documents up to commit `176b03d`).
@@ -569,8 +572,8 @@ Before considering a change complete:
       changed).
 - [ ] Any new user-facing string is translated (`task translate` reports no fuzzy/untranslated
       entries).
-- [ ] If the change affects install/update behavior or is otherwise QA-relevant, the changelog files
-      listed in § Documentation and Changelog Requirements are updated.
+- [ ] If the change affects install/update behavior or is otherwise QA-relevant,
+      `docs/ucsschool-accounts-module/changelog.rst` is updated.
 - [ ] If the change alters the HTMX request/rendering model or a documented architectural boundary,
       [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) is updated to match.
 - [ ] Commit message is Conventional-Commits-formatted and includes an `Issue <project>#<number>` (or

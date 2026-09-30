@@ -19,6 +19,7 @@ basedpyright-code-quality.json
 # App Center files
 appcenter-management/preinst
 appcenter-management/univention-appcenter-control
+changelog.html
 
 # dev
 dev/local/

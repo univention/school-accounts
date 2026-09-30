@@ -510,7 +510,7 @@ Technical QA is focused on the code quality and basic runability of the code.
 All Technical QA steps should also be performed by the implementer before handing over to QA.
 
 - [ ] Code review on the merge request:
-  - [ ] Changelogs are present (`README_UPDATE_*`-files and `docs/ucsschool-accounts-module/changelog.rst`)
+  - [ ] The changelog is present (`docs/ucsschool-accounts-module/changelog.rst`)
   - [ ] Tests sufficiently cover the changed lines of code.
 - [ ] Pipelines pass.
 - [ ] App installation succeeds on a test VM.

@@ -16,6 +16,7 @@ include:
       additional_update_appcenter_needs:
         - job: build_docker_image_ucsschool_accounts
         - job: build_appcenter_files
+        - job: build_changelog_html
       appcenter_file_dir: "__appcenter/"
       release_tag_prefix: "release-"
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/buildkit@2.16.2
@@ -135,10 +136,20 @@ build_appcenter_files:
     - cd appcenter-management
     - ./scripts/generate-preinst
     - mkdir ../__appcenter
-    - cp compose.jinja configure configure_host inst ini.jinja logo.svg preinst README_UPDATE_DE README_UPDATE_EN settings uinst ../__appcenter
+    - cp compose.jinja configure configure_host inst ini.jinja logo.svg preinst README_UPDATE_DE.jinja README_UPDATE_EN.jinja settings uinst ../__appcenter
   artifacts:
     paths:
       - __appcenter
+
+build_changelog_html:
+  stage: prepare
+  image: gitregistry.knut.univention.de/univention/dev/docs/sphinx-docker/base@sha256:f4ae0cd320a7752163d5677e47d0bfbc44255cdc810c7b62ae854b7245294946
+  script:
+    - pip install lxml
+    - ./appcenter-management/scripts/build-changelog-html
+  artifacts:
+    paths:
+      - changelog.html
 
 compile-policies:
   stage: test

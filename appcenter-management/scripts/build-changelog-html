@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+"""Render the App Center changelog from the manual's ``changelog.rst``.
+
+Writes ``changelog.html`` into the repository root as a bare content fragment.
+The ``README_UPDATE_*.jinja`` templates extend it, so the App Center changelog
+and the published manual can never drift (see the ``build_changelog_html`` CI
+job).
+
+Sphinx (rather than plain docutils) is used so the Univention-specific roles
+the manual may use render exactly as they do in the published documentation,
+without re-implementing them here.
+"""
+
+import subprocess
+import tempfile
+from pathlib import Path
+
+from lxml import html
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CHANGELOG_RST = REPO_ROOT / "docs" / "ucsschool-accounts-module" / "changelog.rst"
+CHANGELOG_HTML = "changelog.html"
+
+# A throwaway Sphinx project with only the extensions that provide Univention's
+# roles -- no theme extras, intersphinx, or sitemap. It is fast and needs no
+# network or git history, so it runs unchanged in CI and locally.
+CONF_PY = """\
+project = "School Accounts"
+extensions = ["univention_sphinx_extension", "sphinxcontrib.spelling"]
+html_theme = "basic"
+exclude_patterns = ["_build"]
+"""
+
+INDEX_RST = """\
+:orphan:
+
+.. toctree::
+
+   changelog
+"""
+
+
+def _build_sphinx(srcdir: Path, outdir: Path) -> None:
+    (srcdir / "conf.py").write_text(CONF_PY)
+    (srcdir / "index.rst").write_text(INDEX_RST)
+    (srcdir / "changelog.rst").write_text(CHANGELOG_RST.read_text())
+    subprocess.run(
+        ["sphinx-build", "--builder", "html", str(srcdir), str(outdir)],
+        check=True,
+    )
+
+
+def _extract(page: Path, xpath: str) -> str:
+    """Return the HTML of the element matched by ``xpath`` in a built page.
+
+    Raise if docutils rendered any error node -- an unknown role or malformed
+    markup surfaces as a ``system-message``/``problematic`` node, so this fails
+    the build loudly instead of shipping a broken changelog.
+    """
+    tree = html.fromstring(page.read_text())
+    broken = tree.xpath(
+        "//*[contains(@class, 'system-message')] | //*[contains(@class, 'problematic')]"
+    )
+    if broken:
+        raise ValueError(f"{page.name} contains {len(broken)} docutils error node(s)")
+    matches = tree.xpath(xpath)
+    if not matches:
+        raise ValueError(f"no element matched {xpath!r} in {page.name}")
+    return html.tostring(matches[0], encoding="unicode", pretty_print=True)
+
+
+def main() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        srcdir = Path(tmp) / "src"
+        outdir = Path(tmp) / "out"
+        srcdir.mkdir()
+        _build_sphinx(srcdir, outdir)
+        changelog = _extract(outdir / CHANGELOG_HTML, "//*[@id='changelog']")
+
+    (REPO_ROOT / CHANGELOG_HTML).write_text(f"<div>\n{changelog}\n</div>")
+
+
+if __name__ == "__main__":
+    main()
