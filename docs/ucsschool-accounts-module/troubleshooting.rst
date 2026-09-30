@@ -33,6 +33,26 @@ Rejected
    for example because it doesn't meet the password policy.
    The message that follows states the reason.
 
+Could not be confirmed
+   An unexpected error occurred during the reset,
+   so the password of that account may or may not have changed.
+   Check the account before you reset its password again.
+   The log contains the error as
+   ``A password reset could not be confirmed``.
+
+This account cannot be required to change its password at the next login
+   The option :guilabel:`User has to change the password at the next login` was selected,
+   but the Kelvin REST API doesn't expose the UDM property ``pwdChangeNextLogin``
+   for that account.
+   The app left the password unchanged.
+   To solve the problem, add ``pwdChangeNextLogin`` to the user properties in
+   :file:`/etc/ucsschool/kelvin/mapped_udm_properties.json` of the Kelvin REST API.
+
+If no reset succeeds and UCS refuses the password with the same reason every time,
+the app shows no list.
+The dialog stays open and shows the reason below :guilabel:`New password`,
+so that you can enter a different password.
+
 A user sees "Invalid or missing security token"
 ===============================================
 

@@ -95,8 +95,22 @@ Change the client secret
 The app authenticates to Keycloak with the client secret in
 :file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret`.
 The secret belongs to the domain, and Keycloak holds the authoritative copy.
-To change it, change it in Keycloak and then run
-:command:`univention-run-join-scripts` on every host that runs the app.
+Every installation and every app update adopts the secret that Keycloak holds.
+
+To change the secret, regenerate it for the client ``ucsschool-accounts-ui``
+in the Keycloak administration console.
+Then write the new secret into the :file:`client.secret` file
+on every host that runs the app, and restart the app there:
+
+.. code-block:: console
+   :caption: Replace the client secret on a host
+
+   $ printf '%s\n' "NEW_SECRET" > \
+       /var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret
+   $ univention-app restart ucsschool-accounts
+
+Replace ``NEW_SECRET`` with the secret from Keycloak.
+Until you have updated a host, it can't sign users in.
 
 .. _app-settings:
 
