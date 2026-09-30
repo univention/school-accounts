@@ -47,88 +47,56 @@ Sessions
 ========
 
 After a user signs in,
-the |UASUMM| app keeps the session entirely in an encrypted browser cookie.
+the |UASUMM| app keeps the session in an encrypted browser cookie.
 The server stores no session data,
-so every worker process of the app can serve any request,
-and a session survives both a restart of the app and an app update.
+so a session survives both a restart of the app and an app update.
 
-The app encrypts the cookie rather than only signing it,
-because it carries the tokens the app needs
-to renew the sign-in against Keycloak without prompting the user again.
-The app derives the key from a secret
-that it generates once per host during installation, in
-:file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/session.secret`.
-An update reuses an existing file and therefore keeps existing sessions valid.
-
-The app signs users in through a confidential Keycloak client.
-It proves its own identity to Keycloak with a client secret in
-:file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret`.
-The secret never reaches the browser.
-
-The Keycloak client belongs to the domain rather than to a single host,
-and so does its secret.
-The first installation in the domain registers a generated secret.
-Every later installation, and every app update,
-adopts the secret that Keycloak already holds and restarts the app.
-Keycloak therefore keeps the authoritative copy:
-to change the secret, change it in Keycloak and then run
-:command:`univention-run-join-scripts` on every host that runs the app.
+Session lifetime
+----------------
 
 A session lasts at most 8 hours.
-Renewing the tokens extends the sign-in within that window but never beyond it.
+Keycloak's own session limits usually end it earlier:
+the realm's *SSO Session Idle* and *SSO Session Max*,
+or *Client Session Idle* and *Client Session Max* if the client overrides them.
+Whichever limit runs out first sends users back to the sign-in page.
 
-Eight hours is the ceiling the app enforces, not the lifetime users experience.
-Keycloak applies its own session limits on top of it,
-and those usually end the session earlier.
-The app renews the sign-in only after the access token has expired,
-and Keycloak refuses that renewal after it has closed the user's session:
-after the realm's *SSO Session Idle* has passed
-without the user working in the app,
-or at the latest after its *SSO Session Max*.
-A client can override both with *Client Session Idle* and *Client Session Max*.
-Whichever limit runs out first is the one that sends users back to the sign-in page.
+Signing out also ends the session in Keycloak.
+A copy of the session cookie keeps working
+until the app next renews the sign-in against Keycloak,
+which happens within the lifetime of an access token.
 
-This model has the following three limitations:
+Each host encrypts its cookies with its own secret,
+so users who switch to the app on another UCS system pass through Keycloak again.
+While their Keycloak session is open,
+they see only a redirect and don't have to enter their credentials.
 
-No revocation before expiry
-   The app can't invalidate an individual session.
-   A copy of the cookie keeps working for the rest of the session's lifetime.
-   Signing out shortens that:
-   it ends the session in Keycloak as well,
-   so the copy stops working after the app next renews the sign-in against Keycloak,
-   which happens within the lifetime of an access token.
+End all sessions on a host
+--------------------------
 
-One app session per UCS system
-   Each host generates its own secret,
-   so the session from the
-   :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node`
-   isn't valid on a
-   :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`,
-   or the other way around.
-   Users pass through Keycloak again on the second system.
-   Keycloak keeps its own session for the user, independently of this app,
-   so as long as that session is still open,
-   they see only a redirect and Keycloak doesn't ask for their credentials again.
+To end every app session on a host,
+write a new secret into the :file:`session.secret` file and restart the app:
 
-No sign-out when replacing the secret
-   Replacing the secret ends the app sessions, but doesn't sign anybody out.
-   To invalidate every cookie on a host at once,
-   write a new secret into the :file:`session.secret` file and restart the app:
+.. code-block:: console
+   :caption: Replace the session secret
 
-   .. code-block:: console
-      :caption: Replace the session secret
+   $ openssl rand -hex 32 > \
+       /var/lib/univention-appcenter/apps/ucsschool-accounts/conf/session.secret
+   $ univention-app restart ucsschool-accounts
 
-      $ openssl rand -hex 32 > \
-          /var/lib/univention-appcenter/apps/ucsschool-accounts/conf/session.secret
-      $ univention-app restart ucsschool-accounts
+This doesn't sign users out of Keycloak,
+so their next request takes them back into the app without a credential prompt.
+To force users to authenticate again, end their sessions in Keycloak.
+Don't delete the :file:`session.secret` file:
+the app generates it only during installation and refuses to start without it.
 
-   This doesn't lock users out.
-   Their Keycloak sessions survive it,
-   so the next request takes them through Keycloak
-   and back into the app without a credential prompt.
-   To force users to authenticate again, end their sessions in Keycloak.
-   Don't delete the :file:`session.secret` file:
-   the app generates it only during installation and refuses to start without it.
+Change the client secret
+------------------------
+
+The app authenticates to Keycloak with the client secret in
+:file:`/var/lib/univention-appcenter/apps/ucsschool-accounts/conf/client.secret`.
+The secret belongs to the domain, and Keycloak holds the authoritative copy.
+To change it, change it in Keycloak and then run
+:command:`univention-run-join-scripts` on every host that runs the app.
 
 .. _app-settings:
 
