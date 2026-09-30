@@ -3,7 +3,7 @@
 
 [project]
 name = "ucsschool-accounts-bff"
-version = "0.2.0"
+version = "1.0.0"
 description = ""
 authors = [{ name = "UCS School Maintainers", email = "ucsschool-maintainers@univention.de" }]
 requires-python = ">=3.11,<4"
