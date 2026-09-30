@@ -46,6 +46,8 @@ After the installation,
 users reach the app through the
 :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`.
 To choose who sees the portal tile, see :ref:`configuration-portal-tile`.
+The tile opens the app on the first system in the domain that you install it on.
+To point it to another system, see :ref:`configuration-portal-tile-link`.
 
 .. _migration:
 

@@ -33,6 +33,28 @@ add the ``Domain Users DEMOSCHOOL`` group of that school to the portal entry:
 
 To add further schools, repeat the ``--append`` option for each of them.
 
+.. _configuration-portal-tile-link:
+
+Point the portal tile to another system
+=======================================
+
+The domain has one |UASUMM| tile,
+no matter on how many systems you install the app.
+The first installation in the domain creates the tile
+and links it to the system it runs on.
+Later installations on other systems leave the tile unchanged.
+
+To let the tile open the app on another system,
+for example ``school-accounts.example.com``,
+change the link of the portal entry:
+
+.. code-block:: console
+   :caption: Point the portal tile to the app on another system
+
+   $ univention-directory-manager portals/entry modify \
+       --dn "cn=ucsschool-accounts,cn=entry,cn=portals,cn=univention,$(ucr get ldap/base)" \
+       --set link='"en_US" "//school-accounts.example.com/univention/ucsschool/ucsschool-accounts/ui/"'
+
 User visibility
 ===============
 
