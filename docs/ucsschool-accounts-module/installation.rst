@@ -102,6 +102,8 @@ run the following command:
    $ univention-app remove ucsschool-accounts
 
 The removal deletes the portal tile and the policies of the app.
+It deletes the tile even if the app still runs on other systems,
+see :ref:`known-issue-removal-deletes-tile`.
 It keeps the Keycloak client,
 because other systems in the domain can still use it.
 

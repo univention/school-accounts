@@ -16,6 +16,7 @@ School Accounts
    usage
    roles-permissions-and-conditions
    troubleshooting
+   known-issues
 
 .. toctree::
 
