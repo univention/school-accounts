@@ -283,8 +283,12 @@ services:
     labels:
       traefik.http.routers.sphinx.entrypoints: web
       traefik.http.routers.sphinx.rule: PathPrefix(`/docs/manual`)
+      # Sphinx links its assets relatively, so /docs/manual without the slash would
+      # resolve them against /docs/ and 404.
+      traefik.http.middlewares.manual-slash.redirectregex.regex: ^(https?://[^/]+/docs/manual)$$
+      traefik.http.middlewares.manual-slash.redirectregex.replacement: $${1}/
       traefik.http.middlewares.strip-manual.stripprefix.prefixes: /docs/manual
-      traefik.http.routers.sphinx.middlewares: strip-manual
+      traefik.http.routers.sphinx.middlewares: manual-slash,strip-manual
       traefik.http.routers.sphinx.service: sphinx
       traefik.http.services.sphinx.loadbalancer.server.port: 8080
     env_file: *env-files
