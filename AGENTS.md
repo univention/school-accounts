@@ -315,8 +315,8 @@ beyond having `docker` (>= 25) installed.
   list. Key tasks:
   - `dev-server` — starts the FastAPI dev server + Keycloak (via `dev/docker-compose.yaml`); code
     changes are picked up live. Requires `ucsschool-accounts-proxy` to resolve (add it to `/etc/hosts`).
-    UI: `http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/ui/`. API docs:
-    `.../bff/docs`. Keycloak admin: `.../keycloak/admin/` (`admin:admin`).
+    UI: `http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/ui/`.
+    Keycloak admin: `http://ucsschool-accounts-proxy/keycloak/admin/` (`admin:admin`).
   - `pytest` — unit/integration tests (excludes the `e2e`- and `frontend`-marked tests); forwards
     any further arguments to pytest, e.g. `dev/dev_run.sh task pytest --pdb`.
   - `pytest-e2e` — Playwright-backed backend e2e tests against a real deployed environment; requires

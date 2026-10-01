@@ -57,9 +57,7 @@ class TestKelvinSchoolsPersistenceAdapter:
                     yield make_kelvin_school_from_data(user_data)
 
         mock_school_resource = mocker.MagicMock(return_value=MockSchoolResource())
-        monkeypatch.setattr(
-            ucsschool_accounts.adapters.schools, "SchoolResource", mock_school_resource
-        )
+        monkeypatch.setattr(ucsschool_accounts.adapters.schools, "SchoolResource", mock_school_resource)
         await adapter.configure(dummy_settings)
         result = await adapter.get_schools()
         assert result == [

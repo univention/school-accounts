@@ -117,9 +117,7 @@ class TestKelvinWorkGroupsPersistenceAdapter:
                 asked.append(kwargs)
                 yield make_kelvin_group_from_data("wg1", None)
 
-        patch_kelvin_resource(
-            ucsschool_accounts.adapters.work_groups, "WorkGroupResource", _Resource()
-        )
+        patch_kelvin_resource(ucsschool_accounts.adapters.work_groups, "WorkGroupResource", _Resource())
         await adapter.configure(dummy_settings)
         if read == "whole school":
             await adapter.get_work_groups("school1")

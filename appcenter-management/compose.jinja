@@ -13,7 +13,6 @@ services:
     environment:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-      UCSSCHOOL_ACCOUNTS__API_PREFIX: "/univention/ucsschool/ucsschool-accounts/bff"
       UCSSCHOOL_ACCOUNTS__FRONTEND_PREFIX: "/univention/ucsschool/ucsschool-accounts/ui"
       UCSSCHOOL_ACCOUNTS__CORS__ALLOWED_ORIGINS: "*"
       UCSSCHOOL_ACCOUNTS__ADAPTER__USERS_PERSISTENCE: "ucsschool_accounts.adapters.users:KelvinUsersPersistenceAdapter"

@@ -184,7 +184,7 @@ services:
     env_file: *env-files
     labels: &accounts-labels
       traefik.http.routers.accounts.entrypoints: web
-      traefik.http.routers.accounts.rule: PathPrefix(`${UCSSCHOOL_ACCOUNTS__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/ucsschool-accounts/ui`)
+      traefik.http.routers.accounts.rule: PathPrefix(`/univention/ucsschool/ucsschool-accounts/ui`)
       traefik.http.routers.accounts.service: accounts
       traefik.http.services.accounts.loadbalancer.server.port: 8000
     develop: &accounts-develop

@@ -203,8 +203,6 @@ curl -s -o /dev/null -w '%{time_total}\n' \
 The frontend page is served by the API at http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/ui/ .
 Use "dev:univention" for the login at the frontend page.
 
-The API can be accessed at http://ucsschool-accounts-proxy/univention/ucsschool/ucsschool-accounts/bff/docs
-
 The API reacts to code changes without the need to restart the environment.
 
 Keycloak can be accessed with "admin:admin" at http://ucsschool-accounts-proxy/keycloak/admin/

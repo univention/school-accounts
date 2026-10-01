@@ -91,9 +91,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
     ):
         """No names, no request - not even a token: the port promises no I/O here."""
         resource = mocker.MagicMock()
-        monkeypatch.setattr(
-            ucsschool_accounts.adapters.school_classes, "SchoolClassResource", resource
-        )
+        monkeypatch.setattr(ucsschool_accounts.adapters.school_classes, "SchoolClassResource", resource)
         await adapter.configure(dummy_settings)
         assert await adapter.get_school_classes_by_name("school1", []) == []
         resource.assert_not_called()
@@ -124,9 +122,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
 
                 return _gen()
 
-        monkeypatch.setattr(
-            ucsschool_accounts.adapters.school_classes, "SchoolClassResource", _Resource
-        )
+        monkeypatch.setattr(ucsschool_accounts.adapters.school_classes, "SchoolClassResource", _Resource)
         await adapter.configure(dummy_settings)
 
         result = await adapter.get_school_classes_by_name("school1", ["1a", "2b"])
@@ -145,9 +141,7 @@ class TestKelvinSchoolClassesPersistenceAdapter:
         """Kelvin reads ``*`` as a wildcard, so such a value would widen the search
         rather than name a group - and nothing is left to ask for."""
         resource = mocker.MagicMock()
-        monkeypatch.setattr(
-            ucsschool_accounts.adapters.school_classes, "SchoolClassResource", resource
-        )
+        monkeypatch.setattr(ucsschool_accounts.adapters.school_classes, "SchoolClassResource", resource)
         await adapter.configure(dummy_settings)
 
         assert await adapter.get_school_classes_by_name("school1", ["*"]) == []
