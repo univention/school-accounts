@@ -22,11 +22,11 @@ cerbos-server: Starts a local Cerbos server for manually testing the policies or
 cerbos-compile: Lints and tests the Cerbos policies via \`cerbos compile\`.
 sphinx: Starts the live server for the manual.
 reuse: runs reuse for license annotations.
-pytest: Runs the pytests for the BFF.
+pytest: Runs the pytests for the app.
 pytest-e2e: Runs pytest end to end tests.
 pytest-frontend: Runs the Playwright frontend tests against a running dev-server.
 pytest-frontend-headed: Same, but in a visible browser window instead of headless.
-translate: Generates translations for the BFF.
+translate: Generates translations for the app.
 EOF
 }
 
@@ -90,17 +90,17 @@ run_task() {
     exit $?
   fi
   if [[ "$TASK" = "pytest" ]]; then
-    run_command env --chdir=ucsschool-accounts-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts/ uv run \
     pytest \
     -vv \
-    --cov=ucsschool_accounts_bff \
+    --cov=ucsschool_accounts \
     --cov=keycloak_provisioning \
     -m "not e2e and not frontend" "${@:3}" \
     .
     exit $?
   fi
   if [[ "$TASK" = "pytest-e2e" ]]; then
-    run_command env --chdir=ucsschool-accounts-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts/ uv run \
     pytest \
     -vv \
     --screenshot only-on-failure \
@@ -114,7 +114,7 @@ run_task() {
     exit $?
   fi
   if [[ "$TASK" = "pytest-frontend" ]]; then
-    run_command env --chdir=ucsschool-accounts-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts/ uv run \
     pytest \
     -vv \
     --screenshot only-on-failure \
@@ -144,7 +144,7 @@ run_task() {
     if [[ -n "$PWDEBUG" ]]; then
       RUN_COMMAND_ARGS+=(-e "PWDEBUG=$PWDEBUG")
     fi
-    run_command env --chdir=ucsschool-accounts-bff/ uv run \
+    run_command env --chdir=ucsschool-accounts/ uv run \
     pytest \
     -vv \
     --headed \
@@ -156,7 +156,7 @@ run_task() {
     exit $?
   fi
   if [[ "$TASK" = "translate" ]]; then
-    run_command env ./ucsschool-accounts-bff/scripts/check_translations.sh
+    run_command env ./ucsschool-accounts/scripts/check_translations.sh
   fi
   echo "Task '$TASK' does not exist."
   exit 1

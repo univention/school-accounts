@@ -52,15 +52,15 @@ You must have at least Docker version 25.
 
 #### Frontend Tests
 
-The `bff-frontend-test` job runs the Playwright tests in
-[ucsschool-accounts-bff/tests/frontend](ucsschool-accounts-bff/tests/frontend) on every merge request
-that touches `ucsschool-accounts-bff/` or `dev/`.
+The `accounts-frontend-test` job runs the Playwright tests in
+[ucsschool-accounts/tests/frontend](ucsschool-accounts/tests/frontend) on every merge request
+that touches `ucsschool-accounts/` or `dev/`.
 It starts Keycloak as a service container and,
-next to it, the BFF on the File adapters and the fixture data from `dev/data/`,
+next to it, the app on the File adapters and the fixture data from `dev/data/`,
 so a real browser drives a real login against the same stack the dev server uses.
 Kelvin and Cerbos are not part of it; those stay with the integration tests below.
 
-On failure the job keeps the BFF log,
+On failure the job keeps the app log,
 plus a Playwright trace and a screenshot per failed test,
 under `.cache/` in its artifacts.
 Open a trace with `playwright show-trace <trace.zip>`.
@@ -215,7 +215,7 @@ When adding a new string that will be returned to the frontend,
 you need to mark it as translatable:
 
 ```python
-from ucsschool_accounts_bff.lang import _
+from ucsschool_accounts.lang import _
 
 some_string = _("This needs to be translated")
 ```
@@ -227,14 +227,14 @@ In a Jinja template, use the `_` that `routes.render()` binds into the context:
 ```
 
 Extraction covers both: `pybabel extract` reads `*.py` and `templates/**.html`
-through `ucsschool-accounts-bff/babel.cfg`, so a literal left untranslated in a
+through `ucsschool-accounts/babel.cfg`, so a literal left untranslated in a
 template fails the check the same way a Python one does.
 
 If the msgid is only ever reached through a variable, extraction cannot see the
 literal - mark it where it is defined and translate it at the point of use:
 
 ```python
-from ucsschool_accounts_bff.lang import N_, _
+from ucsschool_accounts.lang import N_, _
 
 _ROLE_LABELS = {"student": N_("Student")}
 label = _(_ROLE_LABELS[role_id], lang=lang)
@@ -248,7 +248,7 @@ dev/dev_run.sh task translate
 ```
 
 The script will tell you to fill in any translation strings it finds that are incomplete.
-You can find the translation file in `ucsschool-accounts-bff/locales/de/LC_MESSAGES/ucsschool-accounts.po`.
+You can find the translation file in `ucsschool-accounts/locales/de/LC_MESSAGES/ucsschool-accounts.po`.
 
 **Note: Per default there is no `.mo` file present in the repository, therefore it is required to run the aforementioned task once, if localization is needed for development.**
 
@@ -371,11 +371,11 @@ terminal; it publishes 3592 and 3593 on the host:
 dev/dev_run.sh task cerbos-server
 ```
 
-Then run the tests **outside** the dev container, from the BFF's own virtualenv:
+Then run the tests **outside** the dev container, from the app's own virtualenv:
 
 ```shell
-uv sync --inexact --project ucsschool-accounts-bff
-cd ucsschool-accounts-bff
+uv sync --inexact --project ucsschool-accounts
+cd ucsschool-accounts
 env SSL_CERT_FILE=../dev/local/ca-bundle.crt \
     REQUESTS_CA_BUNDLE=../dev/local/ca-bundle.crt \
     KELVIN_PERSISTENCE_ADAPTER__URL=primary.ucsschool.test \
@@ -420,7 +420,7 @@ Cerbos is reached at `cerbos:3593` over the compose network here, not on localho
 The tests create users in the target environment and delete them again afterwards. The legal-guardian
 tests additionally need the users the integration job imports from `dev/tests/import_users.csv`.
 
-You can even use your local BFF as long as it is configured to use the Keycloak and Kelvin instances from the
+You can even use your local dev server as long as it is configured to use the Keycloak and Kelvin instances from the
 integration test environment.
 
 #### Running frontend tests
@@ -465,12 +465,12 @@ leaves Keycloak rejecting every later login as that name.
 Seeding reconciles what is already there,
 so a machine converges on that set and repeat runs are cheap.
 The module docstring in
-[ucsschool-accounts-bff/tests/frontend/seed.py](ucsschool-accounts-bff/tests/frontend/seed.py)
+[ucsschool-accounts/tests/frontend/seed.py](ucsschool-accounts/tests/frontend/seed.py)
 has the detail.
 
 Every context runs at a fixed 1180x840 viewport,
 set in `browser_context_args` in
-[ucsschool-accounts-bff/tests/frontend/conftest.py](ucsschool-accounts-bff/tests/frontend/conftest.py),
+[ucsschool-accounts/tests/frontend/conftest.py](ucsschool-accounts/tests/frontend/conftest.py),
 rather than at Playwright's 1280x720 default.
 840 is the smallest height the list view fits in:
 the page does not scroll, so below it the filter column

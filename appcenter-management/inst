@@ -135,7 +135,7 @@ keycloak_provisioning () {
         "$@"
 }
 
-# This client is used by the frontend to communicate with the bff.
+# This client is used by the browser to authenticate against the app.
 # Runs on every join, not only the first one, so that an update also reaches a
 # client an earlier version registered as a public one.
 keycloak_provisioning clients add "$CONF_DIR/ucsschool-accounts_client_ui.json" \

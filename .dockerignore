@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-ucsschool-accounts-bff/.venv
-ucsschool-accounts-bff/.ruff_cache
-ucsschool-accounts-bff/.pytest_cache
-ucsschool-accounts-bff/**/__pycache__
+ucsschool-accounts/.venv
+ucsschool-accounts/.ruff_cache
+ucsschool-accounts/.pytest_cache
+ucsschool-accounts/**/__pycache__

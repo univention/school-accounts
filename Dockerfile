@@ -13,11 +13,11 @@ RUN apt-get update && \
     rm -fr /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -fv /usr/lib/python*/EXTERNALLY-MANAGED
 RUN pip install --only-binary :all: uv=="$UV_VERSION"
-COPY ucsschool-accounts-bff/pyproject.toml ucsschool-accounts-bff/uv.lock ./
+COPY ucsschool-accounts/pyproject.toml ucsschool-accounts/uv.lock ./
 # Install all dependencies (prod + dev) and backend
 # Currently necessary, as the integration and production tests need this
 RUN uv sync --frozen --no-build --no-install-project
-COPY ucsschool-accounts-bff/ ./
+COPY ucsschool-accounts/ ./
 # Builds only this project; every dependency was installed above without building.
 ARG UCSSCHOOL_ACCOUNTS_BUILD_VERSION=""
 RUN uv sync --frozen --no-editable
@@ -47,7 +47,7 @@ RUN apt-get update &&\
 
 # Copy backend venv and src code
 ENV PATH="/venv/bin:$PATH"
-COPY --chown=1001:1001 --chmod=555 ucsschool-accounts-bff .
+COPY --chown=1001:1001 --chmod=555 ucsschool-accounts .
 COPY --from=backend_builder --chown=1001:1001 --chmod=555 /venv /venv
 RUN ./scripts/translate.sh && \
     chown -R 1001:1001 /app/ucsschool-accounts-api
@@ -67,4 +67,4 @@ CMD ["runuser", "-u", "appuser", "--", "gunicorn", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--no-control-socket", \
-     "ucsschool_accounts_bff.main:app"]
+     "ucsschool_accounts.main:app"]

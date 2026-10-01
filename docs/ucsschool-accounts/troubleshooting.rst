@@ -104,7 +104,7 @@ Each log record follows the Univention log format and looks like the following e
 .. code-block:: text
    :caption: Log record in the text format
 
-   2026-09-10T08:22:57.275+00:00 WARNING  [31f863092a] Actor is not a UCS@school user, so this module is unusable for them. Assign a UCS@school role, or use a school account.	| actor_id="administrator" module="ucsschool_accounts_bff.business_logic" line=50 pid=8 request_id="31f863092ade1cb"
+   2026-09-10T08:22:57.275+00:00 WARNING  [31f863092a] Actor is not a UCS@school user, so this module is unusable for them. Assign a UCS@school role, or use a school account.	| actor_id="administrator" module="ucsschool_accounts.business_logic" line=50 pid=8 request_id="31f863092ade1cb"
 
 A record consists of the following five parts:
 

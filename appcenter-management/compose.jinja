@@ -16,11 +16,11 @@ services:
       UCSSCHOOL_ACCOUNTS__API_PREFIX: "/univention/ucsschool/ucsschool-accounts/bff"
       UCSSCHOOL_ACCOUNTS__FRONTEND_PREFIX: "/univention/ucsschool/ucsschool-accounts/ui"
       UCSSCHOOL_ACCOUNTS__CORS__ALLOWED_ORIGINS: "*"
-      UCSSCHOOL_ACCOUNTS__ADAPTER__USERS_PERSISTENCE: "ucsschool_accounts_bff.adapters.users:KelvinUsersPersistenceAdapter"
-      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOLS_PERSISTENCE: "ucsschool_accounts_bff.adapters.schools:KelvinSchoolsPersistenceAdapter"
-      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "ucsschool_accounts_bff.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
-      UCSSCHOOL_ACCOUNTS__ADAPTER__WORK_GROUPS_PERSISTENCE: "ucsschool_accounts_bff.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
-      UCSSCHOOL_ACCOUNTS__ADAPTER__PERMISSIONS: "ucsschool_accounts_bff.adapters.permissions:CerbosPermissionsAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__USERS_PERSISTENCE: "ucsschool_accounts.adapters.users:KelvinUsersPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOLS_PERSISTENCE: "ucsschool_accounts.adapters.schools:KelvinSchoolsPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__SCHOOL_CLASSES_PERSISTENCE: "ucsschool_accounts.adapters.school_classes:KelvinSchoolClassesPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__WORK_GROUPS_PERSISTENCE: "ucsschool_accounts.adapters.work_groups:KelvinWorkGroupsPersistenceAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__PERMISSIONS: "ucsschool_accounts.adapters.permissions:CerbosPermissionsAdapter"
       KELVIN_PERSISTENCE_ADAPTER__USERNAME_FILE: /run/secrets/machine.user
       KELVIN_PERSISTENCE_ADAPTER__PASSWORD_FILE: /run/secrets/machine.secret
       KELVIN_PERSISTENCE_ADAPTER__URL: @!@
@@ -30,7 +30,7 @@ kelvin_url = ucr.get(
     f"{ucr.get('hostname')}.{ucr.get('domainname')}",
 )
 print(kelvin_url, end='')@!@
-      UCSSCHOOL_ACCOUNTS__ADAPTER__AUTHENTICATION: "ucsschool_accounts_bff.adapters.authentication:CookieSessionAuthenticationAdapter"
+      UCSSCHOOL_ACCOUNTS__ADAPTER__AUTHENTICATION: "ucsschool_accounts.adapters.authentication:CookieSessionAuthenticationAdapter"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_ID: "ucsschool-accounts-ui"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__CLIENT_SECRET_FILE: "/run/secrets/client.secret"
       COOKIE_SESSION_AUTHENTICATION_ADAPTER__IDENTIFIER_CLAIM: "uid"

@@ -7,7 +7,7 @@
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://ucsschool-accounts-proxy/keycloak}"
 KEYCLOAK_URL="${KEYCLOAK_URL%/}/"
 
-uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
+uv run --project $PROJECT_DIR/ucsschool-accounts keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -16,7 +16,7 @@ realms add ucs \
 --ignore-exists \
 --realm-data $PROJECT_DIR/dev/data/realm.json || exit 1
 
-uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
+uv run --project $PROJECT_DIR/ucsschool-accounts keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -25,7 +25,7 @@ uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
 users add dev univention \
 --ignore-exists || exit 1
 
-uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
+uv run --project $PROJECT_DIR/ucsschool-accounts keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \
@@ -34,7 +34,7 @@ uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
 clients add $PROJECT_DIR/appcenter-management/files/ucsschool-accounts_client_ui.json \
 --ignore-exists || exit 1
 
-uv run --project $PROJECT_DIR/ucsschool-accounts-bff keycloak-provisioning \
+uv run --project $PROJECT_DIR/ucsschool-accounts keycloak-provisioning \
 --username admin \
 --password admin \
 --url "$KEYCLOAK_URL" \

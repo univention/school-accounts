@@ -8,7 +8,7 @@ repos:
   rev: v4.5.0
   hooks:
     - id: check-added-large-files
-      exclude: '^ucsschool-accounts-bff/basedpyright-baseline\.json$'
+      exclude: '^ucsschool-accounts/basedpyright-baseline\.json$'
     - id: check-json
     - id: check-xml
     - id: check-yaml
@@ -16,15 +16,15 @@ repos:
       args: [--unsafe]
     - id: check-toml
     - id: trailing-whitespace
-      exclude: '^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/'
+      exclude: '^ucsschool-accounts/ucsschool_accounts/static/vendor/'
     - id: pretty-format-json
       args: [--autofix]
-      exclude: '^ucsschool-accounts-bff/basedpyright-baseline\.json$|^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/'
+      exclude: '^ucsschool-accounts/basedpyright-baseline\.json$|^ucsschool-accounts/ucsschool_accounts/static/vendor/'
 - repo: local
   hooks:
-    - id: bff-translation-check
-      name: bff-translation-check
-      entry: ucsschool-accounts-bff/scripts/check_translations.sh
+    - id: accounts-translation-check
+      name: accounts-translation-check
+      entry: ucsschool-accounts/scripts/check_translations.sh
       language: script
       pass_filenames: false
 - repo: local
@@ -33,11 +33,11 @@ repos:
     # already wraps pre-commit itself inside the dev container, which has uv/git but no docker.sock,
     # so a docker_image-based default hook would fail there. The container hooks below are kept as
     # manual-stage fallbacks for contributors running bare pre-commit without a local uv/Python setup.
-    - id: basedpyright-bff-native-baseline
-      name: basedpyright (bff, relative to baseline, native)
+    - id: basedpyright-accounts-native-baseline
+      name: basedpyright (accounts, relative to baseline, native)
       language: system
       entry: |
-        sh -c 'cd ucsschool-accounts-bff && uv sync --python 3.11 && \
+        sh -c 'cd ucsschool-accounts && uv sync --python 3.11 && \
           uv pip install basedpyright==1.39.8 && \
           .venv/bin/basedpyright \
             --project pyrightconfig.json \
@@ -45,30 +45,30 @@ repos:
             --baselinemode=auto' --
       pass_filenames: false
       types: [python]
-      files: ^ucsschool-accounts-bff/
-    - id: basedpyright-bff-container-baseline
-      name: basedpyright (bff, relative to baseline, docker)
+      files: ^ucsschool-accounts/
+    - id: basedpyright-accounts-container-baseline
+      name: basedpyright (accounts, relative to baseline, docker)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts baseline
       stages: [manual]
       pass_filenames: false
       types: [python]
-      files: ^ucsschool-accounts-bff/
-    - id: basedpyright-bff-container-no-baseline
-      name: basedpyright (bff, lint file, no baseline)
+      files: ^ucsschool-accounts/
+    - id: basedpyright-accounts-container-no-baseline
+      name: basedpyright (accounts, lint file, no baseline)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff no-baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts no-baseline
       stages: [manual]
       pass_filenames: true
       types: [python]
-      files: ^ucsschool-accounts-bff/
-    - id: basedpyright-bff-container-write-baseline
-      name: basedpyright (bff, write baseline)
+      files: ^ucsschool-accounts/
+    - id: basedpyright-accounts-container-write-baseline
+      name: basedpyright (accounts, write baseline)
       language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts-bff write-baseline
+      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts write-baseline
       stages: [manual]
       pass_filenames: false
-      files: ^ucsschool-accounts-bff/
+      files: ^ucsschool-accounts/
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:
@@ -94,8 +94,8 @@ repos:
   hooks:
     # Ensure uv lock is up-to-date
     - id: uv-lock
-      files: ucsschool-accounts-bff/pyproject.toml
-      args: [ --project, ucsschool-accounts-bff ]
+      files: ucsschool-accounts/pyproject.toml
+      args: [ --project, ucsschool-accounts ]
 - repo: https://git.knut.univention.de/univention/infrastructure/pre-commit-hooks/pre-commit-copyright
   rev: 0.2.1
   hooks:
@@ -131,12 +131,12 @@ repos:
                 |^dev/tests/.*[.]csv$\
                 |^docs/ucsschool-accounts/spelling_wordlist$\
                 |^docs/ucsschool-accounts/_static/.*[.]pdf$\
-                |^ucsschool-accounts-bff/uv[.]lock$\
-                |^ucsschool-accounts-bff/tests/data/.*[.]json$\
-                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/alpine[.]min[.]js$\
-                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/htmx[.]min[.]js$\
-                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system[.]js$\
-                |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/univention-design-system[.]css$\
+                |^ucsschool-accounts/uv[.]lock$\
+                |^ucsschool-accounts/tests/data/.*[.]json$\
+                |^ucsschool-accounts/ucsschool_accounts/static/vendor/alpine[.]min[.]js$\
+                |^ucsschool-accounts/ucsschool_accounts/static/vendor/htmx[.]min[.]js$\
+                |^ucsschool-accounts/ucsschool_accounts/static/vendor/univention-design-system[.]js$\
+                |^ucsschool-accounts/ucsschool_accounts/static/vendor/univention-design-system[.]css$\
                 "
       language_version: python3.11
     - id: reuse

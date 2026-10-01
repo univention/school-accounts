@@ -17,13 +17,13 @@ read the former before making any non-trivial UI/architecture change.
 
 Top-level areas:
 
-- [ucsschool-accounts-bff/](ucsschool-accounts-bff/) — the application: FastAPI + Jinja2 + htmx. Nearly
+- [ucsschool-accounts/](ucsschool-accounts/) — the application: FastAPI + Jinja2 + htmx. Nearly
   all day-to-day work happens here.
 - [appcenter-management/](appcenter-management/) — UCS App Center install/config scripts, Docker
   Compose templates, and Cerbos authorization policies (`.yaml` resource/derived-role policies under
   `appcenter-management/files/policies/`, registered in LDAP on join as a Guardian policy bundle for
   a Cerbos-hosting listener to pick up — see `appcenter-management/inst`/`templates/preinst.tmpl`).
-  Independent from the BFF's own permission adapter (§ Architecture) — only touch this when changing
+  Independent from the app's own permission adapter (§ Architecture) — only touch this when changing
   how the app is *installed* or how Cerbos policies are evaluated for this app, not for
   UI/business-logic changes.
 - [docs/ucsschool-accounts/](docs/ucsschool-accounts/) — the published
@@ -32,10 +32,10 @@ Top-level areas:
 - [dev/](dev/) — local dev environment (Docker Compose, Keycloak provisioning, fixture data,
   scripts, integration-test config). See § Development Environment.
 
-## Repository Structure (`ucsschool-accounts-bff/`)
+## Repository Structure (`ucsschool-accounts/`)
 
 ```text
-ucsschool_accounts_bff/
+ucsschool_accounts/
   main.py                   FastAPI app, middleware, global exception -> HTML handlers
   routes.py                 all UI routes (thin handlers), render() helper
   business_logic.py         domain rules + permission checks; no I/O of its own, calls only ports
@@ -59,7 +59,7 @@ ucsschool_accounts_bff/
     fragments/                htmx partials (user_table, user_filters, school_options, group_options, toast)
     macros/                   layout.py-style Jinja macros: page_header/toast, cell() cell-kind dispatch
   static/vendor/             vendored htmx, Alpine.js, Univention design-system (CSS/JS/web components)
-locales/                    gettext catalogs (de/LC_MESSAGES/...) — sibling of ucsschool_accounts_bff/, not nested under it
+locales/                    gettext catalogs (de/LC_MESSAGES/...) — sibling of ucsschool_accounts/, not nested under it
 keycloak_provisioning/       separate Typer CLI: seeds Keycloak realms/clients/users for dev/test only;
                              unrelated to the adapters above, not for production use
 tests/
@@ -140,7 +140,7 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   `password_reset_matrix` table in `files/policies/constants/password_reset_constants.yaml`
   (resource role → principal role → the relationships required between those two role entries).
   Adding a role driven route is an edit to that table. Inside the policies use Cerbos's words,
-  `resource` and `principal`, not the BFF's `Target`/`actor` — the adapter is where the two
+  `resource` and `principal`, not the app's `Target`/`actor` — the adapter is where the two
   vocabularies meet. A reset needs a cell for *every* role its resource holds
   (`variables.principal_may_reset_every_resource_role`) and one pair of role entries that
   satisfies its relationships (`variables.matrix_binds_a_role_pair`). Authority is per role name
@@ -299,7 +299,7 @@ already keeps a cross-site POST from carrying it.
   expressed as an htmx-observable DOM event, and don't add a new JS bundling/build step without
   discussing it first (none exists today).
 - htmx, Alpine, and the design-system bundle are **vendored** under
-  `ucsschool_accounts_bff/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
+  `ucsschool_accounts/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
   Files before touching them.
 - The design-system CSS is loaded as a render-blocking `<link>` deliberately (commit `66a610f`, fixed
   a flash-of-unstyled-content bug) — don't revert to runtime style injection.
@@ -343,9 +343,9 @@ beyond having `docker` (>= 25) installed.
 - `dev/dev_run.sh pre-commit run [-a]` — runs the pre-commit suite (see § Testing and Validation).
 - `dev/.env` is created from `dev/.env.example` on first run and is **git-ignored** — treat any
   `dev/.env*` file other than `.env.example` as local/untracked, never edit or commit it.
-- The frontend tests (`ucsschool-accounts-bff/tests/frontend/`) need a deployment to drive, so they are
+- The frontend tests (`ucsschool-accounts/tests/frontend/`) need a deployment to drive, so they are
   excluded from the normal backend test loop by the `frontend` marker. CI stands up their stack in
-  the `bff-frontend-test` job (Keycloak service container + the BFF on the File adapters, started
+  the `accounts-frontend-test` job (Keycloak service container + the app on the File adapters, started
   from `dev/.env.example` in the job itself); locally the `dev-server` stack is that deployment.
   The manual `integration-tests` job also runs them, seeded through Kelvin, against the UCS VM it
   installs the app on (`dev/tests/run_frontend_tests.sh`, from `integration_tests.cfg`).
@@ -358,13 +358,13 @@ docker compose so no local Python/Node install is required.
 | Goal | Command |
 | --- | --- |
 | Run backend unit/integration tests | `dev/dev_run.sh task pytest` |
-| Run a single test file/case | `dev/dev_run.sh task pytest ucsschool-accounts-bff/tests/test_routes.py::test_users_search_renders_results` |
+| Run a single test file/case | `dev/dev_run.sh task pytest ucsschool-accounts/tests/test_routes.py::test_users_search_renders_results` |
 | Run backend e2e tests | see § Development Environment — requires a live `E2E_*` environment |
 | Run the frontend tests | `dev/dev_run.sh task dev-server --detach --wait`, then `dev/dev_run.sh task pytest-frontend` |
 | Watch a frontend test in a real browser | `dev/dev_run.sh task pytest-frontend-headed` |
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
-| Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-bff-container-baseline --all-files` |
+| Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-accounts-container-baseline --all-files` |
 | Start the dev server | `dev/dev_run.sh task dev-server` |
 | Start a local Cerbos server (manual policy/adapter testing) | `dev/dev_run.sh task cerbos-server` |
 | Lint/test the Cerbos policies (`cerbos compile`) | `dev/dev_run.sh task cerbos-compile` |
@@ -375,7 +375,7 @@ docker compose so no local Python/Node install is required.
 | Regenerate the App Center `inst` script | `cd appcenter-management && ./scripts/generate-preinst` |
 
 CI (`.gitlab-ci/gitlab-ci.yml`) runs the equivalent of `pytest -m "not e2e and not frontend"` with **coverage gated via
-the `BFF_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `ucsschool_accounts_bff` +
+the `ACCOUNTS_COVERAGE_LIMIT` CI variable (currently `"100"`, i.e. 100%)** over `ucsschool_accounts` +
 `keycloak_provisioning` (excluding `main.py` and `constants.py` — see
 `[tool.coverage.run] omit` in `pyproject.toml`). New code outside those three omitted files must be
 fully covered or CI fails.
@@ -386,12 +386,12 @@ Enforced by tooling (pre-commit, see `.pre-commit-config.yaml`) — treat these 
 optional:
 
 - **black** (line length 105, target py311) and **ruff** (`E, F, I, B`, `B008`/`B904` ignored,
-  `--fix`) — both configured in `ucsschool-accounts-bff/pyproject.toml`.
-- **basedpyright** on the package (config: `ucsschool-accounts-bff/pyrightconfig.json`) with a committed
+  `--fix`) — both configured in `ucsschool-accounts/pyproject.toml`.
+- **basedpyright** on the package (config: `ucsschool-accounts/pyrightconfig.json`) with a committed
   baseline (`basedpyright-baseline.json`) suppressing pre-existing findings — only *new*
   diagnostics fail the pre-commit hook/CI job. The default `basedpyright-*-native-baseline` hooks run
   against the host's `uv`-managed venv; for a precise type check that matches CI exactly, run the
-  containerized hook instead: `uvx prek run --hook-stage manual basedpyright-bff-container-baseline
+  containerized hook instead: `uvx prek run --hook-stage manual basedpyright-accounts-container-baseline
   --all-files`. These container hooks are `stages: [manual]`, so `pre-commit run -a`
   alone skips them — invoke them explicitly when you want a trustworthy type-check result.
 - **bandit** on everything except `tests/` and `appcenter-management/scripts/test_*`.
@@ -402,10 +402,10 @@ optional:
 - Commit messages: **Conventional Commits, strictly enforced** (`conventional-pre-commit --strict`),
   plus a required issue reference trailer (`Issue <project>#<number>` or `Bug #<number>`) checked by
   the local `issue-reference` hook.
-- User-facing strings must be wrapped in `_()` from `ucsschool_accounts_bff.lang` (see
-  `from ucsschool_accounts_bff.lang import _`) so they flow into the translation catalog — see next
+- User-facing strings must be wrapped in `_()` from `ucsschool_accounts.lang` (see
+  `from ucsschool_accounts.lang import _`) so they flow into the translation catalog — see next
   section for the follow-up step this requires. This applies to Jinja templates too: extraction
-  runs `pybabel extract` over `*.py` **and** `templates/**.html` via `ucsschool-accounts-bff/babel.cfg`,
+  runs `pybabel extract` over `*.py` **and** `templates/**.html` via `ucsschool-accounts/babel.cfg`,
   so an untranslated `{{ _("...") }}` fails the check exactly like a Python one.
 - A msgid that is only ever reached through a variable (a role label looked up by id, say) is
   invisible to extraction. Mark the literal with `N_()` where it is defined — see `_ROLE_LABELS` in
@@ -494,14 +494,14 @@ no access token is stored) rather than restating what the code does.
 
 ## Generated and Sensitive Files
 
-- **Do not hand-edit**: `ucsschool-accounts-bff/locales/de/LC_MESSAGES/*.mo` (compiled, git-ignored —
+- **Do not hand-edit**: `ucsschool-accounts/locales/de/LC_MESSAGES/*.mo` (compiled, git-ignored —
   regenerate with `dev/dev_run.sh task translate`), anything under `.cache/` (git-ignored build/test
   cache), `appcenter-management/preinst` (git-ignored, generated by
   `appcenter-management/scripts/generate-preinst` from `templates/preinst.tmpl`). Note: `README.md`
   says `inst` is generated from `templates/inst.tmpl` — that template doesn't exist in this tree and
   `inst` is a normal tracked file; treat the README claim as stale and confirm before editing `inst`
   as if it were hand-authored.
-- **Vendored, not authored here**: `ucsschool_accounts_bff/static/vendor/{htmx,alpine}.min.js` and
+- **Vendored, not authored here**: `ucsschool_accounts/static/vendor/{htmx,alpine}.min.js` and
   `univention-design-system.{css,js}`. Upgrading these means replacing the vendored file and its
   `.license` sidecar (see commit `19772ef`), not patching them in place.
 - **Secrets / local-only**: `dev/.env` (git-ignored, created from `dev/.env.example`) and anything
@@ -510,7 +510,7 @@ no access token is stored) rather than restating what the code does.
 - **`*.license` sidecar files**: required by the `reuse` tool for any file it can't auto-annotate
   (JSON fixtures, binary assets, `.po` files). Generate with `dev/dev_run.sh task reuse`; if reuse
   still fails afterward, create the `.license` file by hand following the existing ones' format.
-- `ucsschool-accounts-bff/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
+- `ucsschool-accounts/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
   `uv add <package>` inside the relevant package directory, which updates that package's
   `pyproject.toml` and lockfile together, instead of editing either file manually.
 
@@ -550,7 +550,7 @@ no access token is stored) rather than restating what the code does.
 - Leaving a new `_()`-wrapped string untranslated — CI's translation check (and `task translate`
   locally) will fail the build, not just warn. Templates are covered by that check too.
 - Forgetting that CI requires **100% coverage** on any file not explicitly listed in
-  `[tool.coverage.run] omit` — an uncovered branch in new code fails `bff-test`/`bff-coverage`, not
+  `[tool.coverage.run] omit` — an uncovered branch in new code fails `accounts-test`, not
   just a manually-run local suite.
 - Editing `appcenter-management/preinst` directly — it's generated; edit
   `appcenter-management/templates/preinst.tmpl` and run `./scripts/generate-preinst`.

@@ -16,7 +16,7 @@ services:
       # Give the compose stack its own environment directory. Same reasoning as
       # docker/pre_commit/run-basedpyright.sh, but a distinct directory so a basedpyright run
       # cannot re-sync the environment of a running dev server.
-      UV_PROJECT_ENVIRONMENT: /src/ucsschool-accounts-bff/.compose_venv
+      UV_PROJECT_ENVIRONMENT: /src/ucsschool-accounts/.compose_venv
     command: ["dev/scripts/install_deps.sh"]
     profiles:
       - clean-profile
@@ -67,7 +67,7 @@ services:
       - "--set=telemetry.disabled=true"
       # Decision logs go to this container's stdout by default once enabled (audit.file.path
       # defaults to "stdout") - lets `docker compose logs cerbos` show the full evaluation trace
-      # (matched policies, effective derived roles) for a call_id logged by the BFF adapter's
+      # (matched policies, effective derived roles) for a call_id logged by
       # CerbosPermissionsAdapter.get_permissions.
       # Production Cerbos Guardian installed via Univention App Center supports this setting via
       # (boolean) UCR variable: `guardian/cerbos/audit-logging/enabled`.
@@ -140,27 +140,27 @@ services:
       traefik.http.services.keycloak.loadbalancer.server.port: 8080
       traefik.http.middlewares.customheaders.headers.customrequestheaders.X-Forwarded-Proto: http
       traefik.http.routers.keycloak.middlewares: customheaders
-  bff:
+  accounts:
     image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-accounts-bff
+    container_name: ucsschool-accounts
     environment: *uv-project-environment
-    command: &bff-command
+    command: &accounts-command
       - "uv"
       - "run"
       - "--project"
-      - "ucsschool-accounts-bff"
+      - "ucsschool-accounts"
       - "uvicorn"
       - "--reload"
       - "--reload-dir"
-      - "ucsschool-accounts-bff/ucsschool_accounts_bff"
+      - "ucsschool-accounts/ucsschool_accounts"
       - "--log-level"
       - "debug"
       - "--host"
       - "0.0.0.0"
       - "--port"
       - "8000"
-      - "ucsschool_accounts_bff.main:app"
+      - "ucsschool_accounts.main:app"
     profiles:
       - clean-profile
       - dev-server
@@ -182,35 +182,35 @@ services:
     extra_hosts: *extra_hosts
     volumes: *default-volumes
     env_file: *env-files
-    labels: &bff-labels
-      traefik.http.routers.bff.entrypoints: web
-      traefik.http.routers.bff.rule: PathPrefix(`${UCSSCHOOL_ACCOUNTS__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/ucsschool-accounts/ui`)
-      traefik.http.routers.bff.service: bff
-      traefik.http.services.bff.loadbalancer.server.port: 8000
-    develop: &bff-develop
+    labels: &accounts-labels
+      traefik.http.routers.accounts.entrypoints: web
+      traefik.http.routers.accounts.rule: PathPrefix(`${UCSSCHOOL_ACCOUNTS__API_PREFIX}`) || PathPrefix(`/univention/ucsschool/ucsschool-accounts/ui`)
+      traefik.http.routers.accounts.service: accounts
+      traefik.http.services.accounts.loadbalancer.server.port: 8000
+    develop: &accounts-develop
       watch:
         # backend project
         - action: sync
-          path: ../ucsschool-accounts-bff
-          target: /src/ucsschool-accounts-bff
+          path: ../ucsschool-accounts
+          target: /src/ucsschool-accounts
         # backend dependencies
         - action: rebuild
-          path: ../ucsschool-accounts-bff/pyproject.toml
+          path: ../ucsschool-accounts/pyproject.toml
         - action: rebuild
-          path: ../ucsschool-accounts-bff/uv.lock
+          path: ../ucsschool-accounts/uv.lock
         # dev Dockerfile
         - action: rebuild
           path: Dockerfile
-  # The same dev server as `bff`, wired to a real Kelvin and a real Cerbos
+  # The same dev server as `accounts`, wired to a real Kelvin and a real Cerbos
   # instead of the file adapters, and with no interactive login, so a page can
   # be measured against a populated environment with plain curl. `.env.kelvin`
   # carries the overrides and comes after `.env`, so it wins.
-  bff_kelvin:
+  accounts_kelvin:
     image: ucsschool-accounts-dev:latest
     build: *docker-build
-    container_name: ucsschool-accounts-bff-kelvin
+    container_name: ucsschool-accounts-kelvin
     environment: *uv-project-environment
-    command: *bff-command
+    command: *accounts-command
     profiles:
       - clean-profile
       - kelvin-server
@@ -233,8 +233,8 @@ services:
     env_file:
       - path: .env
       - path: .env.kelvin
-    labels: *bff-labels
-    develop: *bff-develop
+    labels: *accounts-labels
+    develop: *accounts-develop
   production_container:
     image: ucsschool-accounts-prod:latest
     build:

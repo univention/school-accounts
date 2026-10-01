@@ -64,18 +64,18 @@ include:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.16.2
     inputs:
-      job_prefix: "bff_"
+      job_prefix: "accounts_"
       pipeline_stage: build
-      python_paths: --project ucsschool-accounts-bff/pyrightconfig.json ucsschool-accounts-bff
+      python_paths: --project ucsschool-accounts/pyrightconfig.json ucsschool-accounts
       python_version: "3.11"
       basedpyright_version: "1.39.8"
-      baseline_file: ucsschool-accounts-bff/basedpyright-baseline.json
+      baseline_file: ucsschool-accounts/basedpyright-baseline.json
       before_script:
-        - uv sync --project ucsschool-accounts-bff --python 3.11
+        - uv sync --project ucsschool-accounts --python 3.11
       job_rules:
         - if: $CI_MERGE_REQUEST_ID
           changes:
-            - ucsschool-accounts-bff/**/*
+            - ucsschool-accounts/**/*
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.16.2
@@ -224,28 +224,28 @@ policy-version-bump:
   script:
     - .gitlab-ci/scripts/check-policy-version-bump.sh
 
-bff-test:
+accounts-test:
   stage: test
   needs: [build_dev_image]
   tags: ["dae-m"]
   image: $DEV_IMAGE_TAG
   variables:
-    BFF_COVERAGE_LIMIT: "100"
+    ACCOUNTS_COVERAGE_LIMIT: "100"
     UV_SYSTEM_PYTHON: 1 # installs deps to the system directly
   before_script:
-    - ./ucsschool-accounts-bff/scripts/test_setup.sh
+    - ./ucsschool-accounts/scripts/test_setup.sh
     - pip install uv=="$UV_VERSION"
-    - uv pip install ucsschool-accounts-bff/
+    - uv pip install ucsschool-accounts/
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
-        - ucsschool-accounts-bff/**/*
+        - ucsschool-accounts/**/*
     - if: $CI_COMMIT_REF_PROTECTED == "true"
     - if: $CI_COMMIT_TAG
     - when: manual
       allow_failure: true
   script:
-    - uv run --project ucsschool-accounts-bff/ pytest -vv -m "not e2e and not frontend" --junitxml=report.xml --cov --cov-config=ucsschool-accounts-bff/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$BFF_COVERAGE_LIMIT" ucsschool-accounts-bff/
+    - uv run --project ucsschool-accounts/ pytest -vv -m "not e2e and not frontend" --junitxml=report.xml --cov --cov-config=ucsschool-accounts/pyproject.toml --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under="$ACCOUNTS_COVERAGE_LIMIT" ucsschool-accounts/
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
@@ -254,7 +254,7 @@ bff-test:
         path: coverage.xml
       junit: report.xml
 
-bff-frontend-test:
+accounts-frontend-test:
   stage: test
   needs: [build_dev_image]
   tags: ["dae-m"]
@@ -284,23 +284,23 @@ bff-frontend-test:
   cache:
     key:
       files:
-        - ucsschool-accounts-bff/uv.lock
+        - ucsschool-accounts/uv.lock
     paths:
       - .cache/ms-playwright/
   before_script:
     # dev/.env.example paths assume the compose bind mount at /src.
     - rmdir /src && ln -s "$CI_PROJECT_DIR" /src
-    - ./ucsschool-accounts-bff/scripts/test_setup.sh
-    - uv run --project ucsschool-accounts-bff/ playwright install chromium
+    - ./ucsschool-accounts/scripts/test_setup.sh
+    - uv run --project ucsschool-accounts/ playwright install chromium
     - curl -sf --retry 90 --retry-delay 2 --retry-all-errors -o /dev/null "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration"
     - dev/scripts/provision_keycloak.sh
     - mkdir -p .cache
-    - 'uv run --project ucsschool-accounts-bff/ --env-file dev/.env.example uvicorn --port 8000 ucsschool_accounts_bff.main:app > .cache/frontend-test-bff.log 2>&1 &'
+    - 'uv run --project ucsschool-accounts/ --env-file dev/.env.example uvicorn --port 8000 ucsschool_accounts.main:app > .cache/frontend-test-accounts.log 2>&1 &'
     - curl -sf --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "$FRONTEND_BASE_URL/univention/ucsschool/ucsschool-accounts/ui/"
   rules:
     - if: $CI_MERGE_REQUEST_ID
       changes:
-        - ucsschool-accounts-bff/**/*
+        - ucsschool-accounts/**/*
         - dev/**/*
         - appcenter-management/files/ucsschool-accounts_client_ui.json
         - .gitlab-ci/gitlab-ci.yml
@@ -309,11 +309,11 @@ bff-frontend-test:
     - when: manual
       allow_failure: true
   script:
-    - uv run --project ucsschool-accounts-bff/ pytest -vv -m frontend --base-url "$FRONTEND_BASE_URL" --browser chromium --screenshot only-on-failure --tracing retain-on-failure --output .cache/frontend-test-results --junitxml=frontend-report.xml ucsschool-accounts-bff/tests/frontend
+    - uv run --project ucsschool-accounts/ pytest -vv -m frontend --base-url "$FRONTEND_BASE_URL" --browser chromium --screenshot only-on-failure --tracing retain-on-failure --output .cache/frontend-test-results --junitxml=frontend-report.xml ucsschool-accounts/tests/frontend
   artifacts:
     when: always
     paths:
-      - .cache/frontend-test-bff.log
+      - .cache/frontend-test-accounts.log
       - .cache/frontend-test-results/
     reports:
       junit: frontend-report.xml
@@ -338,7 +338,7 @@ integration-tests:
     - job: update_appcenter
   rules:
     - changes:
-        - ucsschool-accounts-bff/**/*
+        - ucsschool-accounts/**/*
         - appcenter-management/**/*
         - dev/tests/**/*
       when: manual
