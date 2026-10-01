@@ -58,7 +58,7 @@ change the link of the portal entry:
 User visibility
 ===============
 
-You can't configure which users appear in the list view.
+This preview doesn't yet support configuring which users appear in the list view.
 The list view shows a user when the Guardian grants the signed-in user
 at least one permission on them.
 For the permissions of each role, see :ref:`roles-permissions-and-conditions`.

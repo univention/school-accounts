@@ -16,7 +16,7 @@ For more information about how the Guardian reaches a decision,
 see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 
 The policy bundle fixes the roles and their permissions.
-You can't create roles or change the permissions of a role.
+This preview doesn't yet support creating new roles or changing the permissions of a role.
 
 .. _roles-table:
 
