@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import getenv
 from typing import TYPE_CHECKING, Any, TypedDict, cast
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -250,7 +251,7 @@ def kelvin_scope() -> Iterator[_SessionHolder]:
     Sync on purpose: pytest-asyncio runs an async fixture in a different context
     from the test, so a ContextVar set there never reaches the test body.
     """
-    with enter_session_scope() as holder:
+    with enter_session_scope(request_id=str(uuid4())) as holder:
         yield holder
 
 

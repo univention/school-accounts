@@ -156,6 +156,7 @@ class _SessionHolder:
     set deeper can land in a copied context and never reach it.
     """
 
+    request_id: str
     session: Session | None = None
     # Kelvin objects this request already fetched, by name.
     fetched: dict[str, object] = field(default_factory=dict)
@@ -165,9 +166,9 @@ _session_holder: ContextVar[_SessionHolder | None] = ContextVar("kelvin_session_
 
 
 @contextmanager
-def enter_session_scope() -> Generator[_SessionHolder]:
+def enter_session_scope(request_id: str) -> Generator[_SessionHolder]:
     """Open a scope without closing what lands in it - the caller owns that."""
-    holder = _SessionHolder()
+    holder = _SessionHolder(request_id=request_id)
     token = _session_holder.set(holder)
     try:
         yield holder
@@ -176,7 +177,7 @@ def enter_session_scope() -> Generator[_SessionHolder]:
 
 
 @asynccontextmanager
-async def kelvin_session_scope() -> AsyncGenerator[None]:
+async def kelvin_session_scope(request_id: str) -> AsyncGenerator[None]:
     """Bind one Kelvin session to the work inside, then close it.
 
     Every adapter in the scope shares it, so a request opens one set of connections
@@ -184,7 +185,7 @@ async def kelvin_session_scope() -> AsyncGenerator[None]:
     carries to the next one. The login itself outlives the scope - see
     ``SharedTokenSession``.
     """
-    with enter_session_scope() as holder:
+    with enter_session_scope(request_id=request_id) as holder:
         try:
             yield
         finally:
@@ -254,6 +255,7 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
                 api_version=KELVIN_API_VERSION,
                 verify=os.environ.get("SSL_CERT_FILE"),
                 timeout=KELVIN_TIMEOUT_SECONDS,
+                request_id=holder.request_id,
             )
             # `Session.client` raises "Session is closed." until this runs.
             holder.session.open()

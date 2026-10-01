@@ -77,13 +77,21 @@ class TestKelvinPersistenceBaseAdapter:
         """Nothing is held between requests, so a connection the server dropped while
         idle cannot surface in the next one."""
         adapter._settings = dummy_settings
-        async with kelvin_session_scope():
+        async with kelvin_session_scope(request_id="the-request"):
             first = adapter.kelvin_session
         with pytest.raises(RuntimeError, match="Session is closed."):
             _client = first.client
 
-        async with kelvin_session_scope():
+        async with kelvin_session_scope(request_id="the-request"):
             assert adapter.kelvin_session is not first
+
+    @pytest.mark.asyncio
+    async def test_the_session_carries_the_scopes_request_id(
+        self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
+    ):
+        adapter._settings = dummy_settings
+        async with kelvin_session_scope(request_id="the-request"):
+            assert adapter.kelvin_session.request_id == "the-request"
 
     def test_no_session_outside_a_scope(
         self, adapter: DummyAdapter, dummy_settings: KelvinPersistenceAdapterSettings
@@ -108,7 +116,7 @@ class TestKelvinPersistenceBaseAdapter:
     ):
         mocker.patch("ucsschool.kelvin.client.session.Session.request", side_effect=failure)
         adapter._settings = dummy_settings
-        async with kelvin_session_scope():
+        async with kelvin_session_scope(request_id="the-request"):
             with pytest.raises(KelvinAPIUnavailableError):
                 await adapter.kelvin_session.request(adapter.kelvin_session.client.get, "https://kelvin")
 
@@ -120,7 +128,7 @@ async def test_the_scope_survives_a_session_that_cannot_be_closed():
     session = MagicMock()
     session.close = AsyncMock(side_effect=RuntimeError("connection already gone"))
 
-    async with kelvin_session_scope():
+    async with kelvin_session_scope(request_id="the-request"):
         holder = adapters_base._session_holder.get()
         assert holder is not None
         holder.session = cast("Session", cast("object", session))

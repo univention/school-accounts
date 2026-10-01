@@ -19,7 +19,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.types import Scope
 
-from ucsschool_accounts_bff import business_logic
+from ucsschool_accounts_bff import business_logic, routes
 from ucsschool_accounts_bff.adapters.authentication import NeverAuthenticatedAdapter
 from ucsschool_accounts_bff.adapters.permissions import FilePermissionsAdapter
 from ucsschool_accounts_bff.adapters.school_classes import FileSchoolClassesPersistenceAdapter
@@ -438,6 +438,16 @@ def test_users_search_renders_results(test_client: TestClient):
     assert "<u-badge" in body  # activated status badge
     # The searched school is preselected on the school list (deep-link friendly).
     assert 'value="school1" selected' in body
+
+
+def test_kelvin_is_given_the_request_id_the_bff_logs_under(
+    test_client: TestClient, mocker: MockerFixture
+):
+    scope = mocker.spy(routes, "kelvin_session_scope")
+    test_client.get(  # pyright: ignore[reportUnknownMemberType]
+        f"{FRONTEND_PREFIX}/users", headers={CORRELATION_ID_HEADER_NAME: "the-request"}
+    )
+    assert scope.call_args.kwargs["request_id"] == "the-request"
 
 
 def _users_page(test_client: TestClient, accept_language: str, **params: str | list[str]) -> str:

@@ -38,7 +38,7 @@ def kelvin_scope() -> Iterator[None]:
     The sync entry point, so this also covers the non-async tests; nothing here
     performs I/O, so the session it may create needs no closing.
     """
-    with enter_session_scope():
+    with enter_session_scope(request_id="the-request"):
         yield
 
 

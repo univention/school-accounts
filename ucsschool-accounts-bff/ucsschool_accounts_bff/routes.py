@@ -43,6 +43,7 @@ from .constants import (
     FRONTEND_PREFIX,
     TEMPLATES_DIR,
 )
+from .correlation_id import correlation_id_ctx_var
 from .errors import PermissionsError
 from .lang import _, get_lang
 from .models import School, UsersGetRequest
@@ -82,7 +83,7 @@ async def kelvin_session() -> AsyncIterator[None]:
     Declared on the router so a new route cannot forget it, and so the adapters
     keep their own signatures - they read the scope rather than being handed it.
     """
-    async with kelvin_session_scope():
+    async with kelvin_session_scope(request_id=correlation_id_ctx_var.get()):
         yield
 
 
