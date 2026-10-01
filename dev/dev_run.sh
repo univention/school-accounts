@@ -38,7 +38,7 @@ run_task() {
   fi
   echo "Running task $TASK"
   if [[ "$TASK" = "clean" ]]; then
-    rm -rf .cache docs/ucsschool-accounts-module/_build
+    rm -rf .cache docs/ucsschool-accounts/_build
     DOCKER_USER=$DOCKER_USER GITLAB_IP=$GITLAB_IP docker compose \
     -f dev/docker-compose.yaml \
     --profile "clean-profile" \

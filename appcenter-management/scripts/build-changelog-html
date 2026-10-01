@@ -20,7 +20,7 @@ from pathlib import Path
 from lxml import html
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CHANGELOG_RST = REPO_ROOT / "docs" / "ucsschool-accounts-module" / "changelog.rst"
+CHANGELOG_RST = REPO_ROOT / "docs" / "ucsschool-accounts" / "changelog.rst"
 CHANGELOG_HTML = "changelog.html"
 
 # A throwaway Sphinx project with only the extensions that provide Univention's

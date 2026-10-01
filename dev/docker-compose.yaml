@@ -268,7 +268,7 @@ services:
     image: docker-registry.knut.univention.de/sphinx:latest
     pull_policy: always
     container_name: ucsschool-accounts-sphinx
-    command: ["make", "-C", "docs/ucsschool-accounts-module/", "livehtml"]
+    command: ["make", "-C", "docs/ucsschool-accounts/", "livehtml"]
     working_dir: /project
     profiles:
       - sphinx

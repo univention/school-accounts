@@ -9,7 +9,7 @@ include:
       app_id: "ucsschool-accounts"
       mail_sender: "ucsschool-maintainers@univention.de"
       author_alias: "The ByteBenders"
-      changelog_link: "https://docs.software-univention.de/ucsschool-accounts-module/changelog.html"
+      changelog_link: "https://docs.software-univention.de/ucsschool-accounts/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#ucsschool"
       ucs_base_version: "5.2"
@@ -83,11 +83,11 @@ include:
       stage: build
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.16.2
     inputs:
-      docs_dir: "docs/ucsschool-accounts-module"
-      doc_target_name: "ucsschool-accounts-module"
+      docs_dir: "docs/ucsschool-accounts"
+      doc_target_name: "ucsschool-accounts"
       job_rules:
         - changes: &docs_build_changes
-            - "docs/ucsschool-accounts-module/**/*"
+            - "docs/ucsschool-accounts/**/*"
             - ".gitlab-ci/gitlab-ci.yml"
       merge_rules:
         - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
@@ -98,7 +98,7 @@ include:
       production_rules:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
           changes:
-            - "docs/ucsschool-accounts-module/**/*"
+            - "docs/ucsschool-accounts/**/*"
 
 variables:
   UV_VERSION: "0.11.21"
@@ -371,7 +371,7 @@ pages:
   script:
     - "true"
   pages:
-    publish: "out/ucsschool-accounts-module"
+    publish: "out/ucsschool-accounts"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes: *docs_build_changes

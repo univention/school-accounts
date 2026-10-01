@@ -26,7 +26,7 @@ Top-level areas:
   Independent from the BFF's own permission adapter (§ Architecture) — only touch this when changing
   how the app is *installed* or how Cerbos policies are evaluated for this app, not for
   UI/business-logic changes.
-- [docs/ucsschool-accounts-module/](docs/ucsschool-accounts-module/) — the published
+- [docs/ucsschool-accounts/](docs/ucsschool-accounts/) — the published
   Sphinx user manual (installation, configuration, troubleshooting, changelog). User-facing, built
   in CI (`docs:*` jobs from the `sphinx-docs` CI component); not developer documentation.
 - [dev/](dev/) — local dev environment (Docker Compose, Keycloak provisioning, fixture data,
@@ -519,7 +519,7 @@ no access token is stored) rather than restating what the code does.
 - New user-facing strings: wrap in `_()`, then run `dev/dev_run.sh task translate` — it will report
   any untranslated/fuzzy entries in `locales/de/LC_MESSAGES/ucsschool-accounts.po` for you to
   fill in before it will compile the `.mo` file.
-- User-visible changes should update `docs/ucsschool-accounts-module/changelog.rst`, as the QA
+- User-visible changes should update `docs/ucsschool-accounts/changelog.rst`, as the QA
   checklist in [README.md](README.md#qa-checklist) asks. It is the only changelog: the
   `build_changelog_html` CI job renders it into `changelog.html`, which
   `appcenter-management/README_UPDATE_{DE,EN}.jinja` extend for the App Center. Don't hand-write
@@ -528,7 +528,7 @@ no access token is stored) rather than restating what the code does.
 - Architectural or HTMX-pattern changes of any significance should be reflected in
   [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) (it is maintained as a living design
   doc, not a point-in-time snapshot — it currently documents up to commit `176b03d`).
-- Sphinx manual changes (`docs/ucsschool-accounts-module/`) are validated in CI by
+- Sphinx manual changes (`docs/ucsschool-accounts/`) are validated in CI by
   `docs:linkcheck`, `docs:spelling` (uses `spelling_wordlist`), `docs:html`, and `docs:pdf` jobs, all
   gated on changes under that path. They come from the `sphinx-docs` component of `ci-components`;
   configure them through its inputs in `.gitlab-ci/gitlab-ci.yml`, not by adding jobs. The `pages`
@@ -573,7 +573,7 @@ Before considering a change complete:
 - [ ] Any new user-facing string is translated (`task translate` reports no fuzzy/untranslated
       entries).
 - [ ] If the change affects install/update behavior or is otherwise QA-relevant,
-      `docs/ucsschool-accounts-module/changelog.rst` is updated.
+      `docs/ucsschool-accounts/changelog.rst` is updated.
 - [ ] If the change alters the HTMX request/rendering model or a documented architectural boundary,
       [dev/docs/htmx-architecture.md](dev/docs/htmx-architecture.md) is updated to match.
 - [ ] Commit message is Conventional-Commits-formatted and includes an `Issue <project>#<number>` (or

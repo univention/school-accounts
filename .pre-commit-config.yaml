@@ -129,8 +129,8 @@ repos:
                 |^dev/data/.*[.]json$\
                 |^dev/tests/.*[.]json$\
                 |^dev/tests/.*[.]csv$\
-                |^docs/ucsschool-accounts-module/spelling_wordlist$\
-                |^docs/ucsschool-accounts-module/_static/.*[.]pdf$\
+                |^docs/ucsschool-accounts/spelling_wordlist$\
+                |^docs/ucsschool-accounts/_static/.*[.]pdf$\
                 |^ucsschool-accounts-bff/uv[.]lock$\
                 |^ucsschool-accounts-bff/tests/data/.*[.]json$\
                 |^ucsschool-accounts-bff/ucsschool_accounts_bff/static/vendor/alpine[.]min[.]js$\

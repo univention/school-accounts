@@ -134,7 +134,7 @@ latex_elements = {
 }
 
 # Sitemap, see https://github.com/jdillard/sphinx-sitemap
-html_baseurl = "https://docs.software-univention.de/ucsschool-accounts-module/"
+html_baseurl = "https://docs.software-univention.de/ucsschool-accounts/"
 sitemap_url_scheme = "{link}"
 
 # Configure Univention feedback link
