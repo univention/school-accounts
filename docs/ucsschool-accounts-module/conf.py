@@ -21,39 +21,7 @@ from datetime import date
 # -- Project information -----------------------------------------------------
 
 
-def read_version_from_ci() -> str:
-    """Read the version for the documentation from the pipeline definition
-
-    To not maintain the documentation version in different places, just define
-    at one place and use it in different places.
-
-    The documentation version influences the version shown in the content of
-    the document and the path of the published documentation.
-
-    :returns: The version number for the documentation as defined in the CI/CD
-        pipeline.
-
-    :rtype: str
-    """
-
-    import yaml
-
-    class GitLabCILoader(yaml.SafeLoader):
-        """Loader that tolerates GitLab's custom tags, e.g. ``!reference``."""
-
-    GitLabCILoader.add_multi_constructor("!", lambda loader, suffix, node: None)
-
-    with open("../../.gitlab-ci/gitlab-ci.yml", "r") as f:
-        ci = yaml.load(f, Loader=GitLabCILoader)  # noqa: S506
-        return ci.get("variables", {"DOC_TARGET_VERSION": "1.0"}).get(
-            "DOC_TARGET_VERSION"
-        )
-
-
-release = read_version_from_ci()
-version = release
-
-project = "School Accounts {}".format(release)
+project = "School Accounts"
 copyright = "{}, Univention GmbH".format(date.today().year)
 author = "Univention GmbH"
 language = "en"
@@ -130,7 +98,7 @@ html_theme_options = {
     "show_source_license": True,
     "typesense_search": True,
     "typesense_document": doc_basename,
-    "typesense_document_version": version,  # or "latest"
+    "typesense_document_version": "latest",
     "univention_matomo_tracking": True,
     "univention_docs_deployment": True,
 }
@@ -165,6 +133,10 @@ latex_elements = {
     "babel": "\\usepackage{babel}",
 }
 
+# Sitemap, see https://github.com/jdillard/sphinx-sitemap
+html_baseurl = "https://docs.software-univention.de/ucsschool-accounts-module/"
+sitemap_url_scheme = "{link}"
+
 # Configure Univention feedback link
 # See https://git.knut.univention.de/univention/documentation/univention_sphinx_extension#univention_feedback
 
@@ -174,5 +146,3 @@ univention_feedback = True
 # See https://git.knut.univention.de/univention/documentation/univention_sphinx_extension
 univention_doc_basename = doc_basename
 univention_pdf_show_source_license = True
-univention_use_doc_base = True
-univention_release_language_scheme = "{release}"

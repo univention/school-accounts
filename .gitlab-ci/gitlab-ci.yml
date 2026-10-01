@@ -9,7 +9,7 @@ include:
       app_id: "ucsschool-accounts"
       mail_sender: "ucsschool-maintainers@univention.de"
       author_alias: "The ByteBenders"
-      changelog_link: "https://docs.software-univention.de/ucsschool-accounts-module/${APP_VERSION}/changelog.html"
+      changelog_link: "https://docs.software-univention.de/ucsschool-accounts-module/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#ucsschool"
       ucs_base_version: "5.2"
@@ -84,7 +84,6 @@ include:
     inputs:
       docs_dir: "docs/ucsschool-accounts-module"
       doc_target_name: "ucsschool-accounts-module"
-      doc_target_path: "ucsschool-accounts-module/$DOC_TARGET_VERSION"
       job_rules:
         - changes: &docs_build_changes
             - "docs/ucsschool-accounts-module/**/*"
@@ -102,7 +101,6 @@ include:
 
 variables:
   UV_VERSION: "0.11.21"
-  DOC_TARGET_VERSION: "1.0.0"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
@@ -372,7 +370,7 @@ pages:
   script:
     - "true"
   pages:
-    publish: "out/ucsschool-accounts-module/$DOC_TARGET_VERSION"
+    publish: "out/ucsschool-accounts-module"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes: *docs_build_changes
