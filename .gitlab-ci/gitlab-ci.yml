@@ -12,6 +12,7 @@ include:
       changelog_link: "https://docs.software-univention.de/ucsschool-accounts/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#product-announcements"
+      release_text_file: ".gitlab-ci/release_text.txt"
       ucs_base_version: "5.2"
       additional_update_appcenter_needs:
         - job: build_docker_image_ucsschool_accounts
