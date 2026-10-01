@@ -49,32 +49,6 @@ To choose who sees the portal tile, see :ref:`configuration-portal-tile`.
 The tile opens the app on the first system in the domain that you install it on.
 To point it to another system, see :ref:`configuration-portal-tile-link`.
 
-.. _migration:
-
-Migrate from UCS\@school User Management
-========================================
-
-The |UASUMM| app replaces the UCS\@school User Management app
-(``ucsschool-user-management``).
-The Univention App Center treats it as a different app,
-so an upgrade doesn't turn one into the other.
-To migrate, remove the old app and install the new one on every system that runs it:
-
-.. code-block:: console
-   :caption: Replace UCS\@school User Management with |UASUMM|
-
-   $ univention-app remove ucsschool-user-management
-   $ univention-app install ucsschool-accounts
-
-The app settings don't carry over,
-because the setting names changed
-from ``ucsschool-user-management/*`` to ``ucsschool-accounts/*``.
-Set the settings again after the installation.
-For the list of settings, see :ref:`app-settings`.
-
-The old app leaves its Keycloak client ``ucsschool-user-management-ui`` behind.
-You can remove it as described in :ref:`remove-keycloak-client`.
-
 .. _upgrade:
 
 Upgrade the app
