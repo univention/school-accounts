@@ -89,6 +89,16 @@ SPDX-License-Identifier: AGPL-3.0-only
   #results-region.htmx-request u-table > :not([slot="header"]) {
     display: none;
   }
+
+  /* htmx only fades its indicator out, which leaves the bar as a flex item of the
+     results column - one that keeps its gap while nothing is loading. */
+  #results-region > .htmx-indicator {
+    display: none;
+  }
+
+  #results-region.htmx-request > .htmx-indicator {
+    display: revert;
+  }
 </style>
 
 <script>
