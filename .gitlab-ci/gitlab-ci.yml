@@ -95,10 +95,14 @@ include:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
           changes: *docs_build_changes
           when: manual
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+          changes: *docs_build_changes
       production_rules:
         - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
           changes:
             - "docs/ucsschool-accounts/**/*"
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+          changes: *docs_build_changes
 
 variables:
   UV_VERSION: "0.11.21"
