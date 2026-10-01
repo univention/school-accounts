@@ -90,14 +90,15 @@ SPDX-License-Identifier: AGPL-3.0-only
     display: none;
   }
 
-  /* htmx only fades its indicator out, which leaves the bar as a flex item of the
-     results column - one that keeps its gap while nothing is loading. */
-  #results-region > .htmx-indicator {
-    display: none;
+  #results-region {
+    position: relative;
   }
 
-  #results-region.htmx-request > .htmx-indicator {
-    display: revert;
+  #results-region > .progress {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 1;
   }
 </style>
 

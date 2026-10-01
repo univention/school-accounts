@@ -279,9 +279,8 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # While the results load, htmx marks the region and its bar shows.
     assert 'hx-indicator="#results-region"' in body
     assert '<progress class="progress htmx-indicator" aria-hidden="true"></progress>' in body
-    # Idle it is taken out of flow, not just faded, or it would keep its column gap.
-    assert "#results-region > .htmx-indicator" in body
-    assert "#results-region.htmx-request > .htmx-indicator" in body
+    # Out of flow, or it would keep its column gap and push the table down.
+    assert "#results-region > .progress" in body
     # ...and the rows it is about to replace go, the column headers stay.
     assert '#results-region.htmx-request u-table > :not([slot="header"])' in body
     # htmx snapshots the page after the click that set the school but before the
