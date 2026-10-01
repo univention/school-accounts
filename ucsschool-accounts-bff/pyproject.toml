@@ -3,7 +3,7 @@
 
 [project]
 name = "ucsschool-accounts-bff"
-version = "1.0.0"
+dynamic = ["version"]
 description = ""
 authors = [{ name = "UCS School Maintainers", email = "ucsschool-maintainers@univention.de" }]
 requires-python = ">=3.11,<4"
@@ -66,6 +66,11 @@ dev = [
 
 [tool.uv]
 default-groups = "all"
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "version.py" },
+    { env = "UCSSCHOOL_ACCOUNTS_BUILD_VERSION" },
+]
 
 [tool.uv.sources]
 port-loader = { index = "port-loader" }
@@ -75,16 +80,20 @@ name = "port-loader"
 url = "https://git.knut.univention.de/api/v4/projects/908/packages/pypi/simple"
 explicit = true
 
-[tool.uv.build-backend]
-module-name = [
+[build-system]
+requires = ["hatchling<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "code"
+path = "version.py"
+expression = "get_version()"
+
+[tool.hatch.build.targets.wheel]
+packages = [
     "ucsschool_accounts_bff",
     "keycloak_provisioning",
 ]
-module-root = ""
-
-[build-system]
-requires = ["uv_build>=0.11.17"]
-build-backend = "uv_build"
 
 [tool.black]
 line-length = 105

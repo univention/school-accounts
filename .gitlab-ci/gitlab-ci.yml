@@ -57,6 +57,7 @@ include:
       build_args: |
         commit=$CI_COMMIT_SHA
         date=$CI_JOB_STARTED_AT
+        UCSSCHOOL_ACCOUNTS_BUILD_VERSION=$CI_COMMIT_TAG
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.16.2
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"

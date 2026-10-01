@@ -19,6 +19,7 @@ COPY ucsschool-accounts-bff/pyproject.toml ucsschool-accounts-bff/uv.lock ./
 RUN uv sync --frozen --no-build --no-install-project
 COPY ucsschool-accounts-bff/ ./
 # Builds only this project; every dependency was installed above without building.
+ARG UCSSCHOOL_ACCOUNTS_BUILD_VERSION=""
 RUN uv sync --frozen --no-editable
 
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.3@sha256:42db06d912f4e60c0698a4818fbf9dc2d319fc6f0e6e13992164333df47b7c59 AS runtime
