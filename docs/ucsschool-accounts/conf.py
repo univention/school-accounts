@@ -111,6 +111,7 @@ html_static_path = ["_static"]
 numfig = True
 
 rst_epilog = r"""
+.. |UAS| replace:: UCS\@school
 .. |UASSA| replace:: School Accounts
 """
 

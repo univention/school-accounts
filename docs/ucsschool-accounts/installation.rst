@@ -22,7 +22,7 @@ that system needs at least the following resources:
 * 12 GB RAM
 * 150 GB disk space
 
-The dependencies are UCS@school, the Guardian, the Kelvin REST API, and Keycloak,
+The dependencies are |UAS|, the Guardian, the Kelvin REST API, and Keycloak,
 see :ref:`installation_instructions`.
 
 .. _installation_instructions:

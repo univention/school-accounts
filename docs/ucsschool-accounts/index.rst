@@ -5,7 +5,7 @@
 Introduction
 ############
 
-The |UASSA| app lists the users of a UCS\@school school
+The |UASSA| app lists the users of a |UAS| school
 and lets authorized users reset their passwords.
 This manual explains how to install, configure, and use the app,
 and which roles and permissions decide what each user can see and do.

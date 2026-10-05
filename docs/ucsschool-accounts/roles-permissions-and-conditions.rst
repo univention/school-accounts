@@ -76,14 +76,14 @@ Legal guardians
 ===============
 
 Legal guardianship is a relationship between two users
-that UCS\@school records on both of them.
+that |UAS| records on both of them.
 A legal guardian can read the data of their wards because of that relationship alone,
 whatever roles or schools either user has.
 Resetting the password of a ward also requires that ``student`` is the ward's only role.
 To see a ward in the list view,
 the legal guardian must be enrolled in the school of the ward.
 
-UCS\@school also gives a legal guardian the role ``legal_guardian``
+|UAS| also gives a legal guardian the role ``legal_guardian``
 in the school of their wards.
 Because of that role, only school administrators can reset the password of a legal guardian,
 and a legal guardian can read their own data.

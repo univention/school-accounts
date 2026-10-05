@@ -60,11 +60,11 @@ The page that the user worked on is older than their current session,
 for example after they signed in again in another browser tab.
 To solve the problem, reload the page.
 
-A user sees "not a valid UCS\@school user"
+A user sees "not a valid |UAS| user"
 ==========================================
 
-Only UCS\@school users can use the |UASSA| app.
-Accounts without a UCS\@school role, such as the ``Administrator`` account,
+Only |UAS| users can use the |UASSA| app.
+Accounts without a |UAS| role, such as the ``Administrator`` account,
 can't use it.
 
 The app logs this situation as a warning,
