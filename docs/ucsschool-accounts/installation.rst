@@ -10,6 +10,21 @@ Installation
 This section is for administrators
 and covers the installation, upgrade, and removal of the |UASUMM| app.
 
+.. _installation-system-requirements:
+
+System requirements
+===================
+
+If you install the |UASUMM| app and all its dependencies on the
+:external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node`,
+that system needs at least the following resources:
+
+* 12 GB RAM
+* 150 GB disk space
+
+The dependencies are UCS@school, the Guardian, the Kelvin REST API, and Keycloak,
+see :ref:`installation_instructions`.
+
 .. _installation_instructions:
 
 Install the app
