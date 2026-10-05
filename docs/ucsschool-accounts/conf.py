@@ -111,7 +111,7 @@ html_static_path = ["_static"]
 numfig = True
 
 rst_epilog = r"""
-.. |UASUMM| replace:: School Accounts
+.. |UASSA| replace:: School Accounts
 """
 
 suppress_warnings = ["git.too_shallow"]

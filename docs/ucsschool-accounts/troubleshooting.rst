@@ -7,7 +7,7 @@
 Troubleshooting
 ***************
 
-A user doesn't see the |UASUMM| tile in the portal
+A user doesn't see the |UASSA| tile in the portal
 ==================================================
 
 By default, the portal shows the tile to everyone.
@@ -63,7 +63,7 @@ To solve the problem, reload the page.
 A user sees "not a valid UCS\@school user"
 ==========================================
 
-Only UCS\@school users can use the |UASUMM| app.
+Only UCS\@school users can use the |UASSA| app.
 Accounts without a UCS\@school role, such as the ``Administrator`` account,
 can't use it.
 
@@ -80,7 +80,7 @@ When an error occurs, the app logs the error with its details and context.
 To read the logs, run the following command:
 
 .. code-block:: console
-   :caption: Read the logs of the |UASUMM| app
+   :caption: Read the logs of the |UASSA| app
 
    $ univention-app logs ucsschool-accounts
 

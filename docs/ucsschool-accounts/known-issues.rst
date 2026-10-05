@@ -7,14 +7,14 @@
 Known issues
 ************
 
-This section lists the known issues of the |UASUMM| app.
+This section lists the known issues of the |UASSA| app.
 
 .. _known-issue-removal-deletes-tile:
 
 Removing the app from one system deletes the portal tile
 ========================================================
 
-The domain has one |UASUMM| portal tile for all systems that run the app.
+The domain has one |UASSA| portal tile for all systems that run the app.
 Removing the app from any of these systems deletes that tile,
 even if the app still runs on other systems.
 Users then can't open the app from the portal anymore.

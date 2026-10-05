@@ -12,7 +12,7 @@ Configuration
 Choose who sees the portal tile
 ===============================
 
-The installation adds a |UASUMM| tile to the
+The installation adds a |UASSA| tile to the
 :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`
 and shows it to everyone,
 including visitors who aren't signed in.
@@ -38,7 +38,7 @@ To add further schools, repeat the ``--append`` option for each of them.
 Point the portal tile to another system
 =======================================
 
-The domain has one |UASUMM| tile,
+The domain has one |UASSA| tile,
 no matter on how many systems you install the app.
 The first installation in the domain creates the tile
 and links it to the system it runs on.
@@ -69,7 +69,7 @@ Sessions
 ========
 
 After a user signs in,
-the |UASUMM| app keeps the session in an encrypted browser cookie.
+the |UASSA| app keeps the session in an encrypted browser cookie.
 The server stores no session data,
 so a session survives both a restart of the app and an app update.
 
@@ -139,7 +139,7 @@ Until you have updated a host, it can't sign users in.
 App settings
 ============
 
-This section is a reference for all app settings of the |UASUMM| app.
+This section is a reference for all app settings of the |UASSA| app.
 You can configure the settings
 with the :command:`univention-app` command
 or in the app settings dialog of the

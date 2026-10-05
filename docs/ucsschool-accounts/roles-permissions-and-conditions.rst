@@ -8,10 +8,10 @@ Roles and permissions
 *********************
 
 This section is for administrators
-and describes what each role can do in the |UASUMM| app.
+and describes what each role can do in the |UASSA| app.
 The :external+uv-nubus-manual:ref:`Guardian <nubus-authorization>`
 makes the authorization decisions,
-using a policy bundle that ships with the |UASUMM| app.
+using a policy bundle that ships with the |UASSA| app.
 For more information about how the Guardian reaches a decision,
 see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 

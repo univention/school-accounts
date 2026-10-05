@@ -8,14 +8,14 @@ Installation
 ************
 
 This section is for administrators
-and covers the installation, upgrade, and removal of the |UASUMM| app.
+and covers the installation, upgrade, and removal of the |UASSA| app.
 
 .. _installation-system-requirements:
 
 System requirements
 ===================
 
-If you install the |UASUMM| app and all its dependencies on the
+If you install the |UASSA| app and all its dependencies on the
 :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node`,
 that system needs at least the following resources:
 
@@ -30,7 +30,7 @@ see :ref:`installation_instructions`.
 Install the app
 ===============
 
-You can install the |UASUMM| app on a
+You can install the |UASSA| app on a
 :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` or on a
 :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`
 that runs Univention Corporate Server (UCS) 5.2-6 with :uv:erratum:`5.2x569` or later.
@@ -39,21 +39,21 @@ Your domain must meet the following prerequisites before you install the app:
 
 * :external+uv-school-manual:ref:`UCS@school <introduction>` is installed and configured in the domain.
 * The Guardian (``univention-guardian``) is installed and configured
-  on the same system as the |UASUMM| app.
+  on the same system as the |UASSA| app.
   For more information, see :external+uv-ucs-operation:ref:`iam-authorization-engine-install`.
 * The :external+uv-school-kelvin:doc:`Kelvin REST API <index>` in version 4.1.0 or later
   is installed and configured
-  on the same system as the |UASUMM| app.
-  The installation and the update of the |UASUMM| app abort otherwise.
+  on the same system as the |UASSA| app.
+  The installation and the update of the |UASSA| app abort otherwise.
 * Keycloak is installed and configured in the domain as the identity provider.
   For more information about installing Keycloak,
   see the :external+uv-keycloak:ref:`Univention Keycloak app documentation <app-installation>`.
 
-To install the |UASUMM| app from the command line,
+To install the |UASSA| app from the command line,
 run the following command:
 
 .. code-block:: console
-   :caption: Install the |UASUMM| app from the command line
+   :caption: Install the |UASSA| app from the command line
 
    $ univention-app install ucsschool-accounts
 
@@ -69,11 +69,11 @@ To point it to another system, see :ref:`configuration-portal-tile-link`.
 Upgrade the app
 ===============
 
-To upgrade the |UASUMM| app to a later version,
+To upgrade the |UASSA| app to a later version,
 run the following command:
 
 .. code-block:: console
-   :caption: Upgrade the |UASUMM| app from the command line
+   :caption: Upgrade the |UASSA| app from the command line
 
    $ univention-app upgrade ucsschool-accounts
 
@@ -82,11 +82,11 @@ run the following command:
 Remove the app
 ==============
 
-To remove the |UASUMM| app from a system,
+To remove the |UASSA| app from a system,
 run the following command:
 
 .. code-block:: console
-   :caption: Remove the |UASUMM| app from the command line
+   :caption: Remove the |UASSA| app from the command line
 
    $ univention-app remove ucsschool-accounts
 
@@ -101,7 +101,7 @@ because other systems in the domain can still use it.
 Remove the Keycloak client
 --------------------------
 
-The |UASUMM| app signs users in through the Keycloak client ``ucsschool-accounts-ui``
+The |UASSA| app signs users in through the Keycloak client ``ucsschool-accounts-ui``
 in the ``ucs`` realm.
 After you remove the app from every system in the domain,
 you can delete that client in the Keycloak administration console at

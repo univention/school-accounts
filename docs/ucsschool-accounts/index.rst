@@ -5,7 +5,7 @@
 Introduction
 ############
 
-The |UASUMM| app lists the users of a UCS\@school school
+The |UASSA| app lists the users of a UCS\@school school
 and lets authorized users reset their passwords.
 This manual explains how to install, configure, and use the app,
 and which roles and permissions decide what each user can see and do.
@@ -22,7 +22,7 @@ see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 
 .. caution::
 
-   The |UASUMM| app is a preview.
+   The |UASSA| app is a preview.
    Its features and configuration may change incompatibly in future releases.
    Univention supports it on a best-effort basis to help you test it.
    We're happy to receive your feedback.
@@ -32,7 +32,7 @@ see :external+uv-nubus-manual:ref:`nubus-authorization-policies`.
 Audience
 ========
 
-This manual is for administrators who install and operate the |UASUMM| app.
+This manual is for administrators who install and operate the |UASSA| app.
 It assumes that you can run commands on the command line of a UCS system.
 The chapter :ref:`usage` is for the users of the app
 and uses only a web browser.

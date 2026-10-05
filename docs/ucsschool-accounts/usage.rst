@@ -8,7 +8,7 @@ Usage
 *****
 
 This section describes how school administrators, teachers, and legal guardians
-use the |UASUMM| app to find users and reset their passwords.
+use the |UASSA| app to find users and reset their passwords.
 What each of them can see and do depends on their roles,
 as described in :ref:`roles-permissions-and-conditions`.
 
@@ -20,7 +20,7 @@ List the users of a class or work group
 To list the users of a school class or a work group,
 follow these steps:
 
-#. Open the |UASUMM| tile in the
+#. Open the |UASSA| tile in the
    :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`.
    If Keycloak asks for your credentials, sign in.
 
