@@ -9,6 +9,16 @@ Changelog
 
 This section lists the changes to the School Accounts app.
 
+.. _release-1-1-0:
+
+v1.1.0 (unreleased)
+===================
+
+* You can filter the list of users by role, one role at a time.
+  The role filter applies to the roles that users hold at the selected school.
+  The browser address contains the selected role,
+  so a bookmark or a shared link opens the same list.
+
 .. _release-1-0-0:
 
 v1.0.0 (2026-10-01)

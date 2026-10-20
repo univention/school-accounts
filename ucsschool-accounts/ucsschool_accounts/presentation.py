@@ -254,12 +254,13 @@ def _find_by_id(items: Collection[_Identifiable], item_id: str) -> _Identifiable
 
 
 # Literals, not derived from the role id: a computed msgid is invisible to extraction.
+# Also the roles the role filter offers, in this order.
 _ROLE_LABELS = {
     "student": N_("Student"),
     "teacher": N_("Teacher"),
+    "legal_guardian": N_("Legal Guardian"),
     "staff": N_("Staff"),
     "school_admin": N_("School Admin"),
-    "legal_guardian": N_("Legal Guardian"),
 }
 
 
@@ -383,6 +384,31 @@ def build_group_options(
             options.append(Option(value=value, label=option.label, selected=value == selected))
         groups.append(OptionGroup(heading=heading, options=options))
     return groups
+
+
+def role_filter_value(value: str | None) -> str:
+    """The role a request filters by, or ``""`` for none.
+
+    A role the filter does not offer degrades to "no role filter", like an
+    unknown group, so a stale or hand-edited deep link still lists users.
+    """
+    if not value:
+        return ""
+    if value not in _ROLE_LABELS:
+        logger.debug("Ignored an unrecognized role filter value.", value=value)
+        return ""
+    return value
+
+
+def build_role_options(lang: str, selected: str = "") -> list[Option]:
+    """One option per role, whatever the school holds or the actor may read.
+
+    Kelvin's role catalog is fixed too, so the list does not differ by domain.
+    """
+    return [
+        Option(value=role, label=_(label, lang=lang), selected=role == selected)
+        for role, label in _ROLE_LABELS.items()
+    ]
 
 
 def empty_user_list_view(lang: str, hint: str = "", school: str = "", group: str = "") -> UserListView:

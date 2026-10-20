@@ -233,6 +233,15 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   - Send `Vary: HX-Request, HX-Target`, as `GET /users` does.
     One URL has two bodies, and a browser going back to a pushed URL
     can otherwise show the cached fragment as the whole page.
+- **The role filter and the sidebar are one filter split across two forms.**
+  The `u-filter-chips` sit in `#selection-form` for their place on the page,
+  and a GET sends no enclosing form,
+  so the chips `hx-include="#filter-form > form"` (the inner `<form>` that `u-form` creates)
+  and the sidebar form `hx-include="#role-filter"`.
+  A new filter control joins the same way, from both sides.
+  The sidebar disinherits `hx-include`, or its search and cascade requests would carry the role.
+- A keyboard-operated control inside a swapped region needs a stable `id`:
+  that is how `pages/user_list.html` puts the focus back on it after the swap.
 - The global error/redirect handling (`main.py:_html_error`, `not_authenticated_exception_handler`)
   branches on `HX-Request` too,
   answering an htmx request with `HX-Redirect` or a toast instead of a page.

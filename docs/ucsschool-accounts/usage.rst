@@ -31,11 +31,18 @@ follow these steps:
    To find it in a long list, enter part of its name.
    To list every user of the school, select :guilabel:`All classes and work groups`.
 
+#. Optional: To list only the users with one role,
+   select the role in the :guilabel:`Roles` row above the table,
+   for example :guilabel:`Student`.
+   Selecting another role replaces it.
+   To list every role again, select the role once more or select :guilabel:`All`.
+   A user counts only with the roles they hold at the selected school.
+
 The list view shows the users of your selection
 with the columns *Last name*, *First name*, *Username*, *Roles*, and *Activated*.
 It shows only the users whose data you may read.
 
-The browser address contains the selected school and group.
+The browser address contains the selected school, group, and role.
 You can bookmark it or share it,
 and it opens the same list for every user who has the same permissions.
 

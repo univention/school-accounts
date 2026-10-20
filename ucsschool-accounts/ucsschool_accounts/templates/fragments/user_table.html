@@ -39,6 +39,30 @@ SPDX-License-Identifier: AGPL-3.0-only
             </u-button>
           </u-hstack>
 
+          {# Lives in this form for its place on the page, but filters like the
+             sidebar: a GET takes no enclosing form, so it brings the sidebar's
+             school and group itself, and the sidebar brings the role back.
+             The chip ids are how focus finds the clicked chip again after the swap;
+             "All" is found by the host id, which delegates the focus to the button. #}
+          <u-filter-chips
+            id="role-filter"
+            name="role"
+            selection="single"
+            label="{{ _('Roles') }}"
+            all-label="{{ _('All') }}"
+            hx-get="{{ frontend_prefix }}/users"
+            hx-trigger="u-change"
+            hx-include="#filter-form > form"
+            hx-target="#results-region"
+            hx-select="#results-region"
+            hx-swap="outerHTML"
+            hx-indicator="#results-region"
+          >
+            {% for option in roles %}
+            <u-filter-chip id="role-filter-{{ option.value }}" value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</u-filter-chip>
+            {% endfor %}
+          </u-filter-chips>
+
           <u-vstack grow scroll style="overflow-x: auto" gap="md" align="stretch" justify="start">
           {% if view.rows %}
           <u-table sticky-header striped role="table">

@@ -240,13 +240,16 @@ async def users_list(
     auth: AuthDep,
     school: str | None = None,
     group: str | None = None,
+    role: str | None = None,
 ) -> HTMLResponse:
-    """Render the list view, empty or with ``school``/``group`` preselected as a deep link.
+    """Render the list view, empty or with ``school``/``group``/``role`` preselected as a deep link.
 
     ``group`` is a combined ``kind:id`` value because both datasets share one
     single-select control.
     """
     lang = get_lang(request)
+    role = presentation.role_filter_value(role)
+    roles = presentation.build_role_options(lang, role)
     schools = await business_logic.get_schools(
         schools_adapter, permissions_adapter, users_adapter, actor, lang
     )
@@ -263,9 +266,10 @@ async def users_list(
             selected_group="",
             group_sections=[],
             query="",
+            roles=roles,
             view=_list_view(None, lang, known_school=False, selected_school=None),
         )
-        response.headers["HX-Push-Url"] = _push_url(None, "")
+        response.headers["HX-Push-Url"] = _push_url(None, "", role)
         return response
 
     # htmx asks this route for the whole page and keeps only #results-region
@@ -280,6 +284,7 @@ async def users_list(
         permissions=permissions_adapter,
         actor=actor,
         school=school,
+        role=role,
         lang=lang,
         known_school=any(option.value == school for option in school_options),
         results_only=(
@@ -303,9 +308,10 @@ async def users_list(
         selected_group=selection.value,
         group_sections=group_sections,
         query="",
+        roles=roles,
         view=_list_view(data, lang, listing.known_school, selected_school, group_label),
     )
-    response.headers["HX-Push-Url"] = _push_url(school, selection.value)
+    response.headers["HX-Push-Url"] = _push_url(school, selection.value, role)
     # One URL, two bodies. A browser going back to a pushed URL may otherwise
     # show the fragment it cached for it as the whole page.
     response.headers.add_vary_header("HX-Request, HX-Target")
@@ -366,6 +372,7 @@ class _Listing:
     permissions: PermissionsPort
     actor: str
     school: str
+    role: str
     lang: str
     # A deep link can outlive its school. Nothing is read for one the domain no
     # longer has (the file adapter raises on an unknown id).
@@ -405,6 +412,7 @@ class _Listing:
                 school=self.school,
                 school_classes=selection.school_classes,
                 work_groups=selection.work_groups,
+                role=self.role,
             ),
             self.lang,
         )
@@ -521,7 +529,7 @@ def _list_view(
     )
 
 
-def _push_url(school: str | None, selected_group: str) -> str:
+def _push_url(school: str | None, selected_group: str, role: str) -> str:
     """The canonical, shareable URL for a filter state.
 
     Set unconditionally as ``HX-Push-Url``, which htmx prefers over the request
@@ -530,6 +538,8 @@ def _push_url(school: str | None, selected_group: str) -> str:
     params = {"school": school} if school else {}
     if selected_group:
         params["group"] = selected_group
+    if role:
+        params["role"] = role
     return f"{FRONTEND_PREFIX}/users" + (f"?{urlencode(params)}" if params else "")
 
 

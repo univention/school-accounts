@@ -22,14 +22,16 @@ SPDX-License-Identifier: AGPL-3.0-only
              form value in a Lit update, one tick after the event, so serialising
              immediately would send the previous selection. #}
           <u-form
+            id="filter-form"
             grow
             hx-get="{{ frontend_prefix }}/users"
+            hx-include="#role-filter"
             hx-trigger="u-change[filterChanged(event)] delay:100ms"
             hx-target="#results-region"
             hx-select="#results-region"
             hx-swap="outerHTML"
             hx-indicator="#results-region"
-            hx-disinherit="hx-select hx-indicator"
+            hx-disinherit="hx-select hx-indicator hx-include"
           >
               <u-vstack gap="lg" grow align="stretch" justify="start">
                   <u-card tone>
@@ -145,6 +147,25 @@ SPDX-License-Identifier: AGPL-3.0-only
     // An absent parameter is nothing selected, for the group as for the school: the
     // all-groups option is pushed as group=all, so picking it is always a change.
     return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? "")
+  }
+
+  // htmx refocuses the swapped-in element with the focused one's id, but the design
+  // system's containers render their slots a tick later, so that focus() finds
+  // nothing to focus and a keyboard user lands on <body>. Retry once settled.
+  // A history navigation swaps this script back in with the page: install once,
+  // or the second `let` is a SyntaxError and the listeners double.
+  if (!window.focusRestoreInstalled) {
+    window.focusRestoreInstalled = true
+    let focusedId = ""
+    document.addEventListener("htmx:beforeSwap", () => {
+      focusedId = document.activeElement?.id ?? ""
+    })
+    document.addEventListener("htmx:afterSettle", () => {
+      if (focusedId && document.activeElement === document.body) {
+        document.getElementById(focusedId)?.focus({ preventScroll: true })
+      }
+      focusedId = ""
+    })
   }
 
   // A successful reset still swaps in an empty <output>, and either way the region

@@ -116,6 +116,31 @@ def test_split_group_value(value: str | None, expected: tuple[str, str]):
     assert presentation.split_group_value(value) == expected
 
 
+@pytest.mark.parametrize(
+    "value,expected",
+    [("teacher", "teacher"), ("school_admin", "school_admin"), ("headmaster", ""), ("", ""), (None, "")],
+)
+def test_role_filter_value(value: str | None, expected: str):
+    assert presentation.role_filter_value(value) == expected
+
+
+def test_build_role_options():
+    options = presentation.build_role_options("en", selected="staff")
+    assert [(option.value, option.label, option.selected) for option in options] == [
+        ("student", "Student", False),
+        ("teacher", "Teacher", False),
+        ("legal_guardian", "Legal Guardian", False),
+        ("staff", "Staff", True),
+        ("school_admin", "School Admin", False),
+    ]
+
+
+def test_build_role_options_in_german():
+    options = presentation.build_role_options("de")
+    assert [option.label for option in options][:2] == ["Schüler", "Lehrer"]
+    assert not any(option.selected for option in options)
+
+
 def _group_sections():
     return (
         [

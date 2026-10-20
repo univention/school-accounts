@@ -275,7 +275,8 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # The cascade (school -> filters) must not inherit the form's select,
     # or its fragment response would blank out the dependent filters. Nor its
     # indicator, or typing in an option filter would show the table as loading.
-    assert 'hx-disinherit="hx-select hx-indicator"' in body
+    # Nor the role, which only the listing reads.
+    assert 'hx-disinherit="hx-select hx-indicator hx-include"' in body
     # While the results load, htmx marks the region and its bar shows.
     assert 'hx-indicator="#results-region"' in body
     assert '<progress class="htmx-indicator" aria-hidden="true"></progress>' in body
@@ -452,7 +453,9 @@ def test_kelvin_is_given_the_request_id_the_app_logs_under(
     assert scope.call_args.kwargs["request_id"] == "the-request"
 
 
-def _users_page(test_client: TestClient, accept_language: str, **params: str | list[str]) -> str:
+def _users_response(
+    test_client: TestClient, headers: dict[str, str] | None = None, **params: str | list[str]
+) -> httpx.Response:
     # Starlette annotates TestClient against httpx2, which this project does not
     # install, so every httpx type in its signature resolves to Unknown. The cast
     # confines that to one call site instead of leaking into every assertion.
@@ -460,13 +463,15 @@ def _users_page(test_client: TestClient, accept_language: str, **params: str | l
     response = cast(
         httpx.Response,
         test_client.get(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users",
-            params=params,
-            headers={"Accept-Language": accept_language},
+            f"{FRONTEND_PREFIX}/users", params=params, headers=headers
         ),
     )
     assert response.status_code == 200
-    return response.text
+    return response
+
+
+def _users_page(test_client: TestClient, accept_language: str, **params: str | list[str]) -> str:
+    return _users_response(test_client, {"Accept-Language": accept_language}, **params).text
 
 
 def test_german_accept_language_renders_german_template_strings(test_client: TestClient):
@@ -610,6 +615,83 @@ def test_users_deep_link_to_all_groups_lists_the_school(test_client: TestClient)
     assert 'value="all" selected' in body
     assert "max.muster" in body
     assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+
+
+def _chip_values(body: str, selected: bool = False) -> list[str]:
+    pattern = r'<u-filter-chip id="role-filter-\w+" value="(\w+)"' + (" selected" if selected else "")
+    return re.findall(pattern, body)
+
+
+def _rows(body: str) -> str:
+    return body[body.index("<u-tbody") : body.index("</u-tbody>")]
+
+
+@pytest.mark.parametrize("params", [{}, {"school": "school1"}, {"school": "school1", "group": "all"}])
+def test_the_role_filter_offers_every_role_one_at_a_time(
+    test_client: TestClient, params: dict[str, str]
+):
+    body = _users_page(test_client, "en", **params)
+    assert _chip_values(body) == ["student", "teacher", "legal_guardian", "staff", "school_admin"]
+    assert _chip_values(body, selected=True) == []
+    chips = body[body.index("<u-filter-chips") : body.index("<u-filter-chip ")]
+    assert 'selection="single"' in chips
+    assert 'hx-trigger="u-change"' in chips
+    # The listing's cheaper fragment answers it, and the page while no school is chosen.
+    assert 'hx-target="#results-region"' in chips
+    assert 'hx-select="#results-region"' in chips
+    assert 'hx-include="#filter-form > form"' in chips
+    assert 'id="filter-form"' in body
+
+
+def test_the_role_filter_labels_are_translated(test_client: TestClient):
+    body = _users_page(test_client, "de", school="school1")
+    assert 'all-label="Alle"' in body
+    assert ">Schüler</u-filter-chip>" in body
+
+
+def test_users_deep_link_by_role_lists_only_that_role(test_client: TestClient):
+    response = _users_response(test_client, school="school1", group="all", role="school_admin")
+    body = response.text
+    assert _chip_values(body, selected=True) == ["school_admin"]
+    rows = _rows(body)
+    assert rows.count('<u-tr role="row">') == 1
+    assert "max.muster" not in rows
+    assert response.headers["HX-Push-Url"] == (
+        f"{FRONTEND_PREFIX}/users?school=school1&group=all&role=school_admin"
+    )
+
+
+def test_a_role_held_only_at_another_school_lists_nobody(test_client: TestClient):
+    """kim.klein is a student at school2 only."""
+    body = _users_page(test_client, "en", school="school1", group="all", role="student")
+    assert "kim.klein" not in body
+    assert "No users found." in body
+
+
+def test_users_deep_link_ignores_an_unknown_role(test_client: TestClient):
+    response = _users_response(test_client, school="school1", group="all", role="headmaster")
+    assert "max.muster" in response.text
+    assert _chip_values(response.text, selected=True) == []
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+
+
+def test_a_role_without_a_school_is_kept_for_the_next_choice(test_client: TestClient):
+    response = _users_response(test_client, role="teacher")
+    assert _chip_values(response.text, selected=True) == ["teacher"]
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?role=teacher"
+
+
+def test_a_role_change_is_answered_with_the_filtered_results_region(test_client: TestClient):
+    body = _users_response(
+        test_client,
+        {"HX-Request": "true", "HX-Target": "results-region"},
+        school="school1",
+        group="all",
+        role="teacher",
+    ).text
+    assert body.lstrip().startswith('<u-vstack id="results-region"')
+    assert _chip_values(body, selected=True) == ["teacher"]
+    assert _rows(body).count('<u-tr role="row">') == 3
 
 
 def test_choosing_a_school_does_not_read_its_users(test_client: TestClient, mocker: MockerFixture):
@@ -1019,7 +1101,9 @@ def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
         user_id=["user1", "elsewhere"],
     )
     filter_form, selection_form = body.split('id="selection-form"', 1)
-    assert "hx-include" not in filter_form
+    # The role filter sits in the selection form, but a GET sends no enclosing form.
+    assert re.findall(r'hx-include="([^"]*)"', filter_form) == ["#role-filter"]
+    assert re.findall(r'hx-include="([^"]*)"', selection_form) == ["#filter-form > form"]
     rows = selection_form[selection_form.index("<u-tbody") : selection_form.index("</u-tbody>")]
     assert "checked" not in rows
     assert '<input type="hidden" name="user_id"' not in selection_form

@@ -280,13 +280,12 @@ def _mocked_ports(
     *,
     members: list[User],
     by_id: dict[str, User] | None = None,
+    granted: tuple[Permission, ...] = (Permission.read_last_name,),
 ) -> _Mocked:
     """Ports that answer, so the assertions can be about which reads happened."""
 
     def _granted(_actor: User, targets: list[Target]) -> dict[str, list[Permission]]:
-        return {
-            target.old_target.id: [Permission.read_last_name] for target in targets if target.old_target
-        }
+        return {target.old_target.id: list(granted) for target in targets if target.old_target}
 
     users = mocker.AsyncMock()
     users.get_user.return_value = actor
@@ -401,6 +400,87 @@ async def test_get_users_of_a_school_the_actor_has_nothing_in_lists_nobody(mocke
 
     assert result.users == []
     mocked.users.get_users.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "school,school_class,role,expected_ids",
+    [
+        ("test_school1", "", "", {"test_user1", "test_user4"}),
+        ("test_school1", "", "school_admin", {"test_user4"}),
+        ("test_school1", "1a", "teacher", {"test_user1"}),
+        ("test_school2", "", "teacher", {"test_user2", "test_user3"}),
+        # test_user3 is a student only at test_school3.
+        ("test_school2", "", "student", set[str]()),
+    ],
+)
+async def test_get_users_lists_only_the_selected_role_at_the_school(
+    ports: Ports, school: str, school_class: str, role: str, expected_ids: set[str]
+):
+    school_classes = [school_class] if school_class else []
+    result = await business_logic.get_users(
+        ports.users,
+        ports.schools,
+        ports.permissions,
+        ACTOR_ID,
+        UsersGetRequest(school=school, school_classes=school_classes, work_groups=[], role=role),
+        "en",
+    )
+    assert result is not None
+    assert {user.id for user in result.users} == expected_ids
+
+
+@pytest.mark.asyncio
+async def test_get_users_filters_the_actors_reach_and_wards_by_role(mocker: MockerFixture):
+    actor = _person(
+        "teach",
+        roles=["teacher:school:school1"],
+        schools=["school1"],
+        school_classes={"school1": ["1a"]},
+        legal_wards=["ward", "kid"],
+    )
+    pupil = _person("pupil", roles=["student:school:school1"], schools=["school1"])
+    ward = _person("ward", roles=["student:school:school1"], schools=["school1"])
+    kid = _person("kid", roles=["staff:school:school1"], schools=["school1"])
+    mocked = _mocked_ports(
+        mocker,
+        actor,
+        members=[actor, pupil],
+        by_id={"ward": ward, "kid": kid},
+        granted=(Permission.read_roles,),
+    )
+
+    result = await business_logic.get_users(
+        mocked.ports.users,
+        mocked.ports.schools,
+        mocked.ports.permissions,
+        "teach",
+        UsersGetRequest(school="school1", school_classes=[], work_groups=[], role="student"),
+        "en",
+    )
+
+    assert result is not None
+    assert [user.id for user in result.users] == ["pupil", "ward"]
+
+
+@pytest.mark.asyncio
+async def test_get_users_by_role_drops_users_whose_roles_the_actor_cannot_read(mocker: MockerFixture):
+    """Listing a user under a role would reveal the role the table hides."""
+    actor = _person("admin", roles=["school_admin:school:school1"], schools=["school1"])
+    pupil = _person("pupil", roles=["student:school:school1"], schools=["school1"])
+    mocked = _mocked_ports(mocker, actor, members=[pupil])
+
+    result = await business_logic.get_users(
+        mocked.ports.users,
+        mocked.ports.schools,
+        mocked.ports.permissions,
+        "admin",
+        UsersGetRequest(school="school1", school_classes=[], work_groups=[], role="student"),
+        "en",
+    )
+
+    assert result is not None
+    assert result.users == []
 
 
 # ---------------------------------------------------------------------------

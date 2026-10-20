@@ -273,6 +273,40 @@ async def _reachable_users(
     ]
 
 
+def _holding_role(
+    users: list[User],
+    permissions: dict[str, list[Permission]],
+    school: str,
+    role: str,
+    actor_id: str,
+) -> list[User]:
+    """The users holding ``role`` at ``school``, or all of them for no role.
+
+    A stopgap: Kelvin's v2 user search cannot filter by role yet, so the
+    whole listing is read and narrowed here. Once it can
+    (univention/dev/education/ucsschool-kelvin-rest-api#290), the role check
+    moves into the users port. The ``read-roles`` check stays: a filter
+    must not reveal a role the table hides.
+    """
+    if not role:
+        return users
+    holding = [
+        user
+        for user in users
+        if Permission.read_roles in permissions[user.id]
+        and role in user.attributes.role_names_in(school)
+    ]
+    logger.debug(
+        "Filtered the listed users by role.",
+        actor_id=actor_id,
+        school=school,
+        role=role,
+        listed_count=len(users),
+        holding_count=len(holding),
+    )
+    return holding
+
+
 async def get_users(
     users_get_adapter: UsersPersistencePort,
     schools_get_adapter: SchoolsPersistencePort,
@@ -305,6 +339,7 @@ async def get_users(
     )
     # A user the actor holds no permission on at all is not listed.
     users = [user for user in users if permissions.get(user.id)]
+    users = _holding_role(users, permissions, request_data.school, request_data.role, actor_id)
     return UserListData(
         users=users,
         schools=await schools_get_adapter.get_schools(),

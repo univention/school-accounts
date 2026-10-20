@@ -62,6 +62,9 @@ The following rules apply to every role:
 * A user can filter the list view by the schools they're enrolled in
   and by the school classes and work groups they're a member of.
   A school administrator can also filter by every school class and work group in their school.
+* Filtering the list view by role needs no permission of its own.
+  It only hides users from the list,
+  and it hides every user whose roles the list view doesn't show.
 * Nobody can reset their own password.
 * A password reset requires permission for *every* role of the user whose password is reset.
   For example, a teacher can't reset the password of a student who is also a staff member,

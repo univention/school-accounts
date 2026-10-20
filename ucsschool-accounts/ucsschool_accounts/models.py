@@ -103,6 +103,8 @@ class UsersGetRequest(BaseModel):
     school: str
     school_classes: list[str]
     work_groups: list[str]
+    # Empty lists every role.
+    role: str = ""
 
 
 class TargetObjectType(StrEnum):
