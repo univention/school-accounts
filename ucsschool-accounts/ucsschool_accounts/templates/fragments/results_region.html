@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
    page and `hx-select` this out of it, and the filter control it discarded costs
    more to build than everything it kept. #}
 <u-vstack id="results-region" gap="lg" grow align="stretch" justify="start">
-  <progress class="progress htmx-indicator" aria-hidden="true"></progress>
+  <progress class="htmx-indicator" aria-hidden="true"></progress>
   {# innerHTML keeps this element, so its handler outlives every swap into it -
      unlike a script in the swapped fragment. #}
   <div

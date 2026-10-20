@@ -278,9 +278,9 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert 'hx-disinherit="hx-select hx-indicator"' in body
     # While the results load, htmx marks the region and its bar shows.
     assert 'hx-indicator="#results-region"' in body
-    assert '<progress class="progress htmx-indicator" aria-hidden="true"></progress>' in body
+    assert '<progress class="htmx-indicator" aria-hidden="true"></progress>' in body
     # Out of flow, or it would keep its column gap and push the table down.
-    assert "#results-region > .progress" in body
+    assert "#results-region > progress {" in body
     # ...and the rows it is about to replace go, the column headers stay.
     assert '#results-region.htmx-request u-table > :not([slot="header"])' in body
     # htmx snapshots the page after the click that set the school but before the
@@ -741,7 +741,7 @@ def test_logged_out_offers_a_new_login(test_client: TestClient):
     response = test_client.get(f"{FRONTEND_PREFIX}/auth/logged-out", follow_redirects=False)
     assert response.status_code == 200
     assert "You have been logged out." in response.text
-    assert f'<u-link href="{FRONTEND_PREFIX}/">Log in again</u-link>' in response.text
+    assert f'href="{FRONTEND_PREFIX}/">Log in again</a>' in response.text
     assert "/auth/logout" not in response.text
 
 

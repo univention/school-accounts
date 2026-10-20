@@ -94,11 +94,46 @@ SPDX-License-Identifier: AGPL-3.0-only
     position: relative;
   }
 
-  #results-region > .progress {
+  /* The design system ships no progress bar, so the app draws its own:
+     an indeterminate bar out of flow, so it keeps no column gap. */
+  #results-region > progress {
     position: absolute;
     inset-block-start: 0;
     inset-inline: 0;
     z-index: 1;
+    appearance: none;
+    width: 100%;
+    height: 0.5rem;
+    overflow: hidden;
+    border: none;
+    border-radius: var(--radius-box);
+    color: var(--color-base-content);
+    background-color: color-mix(in oklab, currentcolor 20%, transparent);
+    background-image: repeating-linear-gradient(90deg, currentcolor -1% 10%, transparent 10% 90%);
+    background-position-x: 15%;
+    background-size: 200%;
+  }
+
+  /* Separate rules: a browser drops a whole selector list over one
+     vendor pseudo-element it does not know. */
+  #results-region > progress::-webkit-progress-bar {
+    background-color: transparent;
+  }
+
+  #results-region > progress::-moz-progress-bar {
+    background-color: transparent;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    #results-region > progress {
+      animation: 5s ease-in-out infinite results-progress;
+    }
+  }
+
+  @keyframes results-progress {
+    50% {
+      background-position-x: -115%;
+    }
   }
 </style>
 
