@@ -8,6 +8,7 @@ and display formatting out of the templates without reintroducing a
 representation port/adapter.
 """
 
+import unicodedata
 from collections import Counter
 from collections.abc import Collection
 from dataclasses import dataclass, field
@@ -180,7 +181,8 @@ class UserListView:
     columns: list[Column]
     rows: list[Row]
     # What to say instead of "No users found." when the list was never asked
-    # for. An empty table and an unanswered question look alike otherwise.
+    # for, or the search matched none of its users. An empty table and an
+    # unanswered question look alike otherwise.
     hint: str = ""
     school: str = ""
     group: str = ""
@@ -447,11 +449,48 @@ def _user_cells(
     ]
 
 
+def search_query(raw: str | None) -> str:
+    """Trimmed, not capped: the box has no ``maxlength``, so a cap would search
+    less than it shows. The request-line limit bounds ``q``."""
+    return (raw or "").strip()
+
+
+def _fold(text: str) -> str:
+    """``text`` with case and accents ignored: "muller" finds "Müller".
+
+    Teachers often type a name without its accents, and a directory can hold a
+    character composed or decomposed - folding both sides makes them all equal.
+    """
+    decomposed = unicodedata.normalize("NFKD", text)
+    unmarked = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return unmarked.lower()
+
+
+def _search_terms(query: str) -> list[str]:
+    return list(dict.fromkeys(_fold(term) for term in query.split()))
+
+
+def _matches(cells: list[Cell], terms: list[str]) -> bool:
+    """Whether every term is part of some text the row shows.
+
+    Only what the actor can read takes part: a match on a hidden attribute would
+    keep its row, and typing guesses would read the attribute out row by row.
+    Searching the cells, not the user, is what rules that out.
+    """
+    texts = [_fold(cell.text) for cell in cells if cell.visible and cell.kind == "text" and cell.text]
+    return all(any(term in text for text in texts) for term in terms)
+
+
 def build_user_list(
-    data: UserListData, lang: str, selected_school: School | None, group_label: str = ""
+    data: UserListData,
+    lang: str,
+    selected_school: School | None,
+    group_label: str = "",
+    query: str = "",
 ) -> UserListView:
     rows: list[Row] = []
     hidden = 0
+    terms = _search_terms(query)
     for user in data.users:
         permissions = set(data.permissions.get(user.id, []))
         # A user is only listed if the actor holds at least one permission on
@@ -472,6 +511,8 @@ def build_user_list(
                 candidate_count=exc.args[1],
             )
             raise
+        if terms and not _matches(cells, terms):
+            continue
         rows.append(
             Row(
                 id=user.id,
@@ -486,9 +527,22 @@ def build_user_list(
             hidden_count=hidden,
             fetched_count=len(data.users),
         )
+    hint = ""
+    if terms:
+        listed = len(data.users) - hidden
+        logger.debug(
+            "Narrowed the user list to a search.",
+            term_count=len(terms),
+            listed_count=listed,
+            matched_count=len(rows),
+        )
+        if listed and not rows:
+            # "No users found." would blame the group for what the search did.
+            hint = _("No users match “{query}”.", lang=lang).format(query=query)
     return UserListView(
         columns=list_columns(lang),
         rows=rows,
+        hint=hint,
         school=selected_school.display_name if selected_school else "",
         group=group_label,
     )

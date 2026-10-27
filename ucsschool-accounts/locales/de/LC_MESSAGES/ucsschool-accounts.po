@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-accounts\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-10-20 15:11+0000\n"
+"POT-Creation-Date: 2026-10-21 13:07+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -116,6 +116,10 @@ msgstr "Keine Schulen gefunden."
 
 msgid "No users found."
 msgstr "Keine Benutzer gefunden."
+
+#, python-brace-format
+msgid "No users match “{query}”."
+msgstr "Keine Benutzer passen zu „{query}“."
 
 msgid "None of the selected accounts can have their password reset by you."
 msgstr ""

@@ -308,6 +308,93 @@ def test_empty_user_list_view_names_nothing():
     assert (view.school, view.group) == ("", "")
 
 
+@pytest.mark.parametrize(
+    "query,listed",
+    [
+        ("", True),
+        ("   ", True),
+        ("kim", True),
+        ("KLEIN", True),
+        ("lei", True),
+        # Every term has to be found, each in any of the columns.
+        ("klein kim", True),
+        ("kim  kk1", True),
+        ("kim nobody", False),
+    ],
+)
+def test_build_user_list_keeps_the_rows_matching_every_search_term(query: str, listed: bool):
+    data = _list_data(_user(username="kk1"), list(Permission))
+    view = presentation.build_user_list(data, "en", _SCHOOL1, query=query)
+    assert bool(view.rows) is listed
+
+
+@pytest.mark.parametrize(
+    "last_name,query",
+    [
+        ("Müller", "muller"),
+        ("Müller", "MÜLLER"),
+        # Composed and decomposed forms of the same name are one name.
+        ("Müller", "müller"),
+        ("Müller", "müller"),
+    ],
+)
+def test_build_user_list_search_ignores_case_and_accents(last_name: str, query: str):
+    data = _list_data(_user(last_name=last_name), list(Permission))
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query=query).rows
+
+
+def test_build_user_list_search_never_matches_a_hidden_attribute():
+    """A word found only in a column the actor may not read does not keep the row.
+    Otherwise typing guesses would read that attribute out, row by row."""
+    user = _user(first_name="Kim", username="kk1")
+    assert presentation.build_user_list(
+        _list_data(user, list(Permission)), "en", _SCHOOL1, query="kim"
+    ).rows
+    data = _list_data(user, [Permission.read_last_name])
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query="kim").rows == []
+
+
+@pytest.mark.parametrize("query", ["teacher", "activated"])
+def test_build_user_list_search_covers_only_the_text_columns(query: str):
+    data = _list_data(_user(), list(Permission))
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query=query).rows == []
+
+
+def test_build_user_list_search_reads_every_term():
+    """Every word filters, not just the first few: only the eleventh and last one matches nothing."""
+    data = _list_data(_user(), list(Permission))
+    query = "k i m l e n ki kl le in nobody"
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query=query).rows == []
+
+
+@pytest.mark.parametrize(
+    "lang,expected", [("en", "No users match “nobody”."), ("de", "Keine Benutzer passen zu „nobody“.")]
+)
+def test_build_user_list_says_when_the_search_left_nobody(lang: str, expected: str):
+    data = _list_data(_user(), list(Permission))
+    assert presentation.build_user_list(data, lang, _SCHOOL1, query="nobody").hint == expected
+
+
+def test_build_user_list_leaves_an_empty_group_to_say_so_itself():
+    """A group without users shows the usual "No users found.", not "No users match …":
+    the search did not empty it."""
+    data = presentation.UserListData(users=[], schools=[_SCHOOL1], permissions={})
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query="nobody").hint == ""
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        (None, ""),
+        ("", ""),
+        ("  kim  klein ", "kim  klein"),
+        ("x" * 150, "x" * 150),
+    ],
+)
+def test_search_query_trims(raw: str | None, expected: str):
+    assert presentation.search_query(raw) == expected
+
+
 def test_build_password_reset_summary_all_succeeded():
     data = presentation.PasswordResetResultData(
         outcomes=[
