@@ -25,13 +25,14 @@ SPDX-License-Identifier: AGPL-3.0-only
             id="filter-form"
             grow
             hx-get="{{ frontend_prefix }}/users"
-            hx-include="#role-filter"
+            hx-include="#role-filter, #user-search"
             hx-trigger="u-change[filterChanged(event)] delay:100ms"
             hx-target="#results-region"
             hx-select="#results-region"
             hx-swap="outerHTML"
             hx-indicator="#results-region"
-            hx-disinherit="hx-select hx-indicator hx-include"
+            hx-sync="#results-column:replace"
+            hx-disinherit="hx-select hx-indicator hx-include hx-sync"
           >
               <u-vstack gap="lg" grow align="stretch" justify="start">
                   <u-card tone>
@@ -76,7 +77,13 @@ SPDX-License-Identifier: AGPL-3.0-only
           </u-form>
         </u-vstack>
 
-        {% include "fragments/results_region.html" %}
+        {# The filter form, the role chips and the search box fill one region, so they
+           share one sync, on an element no swap replaces. A filter change cancels a
+           search (it sends the search along). A search waits for a filter change, or the heading and
+           history would stay on the old group, and cancels an outdated search itself. #}
+        <u-vstack id="results-column" gap="md" grow align="stretch" justify="start">
+          {% include "fragments/results_region.html" %}
+        </u-vstack>
       </u-hstack>
     </u-vstack>
   </u-container>
@@ -162,10 +169,77 @@ SPDX-License-Identifier: AGPL-3.0-only
     })
     document.addEventListener("htmx:afterSettle", () => {
       if (focusedId && document.activeElement === document.body) {
-        document.getElementById(focusedId)?.focus({ preventScroll: true })
+        const element = document.getElementById(focusedId)
+        element?.focus({ preventScroll: true })
+        // u-input and u-checkbox do not delegate the focus to the input in their shadow root.
+        if (document.activeElement === document.body) {
+          element?.shadowRoot?.querySelector("input")?.focus({ preventScroll: true })
+        }
       }
       focusedId = ""
     })
+  }
+
+  // Back and forward refetch the page (hx-history="false"). A filter change or a search
+  // still waiting out its delay or loading would land on top of it, swapping rows and
+  // rewriting the URL. hx-preserve finds the box by id, so without one the restored
+  // page brings its own, holding the restored URL's q instead of the text typed here.
+  // Registered once: a restore swaps the body, which runs this script again.
+  if (!window.userListBackGuard) {
+    window.userListBackGuard = true
+    window.addEventListener("popstate", () => {
+      for (const elt of document.querySelectorAll('[hx-sync^="#results-column"]')) {
+        elt.addEventListener("htmx:beforeRequest", (event) => event.preventDefault())
+      }
+      // A synced request is held by the element it syncs on, not the one that sent it.
+      htmx.trigger("#results-column", "htmx:abort")
+      document.getElementById("user-search")?.removeAttribute("id")
+    })
+    // htmx swaps nothing when the restore fails, which would leave the guarded page
+    // under the new URL. It fires no event for a network error, so watch the request.
+    document.addEventListener("htmx:historyCacheMiss", (event) => {
+      const xhr = event.detail.xhr
+      xhr.addEventListener("loadend", () => {
+        if (xhr.status < 200 || xhr.status >= 400) location.reload()
+      })
+    })
+  }
+
+  // Typing a space, or anything else that leaves the words as they were, would fetch the
+  // same rows again. Checked as the request goes out, against what was last searched:
+  // not on htmx:confirm, which also fires when a search that will queue behind a group
+  // change is first triggered, and would record the words as searched before the
+  // request went out. Enter still searches again.
+  function skipUnchangedSearch(event) {
+    const box = event.target
+    const words = searchWords(box)
+    if (event.detail.requestConfig.triggeringEvent?.type === "input" && words === box.dataset.searched) {
+      event.preventDefault()
+    } else {
+      box.dataset.searched = words
+    }
+  }
+
+  // hx-sync only queues a search behind one still loading, so the new rows would wait for
+  // two whole listings. Aborted on htmx:confirm, which runs before the sync queues it.
+  // #user-rows is busy only while a search loads, never while a filter change does,
+  // and the same words keep it running because skipUnchangedSearch drops their request.
+  function abortOutdatedSearch(event) {
+    const box = event.target
+    if (document.getElementById("user-rows").hasAttribute("aria-busy") && searchWords(box) !== box.dataset.searched) {
+      htmx.trigger("#results-column", "htmx:abort")
+    }
+  }
+
+  function searchWords(box) {
+    return box.value.trim().replaceAll(/\s+/g, " ")
+  }
+
+  // A search leaves the focus in the box, so a screen reader is told what the swapped
+  // rows show: the server's summary, put into the status region beside the box.
+  function announceSearchResult(rows) {
+    document.getElementById("search-status").textContent =
+      rows.querySelector("[data-status]")?.dataset.status ?? ""
   }
 
   // A successful reset still swaps in an empty <output>, and either way the region
@@ -188,6 +262,9 @@ SPDX-License-Identifier: AGPL-3.0-only
       // getter over box.checked froze the count.
       selected: 0,
       lastCount: 0,
+      // The ids ticked at the last sync(). Remembered because by the time retick() runs,
+      // a search's swap has removed the checkboxes they came from.
+      ticked: [],
       boxes() {
         return Array.from(this.$root.querySelectorAll("u-checkbox[name=user_id]"))
       },
@@ -198,6 +275,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         const boxes = this.boxes()
         const checked = boxes.filter((box) => box.checked)
         this.selected = checked.length
+        this.ticked = checked.map((box) => box.value)
         if (this.selected > 0) this.lastCount = this.selected
         for (const box of boxes) box.closest("u-tr").toggleAttribute("selected", box.checked)
         // Absent when this filter matched no rows; the toolbar still renders.
@@ -213,6 +291,11 @@ SPDX-License-Identifier: AGPL-3.0-only
       keepOnly(ids) {
         for (const box of this.boxes()) box.checked = ids.has(box.value)
         this.sync()
+      },
+      // A search keeps the ticks on the rows it shows again and drops the rest, so the
+      // reset only ever acts on rows on screen.
+      retick() {
+        this.keepOnly(new Set(this.ticked))
       },
     }))
   })

@@ -16,5 +16,13 @@ SPDX-License-Identifier: AGPL-3.0-only
     hx-on::after-swap="narrowSelectionToFailures(this); syncResultVisibility(this)"
     hx-on:u-close="this.innerHTML = ''; syncResultVisibility(this)"
   ></div>
+  {# What this region lists, for the search box to narrow. Not taken from the sidebar
+     or the role chips: a group or role change that is still loading, or failed,
+     already shows its new value there while the table still lists the old one. #}
+  <div id="listed-filter" hidden>
+    {% if selected_school %}<input type="hidden" name="school" value="{{ selected_school }}">{% endif %}
+    {% if selected_group %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}
+    {% for option in roles if option.selected %}<input type="hidden" name="role" value="{{ option.value }}">{% endfor %}
+  </div>
   {% include "fragments/user_table.html" %}
 </u-vstack>

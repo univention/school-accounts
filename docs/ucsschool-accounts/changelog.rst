@@ -22,6 +22,9 @@ v1.1.0 (unreleased)
   such as the reason a password reset was refused,
   now appear in the language of the user interface.
   Other error messages from the Kelvin REST API remain in English.
+* You can search the user list by first name, last name, or username.
+  The search ignores upper and lower case and accents.
+  A search removes the users that it hides from the selection for the password reset.
 
 .. _release-1-0-0:
 

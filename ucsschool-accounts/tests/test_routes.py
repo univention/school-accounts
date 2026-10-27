@@ -281,8 +281,9 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # The cascade (school -> filters) must not inherit the form's select,
     # or its fragment response would blank out the dependent filters. Nor its
     # indicator, or typing in an option filter would show the table as loading.
-    # Nor the role, which only the listing reads.
-    assert 'hx-disinherit="hx-select hx-indicator hx-include"' in body
+    # Nor hx-include (the role and the search box) or hx-sync: an option filter's
+    # own requests carry neither, and must not cancel a listing.
+    assert 'hx-disinherit="hx-select hx-indicator hx-include hx-sync"' in body
     # While the results load, htmx marks the region and its bar shows.
     assert 'hx-indicator="#results-region"' in body
     assert '<progress class="htmx-indicator" aria-hidden="true"></progress>' in body
@@ -443,6 +444,185 @@ def test_group_options_empty_without_school(test_client: TestClient):
     body = response.text
     assert "<u-list-select-item" not in body
     assert "Select a school first" in body
+
+
+def _get_users(
+    test_client: TestClient, headers: dict[str, str] | None = None, **params: str
+) -> httpx.Response:
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users", params=params, headers=headers
+        ),
+    )
+
+
+def test_typing_and_a_filter_change_share_one_sync(test_client: TestClient):
+    """A filter change cancels typing, which it carries along; typing waits for a filter change.
+
+    Pinned as markup because a browser test cannot make a group change cancelling
+    typing race reliably; test_typing_while_a_group_loads covers typing behind a
+    group change."""
+    body = _get_users(test_client, school="school1").text
+    start = body.index('id="user-search"')
+    search = body[start : body.index("</u-input>", start)]
+    filter_form = body[body.index("<u-form") : body.index("</u-form>")]
+    role_filter = body[body.index("<u-filter-chips") : body.index("<u-filter-chip ")]
+    for filter_change in (filter_form, role_filter):
+        assert 'hx-sync="#results-column:replace"' in filter_change
+    assert 'hx-sync="#results-column:queue last"' in search
+    assert 'id="results-column"' in body
+
+
+def test_a_group_change_keeps_the_search_box_it_replaces(test_client: TestClient):
+    """Text typed while a group change loads is not in its answer, so the box must stay.
+
+    Pinned as markup for the same reason as the sync; test_typing_while_a_group_loads
+    is the browser test."""
+    body = _get_users(test_client, school="school1").text
+    start = body.index('id="user-search"')
+    assert "hx-preserve" in body[start : body.index("</u-input>", start)]
+
+
+def test_users_text_search_narrows_the_listing(test_client: TestClient):
+    unfiltered = _get_users(test_client, school="school1", group="all").text
+    assert "max.muster" in unfiltered
+    assert "kim.klein" in unfiltered
+
+    response = _get_users(test_client, school="school1", group="all", q="  Muster ")
+    assert "max.muster" in response.text
+    assert "kim.klein" not in response.text
+    # A reload shows the search the table was narrowed by.
+    assert 'value="Muster"' in response.text
+    assert (
+        response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all&q=Muster"
+    )
+
+
+def test_users_text_search_says_when_it_left_nobody(test_client: TestClient):
+    response = _get_users(test_client, school="school1", group="all", q="nobody")
+    assert "No users match “nobody”." in response.text
+
+
+def test_users_starting_a_search_pushes_a_history_entry(test_client: TestClient):
+    """The first search request pushes a history entry, so Back returns to the same group
+    without the search."""
+    headers = {
+        "HX-Request": "true",
+        "HX-Target": "user-rows",
+        "HX-Trigger": "user-search",
+        "HX-Current-URL": f"http://testserver{FRONTEND_PREFIX}/users?school=school1&group=all",
+    }
+    response = _get_users(test_client, headers, school="school1", group="all", q="ma")
+    assert "HX-Replace-Url" not in response.headers
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all&q=ma"
+
+
+def test_users_typing_on_replaces_the_history_entry(test_client: TestClient):
+    """Typing on replaces the entry the search pushed. One pushed entry per pause would
+    make Back step through every prefix of the search."""
+    headers = {
+        "HX-Request": "true",
+        "HX-Target": "user-rows",
+        "HX-Trigger": "user-search",
+        "HX-Current-URL": f"http://testserver{FRONTEND_PREFIX}/users?school=school1&group=all&q=ma",
+    }
+    response = _get_users(test_client, headers, school="school1", group="all", q="max")
+    assert "HX-Push-Url" not in response.headers
+    assert (
+        response.headers["HX-Replace-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all&q=max"
+    )
+
+
+def test_users_emptying_the_search_pushes_a_history_entry(test_client: TestClient):
+    """Replacing the search's entry with the group's URL would put that URL twice in a row,
+    and Back would seem to do nothing."""
+    headers = {
+        "HX-Request": "true",
+        "HX-Target": "user-rows",
+        "HX-Trigger": "user-search",
+        "HX-Current-URL": f"http://testserver{FRONTEND_PREFIX}/users?school=school1&group=all&q=max",
+    }
+    response = _get_users(test_client, headers, school="school1", group="all", q="")
+    assert "HX-Replace-Url" not in response.headers
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+
+
+@pytest.mark.parametrize("trigger", ["filter-form", "role-filter"])
+def test_users_a_filter_change_during_a_search_pushes_a_history_entry(
+    test_client: TestClient, trigger: str
+):
+    """Only typing refines the search's entry; a group or role change made while
+    searching gets its own, so Back returns to the previous filter."""
+    headers = {
+        "HX-Request": "true",
+        "HX-Target": "results-region",
+        "HX-Trigger": trigger,
+        "HX-Current-URL": f"http://testserver{FRONTEND_PREFIX}/users?school=school1&group=all&q=max",
+    }
+    response = _get_users(test_client, headers, school="school1", group="school_class:1a", q="max")
+    assert "HX-Replace-Url" not in response.headers
+    assert response.headers["HX-Push-Url"] == (
+        f"{FRONTEND_PREFIX}/users?school=school1&group=school_class%3A1a&q=max"
+    )
+
+
+def test_typing_renders_only_the_results_region(test_client: TestClient, mocker: MockerFixture):
+    """A typing request skips the group control, as a filter change does: htmx keeps only
+    the rows."""
+    all_classes_spy = mocker.spy(FileSchoolClassesPersistenceAdapter, "get_school_classes")
+    headers = {"HX-Request": "true", "HX-Target": "user-rows", "HX-Trigger": "user-search"}
+    body = _get_users(test_client, headers, school="school1", group="all", q="max").text
+    assert body.lstrip().startswith('<u-vstack id="results-region"')
+    assert "<u-list-select" not in body
+    assert 'id="user-rows"' in body
+    assert "max.muster" in body
+    assert all_classes_spy.call_count == 0
+
+
+def test_typing_neither_spins_the_reset_button_nor_keeps_a_stale_count(test_client: TestClient):
+    """The search box sits in the selection form, whose handlers see its requests bubble up,
+    and its swap brings rows the selection count has not seen."""
+    body = _get_users(test_client, school="school1", group="all").text
+    selection_form = body[
+        body.index('id="selection-form"') : body.index(">", body.index('id="selection-form"'))
+    ]
+    for event in ("before-request", "after-request"):
+        assert f'hx-on::{event}="if (event.target === this) ' in selection_form
+    rows = body[body.index('id="user-rows"') : body.index(">", body.index('id="user-rows"'))]
+    assert 'hx-on::after-settle="Alpine.$data(this).retick();' in rows
+
+
+def test_users_text_search_is_kept_whole_in_the_pushed_url(test_client: TestClient):
+    """A long search is not cut short in the pushed URL, so a reload searches for what the
+    box shows."""
+    response = _get_users(test_client, school="school1", group="all", q="x" * 150)
+    assert response.headers["HX-Push-Url"].endswith("&q=" + "x" * 150)
+
+
+def test_users_typing_before_a_school_is_picked(test_client: TestClient):
+    """Before a school is picked the list stays empty, but typing still puts the search into
+    the URL."""
+    headers = {"HX-Request": "true", "HX-Trigger": "user-search"}
+    response = _get_users(test_client, headers, q="anna")
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?q=anna"
+
+
+def test_users_text_search_is_escaped_where_it_is_shown(test_client: TestClient):
+    """The box's value and the no-match hint both repeat ``q``, and a shared link can set it
+    to anything, so both are escaped."""
+    q = '"><script>alert(1)</script>'
+    body = _get_users(test_client, school="school1", group="all", q=q).text
+    assert "<script>alert(1)" not in body
+    assert 'value="&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"' in body
+    assert "No users match “&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;”." in body
+
+
+def test_users_deep_link_without_a_school_keeps_the_search(test_client: TestClient):
+    response = _get_users(test_client, q="anna")
+    assert 'value="anna"' in response.text
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?q=anna"
 
 
 def test_users_search_renders_results(test_client: TestClient):
@@ -664,7 +844,7 @@ def test_the_role_filter_offers_every_role_one_at_a_time(
     # The listing's cheaper fragment answers it, and the page while no school is chosen.
     assert 'hx-target="#results-region"' in chips
     assert 'hx-select="#results-region"' in chips
-    assert 'hx-include="#filter-form > form"' in chips
+    assert 'hx-include="#filter-form > form, #user-search"' in chips
     assert 'id="filter-form"' in body
 
 
@@ -717,6 +897,19 @@ def test_a_role_change_is_answered_with_the_filtered_results_region(test_client:
     assert body.lstrip().startswith('<u-vstack id="results-region"')
     assert _chip_values(body, selected=True) == ["teacher"]
     assert _rows(body).count('<u-tr role="row">') == 3
+
+
+def _listed_filter(body: str) -> str:
+    return body[body.index('id="listed-filter"') :].split("</div>", 1)[0]
+
+
+def test_a_search_narrows_the_listed_role(test_client: TestClient):
+    """The search sends the role of the listed table, not the chips' current selection,
+    which may belong to a role change that has not landed."""
+    body = _users_page(test_client, "en", school="school1", group="all", role="teacher")
+    assert '<input type="hidden" name="role" value="teacher">' in _listed_filter(body)
+    body = _users_page(test_client, "en", school="school1", group="all")
+    assert 'name="role"' not in _listed_filter(body)
 
 
 def test_choosing_a_school_does_not_read_its_users(test_client: TestClient, mocker: MockerFixture):
@@ -1129,8 +1322,11 @@ def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
     )
     filter_form, selection_form = body.split('id="selection-form"', 1)
     # The role filter sits in the selection form, but a GET sends no enclosing form.
-    assert re.findall(r'hx-include="([^"]*)"', filter_form) == ["#role-filter"]
-    assert re.findall(r'hx-include="([^"]*)"', selection_form) == ["#filter-form > form"]
+    assert re.findall(r'hx-include="([^"]*)"', filter_form) == ["#role-filter, #user-search"]
+    assert re.findall(r'hx-include="([^"]*)"', selection_form) == [
+        "#listed-filter",
+        "#filter-form > form, #user-search",
+    ]
     rows = selection_form[selection_form.index("<u-tbody") : selection_form.index("</u-tbody>")]
     assert "checked" not in rows
     assert '<input type="hidden" name="user_id"' not in selection_form

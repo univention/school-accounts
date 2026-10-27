@@ -233,13 +233,24 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   - Send `Vary: HX-Request, HX-Target`, as `GET /users` does.
     One URL has two bodies, and a browser going back to a pushed URL
     can otherwise show the cached fragment as the whole page.
+  - The text search (`q`, box `#user-search`) sits in the region's toolbar but swaps only
+    `#user-rows`, so the box keeps its text and focus; the route answers that target with the
+    region fragment too. A search pushes one history entry, so back keeps the group: typing
+    (`HX-Trigger: user-search`) gets `HX-Replace-Url` only while both `HX-Current-URL` and the
+    new URL carry a `q`, and `HX-Push-Url` otherwise. Its requests, like the role chips', bubble through the selection form,
+    whose `hx-on` handlers check `event.target`. The box, the filter form and the role chips share
+    an `hx-sync` on `#results-column`, whose comment says why. It matches only visible text cells
+    (`presentation._matches`).
 - **The role filter and the sidebar are one filter split across two forms.**
   The `u-filter-chips` sit in `#selection-form` for their place on the page,
   and a GET sends no enclosing form,
-  so the chips `hx-include="#filter-form > form"` (the inner `<form>` that `u-form` creates)
-  and the sidebar form `hx-include="#role-filter"`.
+  so the chips `hx-include="#filter-form > form, #user-search"` (the inner `<form>` that `u-form` creates)
+  and the sidebar form `hx-include="#role-filter, #user-search"`.
   A new filter control joins the same way, from both sides.
-  The sidebar disinherits `hx-include`, or its search and cascade requests would carry the role.
+  The text search is the exception: both include the box,
+  but the box includes only `#listed-filter`, the filter of the table it narrows,
+  so a group or role change that is still loading, or failed, does not reach it.
+  The sidebar disinherits `hx-include`, or its school search and cascade requests would carry the role.
 - A keyboard-operated control inside a swapped region needs a stable `id`:
   that is how `pages/user_list.html` puts the focus back on it after the swap.
 - The global error/redirect handling (`main.py:_html_error`, `not_authenticated_exception_handler`)
@@ -300,13 +311,21 @@ already keeps a cross-site POST from carrying it.
 
 ## JavaScript and Asset Boundaries
 
-- **Alpine.js is vendored and loaded on every page but currently unused anywhere** (no `x-data` in
-  any template). All client-side interactivity today comes from the Univention design-system's
-  custom elements (`<u-combobox>`, `<u-multiselect>`, `<u-table>`, ...) firing DOM events (`u-search`,
-  `u-change`) that htmx listens for via `hx-trigger` — there is no repo-authored JavaScript file.
-  Prefer this event-driven htmx pattern; reach for Alpine only for behavior that genuinely can't be
-  expressed as an htmx-observable DOM event, and don't add a new JS bundling/build step without
-  discussing it first (none exists today).
+- Most client-side interactivity comes from the Univention design-system's custom elements
+  (`<u-combobox>`, `<u-multiselect>`, `<u-table>`, ...) firing DOM events (`u-search`, `u-change`)
+  that htmx listens for via `hx-trigger`. Prefer this event-driven htmx pattern.
+- **Alpine.js holds one component**: the `selection` data in `pages/user_list.html`, bound by
+  `x-data="selection"` in `fragments/user_table.html`. It counts the ticked rows for the password
+  reset, and keeps ticks across a search's swap (`retick()`) or narrows them to the failed accounts
+  (`keepOnly()`). Reach for Alpine only for state that genuinely can't be expressed as an
+  htmx-observable DOM event.
+- **There is no repo-authored JavaScript file**, only inline `<script>` blocks in templates:
+  `pages/user_list.html` holds the helpers its `hx-*` attributes call (`filterChanged`,
+  `skipUnchangedSearch`, `announceSearchResult`, `syncResultVisibility`,
+  `narrowSelectionToFailures`), the focus restore
+  after a swap, the back-navigation guard and the Alpine component; `fragments/password_reset_dialog.html`
+  opens its own dialog. Don't add a new JS file or bundling/build step without discussing it first
+  (none exists today).
 - htmx, Alpine, and the design-system bundle are **vendored** under
   `ucsschool_accounts/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
   Files before touching them.

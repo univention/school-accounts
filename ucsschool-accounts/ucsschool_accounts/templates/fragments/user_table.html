@@ -5,7 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 {% import "macros/user_table.html" as table with context %}
 {# Its own form because u-checkbox is form-associated - its value reaches htmx only
    through a form's FormData. Alpine sits on the u-vstack: u-form warns on unknown attributes. #}
-{# u-button's spinner is a Lit property; hx-indicator (a class) cannot reach it. #}
+{# u-button's spinner is a Lit property; hx-indicator (a class) cannot reach it.
+   The search box's and the role filter's requests bubble up here too, and must not spin it. #}
 <u-form
   id="selection-form"
   grow
@@ -13,8 +14,8 @@ SPDX-License-Identifier: AGPL-3.0-only
   hx-target="#password-reset-dialog-region"
   hx-swap="innerHTML"
   hx-headers='{"X-CSRF-Token": {{ csrf_token | tojson }}}'
-  hx-on::before-request="this.querySelector('u-button[type=submit]').loading = true"
-  hx-on::after-request="this.querySelector('u-button[type=submit]').loading = false"
+  hx-on::before-request="if (event.target === this) this.querySelector('u-button[type=submit]').loading = true"
+  hx-on::after-request="if (event.target === this) this.querySelector('u-button[type=submit]').loading = false"
 >
     <u-card grow tone>
         <u-vstack gap="md" grow align="stretch" justify="start" x-data="selection">
@@ -25,7 +26,10 @@ SPDX-License-Identifier: AGPL-3.0-only
               {% if view.school %}
               <strong class="text-xl">{{ view.school }}{% if view.group %}<span aria-hidden="true"> › </span>{{ view.group }}{% endif %}</strong>
               {% endif %}
-              <u-collapsible aria-live="polite" class="text-sm" x-bind:visible="selected > 0">
+              {# aria-hidden: collapsing only clips the count, which keeps lastCount meanwhile,
+                 so a screen reader would still read an emptied selection as the old count. #}
+              <u-collapsible aria-live="polite" class="text-sm" x-bind:visible="selected > 0"
+                             x-bind:aria-hidden="selected === 0">
                 {# In a data attribute, not inline: a `| tojson` string starts with a
                    double quote, which closes the attribute and leaves x-text empty. #}
                 <span
@@ -34,6 +38,40 @@ SPDX-License-Identifier: AGPL-3.0-only
                 ></span>
               </u-collapsible>
             </u-vstack>
+            {# The placeholder is also the box's accessible name: u-input forwards no aria-label.
+               Typing swaps only #user-rows, so the text, caret and focus survive. hx-preserve keeps
+               text typed while a filter change loads.
+               hx-select is for a search before a school is chosen, which the route answers with the whole page.
+               Enter cannot submit the reset form: the input is in u-input's shadow root.
+               hx-sync: see #results-column in pages/user_list.html.
+               aria-busy: the rows leave the accessibility tree while a search loads (the
+               htmx-request rule in pages/user_list.html); this says why. #}
+            <search style="flex: 0 1 25rem">
+              <u-input
+                id="user-search"
+                name="q"
+                type="search"
+                autocomplete="off"
+                placeholder="{{ _('Search by first name, last name or username') }}"
+                value="{{ search_query }}"
+                data-searched="{{ search_query.split() | join(' ') }}"
+                hx-on::confirm="abortOutdatedSearch(event)"
+                hx-on::before-request="skipUnchangedSearch(event); if (!event.defaultPrevented) document.getElementById('user-rows').setAttribute('aria-busy', 'true')"
+                hx-on::after-request="document.getElementById('user-rows')?.removeAttribute('aria-busy')"
+                hx-get="{{ frontend_prefix }}/users"
+                hx-trigger="input changed delay:500ms, keyup[key=='Enter']"
+                hx-include="#listed-filter"
+                hx-target="#user-rows"
+                hx-select="#user-rows > *"
+                hx-swap="innerHTML"
+                hx-indicator="#results-region"
+                hx-sync="#results-column:queue last"
+                hx-preserve
+              ></u-input>
+              {# Outside #user-rows, so a search's swap fills it instead of replacing it:
+                 a live region swapped in with its text is not reliably announced. #}
+              <output id="search-status" class="sr-only"></output>
+            </search>
             <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
               {{ _("Reset password") }}
             </u-button>
@@ -42,6 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
           {# Lives in this form for its place on the page, but filters like the
              sidebar: a GET takes no enclosing form, so it brings the sidebar's
              school and group itself, and the sidebar brings the role back.
+             hx-sync: see #results-column in pages/user_list.html.
              The chip ids are how focus finds the clicked chip again after the swap;
              "All" is found by the host id, which delegates the focus to the button. #}
           <u-filter-chips
@@ -52,20 +91,26 @@ SPDX-License-Identifier: AGPL-3.0-only
             all-label="{{ _('All') }}"
             hx-get="{{ frontend_prefix }}/users"
             hx-trigger="u-change"
-            hx-include="#filter-form > form"
+            hx-include="#filter-form > form, #user-search"
             hx-target="#results-region"
             hx-select="#results-region"
             hx-swap="outerHTML"
             hx-indicator="#results-region"
+            hx-sync="#results-column:replace"
           >
             {% for option in roles %}
             <u-filter-chip id="role-filter-{{ option.value }}" value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</u-filter-chip>
             {% endfor %}
           </u-filter-chips>
 
-          <u-vstack grow scroll style="overflow-x: auto" gap="md" align="stretch" justify="start">
+          {# A search swaps only this element's contents. The new rows arrive unticked;
+             after-settle, once Alpine has bound them, re-ticks those ticked before.
+             Only a search settles here: a filter change settles on the region it replaces.
+             data-status is what announceSearchResult() reads out. #}
+          <u-vstack id="user-rows" grow scroll style="overflow-x: auto" gap="md" align="stretch" justify="start"
+                    hx-on::after-settle="Alpine.$data(this).retick(); announceSearchResult(this)">
           {% if view.rows %}
-          <u-table sticky-header striped role="table">
+          <u-table sticky-header striped role="table" data-status="{{ view.status }}">
             <u-tr slot="header" role="row">
               <u-th role="columnheader" direction="none">
                 <label for="select-all">
@@ -97,7 +142,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             </u-tbody>
           </u-table>
           {% else %}
-          <u-table empty sticky-header>
+          <u-table empty sticky-header data-status="{{ view.status }}">
             <u-tr slot="header" role="row">
               {% for column in view.columns %}<u-th>{{ column.label }}</u-th>{% endfor %}
             </u-tr>

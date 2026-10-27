@@ -42,7 +42,16 @@ The list view shows the users of your selection
 with the columns *Last name*, *First name*, *Username*, *Roles*, and *Activated*.
 It shows only the users whose data you may read.
 
-The browser address contains the selected school, group, and role.
+To narrow the list, enter one or more words in the search field above it.
+The list then shows only the users for whom every word appears
+in the first name, last name, or username.
+The words can match different names,
+for example ``anna müller`` finds the user with the first name ``Anna`` and the last name ``Müller``.
+The search ignores upper and lower case and accents, for example ``muller`` finds ``Müller``.
+It only searches the names that the list shows you,
+and it stays active when you select another school, class, work group, or role.
+
+The browser address contains the selected school, group, role, and search.
 You can bookmark it or share it,
 and it opens the same list for every user who has the same permissions.
 
@@ -59,6 +68,10 @@ To reset passwords, follow these steps:
 #. Select the users whose passwords you want to reset.
    The list view shows a checkbox only for the users whose password you can reset.
    To select every such user on the page, select the checkbox in the table header.
+   A search removes the users that it hides from the selection,
+   and clearing the search doesn't select them again,
+   so the reset only affects users that the list shows.
+   Search first, then select the users.
 
 #. Click :guilabel:`Reset password`.
    A dialog lists the accounts that the reset affects.

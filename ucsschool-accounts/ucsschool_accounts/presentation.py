@@ -184,6 +184,9 @@ class UserListView:
     # for, or the search matched none of its users. An empty table and an
     # unanswered question look alike otherwise.
     hint: str = ""
+    # What a screen reader hears once a search has swapped the rows: the focus
+    # stays in the search box, so the table changing is silent otherwise.
+    status: str = ""
     school: str = ""
     group: str = ""
 
@@ -415,7 +418,28 @@ def build_role_options(lang: str, selected: str = "") -> list[Option]:
 
 def empty_user_list_view(lang: str, hint: str = "", school: str = "", group: str = "") -> UserListView:
     """A table with no rows, saying why rather than showing an empty result."""
-    return UserListView(columns=list_columns(lang), rows=[], hint=hint, school=school, group=group)
+    return UserListView(
+        columns=list_columns(lang),
+        rows=[],
+        hint=hint,
+        status=_status([], hint, "", lang),
+        school=school,
+        group=group,
+    )
+
+
+def _status(rows: list[Row], hint: str, query: str, lang: str) -> str:
+    """Says what the table shows: how many users, or the text standing in for them.
+
+    Names the query, or a refined search finding as many users as the last one
+    would leave the live region unchanged, and a screen reader silent.
+    """
+    if not rows:
+        return hint or _("No users found.", lang=lang)
+    # Not "{count} users found.": there is no plural form, and one user is common.
+    if query:
+        return _("Users found for “{query}”: {count}.", lang=lang).format(query=query, count=len(rows))
+    return _("Users found: {count}.", lang=lang).format(count=len(rows))
 
 
 def list_columns(lang: str) -> list[Column]:
@@ -543,6 +567,7 @@ def build_user_list(
         columns=list_columns(lang),
         rows=rows,
         hint=hint,
+        status=_status(rows, hint, query, lang),
         school=selected_school.display_name if selected_school else "",
         group=group_label,
     )

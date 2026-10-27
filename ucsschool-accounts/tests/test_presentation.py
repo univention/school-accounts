@@ -375,6 +375,48 @@ def test_build_user_list_says_when_the_search_left_nobody(lang: str, expected: s
     assert presentation.build_user_list(data, lang, _SCHOOL1, query="nobody").hint == expected
 
 
+def _two_users_data() -> presentation.UserListData:
+    """Kim and two Alexes, one of whom the actor holds no permission on: not counted."""
+    alex = _user(first_name="Alex")
+    users = [_user(), alex.model_copy(update={"id": "u2"}), alex.model_copy(update={"id": "u3"})]
+    return presentation.UserListData(
+        users=users,
+        schools=[_SCHOOL1],
+        permissions={"u1": list(Permission), "u3": list(Permission)},
+    )
+
+
+@pytest.mark.parametrize("lang,expected", [("en", "Users found: 2."), ("de", "Gefundene Benutzer: 2.")])
+def test_build_user_list_counts_the_listed_users_for_a_screen_reader(lang: str, expected: str):
+    assert presentation.build_user_list(_two_users_data(), lang, _SCHOOL1).status == expected
+
+
+@pytest.mark.parametrize(
+    "lang,expected", [("en", "Users found for “alex”: 1."), ("de", "Gefundene Benutzer für „alex“: 1.")]
+)
+def test_build_user_list_counts_only_what_the_search_kept(lang: str, expected: str):
+    view = presentation.build_user_list(_two_users_data(), lang, _SCHOOL1, query="alex")
+    assert view.status == expected
+
+
+def test_build_user_list_status_changes_when_a_refined_search_finds_as_many():
+    statuses = {
+        presentation.build_user_list(_two_users_data(), "en", _SCHOOL1, query=query).status
+        for query in ("ale", "alex")
+    }
+    assert len(statuses) == 2
+
+
+def test_build_user_list_status_says_what_an_empty_table_says():
+    data = _list_data(_user(), list(Permission))
+    assert presentation.build_user_list(data, "en", _SCHOOL1, query="nobody").status == (
+        "No users match “nobody”."
+    )
+    empty_group = presentation.UserListData(users=[], schools=[_SCHOOL1], permissions={})
+    assert presentation.build_user_list(empty_group, "en", _SCHOOL1).status == "No users found."
+    assert presentation.empty_user_list_view("en", hint="Pick one.").status == "Pick one."
+
+
 def test_build_user_list_leaves_an_empty_group_to_say_so_itself():
     """A group without users shows the usual "No users found.", not "No users match …":
     the search did not empty it."""

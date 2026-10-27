@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-accounts\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-10-21 13:07+0000\n"
+"POT-Creation-Date: 2026-11-04 12:56+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -159,6 +159,9 @@ msgstr "Schulzugänge"
 msgid "School Admin"
 msgstr "Schuladmin"
 
+msgid "Search by first name, last name or username"
+msgstr "Nach Vorname, Nachname oder Benutzername suchen"
+
 msgid "Select a class or work group to list its users."
 msgstr ""
 "Wählen Sie eine Klasse oder Arbeitsgruppe aus, um deren Benutzer aufzulisten."
@@ -243,6 +246,14 @@ msgstr "Benutzer nicht gefunden"
 
 msgid "Username"
 msgstr "Benutzername"
+
+#, python-brace-format
+msgid "Users found for “{query}”: {count}."
+msgstr "Gefundene Benutzer für „{query}“: {count}."
+
+#, python-brace-format
+msgid "Users found: {count}."
+msgstr "Gefundene Benutzer: {count}."
 
 msgid "Work Groups"
 msgstr "Arbeitsgruppen"

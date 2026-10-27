@@ -17,7 +17,7 @@ from collections.abc import AsyncIterator, Awaitable
 from dataclasses import dataclass
 from functools import partial
 from typing import Annotated, cast
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -72,9 +72,11 @@ env_globals["static"] = _static_url
 env_globals["frontend_prefix"] = FRONTEND_PREFIX
 # The all-groups sentinel is rendered as an option value, so templates need it too.
 env_globals["all_groups_value"] = presentation.ALL_GROUPS
-# The element a filter change replaces. htmx names it back in ``HX-Target``,
-# which is how the list route knows it need only render that much.
-RESULTS_REGION_ID = "results-region"
+# What a listing request swaps: the region on a filter change, its rows while
+# typing. htmx names it in ``HX-Target``.
+RESULTS_TARGET_IDS = frozenset({"results-region", "user-rows"})
+# htmx names it in ``HX-Trigger`` when typing sent the request.
+SEARCH_INPUT_ID = "user-search"
 
 
 async def kelvin_session(request: Request) -> AsyncIterator[None]:
@@ -241,15 +243,18 @@ async def users_list(
     school: str | None = None,
     group: str | None = None,
     role: str | None = None,
+    q: str | None = None,
 ) -> HTMLResponse:
-    """Render the list view, empty or with ``school``/``group``/``role`` preselected as a deep link.
+    """Render the list view, empty or with ``school``/``group``/``role``/``q``.
 
     ``group`` is a combined ``kind:id`` value because both datasets share one
-    single-select control.
+    single-select control. ``q`` narrows what the group lists to the users
+    whose shown names hold every one of its words.
     """
     lang = get_lang(request)
     role = presentation.role_filter_value(role)
     roles = presentation.build_role_options(lang, role)
+    search = presentation.search_query(q)
     schools = await business_logic.get_schools(
         schools_adapter, permissions_adapter, users_adapter, actor, lang
     )
@@ -267,9 +272,10 @@ async def users_list(
             group_sections=[],
             query="",
             roles=roles,
+            search_query=search,
             view=_list_view(None, lang, known_school=False, selected_school=None),
         )
-        response.headers["HX-Push-Url"] = _push_url(None, "", role)
+        _set_history(request, response, _push_url(None, "", role, search))
         return response
 
     # htmx asks this route for the whole page and keeps only #results-region
@@ -289,7 +295,7 @@ async def users_list(
         known_school=any(option.value == school for option in school_options),
         results_only=(
             request.headers.get("HX-Request") == "true"
-            and request.headers.get("HX-Target") == RESULTS_REGION_ID
+            and request.headers.get("HX-Target") in RESULTS_TARGET_IDS
         ),
     )
     # Listing a whole school is a choice, not the default. Nothing selected means
@@ -309,9 +315,10 @@ async def users_list(
         group_sections=group_sections,
         query="",
         roles=roles,
-        view=_list_view(data, lang, listing.known_school, selected_school, group_label),
+        search_query=search,
+        view=_list_view(data, lang, listing.known_school, selected_school, group_label, search),
     )
-    response.headers["HX-Push-Url"] = _push_url(school, selection.value, role)
+    _set_history(request, response, _push_url(school, selection.value, role, search))
     # One URL, two bodies. A browser going back to a pushed URL may otherwise
     # show the fragment it cached for it as the whole page.
     response.headers.add_vary_header("HX-Request, HX-Target")
@@ -377,8 +384,8 @@ class _Listing:
     # A deep link can outlive its school. Nothing is read for one the domain no
     # longer has (the file adapter raises on an unknown id).
     known_school: bool
-    # htmx keeps only #results-region of the response, so the filter control it
-    # would discard is not built.
+    # htmx keeps only #results-region of the response, or only its rows, so the
+    # filter control it would discard is not built.
     results_only: bool
 
     async def group_sections(self, selection: _GroupSelection) -> list[presentation.OptionGroup]:
@@ -508,6 +515,7 @@ def _list_view(
     known_school: bool,
     selected_school: School | None,
     group_label: str = "",
+    search: str = "",
 ) -> presentation.UserListView:
     """The table, or the reason there is not one yet.
 
@@ -515,7 +523,7 @@ def _list_view(
     a group have been picked - so say which of the two is missing.
     """
     if data is not None:
-        return presentation.build_user_list(data, lang, selected_school, group_label)
+        return presentation.build_user_list(data, lang, selected_school, group_label, search)
     if known_school:
         hint = _("Select a class or work group to list its users.", lang=lang)
     else:
@@ -529,17 +537,35 @@ def _list_view(
     )
 
 
-def _push_url(school: str | None, selected_group: str, role: str) -> str:
+def _set_history(request: Request, response: HTMLResponse, url: str) -> None:
+    """Point the address bar at ``url``.
+
+    Typing replaces the entry while both the current URL and ``url`` carry a
+    search; anything else pushes. A search is then one entry: back undoes it and
+    keeps the group, instead of stepping through every prefix typed.
+    """
+    typed = request.headers.get("HX-Trigger") == SEARCH_INPUT_ID
+    refining = all(
+        "q" in parse_qs(urlsplit(each).query)
+        for each in (request.headers.get("HX-Current-URL", ""), url)
+    )
+    response.headers["HX-Replace-Url" if typed and refining else "HX-Push-Url"] = url
+
+
+def _push_url(school: str | None, selected_group: str, role: str, search: str) -> str:
     """The canonical, shareable URL for a filter state.
 
-    Set unconditionally as ``HX-Push-Url``, which htmx prefers over the request
-    URL - that is what keeps an empty group selection out of the address bar.
+    Set unconditionally as ``HX-Push-Url`` or ``HX-Replace-Url``, which htmx
+    prefers over the request URL - that is what keeps an empty group selection
+    and an empty search out of the address bar.
     """
     params = {"school": school} if school else {}
     if selected_group:
         params["group"] = selected_group
     if role:
         params["role"] = role
+    if search:
+        params["q"] = search
     return f"{FRONTEND_PREFIX}/users" + (f"?{urlencode(params)}" if params else "")
 
 
