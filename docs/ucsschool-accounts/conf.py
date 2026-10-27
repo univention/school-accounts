@@ -118,6 +118,9 @@ rst_epilog = r"""
 suppress_warnings = ["git.too_shallow"]
 git_last_updated_timezone = "Europe/Berlin"
 
+# The errata site routes in the browser, its fragment is no HTML anchor
+linkcheck_anchors_ignore_for_url = [r"https://errata\.software-univention\.de/"]
+
 if "spelling" in sys.argv:
     spelling_lang = "en"
     spelling_show_suggestions = True
