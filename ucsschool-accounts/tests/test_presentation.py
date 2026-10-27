@@ -228,10 +228,14 @@ def _list_data(user: User, permissions: list[Permission]) -> presentation.UserLi
 def test_build_user_list_full_access():
     view = presentation.build_user_list(_list_data(_user(), list(Permission)), "en", _SCHOOL1)
     cells = view.rows[0].cells
-    assert cells[0].kind == "text" and cells[0].visible and cells[0].text == "Klein"
+    assert cells[0].kind == "text"
+    assert cells[0].visible
+    assert cells[0].text == "Klein"
     assert cells[2].text == "kim"
     assert cells[3].items == ["Teacher"]
-    assert cells[4].kind == "boolean" and cells[4].activated is True and cells[4].text == "Activated"
+    assert cells[4].kind == "boolean"
+    assert cells[4].activated is True
+    assert cells[4].text == "Activated"
 
 
 @pytest.mark.parametrize(
@@ -273,8 +277,10 @@ def test_build_user_list_hidden_cells_and_deactivated():
     assert row.cells[0].visible is True  # last_name readable
     assert row.cells[1].visible is False  # first_name not granted
     assert row.cells[2].visible is True  # username implicitly readable
-    assert row.cells[3].visible is False and row.cells[3].items == []  # roles hidden
-    assert row.cells[4].activated is False and row.cells[4].text == "Deactivated"
+    assert row.cells[3].visible is False  # roles hidden
+    assert row.cells[3].items == []
+    assert row.cells[4].activated is False
+    assert row.cells[4].text == "Deactivated"
     assert row.cells[4].visible is False
 
 

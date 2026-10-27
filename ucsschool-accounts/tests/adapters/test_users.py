@@ -900,42 +900,6 @@ class TestFileUsersPersistenceAdapter:
             ),
             (
                 "test_school2",
-                [],
-                [],
-                [
-                    {
-                        "attributes": {
-                            "disabled": False,
-                            "first_name": "firstname2",
-                            "last_name": "lastname2",
-                            "roles": ["teacher:school:test_school2"],
-                            "schools": ["test_school2"],
-                            "school_classes": {"test_school2": ["1a", "2b"]},
-                            "username": "firstname2.lastname2",
-                            "work_groups": {"test_school2": ["w1a"]},
-                        },
-                        "id": "test_user2",
-                    },
-                    {
-                        "attributes": {
-                            "disabled": False,
-                            "first_name": "firstname3",
-                            "last_name": "lastname3",
-                            "roles": [
-                                "teacher:school:test_school2",
-                                "student:school:test_school3",
-                            ],
-                            "schools": ["test_school2", "test_school3"],
-                            "school_classes": {"test_school1": ["1a", "2b"], "test_school2": ["3c"]},
-                            "username": "firstname3.lastname3",
-                            "work_groups": {},
-                        },
-                        "id": "test_user3",
-                    },
-                ],
-            ),
-            (
-                "test_school2",
                 ["3c"],
                 [],
                 [

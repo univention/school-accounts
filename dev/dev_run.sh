@@ -28,6 +28,7 @@ pytest-frontend: Runs the Playwright frontend tests against a running dev-server
 pytest-frontend-headed: Same, but in a visible browser window instead of headless.
 translate: Generates translations for the app.
 EOF
+  return 0
 }
 
 run_task() {

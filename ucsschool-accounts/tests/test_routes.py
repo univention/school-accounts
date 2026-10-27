@@ -222,7 +222,9 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert response.headers["content-type"].startswith("text/html")
     body = response.text
     # Application shell (base.html) built from the design system.
-    assert "<html" in body and "data-theme" in body and "<u-page" in body
+    assert "<html" in body
+    assert "data-theme" in body
+    assert "<u-page" in body
     # Fixed layout: header + filters stay put; only the results region scrolls,
     # with the table's column headers pinned.
     assert 'variant="fixed"' in body
@@ -233,10 +235,12 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert "vendor/alpine.min.js" in body
     # The design-system stylesheet is a render-blocking <link> carrying the marker
     # attribute (prevents the flash of unstyled content; module skips self-injection).
-    assert 'rel="stylesheet" href="' in body and "vendor/univention-design-system.css" in body
+    assert 'rel="stylesheet" href="' in body
+    assert "vendor/univention-design-system.css" in body
     assert "data-univention-design-system" in body
     # Filter sidebar: school list select (preloaded items) wired to the cascade + search.
-    assert "<u-form" in body and 'name="school"' in body
+    assert "<u-form" in body
+    assert 'name="school"' in body
     assert "<u-list-select" in body
     assert "School 1" in body
     assert f"{FRONTEND_PREFIX}/users/filters" in body
@@ -253,7 +257,8 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     # is spent on item search.
     assert 'hx-trigger="u-change[filterChanged(event)] from:#school-list"' in body
     # Sidebar next to the results column, both stretched to full height.
-    assert 'align="stretch"' in body and 'basis="sm"' in body
+    assert 'align="stretch"' in body
+    assert 'basis="sm"' in body
     # Changing either list searches immediately; there is no submit button. Both
     # triggers are guarded: the list select fires u-change on a click that re-picks
     # the active item too, and refetching would discard the selection.
@@ -265,7 +270,8 @@ def test_users_list_renders_filter_form(test_client: TestClient):
     assert 'type="submit"' not in body[body.index("<u-form") : body.index("</u-form>")]
     # The reset option is offered but never preselected: listing a whole school
     # is a choice, and the table says so instead of making it.
-    assert 'value="all"' in body and 'value="all" selected' not in body
+    assert 'value="all"' in body
+    assert 'value="all" selected' not in body
     assert "All classes and work groups" in body
     assert "Select a school and a group to list users." in body
     # Only the route's HX-Push-Url pushes: the attribute would also push after an
@@ -298,12 +304,14 @@ def test_users_filters_returns_combined_control_for_school(test_client: TestClie
     body = response.text
     # The cascade returns the whole control, not just its items, so that switching
     # school drops the previous selection the element was holding.
-    assert "<u-list-select" in body and 'name="group"' in body
+    assert "<u-list-select" in body
+    assert 'name="group"' in body
     # Both datasets arrive as labelled groups of one single-select list, behind
     # the reset option. A fresh school starts on nothing, so no option comes
     # back selected and no users are listed until one is picked.
     assert body.count("<u-list-select-group") == 2
-    assert 'value="school_class:1a"' in body and 'value="work_group:w1a"' in body
+    assert 'value="school_class:1a"' in body
+    assert 'value="work_group:w1a"' in body
     assert " selected>" not in body
     # The control carries the selected school baked into its own hx-vals so the
     # item-search requests are not overridden by the inherited cascade hx-vals
@@ -387,9 +395,14 @@ def test_users_school_options_filtered_by_query(test_client: TestClient):
 
 
 def test_users_school_options_unfiltered(test_client: TestClient):
-    response = test_client.get(f"{FRONTEND_PREFIX}/users/schools")
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    response = cast(
+        httpx.Response,
+        test_client.get(f"{FRONTEND_PREFIX}/users/schools"),  # pyright: ignore[reportUnknownMemberType]
+    )
     assert response.status_code == 200
-    assert "School 1" in response.text and "Test School 1" in response.text
+    assert "School 1" in response.text
+    assert "Test School 1" in response.text
 
 
 def test_users_group_options_filtered_by_query(test_client: TestClient):
@@ -398,8 +411,10 @@ def test_users_group_options_filtered_by_query(test_client: TestClient):
     assert response.status_code == 200
     body = response.text
     assert "<u-list-select-group" in body
-    assert 'value="school_class:2b"' in body and 'value="school_class:1a"' not in body
-    assert 'value="work_group:w2b"' in body and 'value="work_group:w1a"' not in body
+    assert 'value="school_class:2b"' in body
+    assert 'value="school_class:1a"' not in body
+    assert 'value="work_group:w2b"' in body
+    assert 'value="work_group:w1a"' not in body
 
 
 def test_users_group_options_omit_empty_sections(test_client: TestClient):
@@ -408,7 +423,8 @@ def test_users_group_options_omit_empty_sections(test_client: TestClient):
     assert response.status_code == 200
     body = response.text
     assert body.count("<u-list-select-group") == 1
-    assert 'value="work_group:w1a"' in body and "school_class:" not in body
+    assert 'value="work_group:w1a"' in body
+    assert "school_class:" not in body
 
 
 def test_users_group_options_hide_reset_while_filtering(test_client: TestClient):
@@ -989,7 +1005,8 @@ def test_a_refused_password_reopens_the_dialog_over_the_selection_the_write_reso
     assert response.headers["HX-Retarget"] == "#password-reset-dialog-region"
     assert 'error="Password too short"' in response.text
     assert "<dialog" in response.text
-    assert 'value="test_user1"' in response.text and 'value="test_user2"' in response.text
+    assert 'value="test_user1"' in response.text
+    assert 'value="test_user2"' in response.text
     assert permissions_spy.call_count == 1
 
 
@@ -1001,7 +1018,8 @@ def test_password_reset_differing_reasons_stay_in_the_result_list(
     response = _post_reset(test_client, ["test_user1", "test_user2"], "new-password")
     assert "HX-Retarget" not in response.headers
     assert "Rejected" in response.text
-    assert "rejected test_user1" in response.text and "rejected test_user2" in response.text
+    assert "rejected test_user1" in response.text
+    assert "rejected test_user2" in response.text
 
 
 def test_password_reset_a_partial_success_stays_in_the_result_list(
@@ -1389,7 +1407,8 @@ def test_a_filter_change_renders_only_the_results_region(test_client: TestClient
     assert response.status_code == 200
     body = response.text
     assert body.lstrip().startswith('<u-vstack id="results-region"')
-    assert "<html" not in body and "<u-list-select" not in body
+    assert "<html" not in body
+    assert "<u-list-select" not in body
     # The rows are there; the control they were filtered by is not rebuilt.
     assert "max.muster" in body
     assert all_classes_spy.call_count == 0
