@@ -8,7 +8,7 @@ Usage
 *****
 
 This section describes how school administrators, teachers, and legal guardians
-use the |UASSA| app to find users and reset their passwords.
+use the |UASSA| app to find users, export them, and reset their passwords.
 What each of them can see and do depends on their roles,
 as described in :ref:`roles-permissions-and-conditions`.
 
@@ -55,6 +55,36 @@ The browser address contains the selected school, group, role, and search.
 You can bookmark it or share it,
 and it opens the same list for every user who has the same permissions.
 
+.. _usage-export-users:
+
+Export users as CSV
+===================
+
+You can export selected users as a CSV file,
+for example to create a class list for attendance.
+To export users, follow these steps:
+
+#. List the users as described in :ref:`usage-list-users`.
+
+#. Select the users that you want to export.
+   To select every user on the page, select the checkbox in the table header.
+   The export contains deactivated users when you select them.
+   Without a selection, the export contains every user that the list shows,
+   as narrowed by the filters and the search.
+
+#. Click :guilabel:`Export as CSV`.
+   Without a selection, the button reads :guilabel:`Export all as CSV`.
+   Your web browser saves the file.
+   Its name contains the school and the class or work group that the list shows,
+   and the date and time of the export,
+   for example ``goethe-gymnasium-berlin_5a_2026-10-27_14_30_00.csv``.
+
+The file has a header row with the columns ``Firstname``, ``Lastname``, and ``Username``,
+and one row for each exported user, in the order of the list.
+It contains only the data that the list view shows you.
+When you may not read the first name or the last name of a user,
+the file leaves that field empty.
+
 .. _usage-reset-passwords:
 
 Reset passwords
@@ -66,8 +96,7 @@ To reset passwords, follow these steps:
 #. List the users as described in :ref:`usage-list-users`.
 
 #. Select the users whose passwords you want to reset.
-   The list view shows a checkbox only for the users whose password you can reset.
-   To select every such user on the page, select the checkbox in the table header.
+   To select every user on the page, select the checkbox in the table header.
    A search removes the users that it hides from the selection,
    and clearing the search doesn't select them again,
    so the reset only affects users that the list shows.
@@ -75,6 +104,8 @@ To reset passwords, follow these steps:
 
 #. Click :guilabel:`Reset password`.
    A dialog lists the accounts that the reset affects.
+   It also states how many of the selected users you can't reset the password of.
+   The reset leaves out these users.
    It warns you when the selection contains users with different roles,
    or when it affects many accounts at once.
 

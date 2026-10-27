@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <u-vstack gap="md" grow align="stretch" justify="start" x-data="selection">
           {# Outside the scrolling region, so the heading, the selection count and the
              submit button stay visible while the table scrolls. #}
-          <u-hstack justify="between" align="start" gap="md">
+          <u-hstack justify="start" align="start" gap="md">
             <u-vstack gap="xs">
               {% if view.school %}
               <strong class="text-xl">{{ view.school }}{% if view.group %}<span aria-hidden="true"> › </span>{{ view.group }}{% endif %}</strong>
@@ -45,8 +45,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                Enter cannot submit the reset form: the input is in u-input's shadow root.
                hx-sync: see #results-column in pages/user_list.html.
                aria-busy: the rows leave the accessibility tree while a search loads (the
-               htmx-request rule in pages/user_list.html); this says why. #}
-            <search style="flex: 0 1 25rem">
+               htmx-request rule in pages/user_list.html); this says why.
+               The auto margin takes the free space, so the box and the buttons sit together on the right. #}
+            <search style="flex: 0 1 25rem; margin-inline-start: auto">
               <u-input
                 id="user-search"
                 name="q"
@@ -72,6 +73,33 @@ SPDX-License-Identifier: AGPL-3.0-only
                  a live region swapped in with its text is not reliably announced. #}
               <output id="search-status" class="sr-only"></output>
             </search>
+            {# Not a submit: that would post the reset. exportParameters() sends the ticks,
+               or every row on screen with nothing ticked, and saveExport() in
+               pages/user_list.html saves the answer as a file; the CSRF header comes
+               from #selection-form. #}
+            <u-button
+              id="export-csv"
+              type="button"
+              variant="neutral"
+              size="md"
+              x-bind:disabled="shown === 0"
+              hx-post="{{ frontend_prefix }}/users/export"
+              hx-swap="none"
+              hx-on::config-request="Alpine.$data(this.closest('[x-data]')).exportParameters(event)"
+              hx-on::before-send="event.detail.xhr.responseType = 'arraybuffer'; this.loading = true"
+              hx-on::after-request="this.loading = false"
+            >
+              {# Says which of the two the click exports. The labels are data attributes,
+                 not inline strings in x-text: a `| tojson` string would close the attribute.
+                 The CSS also reads them to size the button to the longer one
+                 (#export-csv-label in pages/user_list.html). #}
+              <span
+                id="export-csv-label"
+                data-all="{{ _('Export all as CSV') }}"
+                data-selected="{{ _('Export as CSV') }}"
+                x-text="selected > 0 ? $el.dataset.selected : $el.dataset.all"
+              >{{ _("Export all as CSV") }}</span>
+            </u-button>
             <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
               {{ _("Reset password") }}
             </u-button>
@@ -115,7 +143,7 @@ SPDX-License-Identifier: AGPL-3.0-only
               <u-th role="columnheader" direction="none">
                 <label for="select-all">
                   <u-checkbox id="select-all" x-ref="all" x-on:change="toggleAll($event.target.checked)"></u-checkbox>
-                  <span class="sr-only">{{ _("Select all resettable users on this page") }}</span>
+                  <span class="sr-only">{{ _("Select all users on this page") }}</span>
                 </label>
               </u-th>
               {% for column in view.columns %}<u-th role="columnheader" direction="none">{{ column.label }}</u-th>{% endfor %}
@@ -124,7 +152,6 @@ SPDX-License-Identifier: AGPL-3.0-only
               {% for row in view.rows %}
               <u-tr role="row">
                 <u-td role="cell">
-                  {% if row.selectable %}
                   <label for="select-{{ row.id }}">
                     <u-checkbox
                       id="select-{{ row.id }}"
@@ -134,7 +161,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                     ></u-checkbox>
                     <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
                   </label>
-                  {% endif %}
                 </u-td>
                 {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
               </u-tr>

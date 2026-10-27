@@ -103,6 +103,31 @@ SPDX-License-Identifier: AGPL-3.0-only
     position: relative;
   }
 
+  /* Both labels of the export button, laid out with no height, so the button is as
+     wide as the longer one in every language and a tick does not resize it. Pseudo
+     elements, not hidden spans: they stay out of the button's text and name. */
+  #export-csv-label {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  #export-csv-label::before,
+  #export-csv-label::after {
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  #export-csv-label::before {
+    content: attr(data-all);
+  }
+
+  #export-csv-label::after {
+    content: attr(data-selected);
+  }
+
   /* The design system ships no progress bar, so the app draws its own:
      an indeterminate bar out of flow, so it keeps no column gap. */
   #results-region > progress {
@@ -242,6 +267,39 @@ SPDX-License-Identifier: AGPL-3.0-only
       rows.querySelector("[data-status]")?.dataset.status ?? ""
   }
 
+  // The export button asks for an ArrayBuffer: the CSV is UTF-16LE, and read as text it
+  // would come back as a string that a Blob saves as UTF-8. An answer without a file is
+  // the error toast, which htmx swaps as usual once it is text again.
+  function saveExport(event) {
+    const xhr = event.detail.xhr
+    const filename = /filename="([^"]+)"/.exec(xhr.getResponseHeader("Content-Disposition") ?? "")
+    if (!filename) {
+      event.detail.serverResponse = new TextDecoder().decode(xhr.response)
+      return
+    }
+    event.detail.shouldSwap = false
+    const link = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([xhr.response], { type: "text/csv" })),
+      download: filename[1],
+    })
+    document.body.append(link)
+    link.click()
+    link.remove()
+    // In a later task: the browser may still be reading the blob when click() returns.
+    setTimeout(() => URL.revokeObjectURL(link.href))
+  }
+
+  // htmx:beforeSwap fires on the swap target, not on the button: the selection form's
+  // #password-reset-dialog-region, or #toast-region for an error. So it is caught here
+  // and told apart by the element that sent the request. Installed once, as a history
+  // restore runs this script again.
+  if (!window.saveExportInstalled) {
+    window.saveExportInstalled = true
+    document.addEventListener("htmx:beforeSwap", (event) => {
+      if (event.detail.requestConfig?.elt?.id === "export-csv") saveExport(event)
+    })
+  }
+
   // A successful reset still swaps in an empty <output>, and either way the region
   // stays a flex item of the results column - one that would keep its gap.
   function syncResultVisibility(region) {
@@ -261,6 +319,8 @@ SPDX-License-Identifier: AGPL-3.0-only
       // Written by sync(): Alpine only re-evaluates its own reactive values, so a
       // getter over box.checked froze the count.
       selected: 0,
+      // The rows on screen: what the export takes while nothing is ticked.
+      shown: 0,
       lastCount: 0,
       // The ids ticked at the last sync(). Remembered because by the time retick() runs,
       // a search's swap has removed the checkboxes they came from.
@@ -274,6 +334,7 @@ SPDX-License-Identifier: AGPL-3.0-only
       sync() {
         const boxes = this.boxes()
         const checked = boxes.filter((box) => box.checked)
+        this.shown = boxes.length
         this.selected = checked.length
         this.ticked = checked.map((box) => box.value)
         if (this.selected > 0) this.lastCount = this.selected
@@ -283,6 +344,21 @@ SPDX-License-Identifier: AGPL-3.0-only
           this.$refs.all.checked = boxes.length > 0 && checked.length === boxes.length
           this.$refs.all.indeterminate = checked.length > 0 && checked.length < boxes.length
         }
+      },
+      // Replaces what htmx collected from the selection form with the ticked rows and
+      // #listed-filter, the filter the table was listed with, which names the file.
+      // No ticks mean the whole list on screen, as filtered and searched.
+      exportParameters(event) {
+        const data = new FormData()
+        const boxes = this.boxes()
+        const rows = this.selected > 0 ? boxes.filter((box) => box.checked) : boxes
+        for (const input of document.querySelectorAll("#listed-filter input")) data.append(input.name, input.value)
+        for (const box of rows) data.append("user_id", box.value)
+        // The file is named after the time of the export. The server's clock runs in a
+        // container that knows no time zone, so the browser sends its own, as local time.
+        const now = new Date()
+        data.append("local_time", new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19))
+        event.detail.parameters = data
       },
       toggleAll(on) {
         for (const box of this.boxes()) box.checked = on

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-accounts\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-11-05 07:49+0000\n"
+"POT-Creation-Date: 2026-11-19 07:58+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -74,6 +74,12 @@ msgstr ""
 
 msgid "Enter password…"
 msgstr "Passwort eingeben…"
+
+msgid "Export all as CSV"
+msgstr "Alle als CSV exportieren"
+
+msgid "Export as CSV"
+msgstr "Als CSV exportieren"
 
 msgid "Filter classes and work groups"
 msgstr "Klassen und Arbeitsgruppen filtern"
@@ -172,8 +178,8 @@ msgstr "Wählen Sie eine Schule und eine Gruppe aus, um Benutzer aufzulisten."
 msgid "Select a school first."
 msgstr "Wählen Sie zuerst eine Schule aus."
 
-msgid "Select all resettable users on this page"
-msgstr "Alle zurücksetzbaren Benutzer auf dieser Seite auswählen"
+msgid "Select all users on this page"
+msgstr "Alle Benutzer auf dieser Seite auswählen"
 
 msgid "Select at least one user before resetting passwords."
 msgstr ""
@@ -288,6 +294,9 @@ msgstr "{count} Benutzer ausgewählt"
 #~ msgid "Add user"
 #~ msgstr "Benutzer hinzufügen"
 
+#~ msgid "Back to the list"
+#~ msgstr "Zurück zur Liste"
+
 #~ msgid "Birthday"
 #~ msgstr "Geburtstag"
 
@@ -316,6 +325,13 @@ msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "First name of the user"
 #~ msgstr "Vorname des Benutzers"
+
+#~ msgid ""
+#~ "Invalid or missing security token. Please go back to the list and try "
+#~ "again."
+#~ msgstr ""
+#~ "Ungültiges oder fehlendes Sicherheitstoken. Bitte kehren Sie zur Liste "
+#~ "zurück und versuchen Sie es erneut."
 
 #~ msgid "Last name of the user"
 #~ msgstr "Nachname des Benutzers"

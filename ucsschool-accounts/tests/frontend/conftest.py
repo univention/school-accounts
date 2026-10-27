@@ -16,7 +16,7 @@ from tests.frontend import seed
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from playwright.sync_api import Browser, BrowserContext, Page, StorageState
+    from playwright.sync_api import Browser, BrowserContext, Page, Route, StorageState
     from pytest_playwright.pytest_playwright import CreateContextCallback
 
 # Not from ucsschool_accounts.constants, which describes this checkout, not the deployment.
@@ -102,6 +102,25 @@ def open_page(page: Page, path: str) -> Page:
     page.goto(path)
     expect(page).to_have_url(re.compile(re.escape(path)))
     return page
+
+
+def tick(page: Page, user_id: str) -> None:
+    """Tick a listed user's row in the selection form."""
+    page.locator(f'u-checkbox[name="user_id"][value="{user_id}"]').click()
+
+
+def wait_until_held(page: Page, held: list[Route], timeout_ms: int = 10_000) -> None:
+    """Wait for a route handler to hold back a request, failing if it is never sent.
+
+    Waiting on the page lets Playwright run the handler; unbounded, a request a change
+    stopped sending would hang the whole job instead of failing this test.
+    """
+    waited = 0
+    while not held:
+        if waited >= timeout_ms:
+            pytest.fail(f"No request was held back within {timeout_ms} ms.")
+        page.wait_for_timeout(50)
+        waited += 50
 
 
 @pytest.fixture(scope="session")

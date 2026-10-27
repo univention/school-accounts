@@ -15,15 +15,18 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Awaitable
 from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
 from typing import Annotated, cast
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from loguru import logger
 from starlette.datastructures import FormData
+from starlette.exceptions import HTTPException
 from starlette.responses import RedirectResponse, Response
 
 from . import business_logic, presentation
@@ -40,6 +43,7 @@ from .constants import (
     AUTH_LOGIN_PATH,
     AUTH_LOGOUT_PATH,
     CSRF_HEADER_NAME,
+    FORM_MAX_FIELDS,
     FRONTEND_PREFIX,
     TEMPLATES_DIR,
 )
@@ -150,7 +154,7 @@ ActorDep = Annotated[str, Depends(current_actor)]
 
 
 async def verified_csrf(request: Request, auth: AuthDep) -> None:
-    """Reject an unsafe request whose CSRF token is missing or wrong."""
+    """Reject an unsafe htmx request whose CSRF token header is missing or wrong."""
     if not await auth.check_csrf(request, request.headers.get(CSRF_HEADER_NAME)):
         raise PermissionsError(
             _(
@@ -161,6 +165,19 @@ async def verified_csrf(request: Request, auth: AuthDep) -> None:
 
 
 CsrfDep = Annotated[None, Depends(verified_csrf)]
+
+
+async def read_form(request: Request) -> FormData:
+    """The submitted form, with room for one field per user of a whole school.
+
+    Every read goes through here: Starlette parses the form once, on the first
+    call, with that call's limit, and hands later calls the same result.
+    """
+    try:
+        return await request.form(max_fields=FORM_MAX_FIELDS)
+    except HTTPException as exc:
+        # Starlette's own 400 would answer with JSON; this one gets the HTML treatment.
+        raise RequestValidationError([{"type": "form", "msg": exc.detail}]) from exc
 
 
 def selected_ids(form: FormData) -> list[str]:
@@ -706,6 +723,53 @@ async def users_group_options(
     )
 
 
+def _export_time(value: object) -> datetime:
+    """The browser's local time, which ``exportParameters()`` sends as ``YYYY-MM-DDTHH:MM:SS``.
+
+    It only names the file, so anything else - an old page, a hand-made request -
+    falls back to the server's clock rather than failing the export.
+    """
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return datetime.now()
+
+
+@router.post("/users/export")
+async def users_export(
+    request: Request,
+    actor: ActorDep,
+    users_adapter: UsersAdapterDep,
+    permissions_adapter: PermissionsAdapterDep,
+    _csrf: CsrfDep,
+) -> Response:
+    """The selected users as a CSV file - the one response that is not HTML.
+
+    The export button fetches it through htmx and ``saveExport()`` hands the bytes
+    to the browser as a ``blob:`` download. A failure is the usual error toast.
+    POST for an unbounded id list, as for the password reset.
+    """
+    form = await read_form(request)
+    data = await business_logic.get_export_selection(
+        users_adapter, permissions_adapter, actor, selected_ids(form), get_lang(request)
+    )
+    # The export button sends the filter the table was listed with, #listed-filter.
+    filename = presentation.build_export_filename(
+        str(form.get("school") or ""),
+        _GroupSelection.from_value(str(form.get("group") or "")).item_id,
+        _export_time(form.get("local_time")),
+    )
+    return Response(
+        presentation.build_user_export(data),
+        media_type="text/csv; charset=utf-16",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Names of pupils; no shared cache has any business keeping them.
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 async def _password_reset_dialog(
     request: Request,
     auth: FastAPIAuthenticationPort,
@@ -737,7 +801,7 @@ async def users_password_reset_confirm(
     transient step, not a shareable URL. Every unsafe method carries the token.
     """
     lang = get_lang(request)
-    form = await request.form()
+    form = await read_form(request)
     data = await business_logic.get_password_reset_selection(
         users_adapter, permissions_adapter, actor, selected_ids(form), lang
     )
@@ -768,7 +832,7 @@ async def users_password_reset(
     Renders a summary toast plus a per-target outcome list.
     """
     lang = get_lang(request)
-    form = await request.form()
+    form = await read_form(request)
     result = await business_logic.set_passwords(
         users_adapter,
         permissions_adapter,

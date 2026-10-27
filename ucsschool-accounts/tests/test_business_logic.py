@@ -7,6 +7,8 @@ obtained from the configured ``ADAPTER_REGISTRY`` (the registry is configured by
 the app startup that the session-scoped ``test_client`` fixture triggers).
 """
 
+from __future__ import annotations
+
 import asyncio
 import re
 import sys
@@ -1090,6 +1092,63 @@ async def test_password_reset_selection_propagates_an_unexpected_fetch_error(
     )
     with pytest.raises(RuntimeError, match="kelvin is down"):
         await business_logic.get_password_reset_selection(
+            ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "en"
+        )
+
+
+@pytest.mark.asyncio
+async def test_export_selection_keeps_the_visible_users_in_selection_order(
+    ports: Ports, mocker: MockerFixture
+):
+    """A user with any permission is exported, even without write-password."""
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id(
+            {"test_user1": [Permission.read_last_name], "test_user2": [Permission.read_first_name]}
+        ),
+    )
+    get_users_by_id_spy = mocker.spy(FileUsersPersistenceAdapter, "get_users_by_id")
+    data = await business_logic.get_export_selection(
+        ports.users, ports.permissions, ACTOR_ID, ["test_user2", "test_user1", "test_user2"], "en"
+    )
+    assert [user.id for user in data.users] == ["test_user2", "test_user1"]
+    assert data.permissions["test_user1"] == [Permission.read_last_name]
+    assert get_users_by_id_spy.call_count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target_ids",
+    [
+        pytest.param(["test_user1", "test_user2"], id="no-permission"),
+        pytest.param(["test_user1", "nonexistent"], id="not-existing"),
+    ],
+)
+async def test_export_selection_drops_what_the_actor_cannot_see(
+    ports: Ports, mocker: MockerFixture, target_ids: list[str]
+):
+    """The ids come from the client: one the actor cannot see must not reach the file."""
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        side_effect=_permissions_by_id({"test_user1": [Permission.read_first_name]}),
+    )
+    data = await business_logic.get_export_selection(
+        ports.users, ports.permissions, ACTOR_ID, target_ids, "en"
+    )
+    assert [user.id for user in data.users] == ["test_user1"]
+
+
+@pytest.mark.asyncio
+async def test_export_selection_propagates_an_unexpected_fetch_error(
+    ports: Ports, mocker: MockerFixture
+):
+    mocker.patch.object(
+        FileUsersPersistenceAdapter, "get_users_by_id", side_effect=RuntimeError("kelvin is down")
+    )
+    with pytest.raises(RuntimeError, match="kelvin is down"):
+        await business_logic.get_export_selection(
             ports.users, ports.permissions, ACTOR_ID, ["test_user1"], "en"
         )
 

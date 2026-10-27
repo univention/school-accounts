@@ -40,6 +40,12 @@ PASSWORD_RESET_MAX_CONCURRENCY = int(
 # Number of max users/accounts that can be reset in a single password reset request
 PASSWORD_RESET_MAX_TARGETS = int(os.environ.get("UCSSCHOOL_ACCOUNTS__PASSWORD_RESET_MAX_TARGETS", "200"))
 
+# How many fields one form submission may carry. The selection posts one field
+# per ticked user, and the CSV export with nothing ticked one per listed user, so
+# Starlette's default of 1000 would refuse a whole school. Size it above the
+# largest school, plus a few fields for the filter.
+FORM_MAX_FIELDS = 20000
+
 # Cut-of number for listing the users in the confirmation dialog
 # >5, no individual listing
 PASSWORD_RESET_NAMED_LIMIT = 5

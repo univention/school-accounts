@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Unit tests for the presentation view-model builders."""
 
+from __future__ import annotations
+
+import codecs
+import csv
+import io
+from datetime import datetime
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -566,18 +573,75 @@ def _selection(*users: User, denied: int = 0):
     return presentation.PasswordResetSelectionData(users=list(users), denied=denied)
 
 
-def test_build_user_list_carries_the_row_id_and_marks_it_selectable():
-    view = presentation.build_user_list(
-        _list_data(_user(), [Permission.read_last_name, Permission.write_password]), "en", _SCHOOL1
-    )
+def test_build_user_list_carries_the_row_id_and_label():
+    """Without write-password too: every listed row can be selected, for the export."""
+    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en", _SCHOOL1)
     assert [row.id for row in view.rows] == ["u1"]
-    assert view.rows[0].selectable is True
     assert view.rows[0].label == "Kim Klein"
 
 
-def test_build_user_list_row_without_write_password_is_not_selectable():
-    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en", _SCHOOL1)
-    assert view.rows[0].selectable is False
+def _export(*users: User, permissions: list[Permission] | None = None) -> list[list[str]]:
+    """Build the export and read it back the way a spreadsheet would."""
+    granted = (
+        [Permission.read_first_name, Permission.read_last_name] if permissions is None else permissions
+    )
+    raw = presentation.build_user_export(
+        presentation.UserExportData(users=list(users), permissions={user.id: granted for user in users})
+    )
+    assert raw.startswith(codecs.BOM_UTF16_LE)
+    return list(csv.reader(io.StringIO(raw.decode("utf-16"), newline=""), delimiter="\t"))
+
+
+def test_build_user_export_is_the_class_list_modules_default_format():
+    raw = presentation.build_user_export(
+        presentation.UserExportData(
+            users=[_user()], permissions={"u1": [Permission.read_first_name, Permission.read_last_name]}
+        )
+    )
+    expected = "Firstname\tLastname\tUsername\r\nKim\tKlein\tkim\r\n"
+    assert raw == codecs.BOM_UTF16_LE + expected.encode("utf-16-le")
+
+
+def test_build_user_export_keeps_umlauts_and_quotes_separators():
+    user = _user(first_name="Jürgen\tß", last_name='Öz "Ça"')
+    assert _export(user)[1] == ["Jürgen\tß", 'Öz "Ça"', "kim"]
+
+
+def test_build_user_export_rows_follow_the_selection():
+    users = [_user(), User(id="u2", attributes=_user(username="ada").attributes)]
+    assert [row[2] for row in _export(*users)[1:]] == ["kim", "ada"]
+
+
+@pytest.mark.parametrize(
+    "permissions,expected",
+    [
+        pytest.param([Permission.read_first_name], ["Kim", "", "kim"], id="last-name-hidden"),
+        pytest.param([Permission.read_last_name], ["", "Klein", "kim"], id="first-name-hidden"),
+        pytest.param([Permission.read_roles], ["", "", "kim"], id="username-is-implicit"),
+    ],
+)
+def test_build_user_export_leaves_an_unreadable_attribute_empty(
+    permissions: list[Permission], expected: list[str]
+):
+    assert _export(_user(), permissions=permissions)[1] == expected
+
+
+@pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "\t", "\r"])
+def test_build_user_export_turns_a_formula_into_text(prefix: str):
+    user = _user(first_name=f"{prefix}SUM(A1)", last_name=f"{prefix}1", username=f"{prefix}x")
+    assert _export(user)[1] == [f"'{prefix}SUM(A1)", f"'{prefix}1", f"'{prefix}x"]
+
+
+def test_build_user_export_leaves_a_harmless_value_alone():
+    assert _export(_user(first_name="Anne-Marie", last_name="O'Neil"))[1] == [
+        "Anne-Marie",
+        "O'Neil",
+        "kim",
+    ]
+
+
+def test_build_user_export_of_nobody_is_the_header_alone():
+    assert _export() == [["Firstname", "Lastname", "Username"]]
 
 
 def test_build_password_reset_confirmation_names_a_small_selection():
@@ -662,3 +726,23 @@ def test_build_password_reset_confirmation_escalates_only_above_the_threshold(
 def test_build_password_reset_confirmation_reports_dropped_accounts():
     confirmation = presentation.build_password_reset_confirmation(_selection(_user(), denied=3), "en")
     assert confirmation.denied == 3
+
+
+_EXPORTED_AT = datetime(2026, 10, 28, 14, 30, 5)
+
+
+@pytest.mark.parametrize(
+    ("school", "group", "expected"),
+    [
+        ("goethe", "5a", "goethe_5a_2026-10-28_14_30_05.csv"),
+        ("goethe", "", "goethe_2026-10-28_14_30_05.csv"),
+        ("goethe", "Erste-Hilfe-AG", "goethe_Erste-Hilfe-AG_2026-10-28_14_30_05.csv"),
+        ("", "", "users_2026-10-28_14_30_05.csv"),
+        # Sent by the client and written into a header: nothing but [A-Za-z0-9_.-] stays.
+        ('a"b\r\nc', "../5 ä", "a-b-c_5_2026-10-28_14_30_05.csv"),
+        ("...", "", "users_2026-10-28_14_30_05.csv"),
+        ("school_1", "", "school_1_2026-10-28_14_30_05.csv"),
+    ],
+)
+def test_build_export_filename_names_the_listed_filter(school: str, group: str, expected: str):
+    assert presentation.build_export_filename(school, group, _EXPORTED_AT) == expected

@@ -27,6 +27,17 @@ v1.1.0 (unreleased)
   A search removes the users that it hides from the selection for the password reset.
 * The page shows an error message when a request does not reach the app,
   for example when a search text is too long or the connection to the server drops.
+* You can export selected users as a CSV file with their first name, last name, and username,
+  for example to create a class list.
+  Without a selection, the export contains every user that the list shows.
+  The export button shows a spinner until the file arrives.
+* The app requires UCS 5.2-7 with :uv:erratum:`5.2x701` or later,
+  on the systems that serve the Univention Portal as well.
+  Without this erratum, Firefox can't save the CSV export.
+* You can select users whose password you can't reset.
+* When your session expires while you work with the list,
+  the app returns you to the same list after you sign in again,
+  with its school, class or work group, and search.
 
 .. _release-1-0-0:
 

@@ -33,7 +33,9 @@ Install the app
 You can install the |UASSA| app on a
 :external+uv-ucs-manual:ref:`domain-ldap-primary-directory-node` or on a
 :external+uv-ucs-manual:ref:`domain-ldap-backup-directory-node`
-that runs Univention Corporate Server (UCS) 5.2-6 with :uv:erratum:`5.2x569` or later.
+that runs Univention Corporate Server (UCS) 5.2-7 with :uv:erratum:`5.2x701` or later.
+The systems that serve the Univention Portal need this erratum as well,
+because without it Firefox can't save the CSV export of the user list.
 
 Your domain must meet the following prerequisites before you install the app:
 

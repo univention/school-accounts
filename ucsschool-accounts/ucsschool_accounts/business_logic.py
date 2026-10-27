@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 import asyncio
 from collections import Counter
 from collections.abc import Awaitable, Callable
@@ -41,6 +43,7 @@ from .presentation import (
     PasswordResetResultData,
     PasswordResetSelectionData,
     SchoolsData,
+    UserExportData,
     UserListData,
 )
 
@@ -442,20 +445,22 @@ async def get_group_filters(
 
 
 async def _fetch_users(
-    users_adapter: UsersPersistencePort, target_ids: list[str], actor_id: str
+    users_adapter: UsersPersistencePort, target_ids: list[str], actor_id: str, action: str
 ) -> tuple[dict[str, User], list[str]]:
     """Resolve the selected ids into users, returning what was found and what was missing.
 
     One search names every id at once, whatever schools they are spread over, so
     the cost of a confirmation no longer grows with the size of the selection.
+    ``action`` names the bulk action the selection is for, in the log.
     """
     try:
         found = await users_adapter.get_users_by_id(target_ids)
     except Exception as exc:
         logger.error(
-            "Abandoned the password reset: the selected users could not be looked up. "
-            "No password was changed. Usually the Kelvin REST API is unreachable or "
-            "answered with an error; the reset can be retried once it responds.",
+            "Abandoned a bulk action: the selected users could not be looked up, so "
+            "nothing was changed or exported. Usually the Kelvin REST API is unreachable "
+            "or answered with an error; the action can be retried once it responds.",
+            action=action,
             actor_id=actor_id,
             target_count=len(target_ids),
             error=str(exc),
@@ -504,7 +509,7 @@ async def get_password_reset_selection(
         )
     actor = await get_actor(actor_id, users_adapter, lang)
     # A vanished user is dropped here; the submit reports it as ``not_found``.
-    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "password_reset")
     users = list(found.values())
 
     permissions = await permissions_port.get_permissions(actor, [user_to_target(user) for user in users])
@@ -523,6 +528,41 @@ async def get_password_reset_selection(
         denied=denied,
         supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
     )
+
+
+async def get_export_selection(
+    users_adapter: UsersPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    target_ids: list[str],
+    lang: str,
+) -> UserExportData:
+    """Resolve selected user ids into the users the actor may see, for the CSV export.
+
+    The ids come from the client, so they are resolved and checked again rather
+    than trusted: a user the actor holds no permission on is not listed, and is
+    not exported either. Which of their attributes go into the file is decided
+    per attribute in ``presentation.build_user_export``, as it is for the table.
+    No ceiling: the cost is one lookup and one permission batch, the same as
+    listing the users did.
+    """
+    deduped_ids = list(dict.fromkeys(target_ids))
+    actor = await get_actor(actor_id, users_adapter, lang)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "csv_export")
+    permissions = await permissions_port.get_permissions(
+        actor, [user_to_target(user) for user in found.values()]
+    )
+    # In the order of the selection, which is the order of the table.
+    users = [found[tid] for tid in deduped_ids if permissions.get(tid)]
+    logger.info(
+        "Exported a selection of users as CSV.",
+        actor_id=actor_id,
+        selected=len(deduped_ids),
+        exported=len(users),
+        missing_count=len(missing),
+        denied=len(found) - len(users),
+    )
+    return UserExportData(users=users, permissions=permissions)
 
 
 async def _write_passwords(
@@ -607,7 +647,7 @@ async def set_passwords(
         )
 
     actor = await get_actor(actor_id, users_adapter, lang)
-    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id)
+    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "password_reset")
     outcomes: dict[str, PasswordResetOutcome] = {
         tid: PasswordResetOutcome(target_id=tid, outcome=PasswordResetOutcomeCode.not_found)
         for tid in missing

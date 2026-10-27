@@ -209,7 +209,17 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
 
 - **Every response is HTML.** `main.py` sets `default_response_class=HTMLResponse` and
   `openapi_url=None` — there is no JSON API surface. Do not add JSON endpoints; extend the HTML/htmx
-  pattern instead.
+  pattern instead. The one exception is a file download: `POST /users/export` answers with the
+  CSV file itself (`Content-Disposition: attachment`), UTF-16LE with a BOM, the format of the
+  old UCS@school class list module. The `#export-csv` button posts it through htmx, with the
+  selection form's `X-CSRF-Token`, and reads the answer as an `ArrayBuffer`: as text it would
+  turn into a string that a `Blob` saves as UTF-8. `saveExport()` (`pages/user_list.html`)
+  saves a file answer through a `blob:` link and turns anything else back into text for the
+  usual error toast. It hangs off a `document` listener, not an `hx-on` on the button:
+  `htmx:beforeSwap` fires on the swap target, which is the inherited `hx-target` or the
+  `HX-Retarget` of an error, never the requesting element. Firefox checks that link against the embedding portal's CSP, whose
+  `frame-src` allows `blob:` only since UCS 5.2-7 erratum 701 (Bug #60132) — the reason for
+  the app's `SupportedUcsVersions`.
 - **A route may answer an htmx request with only the fragment it swaps, keyed on `HX-Target`.**
   `GET /users` does:
   the filter form targets `#results-region`,
@@ -318,9 +328,11 @@ already keeps a cross-site POST from carrying it.
   that htmx listens for via `hx-trigger`. Prefer this event-driven htmx pattern.
 - **Alpine.js holds one component**: the `selection` data in `pages/user_list.html`, bound by
   `x-data="selection"` in `fragments/user_table.html`. It counts the ticked rows for the password
-  reset, and keeps ticks across a search's swap (`retick()`) or narrows them to the failed accounts
-  (`keepOnly()`). Reach for Alpine only for state that genuinely can't be expressed as an
-  htmx-observable DOM event.
+  reset and the CSV export, which takes every row on screen while none is ticked (`exportParameters()`).
+  Every listed row is selectable; the reset dialog reports the ones the actor may not reset as
+  `denied`. The component also keeps ticks across a search's swap (`retick()`) and narrows them to
+  the failed accounts after a reset (`keepOnly()`). Reach for Alpine only for state that genuinely
+  can't be expressed as an htmx-observable DOM event.
 - **There is no repo-authored JavaScript file**, only inline `<script>` blocks in templates:
   `pages/user_list.html` holds the helpers its `hx-*` attributes call (`filterChanged`,
   `skipUnchangedSearch`, `announceSearchResult`, `syncResultVisibility`,

@@ -30,10 +30,6 @@ def test_login_through_keycloak_lands_on_the_user_list(
 
 
 @pytest.mark.frontend
-@pytest.mark.xfail(
-    reason="G0039: only the path is carried through the login, the query string is dropped",
-    strict=True,
-)
 def test_a_filtered_deep_link_survives_the_login(
     fresh_browser: Callable[[], Page], frontend_credentials: tuple[str, str], school_id: str
 ) -> None:

@@ -5,11 +5,13 @@
 from __future__ import annotations
 
 import asyncio
+import codecs
 import gc
 import re
 import sys
 from typing import Any, Callable, Coroutine, Generator, cast
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -119,6 +121,14 @@ class _CsrfRejectAuth(FastAPIAuthenticationPort):
     @override
     async def check_csrf(self, request: Request, submitted: str | None) -> bool:
         return False
+
+
+class _CsrfCheckingAuth(_CsrfIssuingAuth):
+    """Auth adapter double accepting only the token it issues."""
+
+    @override
+    async def check_csrf(self, request: Request, submitted: str | None) -> bool:
+        return submitted == self.TOKEN
 
 
 @pytest.fixture
@@ -1090,6 +1100,88 @@ def test_protected_route_htmx_redirect_when_unauthenticated(
     assert AUTH_LOGIN_PATH in response.headers["HX-Redirect"]
 
 
+def _login_next(
+    test_client: TestClient, method: str, path: str, header: str = "location", **kwargs: Any
+) -> str:
+    """Send a request nobody is signed in for, and return where its login comes back to."""
+    response = cast(
+        httpx.Response,
+        test_client.request(  # pyright: ignore[reportUnknownMemberType]
+            method, f"{FRONTEND_PREFIX}{path}", follow_redirects=False, **kwargs
+        ),
+    )
+    return parse_qs(urlsplit(response.headers[header]).query)["next"][0]
+
+
+def test_unauthenticated_page_load_returns_to_the_page_with_its_filters(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    override_auth(NeverAuthenticatedAdapter())
+    next_url = _login_next(test_client, "GET", "/users", params={"school": "school1", "q": "kim"})
+    assert next_url == f"{FRONTEND_PREFIX}/users?school=school1&q=kim"
+
+
+def test_unauthenticated_htmx_request_returns_to_the_page_it_came_from(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    """Not to the fragment it fetched: that is no page to land on."""
+    override_auth(NeverAuthenticatedAdapter())
+    page = f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+    next_url = _login_next(
+        test_client,
+        "GET",
+        "/users/schools",
+        header="HX-Redirect",
+        headers={"HX-Request": "true", "HX-Current-URL": f"https://portal.example{page}"},
+    )
+    assert next_url == page
+
+
+def test_unauthenticated_export_returns_to_the_list_it_was_sent_from(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    """The export is a POST: coming back to it would be a GET it does not answer."""
+    override_auth(NeverAuthenticatedAdapter())
+    page = f"{FRONTEND_PREFIX}/users?school=school1&group=all"
+    next_url = _login_next(
+        test_client,
+        "POST",
+        "/users/export",
+        header="HX-Redirect",
+        data={"user_id": "test_user1"},
+        headers={"HX-Request": "true", "HX-Current-URL": f"https://portal.example{page}"},
+    )
+    assert next_url == page
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        pytest.param({}, id="no page"),
+        pytest.param({"Referer": "https://portal.example/elsewhere"}, id="referer"),
+        pytest.param(
+            {"HX-Request": "true", "HX-Current-URL": "https://evil.example/elsewhere"}, id="foreign"
+        ),
+    ],
+)
+def test_unauthenticated_post_from_elsewhere_returns_to_the_list(
+    test_client: TestClient,
+    override_auth: Callable[[FastAPIAuthenticationPort], None],
+    headers: dict[str, str],
+):
+    """Only htmx names the page it was sent from; a Referer is not trusted for it."""
+    override_auth(NeverAuthenticatedAdapter())
+    next_url = _login_next(
+        test_client,
+        "POST",
+        "/users/export",
+        header="HX-Redirect" if "HX-Request" in headers else "location",
+        data={"user_id": "test_user1"},
+        headers=headers,
+    )
+    assert next_url == f"{FRONTEND_PREFIX}/users"
+
+
 def test_error_toast_is_not_swapped_out_of_band(
     test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
 ):
@@ -1109,6 +1201,7 @@ def test_error_toast_is_not_swapped_out_of_band(
     [
         ("/users/password-reset", {"user_id": "test_user1", "password": "new-password"}),
         ("/users/password-reset/confirm", {"user_id": "test_user1"}),
+        ("/users/export", {"user_id": "test_user1"}),
     ],
 )
 def test_unsafe_routes_reject_a_missing_csrf_token(
@@ -1527,6 +1620,171 @@ def test_password_reset_confirm_with_nothing_resettable_offers_only_a_close(
     assert 'name="password"' not in body
 
 
+def _post_export(
+    test_client: TestClient, user_id: str | list[str], **extra: str | list[str]
+) -> httpx.Response:
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/export", data={"user_id": user_id, **extra}
+        ),
+    )
+
+
+def test_export_answers_with_the_selection_as_a_csv_file(test_client: TestClient):
+    response = _post_export(test_client, ["test_user2", "test_user1"])
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/csv; charset=utf-16"
+    assert re.fullmatch(
+        r'attachment; filename="users_\d{4}-\d\d-\d\d_\d\d_\d\d_\d\d\.csv"',
+        response.headers["Content-Disposition"],
+    )
+    assert response.headers["Cache-Control"] == "no-store"
+    expected = (
+        "Firstname\tLastname\tUsername\r\n"
+        "firstname2\tlastname2\tfirstname2.lastname2\r\n"
+        "firstname\tlastname\tfirstname.lastname\r\n"
+    )
+    assert response.content == codecs.BOM_UTF16_LE + expected.encode("utf-16-le")
+
+
+def test_export_takes_the_csrf_token_from_its_header(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    override_auth(_CsrfCheckingAuth())
+    response = cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/export",
+            data={"user_id": "test_user1"},
+            headers={"X-CSRF-Token": _CsrfCheckingAuth.TOKEN},
+        ),
+    )
+    assert response.status_code == 200
+    assert response.headers["Content-Disposition"].startswith("attachment")
+
+
+def test_a_refused_export_is_a_toast(
+    test_client: TestClient, override_auth: Callable[[FastAPIAuthenticationPort], None]
+):
+    """``saveExport()`` finds no file in it and lets htmx swap it like any other error."""
+    override_auth(_CsrfRejectAuth())
+    response = cast(
+        httpx.Response,
+        test_client.post(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users/export",
+            data={"user_id": "test_user1"},
+            headers={"HX-Request": "true"},
+        ),
+    )
+    assert response.headers["HX-Retarget"] == "#toast-region"
+    assert "Content-Disposition" not in response.headers
+    assert "Please reload the page and try again." in response.text
+
+
+def test_the_export_button_posts_through_htmx(test_client: TestClient):
+    """Inside the selection form, whose hx-headers carry the CSRF token."""
+    body = _users_page(test_client, "en", school="school1")
+    button = body[body.index('id="export-csv"') :]
+    button = button[: button.index(">")]
+    assert f'hx-post="{FRONTEND_PREFIX}/users/export"' in button
+    assert 'hx-swap="none"' in button
+    assert "responseType = 'arraybuffer'" in button
+    form_start = body.index('id="selection-form"')
+    assert form_start < body.index('id="export-csv"') < body.index("</u-form>", form_start)
+
+
+def test_export_names_the_file_after_the_listed_filter(test_client: TestClient):
+    """The group is named by its id alone, whatever its kind. A role filter is not named."""
+    response = _post_export(
+        test_client, "test_user1", school="test_school1", group="school_class:1a", role="student"
+    )
+    assert re.fullmatch(
+        r'attachment; filename="test_school1_1a_\d{4}-\d\d-\d\d_\d\d_\d\d_\d\d\.csv"',
+        response.headers["Content-Disposition"],
+    )
+
+
+def test_export_names_the_file_with_the_browsers_local_time(test_client: TestClient):
+    """The file is named with the ``local_time`` the browser sends."""
+    response = _post_export(test_client, "test_user1", local_time="2026-10-27T14:30:05")
+    assert response.headers["Content-Disposition"] == (
+        'attachment; filename="users_2026-10-27_14_30_05.csv"'
+    )
+
+
+@pytest.mark.parametrize("local_time", ["", "yesterday", "2026-10-27T14:30:05+01:00"])
+def test_export_falls_back_to_the_servers_time(test_client: TestClient, local_time: str):
+    """It only names the file: an old page or a hand-made request still gets its export."""
+    response = _post_export(test_client, "test_user1", local_time=local_time)
+    assert response.status_code == 200
+    assert re.fullmatch(
+        r'attachment; filename="users_\d{4}-\d\d-\d\d_\d\d_\d\d_\d\d\.csv"',
+        response.headers["Content-Disposition"],
+    )
+
+
+def test_export_leaves_out_a_user_the_actor_cannot_see(test_client: TestClient, mocker: MockerFixture):
+    mocker.patch.object(
+        FilePermissionsAdapter,
+        "get_permissions",
+        return_value={"test_user1": [Permission.read_last_name]},
+    )
+    response = _post_export(test_client, ["test_user1", "test_user2"])
+    rows = response.content.decode("utf-16").splitlines()
+    assert rows == ["Firstname\tLastname\tUsername", "\tlastname\tfirstname.lastname"]
+
+
+# More ids than Starlette's default form limit of 1000 fields.
+_A_WHOLE_SCHOOL = [f"no-such-user-{i}" for i in range(1500)]
+
+
+def test_export_takes_more_than_a_thousand_users(test_client: TestClient):
+    """With nothing ticked, the export sends one id per listed user."""
+    response = _post_export(test_client, ["test_user1", *_A_WHOLE_SCHOOL])
+    assert response.status_code == 200
+    rows = response.content.decode("utf-16").splitlines()
+    assert rows[1:] == ["firstname\tlastname\tfirstname.lastname"]
+
+
+def test_password_reset_confirm_names_the_ceiling_above_a_thousand_users(test_client: TestClient):
+    """A selection above Starlette's 1000-field limit is read and gets the ceiling's message."""
+    response = _post_confirm(test_client, _A_WHOLE_SCHOOL)
+    assert response.status_code == 200
+    assert "Select at most 200 users at once" in response.text
+
+
+def test_a_form_beyond_the_field_limit_is_refused_as_html(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """Starlette answers its own limit with JSON, which the frame would show raw."""
+    mocker.patch.object(routes, "FORM_MAX_FIELDS", 2)
+    response = _post_export(test_client, ["test_user1", "test_user2", "test_user3"])
+    assert response.status_code == 422
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert "Invalid request." in response.text
+
+
+def test_a_user_the_actor_may_not_reset_can_still_be_selected(
+    test_client: TestClient, mocker: MockerFixture
+):
+    """Selecting is for the export too, which needs nothing beyond seeing the user."""
+    get_permissions = FilePermissionsAdapter.get_permissions
+
+    async def _no_resets(
+        self: FilePermissionsAdapter, actor: User, targets: list[Target]
+    ) -> dict[str, list[Permission]]:
+        granted = await get_permissions(self, actor, targets)
+        return {
+            key: [p for p in value if p != Permission.write_password] for key, value in granted.items()
+        }
+
+    mocker.patch.object(FilePermissionsAdapter, "get_permissions", _no_resets)
+    body = _users_page(test_client, "en", school="test_school1", group="all")
+    assert 'id="select-test_user1"' in body
+
+
 def test_a_kelvin_failure_becomes_a_toast_for_htmx(test_client: TestClient, mocker: MockerFixture):
     """htmx swaps nothing on a 5xx, so an unhandled backend failure shows the user nothing."""
     mocker.patch.object(
@@ -1551,8 +1809,11 @@ def test_a_kelvin_failure_becomes_a_message_page_without_htmx(
     mocker.patch.object(
         FileUsersPersistenceAdapter, "get_users", side_effect=KelvinAPIUnavailableError()
     )
-    response = test_client.get(
-        f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "school_class:1a"}
+    response = cast(
+        httpx.Response,
+        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+            f"{FRONTEND_PREFIX}/users", params={"school": "school1", "group": "school_class:1a"}
+        ),
     )
     assert response.status_code == 502
     assert "currently unavailable" in response.text

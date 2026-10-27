@@ -1,18 +1,20 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
 from importlib import metadata
-from urllib.parse import quote
+from typing import TYPE_CHECKING
+from urllib.parse import quote, urlsplit, urlunsplit
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import EnvSettingsProvider
-from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
@@ -38,6 +40,10 @@ from .lang import _, get_lang
 from .logging import configure_logger
 from .routes import render_static, router
 from .session_middleware import SessionCookieMiddleware
+
+if TYPE_CHECKING:
+    from fastapi import Request
+    from starlette.middleware.base import RequestResponseEndpoint
 
 
 @asynccontextmanager
@@ -171,11 +177,26 @@ async def object_not_found_exception_handler(request: Request, exc: ObjectNotFou
     return _html_error(request, f"{_(exc.message, lang=lang)}: {exc.identifier}", 404)
 
 
+def _return_to(request: Request) -> str:
+    """The page the login brings the browser back to.
+
+    A plain GET is that page itself, filters included. An htmx request was sent from
+    a page, and may fetch a bare fragment or POST to a route no GET answers. Only the
+    path and query of that page are kept, and only one of this app's.
+    """
+    if request.method == "GET" and request.headers.get("HX-Request") != "true":
+        return urlunsplit(("", "", request.url.path, request.url.query, ""))
+    page = urlsplit(request.headers.get("HX-Current-URL") or "")
+    if page.path.startswith(f"{FRONTEND_PREFIX}/"):
+        return urlunsplit(("", "", page.path, page.query, ""))
+    return f"{FRONTEND_PREFIX}/users"
+
+
 @app.exception_handler(NotAuthenticatedError)
 async def not_authenticated_exception_handler(request: Request, _exc: NotAuthenticatedError):
     # Send the browser into the interactive login, preserving where it was going.
     logger.debug("Redirecting an unauthenticated request to the login.", path=request.url.path)
-    login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(request.url.path)}"
+    login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(_return_to(request))}"
     if request.headers.get("HX-Request") == "true":
         # htmx performs a client-side redirect when it sees this header.
         return Response(status_code=200, headers={"HX-Redirect": login_url})

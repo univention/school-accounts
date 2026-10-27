@@ -10,6 +10,10 @@ representation port/adapter.
 
 from __future__ import annotations
 
+import codecs
+import csv
+import io
+import re
 import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
@@ -27,9 +31,10 @@ from .lang import N_, _
 from .models import AttributeAccess, Permission
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Callable, Collection
+    from datetime import datetime
 
-    from .models import School, SchoolClass, User, WorkGroup
+    from .models import School, SchoolClass, User, UserAttributes, WorkGroup
 
 
 class _HasId(Protocol):
@@ -46,6 +51,12 @@ _Identifiable = TypeVar("_Identifiable", bound=_HasId)
 class UserListData:
     users: list[User]
     schools: list[School]
+    permissions: dict[str, list[Permission]]
+
+
+@dataclass
+class UserExportData:
+    users: list[User]
     permissions: dict[str, list[Permission]]
 
 
@@ -172,7 +183,6 @@ class Row:
     # Accessible name for the checkbox; not indexed out of ``cells``, so reordering
     # a column cannot relabel the control.
     label: str = ""
-    selectable: bool = False
 
 
 @dataclass
@@ -541,7 +551,6 @@ def build_user_list(
                 id=user.id,
                 cells=cells,
                 label=_display_name(user),
-                selectable=Permission.write_password in permissions,
             )
         )
     if hidden:
@@ -664,3 +673,61 @@ def build_password_reset_outcome_rows(
         for outcome in data.outcomes
         if outcome.outcome != PasswordResetOutcomeCode.success
     ]
+
+
+# The columns of the old UCS@school class list module's default
+# (``ucsschool/umc/lists/class/attributes``) without the class, in its order and
+# with its header. Not translated, as there: a header that changes with the UI
+# language breaks every spreadsheet built on the file.
+_EXPORT_COLUMNS: tuple[tuple[str, str, Callable[[UserAttributes], str]], ...] = (
+    ("first_name", "Firstname", lambda attributes: attributes.first_name),
+    ("last_name", "Lastname", lambda attributes: attributes.last_name),
+    ("username", "Username", lambda attributes: attributes.username),
+)
+# What makes a spreadsheet read a cell as a formula (OWASP, "CSV Injection").
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _export_value(value: str) -> str:
+    """A leading apostrophe makes the spreadsheet take the cell as text."""
+    return f"'{value}" if value.startswith(_FORMULA_PREFIXES) else value
+
+
+def build_user_export(data: UserExportData) -> bytes:
+    """The selected users as the class list module's default ("Excel") CSV.
+
+    UTF-16LE with a BOM and tab-separated: the one format that Excel opens with
+    columns and correct umlauts in a German and an English locale alike, and
+    LibreOffice detects. An attribute the actor cannot read stays empty, decided
+    per user as for the table's cells.
+    """
+    with io.StringIO(newline="") as buffer:
+        writer = csv.writer(buffer, delimiter="\t")
+        writer.writerow(header for _name, header, _value in _EXPORT_COLUMNS)
+        for user in data.users:
+            permissions = set(data.permissions.get(user.id, []))
+            writer.writerow(
+                (
+                    _export_value(value(user.attributes))
+                    if _attribute_access(name, permissions) is not AttributeAccess.NONE
+                    else ""
+                )
+                for name, _header, value in _EXPORT_COLUMNS
+            )
+        return codecs.BOM_UTF16_LE + buffer.getvalue().encode("utf-16-le")
+
+
+# Anything else in a part becomes a hyphen: the parts come from the client, and the
+# name goes into a header and into the user's file system.
+_UNSAFE_FILENAME_CHARACTERS = re.compile(r"[^A-Za-z0-9_.-]+")
+
+
+def build_export_filename(school: str, group: str, now: datetime) -> str:
+    """Name the file after the list it came from: its school and group, where set.
+
+    Ids, not display names: ASCII, and what the list's URL carries. The timestamp is
+    the old class list module's; ``users`` stands in for a list without a school.
+    """
+    parts = (_UNSAFE_FILENAME_CHARACTERS.sub("-", part).strip(".-") for part in (school, group))
+    prefix = "_".join(part for part in parts if part) or "users"
+    return f"{prefix}_{now:%Y-%m-%d_%H_%M_%S}.csv"
