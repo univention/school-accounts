@@ -91,6 +91,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   {# Outside #results-region so a filter swap cannot tear an open dialog away. #}
   <div id="password-reset-dialog-region"></div>
 
+  {# The one tooltip, for every [data-tooltip]. Hidden from screen readers: each text
+     is also the name of what it describes, or the popup a click opens. #}
+  <div id="tooltip" popover="manual" aria-hidden="true"></div>
+
   {{ layout.toast() }}
 </u-page>
 
@@ -101,6 +105,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 
   #results-region {
     position: relative;
+  }
+
+  /* The reset button's mark. inline-flex centres it on the label; a plain inline box
+     would sit it on the text baseline. Set here, not inline: x-show clears an inline
+     display when it shows the element. */
+  #password-reset-denied {
+    display: inline-flex;
   }
 
   /* Both labels of the export button, laid out with no height, so the button is as
@@ -126,6 +137,38 @@ SPDX-License-Identifier: AGPL-3.0-only
 
   #export-csv-label::after {
     content: attr(data-selected);
+  }
+
+  .row-indicators {
+    display: inline-flex;
+    gap: 0.25rem;
+  }
+
+  /* A row's indicators say what ticking it means for an action, so they show only
+     while it is ticked; across a whole class they would be noise. sync() sets
+     [selected]. Hidden, not removed, so a tick does not shift the row. */
+  #user-rows u-tr:not([selected]) .row-indicators {
+    visibility: hidden;
+  }
+
+  /* The design system has no tooltip, and a native title cannot be styled. Drawn
+     with its tokens instead; the [data-tooltip] script below places it. A popover, so it sits in the
+     top layer, where the scrolling table cannot clip it. */
+  #tooltip {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    max-width: 20rem;
+    padding: 0.375rem 0.625rem;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-field);
+    background: var(--color-neutral);
+    color: var(--color-neutral-content);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-line;
+    pointer-events: none;
+    box-shadow: 0 2px 6px color-mix(in oklab, var(--color-base-content) 25%, transparent);
   }
 
   /* The design system ships no progress bar, so the app draws its own:
@@ -172,6 +215,65 @@ SPDX-License-Identifier: AGPL-3.0-only
 </style>
 
 <script>
+  // Shows [data-tooltip]: after a pause on hover, so a pointer passing over shows
+  // nothing, but at once on keyboard focus and right after another tooltip closed, so
+  // moving along a row of them does not wait each time. Placed below its element,
+  // above where there is no room, kept inside the window. An empty or absent text
+  // shows nothing.
+  // Installed once, like the focus restore below: a history restore runs this script
+  // again, and swaps in a new #tooltip, so it is looked up where it is used.
+  (() => {
+    if (window.tooltipInstalled) return
+    window.tooltipInstalled = true
+    const popup = () => document.getElementById("tooltip")
+    const gap = 6
+    const hoverDelay = 300
+    const skipWindow = 300
+    let anchor = null
+    let timer = null
+    let closedAt = -Infinity
+    function hide() {
+      clearTimeout(timer)
+      anchor = null
+      const tip = popup()
+      if (!tip?.matches(":popover-open")) return
+      tip.hidePopover()
+      closedAt = performance.now()
+    }
+    function show(element) {
+      const text = element.dataset.tooltip
+      const tip = popup()
+      // A swap may have removed it while the timer ran.
+      if (!text || !element.isConnected || !tip) return hide()
+      tip.textContent = text
+      if (!tip.matches(":popover-open")) tip.showPopover()
+      const at = element.getBoundingClientRect()
+      const size = tip.getBoundingClientRect()
+      const below = at.bottom + gap
+      const top = below + size.height <= innerHeight ? below : Math.max(gap, at.top - gap - size.height)
+      const centred = at.left + at.width / 2 - size.width / 2
+      tip.style.top = `${top}px`
+      tip.style.left = `${Math.min(Math.max(centred, gap), innerWidth - size.width - gap)}px`
+    }
+    // Events from a design-system element's shadow root arrive retargeted to its host.
+    function follow(event, immediately) {
+      const element = event.target.closest?.("[data-tooltip]")
+      if (element === anchor) return
+      hide()
+      if (!element) return
+      anchor = element
+      if (immediately || performance.now() - closedAt < skipWindow) show(element)
+      else timer = setTimeout(() => show(element), hoverDelay)
+    }
+    document.addEventListener("mouseover", (event) => follow(event, false))
+    document.addEventListener("focusin", (event) => follow(event, true))
+    document.addEventListener("focusout", hide)
+    document.documentElement.addEventListener("mouseleave", hide)
+    document.addEventListener("keydown", (event) => event.key === "Escape" && hide())
+    // Its element may move, open a dialog over it, or be swapped out.
+    for (const type of ["scroll", "click", "htmx:beforeSwap"]) document.addEventListener(type, hide, true)
+  })()
+
   // The list select fires u-change even when the click re-picks the active item, and
   // refetching would throw the selection away. The pushed URL is the applied filter.
   function filterChanged(event) {
@@ -321,6 +423,10 @@ SPDX-License-Identifier: AGPL-3.0-only
       selected: 0,
       // The rows on screen: what the export takes while nothing is ticked.
       shown: 0,
+      // Name and username of each ticked row whose password the actor may not reset.
+      denied: [],
+      // The reset request held back by confirmReset(), resumed once those rows are unticked.
+      resume: null,
       lastCount: 0,
       // The ids ticked at the last sync(). Remembered because by the time retick() runs,
       // a search's swap has removed the checkboxes they came from.
@@ -336,6 +442,9 @@ SPDX-License-Identifier: AGPL-3.0-only
         const checked = boxes.filter((box) => box.checked)
         this.shown = boxes.length
         this.selected = checked.length
+        this.denied = checked
+          .filter((box) => !("resettable" in box.dataset))
+          .map((box) => ({ name: box.dataset.label, username: box.dataset.username }))
         this.ticked = checked.map((box) => box.value)
         if (this.selected > 0) this.lastCount = this.selected
         for (const box of boxes) box.closest("u-tr").toggleAttribute("selected", box.checked)
@@ -344,6 +453,13 @@ SPDX-License-Identifier: AGPL-3.0-only
           this.$refs.all.checked = boxes.length > 0 && checked.length === boxes.length
           this.$refs.all.indeterminate = checked.length > 0 && checked.length < boxes.length
         }
+      },
+      // At most 10 names, one per line: a select-all would otherwise list the whole class.
+      deniedHint({ hint, more }) {
+        const shown = this.denied.slice(0, 10).map((user) => user.name)
+        const rest = this.denied.length - shown.length
+        if (rest > 0) shown.push(more.replace("{count}", rest))
+        return [hint, ...shown].join("\n")
       },
       // Replaces what htmx collected from the selection form with the ticked rows and
       // #listed-filter, the filter the table was listed with, which names the file.
@@ -359,6 +475,29 @@ SPDX-License-Identifier: AGPL-3.0-only
         const now = new Date()
         data.append("local_time", new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19))
         event.detail.parameters = data
+      },
+      // Called from htmx:confirm on the selection form: a ticked row the actor may not
+      // reset holds the reset back and opens the popup that offers to untick it.
+      confirmReset(event) {
+        if (this.denied.length === 0) return
+        event.preventDefault()
+        this.resume = event.detail.issueRequest
+        this.$refs.deniedDialog.showModal()
+      },
+      // issueRequest reads the form again, so the reset goes on without those rows;
+      // nothing is left to reset when they were all there was.
+      async deselectDenied() {
+        const resume = this.resume
+        this.resume = null
+        const denied = this.boxes().filter((box) => !("resettable" in box.dataset))
+        for (const box of denied) box.checked = false
+        this.sync()
+        this.$refs.deniedDialog.close()
+        // u-checkbox hands its value to the form only once it has rendered the change,
+        // a microtask later, and issueRequest reads the form at once: resuming straight
+        // away would still post the rows just unticked.
+        await Promise.all(denied.map((box) => box.updateComplete))
+        if (this.selected > 0) resume(true)
       },
       toggleAll(on) {
         for (const box of this.boxes()) box.checked = on

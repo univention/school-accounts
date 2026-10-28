@@ -35,6 +35,9 @@ v1.1.0 (unreleased)
   on the systems that serve the Univention Portal as well.
   Without this erratum, Firefox can't save the CSV export.
 * You can select users whose password you can't reset.
+  A red exclamation mark next to the checkbox marks them.
+  When you reset the passwords of such a selection,
+  a dialog names these users and offers to deselect them.
 * When your session expires while you work with the list,
   the app returns you to the same list after you sign in again,
   with its school, class or work group, and search.

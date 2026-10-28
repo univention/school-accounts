@@ -98,6 +98,9 @@ class PasswordResetSelectionData:
     denied: int = 0
     supports_change_on_next_login: bool = False
     request_error: PasswordResetRequestError | None = None
+    # What the actor may read of each user, so the dialog names them no further
+    # than the table does. A user missing here is named by username alone.
+    permissions: dict[str, list[Permission]] = field(default_factory=dict[str, list[Permission]])
 
 
 @dataclass
@@ -176,6 +179,18 @@ class Cell:
     activated: bool | None = None
 
 
+class IndicatorKind(StrEnum):
+    password_reset_denied = auto()
+
+
+@dataclass
+class Indicator:
+    """A mark beside a row's checkbox. ``label`` is its tooltip and accessible name."""
+
+    kind: IndicatorKind
+    label: str
+
+
 @dataclass
 class Row:
     id: str
@@ -183,6 +198,12 @@ class Row:
     # Accessible name for the checkbox; not indexed out of ``cells``, so reordering
     # a column cannot relabel the control.
     label: str = ""
+    # Shown beside the label where a dialog names the row, as the reset dialog does.
+    username: str = ""
+    # Every row is selectable for the export; the reset names a ticked row that
+    # lacks this and offers to untick it.
+    resettable: bool = False
+    indicators: list[Indicator] = field(default_factory=list[Indicator])
 
 
 @dataclass
@@ -260,6 +281,15 @@ def _attribute_access(name: str, permissions: set[Permission]) -> AttributeAcces
     return access
 
 
+def _readable(name: str, permissions: set[Permission]) -> bool:
+    """Whether the actor may see attribute ``name`` at all.
+
+    The one rule for every place an attribute shows up: cells, names, the reset
+    dialog and the CSV export, so none of them reads out what another hides.
+    """
+    return _attribute_access(name, permissions) is not AttributeAccess.NONE
+
+
 def _find_by_id(items: Collection[_Identifiable], item_id: str) -> _Identifiable:
     try:
         return next(item for item in items if item.id == item_id)
@@ -278,11 +308,20 @@ _ROLE_LABELS = {
 }
 
 
-def _display_name(user: User) -> str:
-    """A person's name for labels and dialogs, falling back to the username."""
-    return f"{user.attributes.first_name} {user.attributes.last_name}".strip() or (
-        user.attributes.username
-    )
+def _display_name(user: User, permissions: set[Permission]) -> str:
+    """A person's name for labels and dialogs, falling back to the username.
+
+    Built only from the parts the actor may read, like the cells: the name shows
+    up in tooltips, popups and the reset dialog, and would read out a column the
+    table hides.
+    """
+    attributes = user.attributes
+    parts = [
+        value
+        for name, value in (("first_name", attributes.first_name), ("last_name", attributes.last_name))
+        if _readable(name, permissions)
+    ]
+    return " ".join(part for part in parts if part) or attributes.username
 
 
 def role_key(role: str) -> str:
@@ -305,17 +344,17 @@ def _format_role(schools: list[School], role: str, lang: str, selected_school: S
 
 
 def _text_cell(name: str, value: str | None, permissions: set[Permission]) -> Cell:
-    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    visible = _readable(name, permissions)
     return Cell(visible=visible, kind="text", text=value)
 
 
 def _list_cell(name: str, items: list[str], permissions: set[Permission]) -> Cell:
-    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    visible = _readable(name, permissions)
     return Cell(visible=visible, kind="list", items=items if visible else [])
 
 
 def _boolean_cell(name: str, activated: bool, permissions: set[Permission], lang: str) -> Cell:
-    visible = _attribute_access(name, permissions) is not AttributeAccess.NONE
+    visible = _readable(name, permissions)
     return Cell(
         visible=visible,
         kind="boolean",
@@ -514,6 +553,17 @@ def _matches(cells: list[Cell], terms: list[str]) -> bool:
     return all(any(term in text for text in texts) for term in terms)
 
 
+def _indicators(resettable: bool, lang: str) -> list[Indicator]:
+    if resettable:
+        return []
+    return [
+        Indicator(
+            IndicatorKind.password_reset_denied,
+            _("You are not allowed to reset this user's password.", lang=lang),
+        )
+    ]
+
+
 def build_user_list(
     data: UserListData,
     lang: str,
@@ -546,11 +596,15 @@ def build_user_list(
             raise
         if terms and not _matches(cells, terms):
             continue
+        resettable = Permission.write_password in permissions
         rows.append(
             Row(
                 id=user.id,
                 cells=cells,
-                label=_display_name(user),
+                label=_display_name(user, permissions),
+                username=user.attributes.username,
+                resettable=resettable,
+                indicators=_indicators(resettable, lang),
             )
         )
     if hidden:
@@ -590,16 +644,22 @@ def build_password_reset_confirmation(
     so the dialog can state the scope before it can be submitted.
     """
     # Deduped per user: one role in two schools counts once, two roles count twice.
+    # Only roles the actor may read: with the names listed beside them, a tally
+    # would tell whose roles the table hides.
     tallies = Counter(
         key
         for user in data.users
+        if _readable("roles", set(data.permissions.get(user.id, [])))
         for key in dict.fromkeys(role_key(role) for role in user.attributes.roles)
     )
 
     accounts: list[PasswordResetAccount] = []
     if len(data.users) <= PASSWORD_RESET_NAMED_LIMIT:
         accounts = [
-            PasswordResetAccount(name=_display_name(user), username=user.attributes.username)
+            PasswordResetAccount(
+                name=_display_name(user, set(data.permissions.get(user.id, []))),
+                username=user.attributes.username,
+            )
             for user in data.users
         ]
     return PasswordResetConfirmation(
@@ -685,7 +745,7 @@ _EXPORT_COLUMNS: tuple[tuple[str, str, Callable[[UserAttributes], str]], ...] = 
     ("username", "Username", lambda attributes: attributes.username),
 )
 # What makes a spreadsheet read a cell as a formula (OWASP, "CSV Injection").
-_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 
 def _export_value(value: str) -> str:
@@ -707,11 +767,7 @@ def build_user_export(data: UserExportData) -> bytes:
         for user in data.users:
             permissions = set(data.permissions.get(user.id, []))
             writer.writerow(
-                (
-                    _export_value(value(user.attributes))
-                    if _attribute_access(name, permissions) is not AttributeAccess.NONE
-                    else ""
-                )
+                (_export_value(value(user.attributes)) if _readable(name, permissions) else "")
                 for name, _header, value in _EXPORT_COLUMNS
             )
         return codecs.BOM_UTF16_LE + buffer.getvalue().encode("utf-16-le")

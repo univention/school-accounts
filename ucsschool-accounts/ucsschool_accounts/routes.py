@@ -45,6 +45,7 @@ from .constants import (
     CSRF_HEADER_NAME,
     FORM_MAX_FIELDS,
     FRONTEND_PREFIX,
+    PASSWORD_RESET_NAMED_LIMIT,
     TEMPLATES_DIR,
 )
 from .correlation_id import correlation_id_ctx_var
@@ -76,6 +77,9 @@ env_globals["static"] = _static_url
 env_globals["frontend_prefix"] = FRONTEND_PREFIX
 # The all-groups sentinel is rendered as an option value, so templates need it too.
 env_globals["all_groups_value"] = presentation.ALL_GROUPS
+# The popup that names the rows a reset cannot reach does so client-side, and
+# names as many as the server-rendered reset dialog does.
+env_globals["password_reset_named_limit"] = PASSWORD_RESET_NAMED_LIMIT
 # What a listing request swaps: the region on a filter change, its rows while
 # typing. htmx names it in ``HX-Target``.
 RESULTS_TARGET_IDS = frozenset({"results-region", "user-rows"})

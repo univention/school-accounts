@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from collections import Counter
-from collections.abc import Awaitable, Callable
 from functools import partial
-from typing import Protocol, TypeVar
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 from loguru import logger
 
@@ -29,13 +28,6 @@ from .models import (
     UsersGetRequest,
     WorkGroup,
 )
-from .ports import (
-    PermissionsPort,
-    SchoolClassesPersistencePort,
-    SchoolsPersistencePort,
-    UsersPersistencePort,
-    WorkGroupsPersistencePort,
-)
 from .presentation import (
     PasswordResetOutcome,
     PasswordResetOutcomeCode,
@@ -46,6 +38,17 @@ from .presentation import (
     UserExportData,
     UserListData,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from .ports import (
+        PermissionsPort,
+        SchoolClassesPersistencePort,
+        SchoolsPersistencePort,
+        UsersPersistencePort,
+        WorkGroupsPersistencePort,
+    )
 
 
 class _HasId(Protocol):
@@ -482,6 +485,28 @@ async def _fetch_users(
     return found, missing
 
 
+async def _resolve_selection(
+    users_adapter: UsersPersistencePort,
+    permissions_port: PermissionsPort,
+    actor_id: str,
+    target_ids: list[str],
+    lang: str,
+    action: str,
+) -> tuple[dict[str, User], list[str], dict[str, list[Permission]]]:
+    """Look up the selected users and the actor's permissions on those that exist.
+
+    The ids come from the client, so every bulk action resolves and checks them
+    again rather than trusting them. Returns what ``_fetch_users`` does, plus the
+    permissions keyed by user id.
+    """
+    actor = await get_actor(actor_id, users_adapter, lang)
+    found, missing = await _fetch_users(users_adapter, target_ids, actor_id, action)
+    permissions = await permissions_port.get_permissions(
+        actor, [user_to_target(user) for user in found.values()]
+    )
+    return found, missing, permissions
+
+
 async def get_password_reset_selection(
     users_adapter: UsersPersistencePort,
     permissions_port: PermissionsPort,
@@ -507,13 +532,13 @@ async def get_password_reset_selection(
         return PasswordResetSelectionData(
             users=[], request_error=PasswordResetRequestError.too_many_targets
         )
-    actor = await get_actor(actor_id, users_adapter, lang)
     # A vanished user is dropped here; the submit reports it as ``not_found``.
-    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "password_reset")
-    users = list(found.values())
-
-    permissions = await permissions_port.get_permissions(actor, [user_to_target(user) for user in users])
-    permitted = [user for user in users if Permission.write_password in permissions.get(user.id, [])]
+    found, missing, permissions = await _resolve_selection(
+        users_adapter, permissions_port, actor_id, deduped_ids, lang, "password_reset"
+    )
+    permitted = [
+        user for user in found.values() if Permission.write_password in permissions.get(user.id, [])
+    ]
     denied = len(deduped_ids) - len(permitted)
     logger.debug(
         "Resolved a password reset selection for confirmation.",
@@ -527,6 +552,7 @@ async def get_password_reset_selection(
         users=permitted,
         denied=denied,
         supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
+        permissions=permissions,
     )
 
 
@@ -539,18 +565,15 @@ async def get_export_selection(
 ) -> UserExportData:
     """Resolve selected user ids into the users the actor may see, for the CSV export.
 
-    The ids come from the client, so they are resolved and checked again rather
-    than trusted: a user the actor holds no permission on is not listed, and is
-    not exported either. Which of their attributes go into the file is decided
+    A user the actor holds no permission on is not listed, and is not exported
+    either. Which of their attributes go into the file is decided
     per attribute in ``presentation.build_user_export``, as it is for the table.
     No ceiling: the cost is one lookup and one permission batch, the same as
     listing the users did.
     """
     deduped_ids = list(dict.fromkeys(target_ids))
-    actor = await get_actor(actor_id, users_adapter, lang)
-    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "csv_export")
-    permissions = await permissions_port.get_permissions(
-        actor, [user_to_target(user) for user in found.values()]
+    found, missing, permissions = await _resolve_selection(
+        users_adapter, permissions_port, actor_id, deduped_ids, lang, "csv_export"
     )
     # In the order of the selection, which is the order of the table.
     users = [found[tid] for tid in deduped_ids if permissions.get(tid)]
@@ -646,16 +669,13 @@ async def set_passwords(
             outcomes=[], request_error=PasswordResetRequestError.empty_password
         )
 
-    actor = await get_actor(actor_id, users_adapter, lang)
-    found, missing = await _fetch_users(users_adapter, deduped_ids, actor_id, "password_reset")
+    found, missing, permissions = await _resolve_selection(
+        users_adapter, permissions_port, actor_id, deduped_ids, lang, "password_reset"
+    )
     outcomes: dict[str, PasswordResetOutcome] = {
         tid: PasswordResetOutcome(target_id=tid, outcome=PasswordResetOutcomeCode.not_found)
         for tid in missing
     }
-
-    permissions = await permissions_port.get_permissions(
-        actor, [user_to_target(user) for user in found.values()]
-    )
     permitted_ids = [tid for tid in found if Permission.write_password in permissions.get(tid, [])]
     denied_ids = [tid for tid in found if tid not in permitted_ids]
     for tid in denied_ids:
@@ -687,6 +707,7 @@ async def set_passwords(
             users=[found[tid] for tid in permitted_ids],
             denied=len(denied_ids),
             supports_change_on_next_login=users_adapter.supports_password_change_on_next_login(),
+            permissions=permissions,
         ),
     )
     logger.info(

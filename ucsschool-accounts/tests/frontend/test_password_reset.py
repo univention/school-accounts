@@ -11,15 +11,23 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.frontend import seed
+from tests.frontend.conftest import tick
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from playwright.sync_api import Locator, Page
+    from playwright.sync_api import Locator, Page, Route
 
 
-def tick(page: Page, username: str) -> None:
-    page.locator(f'u-checkbox[name="user_id"][value="{username}"]').click()
+DENIED_MARK = "The selection contains users whose password you are not allowed to reset."
+
+
+def row_indicator(page: Page, user_id: str) -> Locator:
+    """The mark beside a row's checkbox that its password is not the actor's to reset."""
+    row = page.locator("#user-rows u-tr").filter(
+        has=page.locator(f'u-checkbox[name="user_id"][value="{user_id}"]')
+    )
+    return row.get_by_role("img", name="You are not allowed to reset this user's password.")
 
 
 def open_reset_dialog(page: Page, button: str = "Reset password") -> Locator:
@@ -38,6 +46,8 @@ def test_ticking_a_user_counts_the_selection_and_enables_the_reset(
     count = signed_in.locator("#selection-form u-collapsible")
     expect(button).to_be_disabled()
     expect(count).to_be_hidden()
+    # Nothing is ticked, so no user is denied and the mark stays hidden.
+    expect(signed_in.get_by_role("img", name=DENIED_MARK)).to_be_hidden()
 
     tick(signed_in, listed_user)
 
@@ -131,6 +141,84 @@ def test_a_reset_password_is_the_one_the_account_logs_in_with(
 
 
 @pytest.mark.frontend
+@pytest.mark.usefixtures("seeded_only")
+def test_users_out_of_reach_are_flagged_before_a_reset(
+    signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
+) -> None:
+    """The signed-in school admin can tick themselves, for the export, but no one may
+    reset a school admin's password. Their ticked row and the reset button flag it, the
+    button's popup names them, and deselecting them there resets the rest.
+    Seeded runs only: the File adapters grant every reset."""
+    admin_name = f"{seed.LOGIN_USER.firstname} {seed.LOGIN_USER.lastname}"
+    list_school(school)
+    button = signed_in.locator("#password-reset")
+    mark = signed_in.get_by_role("img", name=DENIED_MARK)
+    popup = signed_in.locator("#password-reset-denied-dialog")
+    admin_indicator = row_indicator(signed_in, seed.LOGIN_USER.name)
+    # Only a ticked row shows it.
+    expect(admin_indicator).to_be_hidden()
+    expect(row_indicator(signed_in, listed_user)).to_have_count(0)
+    tick(signed_in, listed_user)
+    expect(mark).to_be_hidden()
+    expect(button).not_to_have_attribute("data-tooltip", re.compile(".*"))
+
+    tick(signed_in, seed.LOGIN_USER.name)
+
+    expect(admin_indicator).to_be_visible()
+    expect(mark).to_be_visible()
+    tooltip = signed_in.locator("#tooltip")
+    button.hover()
+    expect(tooltip).to_be_visible()
+    expect(tooltip).to_have_text(
+        f"You are not allowed to reset the password of these selected users:\n{admin_name}"
+    )
+    admin_indicator.hover()
+    expect(tooltip).to_have_text("You are not allowed to reset this user's password.")
+    button.click()
+    expect(popup).to_be_visible()
+    named = popup.get_by_role("row")
+    expect(named).to_have_count(1)
+    expect(named.get_by_role("cell")).to_have_text([admin_name, seed.LOGIN_USER.name])
+
+    popup.get_by_role("button", name="Cancel").click()
+
+    expect(popup).to_be_hidden()
+    expect(signed_in.locator("#password-reset-dialog")).to_have_count(0)
+    expect(signed_in.locator("#selection-form")).to_contain_text("2 users selected")
+
+    button.click()
+    popup.get_by_role("button", name="Deselect these users").click()
+
+    dialog = signed_in.locator("#password-reset-dialog")
+    expect(dialog).to_be_visible()
+    expect(dialog).to_contain_text("A new password will be set for the following 1 accounts:")
+    expect(dialog.locator("u-table")).to_contain_text(listed_user)
+    expect(dialog).not_to_contain_text("left out")
+    expect(mark).to_be_hidden()
+    expect(admin_indicator).to_be_hidden()
+    expect(
+        signed_in.locator(f'u-checkbox[name="user_id"][value="{seed.LOGIN_USER.name}"]')
+    ).to_have_js_property("checked", False)
+
+
+@pytest.mark.frontend
+@pytest.mark.usefixtures("seeded_only")
+def test_unticking_every_user_the_popup_names_leaves_nothing_to_reset(
+    signed_in: Page, list_school: Callable[..., None], school: str
+) -> None:
+    list_school(school)
+    tick(signed_in, seed.LOGIN_USER.name)
+    signed_in.locator("#password-reset").click()
+    popup = signed_in.locator("#password-reset-denied-dialog")
+
+    popup.get_by_role("button", name="Deselect these users").click()
+
+    expect(popup).to_be_hidden()
+    expect(signed_in.locator("#password-reset-dialog")).to_have_count(0)
+    expect(signed_in.locator("#password-reset")).to_be_disabled()
+
+
+@pytest.mark.frontend
 def test_a_search_keeps_the_ticks_it_shows_and_drops_the_hidden_ones(
     signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
 ) -> None:
@@ -161,3 +249,23 @@ def test_a_search_keeps_the_ticks_it_shows_and_drops_the_hidden_ones(
     )
     expect(listed).to_have_js_property("checked", True)
     expect(count).to_contain_text("1 users selected")
+
+
+@pytest.mark.frontend
+def test_typing_leaves_the_reset_button_alone(
+    signed_in: Page, list_school: Callable[..., None], school: str
+) -> None:
+    """The search box sits in the selection form, whose spinner is for the reset: a search
+    on its way bubbles through the form's request handlers and must not start it."""
+    list_school(school)
+    held: list[Route] = []
+    searched = re.compile(r"/users\?(.*&)?q=")
+    signed_in.route(searched, lambda route: held.append(route))
+
+    signed_in.locator("#user-search input").fill(f"nobody-{uuid.uuid4().hex[:8]}")
+    while not held:
+        signed_in.wait_for_timeout(50)
+
+    reset = signed_in.locator("#selection-form u-button[type=submit]")
+    assert not reset.evaluate("button => button.loading")
+    held[0].continue_()

@@ -8,9 +8,9 @@ import codecs
 import csv
 import io
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from pytest_mock import MockerFixture
 
 from ucsschool_accounts import presentation
 from ucsschool_accounts.constants import (
@@ -26,6 +26,9 @@ from ucsschool_accounts.models import (
     UserAttributes,
     WorkGroup,
 )
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 
 @pytest.mark.parametrize(
@@ -569,15 +572,67 @@ def test_build_password_reset_outcome_rows_carries_reason():
     ]
 
 
-def _selection(*users: User, denied: int = 0):
-    return presentation.PasswordResetSelectionData(users=list(users), denied=denied)
+_NAME_PERMISSIONS = [
+    Permission.read_first_name,
+    Permission.read_last_name,
+    Permission.read_roles,
+    Permission.write_password,
+]
 
 
-def test_build_user_list_carries_the_row_id_and_label():
+def _selection(*users: User, denied: int = 0, permissions: list[Permission] = _NAME_PERMISSIONS):
+    return presentation.PasswordResetSelectionData(
+        users=list(users), denied=denied, permissions={user.id: permissions for user in users}
+    )
+
+
+def test_build_user_list_carries_the_row_id_label_and_username():
     """Without write-password too: every listed row can be selected, for the export."""
-    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), "en", _SCHOOL1)
+    view = presentation.build_user_list(
+        _list_data(_user(), [Permission.read_first_name, Permission.read_last_name]), "en", _SCHOOL1
+    )
     assert [row.id for row in view.rows] == ["u1"]
     assert view.rows[0].label == "Kim Klein"
+    assert view.rows[0].username == "kim"
+
+
+@pytest.mark.parametrize(
+    ("permissions", "label"),
+    [
+        ([Permission.read_last_name], "Klein"),
+        ([Permission.read_first_name], "Kim"),
+        ([Permission.read_roles], "kim"),
+    ],
+)
+def test_build_user_list_labels_a_row_with_readable_name_parts(
+    permissions: list[Permission], label: str
+):
+    """The label shows in tooltips and popups, so it must not read out a hidden column."""
+    view = presentation.build_user_list(_list_data(_user(), permissions), "en", _SCHOOL1)
+    assert view.rows[0].label == label
+    assert view.rows[0].resettable is False
+
+
+def test_build_user_list_marks_a_row_with_write_password_resettable():
+    view = presentation.build_user_list(
+        _list_data(_user(), [Permission.read_last_name, Permission.write_password]), "en", _SCHOOL1
+    )
+    assert view.rows[0].resettable is True
+    assert view.rows[0].indicators == []
+
+
+@pytest.mark.parametrize(
+    ("lang", "label"),
+    [
+        ("en", "You are not allowed to reset this user's password."),
+        ("de", "Sie dürfen das Passwort dieses Benutzers nicht zurücksetzen."),
+    ],
+)
+def test_build_user_list_marks_a_row_without_write_password(lang: str, label: str):
+    view = presentation.build_user_list(_list_data(_user(), [Permission.read_last_name]), lang, _SCHOOL1)
+    assert view.rows[0].indicators == [
+        presentation.Indicator(presentation.IndicatorKind.password_reset_denied, label)
+    ]
 
 
 def _export(*users: User, permissions: list[Permission] | None = None) -> list[list[str]]:
@@ -626,7 +681,7 @@ def test_build_user_export_leaves_an_unreadable_attribute_empty(
     assert _export(_user(), permissions=permissions)[1] == expected
 
 
-@pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "\t", "\r"])
+@pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "\t", "\r", "\n"])
 def test_build_user_export_turns_a_formula_into_text(prefix: str):
     user = _user(first_name=f"{prefix}SUM(A1)", last_name=f"{prefix}1", username=f"{prefix}x")
     assert _export(user)[1] == [f"'{prefix}SUM(A1)", f"'{prefix}1", f"'{prefix}x"]
@@ -655,6 +710,19 @@ def test_build_password_reset_confirmation_falls_back_to_the_username_without_a_
     confirmation = presentation.build_password_reset_confirmation(
         _selection(_user(first_name="", last_name="")), "en"
     )
+    assert confirmation.accounts[0].name == "kim"
+
+
+def test_build_password_reset_confirmation_names_only_readable_parts():
+    confirmation = presentation.build_password_reset_confirmation(
+        _selection(_user(), permissions=[Permission.read_last_name, Permission.write_password]), "en"
+    )
+    assert [(a.name, a.username) for a in confirmation.accounts] == [("Klein", "kim")]
+
+
+def test_build_password_reset_confirmation_falls_back_to_the_username():
+    selection = presentation.PasswordResetSelectionData(users=[_user()])
+    confirmation = presentation.build_password_reset_confirmation(selection, "en")
     assert confirmation.accounts[0].name == "kim"
 
 
@@ -700,6 +768,21 @@ def test_build_password_reset_confirmation_counts_one_role_in_two_schools_once()
     confirmation = presentation.build_password_reset_confirmation(
         _selection(_user(roles=["teacher:school:school1", "teacher:school:school2"])), "en"
     )
+    assert [(t.label, t.count) for t in confirmation.role_tallies] == [("Teacher", 1)]
+    assert confirmation.mixed_roles is False
+
+
+def test_build_password_reset_confirmation_tallies_only_readable_roles():
+    """The table hides the roles column for such a user, so the dialog must not tell them."""
+    hidden = User(id="u2", attributes=_user(roles=["student:school:school1"]).attributes)
+    selection = presentation.PasswordResetSelectionData(
+        users=[_user(roles=["teacher:school:school1"]), hidden],
+        permissions={
+            "u1": _NAME_PERMISSIONS,
+            "u2": [Permission.read_first_name, Permission.read_last_name, Permission.write_password],
+        },
+    )
+    confirmation = presentation.build_password_reset_confirmation(selection, "en")
     assert [(t.label, t.count) for t in confirmation.role_tallies] == [("Teacher", 1)]
     assert confirmation.mixed_roles is False
 

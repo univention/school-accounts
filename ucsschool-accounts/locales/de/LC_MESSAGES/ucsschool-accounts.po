@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-accounts\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-11-19 07:58+0000\n"
+"POT-Creation-Date: 2026-11-19 15:33+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -64,6 +64,9 @@ msgstr ""
 
 msgid "Deactivated"
 msgstr "Deaktiviert"
+
+msgid "Deselect these users"
+msgstr "Diese Benutzer abwählen"
 
 msgid ""
 "Different roles are usually reset separately — most of the time a filter is "
@@ -226,6 +229,11 @@ msgid "The search is too long. Please shorten it."
 msgstr "Die Suche ist zu lang. Bitte kürzen Sie sie."
 
 msgid ""
+"The selection contains users whose password you are not allowed to reset."
+msgstr ""
+"Die Auswahl enthält Benutzer, deren Passwort Sie nicht zurücksetzen dürfen."
+
+msgid ""
 "The user directory (Kelvin API) is currently unavailable. Please try again "
 "in a moment."
 msgstr ""
@@ -267,8 +275,24 @@ msgstr "Gefundene Benutzer: {count}."
 msgid "Work Groups"
 msgstr "Arbeitsgruppen"
 
+msgid "You are not allowed to reset the password of these selected users:"
+msgstr ""
+"Sie dürfen das Passwort dieser ausgewählten Benutzer nicht zurücksetzen:"
+
+#, python-brace-format
+msgid "You are not allowed to reset the password of {count} selected users."
+msgstr ""
+"Sie dürfen das Passwort von {count} ausgewählten Benutzern nicht zurücksetzen."
+
+msgid "You are not allowed to reset this user's password."
+msgstr "Sie dürfen das Passwort dieses Benutzers nicht zurücksetzen."
+
 msgid "You have been logged out."
 msgstr "Sie wurden abgemeldet."
+
+#, python-brace-format
+msgid "and {count} more"
+msgstr "und {count} weitere"
 
 msgid "logout"
 msgstr "abmelden"
@@ -384,9 +408,6 @@ msgstr "{count} Benutzer ausgewählt"
 
 #~ msgid "User is activated"
 #~ msgstr "Benutzer ist aktiviert"
-
-#~ msgid "Username of the user"
-#~ msgstr "Benutzername des Benutzer"
 
 #~ msgid "Work group"
 #~ msgstr "Arbeitsgruppe"

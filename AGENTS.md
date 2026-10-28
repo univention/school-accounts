@@ -295,7 +295,10 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   flat dispatch on that value — a field the actor can't read is never rendered. **When adding a new
   column, compute its visibility/kind in `presentation.py`, don't branch on raw permissions in the
   template.** This is what makes it structurally impossible to leak an attribute the actor isn't
-  allowed to see.
+  allowed to see. The same goes for `Row.indicators`, the marks beside a row's checkbox (such as a
+  password the actor may not reset): `presentation._indicators` decides them, and the
+  `indicator()` macro dispatches on their `kind`. They show only while the row is ticked
+  (`.row-indicators` in `pages/user_list.html`, keyed on the `selected` attribute `sync()` sets).
 - New page → add under `pages/`, extend `base.html`, add a route in `routes.py` calling
   `business_logic` + `presentation`, and register it the same way as `/users`.
 - New reusable fragment / htmx-only endpoint → add under `fragments/`, give it its own route (see
@@ -329,15 +332,17 @@ already keeps a cross-site POST from carrying it.
 - **Alpine.js holds one component**: the `selection` data in `pages/user_list.html`, bound by
   `x-data="selection"` in `fragments/user_table.html`. It counts the ticked rows for the password
   reset and the CSV export, which takes every row on screen while none is ticked (`exportParameters()`).
-  Every listed row is selectable; the reset dialog reports the ones the actor may not reset as
-  `denied`. The component also keeps ticks across a search's swap (`retick()`) and narrows them to
-  the failed accounts after a reset (`keepOnly()`). Reach for Alpine only for state that genuinely
-  can't be expressed as an htmx-observable DOM event.
+  Every listed row is selectable. A ticked row without `data-resettable` (from `Row.resettable`)
+  holds the reset back: `confirmReset()` on the form's `htmx:confirm` opens a popup that offers to
+  untick those rows and resumes the request. The component also keeps ticks across a search's swap
+  (`retick()`) and narrows them to the failed accounts after a reset (`keepOnly()`). Reach for
+  Alpine only for state that genuinely can't be expressed as an htmx-observable DOM event.
 - **There is no repo-authored JavaScript file**, only inline `<script>` blocks in templates:
   `pages/user_list.html` holds the helpers its `hx-*` attributes call (`filterChanged`,
   `skipUnchangedSearch`, `announceSearchResult`, `syncResultVisibility`,
   `narrowSelectionToFailures`), the focus restore
-  after a swap, the back-navigation guard and the Alpine component; `fragments/password_reset_dialog.html`
+  after a swap, the back-navigation guard, the tooltip for `[data-tooltip]` (the design system has none;
+  a popover styled with its tokens, not a native `title`) and the Alpine component; `fragments/password_reset_dialog.html`
   opens its own dialog; `macros/layout.html`'s `toast()` holds the failed-request listener. Don't
   add a new JS file or bundling/build step without discussing it first (none exists today).
 - htmx, Alpine, and the design-system bundle are **vendored** under

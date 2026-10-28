@@ -14,6 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
   hx-target="#password-reset-dialog-region"
   hx-swap="innerHTML"
   hx-headers='{"X-CSRF-Token": {{ csrf_token | tojson }}}'
+  hx-on::confirm="if (event.target === this) Alpine.$data(this.querySelector('[x-data]')).confirmReset(event)"
   hx-on::before-request="if (event.target === this) this.querySelector('u-button[type=submit]').loading = true"
   hx-on::after-request="if (event.target === this) this.querySelector('u-button[type=submit]').loading = false"
 >
@@ -100,7 +101,25 @@ SPDX-License-Identifier: AGPL-3.0-only
                 x-text="selected > 0 ? $el.dataset.selected : $el.dataset.all"
               >{{ _("Export all as CSV") }}</span>
             </u-button>
-            <u-button type="submit" variant="primary" size="md" x-bind:disabled="selected === 0">
+            {# A ticked row the actor may not reset holds the reset back: the click opens
+               the popup below instead (confirmReset), which offers to untick those rows.
+               The mark and the tooltip warn about that before the click. #}
+            <u-button
+              id="password-reset"
+              type="submit"
+              variant="primary"
+              size="md"
+              x-bind:disabled="selected === 0"
+              data-hint="{{ _('You are not allowed to reset the password of these selected users:') }}"
+              data-more="{{ _('and {count} more') }}"
+              x-bind:data-tooltip="denied.length > 0 ? deniedHint($el.dataset) : null"
+            >
+              {# Gives the reason to a screen reader as part of the button's name too.
+                 Hidden until Alpine runs, so it does not flash in on a page load; its
+                 display while shown comes from #password-reset-denied in pages/user_list.html. #}
+              <span id="password-reset-denied" x-show="denied.length > 0" style="display: none">
+                {{ table.error_mark(_('The selection contains users whose password you are not allowed to reset.'), tooltip=False) }}
+              </span>
               {{ _("Reset password") }}
             </u-button>
           </u-hstack>
@@ -152,15 +171,24 @@ SPDX-License-Identifier: AGPL-3.0-only
               {% for row in view.rows %}
               <u-tr role="row">
                 <u-td role="cell">
-                  <label for="select-{{ row.id }}">
-                    <u-checkbox
-                      id="select-{{ row.id }}"
-                      name="user_id"
-                      value="{{ row.id }}"
-                      x-on:change="sync()"
-                    ></u-checkbox>
-                    <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
-                  </label>
+                  {# The indicators sit beside the checkbox, not in a column of their own,
+                     and show only while the row is ticked: see .row-indicators in pages/user_list.html. #}
+                  <u-hstack gap="sm" align="center">
+                    <label for="select-{{ row.id }}">
+                      <u-checkbox
+                        id="select-{{ row.id }}"
+                        name="user_id"
+                        value="{{ row.id }}"
+                        {# The label names the row in the reset button's tooltip. #}
+                        {% if row.resettable %}data-resettable{% else %}data-label="{{ row.label }}" data-username="{{ row.username }}"{% endif %}
+                        x-on:change="sync()"
+                      ></u-checkbox>
+                      <span class="sr-only">{{ _("Select {name}").format(name=row.label) }}</span>
+                    </label>
+                    {% if row.indicators %}
+                    <span class="row-indicators">{% for indicator in row.indicators %}{{ table.indicator(indicator) }}{% endfor %}</span>
+                    {% endif %}
+                  </u-hstack>
                 </u-td>
                 {% for cell in row.cells %}<u-td>{{ table.cell(cell) }}</u-td>{% endfor %}
               </u-tr>
@@ -176,6 +204,54 @@ SPDX-License-Identifier: AGPL-3.0-only
           </u-table>
           {% endif %}
           </u-vstack>
+
+          {# Built in the page from the ticked rows, without a request: the rows already
+             carry what the server decided. The reset dialog still states any row it
+             leaves out, should a permission change in between. Same shell as that dialog. #}
+          <dialog
+            id="password-reset-denied-dialog"
+            x-ref="deniedDialog"
+            class="modal"
+            aria-labelledby="password-reset-denied-title"
+            style="transition: none"
+          >
+            <u-card style="width: 100%; max-width: 32rem" tone>
+              <u-vstack gap="lg" align="stretch" justify="start">
+                <h2 id="password-reset-denied-title" class="text-xl">{{ _("Reset password") }}</h2>
+                {# Names as many rows as the reset dialog does; above that, only their count.
+                   Nothing while none is denied, so the closed dialog holds no empty table. #}
+                <template x-if="denied.length > 0 && denied.length <= {{ password_reset_named_limit }}">
+                  <u-vstack gap="lg" align="stretch" justify="start">
+                    <p>{{ _("You are not allowed to reset the password of these selected users:") }}</p>
+                    <u-table role="table">
+                      <u-tbody role="rowgroup">
+                        <template x-for="(user, index) in denied" x-bind:key="index">
+                          <u-tr role="row">
+                            <u-td role="cell" x-text="user.name"></u-td>
+                            <u-td role="cell" x-text="user.username"></u-td>
+                          </u-tr>
+                        </template>
+                      </u-tbody>
+                    </u-table>
+                  </u-vstack>
+                </template>
+                <template x-if="denied.length > {{ password_reset_named_limit }}">
+                  <p
+                    data-text="{{ _('You are not allowed to reset the password of {count} selected users.') }}"
+                    x-text="$el.dataset.text.replace('{count}', denied.length)"
+                  ></p>
+                </template>
+                <u-hstack justify="end" gap="md">
+                  <u-button type="button" variant="neutral" size="md" x-on:click="$refs.deniedDialog.close()">
+                    {{ _("Cancel") }}
+                  </u-button>
+                  <u-button type="button" variant="primary" size="md" x-on:click="deselectDenied()">
+                    {{ _("Deselect these users") }}
+                  </u-button>
+                </u-hstack>
+              </u-vstack>
+            </u-card>
+          </dialog>
         </u-vstack>
     </u-card>
 </u-form>

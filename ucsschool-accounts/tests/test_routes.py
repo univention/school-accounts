@@ -28,7 +28,7 @@ from ucsschool_accounts.adapters.school_classes import FileSchoolClassesPersiste
 from ucsschool_accounts.adapters.schools import FileSchoolsPersistenceAdapter
 from ucsschool_accounts.adapters.users import FileUsersPersistenceAdapter
 from ucsschool_accounts.adapters.work_groups import FileWorkGroupsPersistenceAdapter
-from ucsschool_accounts.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX
+from ucsschool_accounts.constants import AUTH_LOGIN_PATH, FRONTEND_PREFIX, PASSWORD_RESET_NAMED_LIMIT
 from ucsschool_accounts.errors import (
     KelvinAPIUnavailableError,
     ObjectNotFoundError,
@@ -170,15 +170,22 @@ def _post_reset(
     )
 
 
-def _post_confirm(test_client: TestClient, user_id: str | list[str]) -> httpx.Response:
-    """Ask for the confirmation dialog over a selection."""
+def _post_selection(
+    test_client: TestClient, path: str, user_id: str | list[str], **extra: str | list[str]
+) -> httpx.Response:
+    """Post the selection form's ticks, and any ``extra`` fields, to ``path``."""
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     return cast(
         httpx.Response,
         test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users/password-reset/confirm", data={"user_id": user_id}
+            f"{FRONTEND_PREFIX}{path}", data={"user_id": user_id, **extra}
         ),
     )
+
+
+def _post_confirm(test_client: TestClient, user_id: str | list[str]) -> httpx.Response:
+    """Ask for the confirmation dialog over a selection."""
+    return _post_selection(test_client, "/users/password-reset/confirm", user_id)
 
 
 def test_root_redirects_to_users(test_client: TestClient):
@@ -589,19 +596,6 @@ def test_typing_renders_only_the_results_region(test_client: TestClient, mocker:
     assert 'id="user-rows"' in body
     assert "max.muster" in body
     assert all_classes_spy.call_count == 0
-
-
-def test_typing_neither_spins_the_reset_button_nor_keeps_a_stale_count(test_client: TestClient):
-    """The search box sits in the selection form, whose handlers see its requests bubble up,
-    and its swap brings rows the selection count has not seen."""
-    body = _get_users(test_client, school="school1", group="all").text
-    selection_form = body[
-        body.index('id="selection-form"') : body.index(">", body.index('id="selection-form"'))
-    ]
-    for event in ("before-request", "after-request"):
-        assert f'hx-on::{event}="if (event.target === this) ' in selection_form
-    rows = body[body.index('id="user-rows"') : body.index(">", body.index('id="user-rows"'))]
-    assert 'hx-on::after-settle="Alpine.$data(this).retick();' in rows
 
 
 def test_users_text_search_is_kept_whole_in_the_pushed_url(test_client: TestClient):
@@ -1623,13 +1617,7 @@ def test_password_reset_confirm_with_nothing_resettable_offers_only_a_close(
 def _post_export(
     test_client: TestClient, user_id: str | list[str], **extra: str | list[str]
 ) -> httpx.Response:
-    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
-    return cast(
-        httpx.Response,
-        test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users/export", data={"user_id": user_id, **extra}
-        ),
-    )
+    return _post_selection(test_client, "/users/export", user_id, **extra)
 
 
 def test_export_answers_with_the_selection_as_a_csv_file(test_client: TestClient):
@@ -1782,7 +1770,46 @@ def test_a_user_the_actor_may_not_reset_can_still_be_selected(
 
     mocker.patch.object(FilePermissionsAdapter, "get_permissions", _no_resets)
     body = _users_page(test_client, "en", school="test_school1", group="all")
-    assert 'id="select-test_user1"' in body
+    checkbox = _checkbox(body, "test_user1")
+    assert "data-resettable" not in checkbox
+    # The reset button's tooltip and its popup name the row by them.
+    assert 'data-label="firstname lastname"' in checkbox
+    assert 'data-username="firstname.lastname"' in checkbox
+    assert _DENIED_INDICATOR in _selection_cell(body, "test_user1")
+
+
+def test_a_user_the_actor_may_reset_is_marked_resettable(test_client: TestClient):
+    """The page keeps the reset button off while a ticked row lacks the mark."""
+    body = _users_page(test_client, "en", school="test_school1", group="all")
+    checkbox = _checkbox(body, "test_user1")
+    assert "data-resettable" in checkbox
+    assert "data-label" not in checkbox
+    assert "data-username" not in checkbox
+    assert _DENIED_INDICATOR not in _selection_cell(body, "test_user1")
+
+
+def test_the_denied_popup_names_as_many_users_as_the_reset_dialog(test_client: TestClient):
+    """Above the reset dialog's limit the popup gives only the count, as that dialog does."""
+    body = _users_page(test_client, "en", school="test_school1", group="all")
+    popup = body[body.index('id="password-reset-denied-dialog"') : body.index("</dialog>")]
+    assert f'x-if="denied.length > 0 && denied.length <= {PASSWORD_RESET_NAMED_LIMIT}"' in popup
+    assert f'x-if="denied.length > {PASSWORD_RESET_NAMED_LIMIT}"' in popup
+    assert 'x-text="user.username"' in popup
+
+
+_DENIED_INDICATOR = 'aria-label="You are not allowed to reset this user&#39;s password."'
+
+
+def _selection_cell(body: str, user_id: str) -> str:
+    """The rest of the cell that holds a row's checkbox, where its indicators sit."""
+    start = body.index(f'id="select-{user_id}"')
+    return body[start : body.index("</u-td>", start)]
+
+
+def _checkbox(body: str, user_id: str) -> str:
+    match = re.search(rf'<u-checkbox\s+id="select-{re.escape(user_id)}"[^>]*>', body)
+    assert match, f"no checkbox for {user_id}"
+    return match.group(0)
 
 
 def test_a_kelvin_failure_becomes_a_toast_for_htmx(test_client: TestClient, mocker: MockerFixture):

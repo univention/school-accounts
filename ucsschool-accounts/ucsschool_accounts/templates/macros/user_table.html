@@ -15,3 +15,28 @@ SPDX-License-Identifier: AGPL-3.0-only
   {%- endif -%}
 {%- endif -%}
 {%- endmacro %}
+
+{# The red "!" for a password the actor may not reset. The design system has no icon
+   or error badge to draw it with. ``tooltip`` is off inside the reset button, where the
+   button's own tooltip names the users and must not be covered.
+   Drawn, not a "!" glyph: a glyph sits where its font's metrics put it, off centre.
+   The bar and the dot span y 4 to 16, centred on the circle's 10. #}
+{% macro error_mark(label, tooltip=True) -%}
+<svg
+  viewBox="0 0 20 20"
+  role="img"
+  aria-label="{{ label }}"
+  {% if tooltip %}data-tooltip="{{ label }}"{% endif %}
+  style="display: block; flex: none; width: 1.25rem; height: 1.25rem"
+>
+  <circle cx="10" cy="10" r="10" style="fill: var(--color-error)"/>
+  <rect x="8.75" y="4" width="2.5" height="7.5" rx="1.25" style="fill: var(--color-error-content)"/>
+  <circle cx="10" cy="14.75" r="1.25" style="fill: var(--color-error-content)"/>
+</svg>
+{%- endmacro %}
+
+{% macro indicator(indicator) -%}
+{%- if indicator.kind == "password_reset_denied" -%}
+  {{ error_mark(indicator.label) }}
+{%- endif -%}
+{%- endmacro %}

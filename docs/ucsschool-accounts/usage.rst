@@ -101,11 +101,17 @@ To reset passwords, follow these steps:
    and clearing the search doesn't select them again,
    so the reset only affects users that the list shows.
    Search first, then select the users.
+   When you select a user whose password you can't reset,
+   a red exclamation mark appears next to the checkbox of that user.
+   A red exclamation mark on :guilabel:`Reset password` shows
+   that the selection contains users whose password you can't reset,
+   and the tooltip of the button names them.
 
 #. Click :guilabel:`Reset password`.
+   If the selection contains users whose password you can't reset,
+   a dialog lists them first.
+   Click :guilabel:`Deselect these users` to clear their checkboxes and continue with the others.
    A dialog lists the accounts that the reset affects.
-   It also states how many of the selected users you can't reset the password of.
-   The reset leaves out these users.
    It warns you when the selection contains users with different roles,
    or when it affects many accounts at once.
 

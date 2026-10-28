@@ -13,14 +13,12 @@ import asyncio
 import re
 import sys
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
-from pytest_mock import MockerFixture
 
 if sys.version_info >= (3, 12):  # pragma: no cover
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -56,6 +54,10 @@ from ucsschool_accounts.ports import (
     WorkGroupsPersistencePort,
 )
 from ucsschool_accounts.presentation import PasswordResetOutcomeCode
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+    from pytest_mock import MockerFixture
 
 # The actor id supplied by AlwaysAuthenticatedAdapter in the test environment.
 ACTOR_ID = "dev"
@@ -641,6 +643,7 @@ async def test_set_passwords_carries_the_selection_it_resolved(
     )
     assert result.selection is not None
     assert [user.id for user in result.selection.users] == ["test_user1"]
+    assert "test_user1" in result.selection.permissions
 
 
 @pytest.mark.asyncio
@@ -1078,6 +1081,8 @@ async def test_password_reset_selection_keeps_only_resettable_users(
     )
     assert [user.id for user in data.users] == ["test_user1"]
     assert data.denied == expected_denied
+    # What the dialog may name the users by.
+    assert data.permissions["test_user1"] == [Permission.write_password]
 
 
 @pytest.mark.asyncio
