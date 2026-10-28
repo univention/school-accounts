@@ -158,6 +158,43 @@ def test_spaces_alone_do_not_search_again(
     expect(signed_in).to_have_url(searched_url)
 
 
+def _toast_instead_of_rows(route: Route) -> None:
+    """What ``main._html_error`` answers an htmx request with: a 200, retargeted."""
+    route.fulfill(
+        status=200,
+        content_type="text/html",
+        headers={"HX-Retarget": "#toast-region", "HX-Reswap": "beforeend", "HX-Reselect": "unset"},
+        body="<span></span>",
+    )
+
+
+@pytest.mark.frontend
+@pytest.mark.parametrize("failure", ["unreachable", "error toast"])
+def test_a_failed_search_is_sent_again_for_the_same_words(
+    signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str, failure: str
+) -> None:
+    """After a failed search, typing the same words sends the search again."""
+    list_school(school)
+    searched = re.compile(r"/users\?(.*&)?q=")
+    signed_in.route(
+        searched, (lambda route: route.abort()) if failure == "unreachable" else _toast_instead_of_rows
+    )
+
+    def is_search(request: Request) -> bool:
+        return searched.search(request.url) is not None
+
+    with signed_in.expect_event(
+        "requestfinished" if failure == "error toast" else "requestfailed", is_search
+    ):
+        search_box(signed_in).fill(listed_user)
+    signed_in.unroute(searched)
+
+    # After a search that worked, a trailing space sends nothing and this times out.
+    search(signed_in, f"{listed_user} ")
+
+    expect(signed_in.locator("#user-rows")).to_contain_text(listed_user)
+
+
 @pytest.mark.frontend
 def test_a_search_that_matches_nobody_says_so_and_clearing_it_lists_again(
     signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
@@ -245,6 +282,32 @@ def test_a_group_change_keeps_the_search(
     expect(signed_in).to_have_url(re.compile(rf"[?&]q={nobody}(&|$)"))
     expect(search_box(signed_in)).to_have_value(nobody)
     expect(signed_in.locator("#user-rows")).to_contain_text(f"No users match “{nobody}”.")
+
+
+@pytest.mark.frontend
+def test_a_group_change_brings_the_search_still_waiting_out_its_delay(
+    signed_in: Page, list_school: Callable[..., None], school: str
+) -> None:
+    """The group change sends the words typed just before it, so the search they started
+    has nothing left to fetch."""
+    list_school(school)
+    searches: list[str] = []
+
+    def record(request: Request) -> None:
+        if request.headers.get("hx-target") == "user-rows":
+            searches.append(request.url)
+
+    signed_in.on("request", record)
+    nobody = f"nobody-{uuid.uuid4().hex[:8]}"
+    search_box(signed_in).fill(nobody)
+    with signed_in.expect_response(
+        lambda response: response.request.headers.get("hx-target") == "results-region"
+    ):
+        signed_in.locator("#group-list").get_by_role("option").nth(1).click()
+    signed_in.wait_for_timeout(PAST_SEARCH_DELAY_MS)
+
+    expect(signed_in.locator("#user-rows")).to_contain_text(f"No users match “{nobody}”.")
+    assert searches == []
 
 
 @pytest.mark.frontend

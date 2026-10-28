@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 from typing import Annotated, cast
-from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import RequestValidationError
@@ -563,14 +563,16 @@ def _set_history(request: Request, response: HTMLResponse, url: str) -> None:
 
     Typing replaces the entry while both the current URL and ``url`` carry a
     search; anything else pushes. A search is then one entry: back undoes it and
-    keeps the group, instead of stepping through every prefix typed.
+    keeps the group, instead of stepping through every prefix typed. The URL
+    already shown (Enter in an unchanged search box) is replaced, not pushed: back
+    would otherwise seem to do nothing.
     """
+    current = urlsplit(request.headers.get("HX-Current-URL", ""))
     typed = request.headers.get("HX-Trigger") == SEARCH_INPUT_ID
-    refining = all(
-        "q" in parse_qs(urlsplit(each).query)
-        for each in (request.headers.get("HX-Current-URL", ""), url)
-    )
-    response.headers["HX-Replace-Url" if typed and refining else "HX-Push-Url"] = url
+    refining = all("q" in parse_qs(each) for each in (current.query, urlsplit(url).query))
+    unchanged = urlunsplit(("", "", current.path, current.query, "")) == url
+    replace = unchanged or (typed and refining)
+    response.headers["HX-Replace-Url" if replace else "HX-Push-Url"] = url
 
 
 def _push_url(school: str | None, selected_group: str, role: str, search: str) -> str:

@@ -312,9 +312,12 @@ SPDX-License-Identifier: AGPL-3.0-only
   // rewriting the URL. hx-preserve finds the box by id, so without one the restored
   // page brings its own, holding the restored URL's q instead of the text typed here.
   // Registered once: a restore swaps the body, which runs this script again.
+  // Only for an entry htmx restores: one it did not push, such as u-page's skip link
+  // (#u-page-main), keeps this page, and blocking its requests would leave it dead.
   if (!window.userListBackGuard) {
     window.userListBackGuard = true
-    window.addEventListener("popstate", () => {
+    window.addEventListener("popstate", (event) => {
+      if (!event.state?.htmx) return
       for (const elt of document.querySelectorAll('[hx-sync^="#results-column"]')) {
         elt.addEventListener("htmx:beforeRequest", (event) => event.preventDefault())
       }
@@ -367,6 +370,35 @@ SPDX-License-Identifier: AGPL-3.0-only
   function announceSearchResult(rows) {
     document.getElementById("search-status").textContent =
       rows.querySelector("[data-status]")?.dataset.status ?? ""
+  }
+
+  // The words count as searched once the request goes out, so a search that failed -
+  // unreachable, or answered with an error toast in place of the rows - is forgotten
+  // here, or typing the same words again would be skipped as unchanged.
+  function forgetFailedSearch(event) {
+    if (!event.detail.successful || event.detail.target?.id !== "user-rows") {
+      delete event.target.dataset.searched
+    }
+  }
+
+  // A filter change brings the box's words along, so they are searched with it. hx-preserve
+  // keeps the old box through the swap, data-searched included, so it is recorded here:
+  // otherwise a search still waiting out its delay would fetch the same rows again.
+  // On htmx:beforeSend, which only a request that goes out reaches. Forgotten again
+  // when that request fails, as in forgetFailedSearch(). Installed once, as a history
+  // restore runs this script again.
+  if (!window.filterSearchInstalled) {
+    window.filterSearchInstalled = true
+    document.addEventListener("htmx:beforeSend", (event) => {
+      const box = document.getElementById("user-search")
+      if (box && event.detail.target?.id === "results-region") box.dataset.searched = searchWords(box)
+    })
+    document.addEventListener("htmx:afterRequest", (event) => {
+      const box = document.getElementById("user-search")
+      if (box && event.detail.target?.id === "results-region" && !event.detail.successful) {
+        delete box.dataset.searched
+      }
+    })
   }
 
   // The export button asks for an ArrayBuffer: the CSV is UTF-16LE, and read as text it

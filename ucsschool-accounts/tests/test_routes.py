@@ -566,6 +566,21 @@ def test_users_emptying_the_search_pushes_a_history_entry(test_client: TestClien
     assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1&group=all"
 
 
+@pytest.mark.parametrize("q", [pytest.param("", id="empty"), pytest.param("max", id="searched")])
+def test_users_searching_the_same_words_again_adds_no_history_entry(test_client: TestClient, q: str):
+    """Enter in a box whose words were already searched: back would seem to do nothing."""
+    page = f"{FRONTEND_PREFIX}/users?school=school1&group=all" + (f"&q={q}" if q else "")
+    headers = {
+        "HX-Request": "true",
+        "HX-Target": "user-rows",
+        "HX-Trigger": "user-search",
+        "HX-Current-URL": f"http://testserver{page}",
+    }
+    response = _get_users(test_client, headers, school="school1", group="all", q=q)
+    assert "HX-Push-Url" not in response.headers
+    assert response.headers["HX-Replace-Url"] == page
+
+
 @pytest.mark.parametrize("trigger", ["filter-form", "role-filter"])
 def test_users_a_filter_change_during_a_search_pushes_a_history_entry(
     test_client: TestClient, trigger: str

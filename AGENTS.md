@@ -247,7 +247,8 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
     `#user-rows`, so the box keeps its text and focus; the route answers that target with the
     region fragment too. A search pushes one history entry, so back keeps the group: typing
     (`HX-Trigger: user-search`) gets `HX-Replace-Url` only while both `HX-Current-URL` and the
-    new URL carry a `q`, and `HX-Push-Url` otherwise. Its requests, like the role chips', bubble through the selection form,
+    new URL carry a `q`, and `HX-Push-Url` otherwise. A URL equal to `HX-Current-URL` is always
+    replaced, never pushed again. Its requests, like the role chips', bubble through the selection form,
     whose `hx-on` handlers check `event.target`. The box, the filter form and the role chips share
     an `hx-sync` on `#results-column`, whose comment says why. It matches only visible text cells
     (`presentation._matches`).
@@ -339,7 +340,7 @@ already keeps a cross-site POST from carrying it.
   Alpine only for state that genuinely can't be expressed as an htmx-observable DOM event.
 - **There is no repo-authored JavaScript file**, only inline `<script>` blocks in templates:
   `pages/user_list.html` holds the helpers its `hx-*` attributes call (`filterChanged`,
-  `skipUnchangedSearch`, `announceSearchResult`, `syncResultVisibility`,
+  `skipUnchangedSearch`, `forgetFailedSearch`, `announceSearchResult`, `syncResultVisibility`,
   `narrowSelectionToFailures`), the focus restore
   after a swap, the back-navigation guard, the tooltip for `[data-tooltip]` (the design system has none;
   a popover styled with its tokens, not a native `title`) and the Alpine component; `fragments/password_reset_dialog.html`

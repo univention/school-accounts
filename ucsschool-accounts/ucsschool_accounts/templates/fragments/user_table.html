@@ -59,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 data-searched="{{ search_query.split() | join(' ') }}"
                 hx-on::confirm="abortOutdatedSearch(event)"
                 hx-on::before-request="skipUnchangedSearch(event); if (!event.defaultPrevented) document.getElementById('user-rows').setAttribute('aria-busy', 'true')"
-                hx-on::after-request="document.getElementById('user-rows')?.removeAttribute('aria-busy')"
+                hx-on::after-request="document.getElementById('user-rows')?.removeAttribute('aria-busy'); forgetFailedSearch(event)"
                 hx-get="{{ frontend_prefix }}/users"
                 hx-trigger="input changed delay:500ms, keyup[key=='Enter']"
                 hx-include="#listed-filter"
