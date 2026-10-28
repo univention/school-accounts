@@ -1,15 +1,14 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 import asyncio
 import json
 import os
-from collections.abc import Coroutine
-from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
 from typing_extensions import override
 from ucsschool.kelvin.client import InvalidRequest, NoObject
 
@@ -26,7 +25,15 @@ from ucsschool_accounts.errors import (
     PasswordResetRejectedError,
 )
 from ucsschool_accounts.models import User, UserAttributes
-from ucsschool_accounts.ports import UsersPersistencePort
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+    from pathlib import Path
+    from typing import Any
+
+    from pytest_mock import MockerFixture
+
+    from ucsschool_accounts.ports import UsersPersistencePort
 
 
 def _contract_shape(username: str) -> dict[str, Any]:

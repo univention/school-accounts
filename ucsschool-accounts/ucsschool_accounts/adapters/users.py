@@ -151,8 +151,9 @@ class KelvinUsersPersistenceAdapter(UsersPersistencePort, KelvinPersistenceBaseA
         Kelvin cannot search users by class or work group, so the alternative is
         reading every user of the school and discarding all but a classroom of
         them - on a school of 6000 that is nine seconds to render twenty rows.
-        A group carries its members and a search names them all at once, so this
-        costs one read per selected group plus one search, whatever the school.
+        A group carries its members and a search names as many as fit one request
+        (``name_chunks``), so this costs one read per selected group plus one search
+        per few hundred members, whatever the school.
         """
         classes = SchoolClassResource(session=self.kelvin_session)
         groups = WorkGroupResource(session=self.kelvin_session)

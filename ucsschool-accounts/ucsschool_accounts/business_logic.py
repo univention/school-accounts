@@ -452,9 +452,10 @@ async def _fetch_users(
 ) -> tuple[dict[str, User], list[str]]:
     """Resolve the selected ids into users, returning what was found and what was missing.
 
-    One search names every id at once, whatever schools they are spread over, so
-    the cost of a confirmation no longer grows with the size of the selection.
-    ``action`` names the bulk action the selection is for, in the log.
+    A search names as many ids as fit one request, whatever schools they are spread
+    over, so the cost grows with the selection's size in requests of a few hundred
+    users rather than one per user. ``action`` names the bulk action the selection
+    is for, in the log.
     """
     try:
         found = await users_adapter.get_users_by_id(target_ids)
@@ -568,8 +569,8 @@ async def get_export_selection(
     A user the actor holds no permission on is not listed, and is not exported
     either. Which of their attributes go into the file is decided
     per attribute in ``presentation.build_user_export``, as it is for the table.
-    No ceiling: the cost is one lookup and one permission batch, the same as
-    listing the users did.
+    No ceiling: the cost is the lookup ``_fetch_users`` describes and the
+    permission checks listing the same users made.
     """
     deduped_ids = list(dict.fromkeys(target_ids))
     found, missing, permissions = await _resolve_selection(

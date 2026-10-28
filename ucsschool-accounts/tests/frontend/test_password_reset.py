@@ -11,7 +11,7 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.frontend import seed
-from tests.frontend.conftest import tick
+from tests.frontend.conftest import tick, wait_until_held
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -263,8 +263,7 @@ def test_typing_leaves_the_reset_button_alone(
     signed_in.route(searched, lambda route: held.append(route))
 
     signed_in.locator("#user-search input").fill(f"nobody-{uuid.uuid4().hex[:8]}")
-    while not held:
-        signed_in.wait_for_timeout(50)
+    wait_until_held(signed_in, held)
 
     reset = signed_in.locator("#selection-form u-button[type=submit]")
     assert not reset.evaluate("button => button.loading")

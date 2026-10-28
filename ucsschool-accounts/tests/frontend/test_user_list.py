@@ -11,7 +11,7 @@ from urllib.parse import quote_plus
 import pytest
 from playwright.sync_api import expect
 
-from tests.frontend.conftest import FRONTEND_PREFIX
+from tests.frontend.conftest import FRONTEND_PREFIX, wait_until_held
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -337,8 +337,7 @@ def test_typing_while_a_group_loads(
     group_label = group.inner_text().strip()
     with signed_in.expect_request(lambda request: request.headers.get("hx-target") == "results-region"):
         group.click()
-    while not held:
-        signed_in.wait_for_timeout(50)
+    wait_until_held(signed_in, held)
 
     nobody = f"nobody-{uuid.uuid4().hex[:8]}"
     search_box(signed_in).fill(nobody)
@@ -373,8 +372,7 @@ def test_a_new_search_cancels_the_one_still_loading(
 
     signed_in.route(re.compile(r"/users\?(.*&)?q="), hold_the_first_search)
     search_box(signed_in).fill(listed_user)
-    while not held:
-        signed_in.wait_for_timeout(50)
+    wait_until_held(signed_in, held)
 
     nobody = f"nobody-{uuid.uuid4().hex[:8]}"
     with signed_in.expect_event("requestfailed", lambda request: request.url == held[0].request.url):
@@ -438,8 +436,7 @@ def test_back_during_a_search_lands_where_it_points(
 
     search_box(signed_in).fill(f"nobody-{uuid.uuid4().hex[:8]}")
     if search == "loading":
-        while not held:
-            signed_in.wait_for_timeout(50)
+        wait_until_held(signed_in, held)
     signed_in.go_back()
     expect(signed_in.locator("#user-rows")).to_contain_text(listed_user)
     for route in held:
