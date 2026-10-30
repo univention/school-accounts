@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
-FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-527:0.24.3@sha256:f856cd5bcb3588fd14a7d17a5da44ea58b72703b29c95720629753c66e7fde1c
+FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-527:0.24.5@sha256:ea7a4e49b0e9380901af1a3a6ffb49e50a1f952eb483f3628f75c84a98c09ee6
 LABEL description="Development image for ucsschool-users-management"
 
 EXPOSE 8000
