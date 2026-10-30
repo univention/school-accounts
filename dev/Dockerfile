@@ -6,7 +6,7 @@ LABEL description="Development image for ucsschool-users-management"
 
 EXPOSE 8000
 
-ENV UV_VERSION=0.11.21
+ENV UV_VERSION=0.13.6
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

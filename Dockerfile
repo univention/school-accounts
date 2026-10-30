@@ -5,7 +5,7 @@
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.3@sha256:42db06d912f4e60c0698a4818fbf9dc2d319fc6f0e6e13992164333df47b7c59 AS backend_builder
 WORKDIR /build
 ENV UV_PROJECT_ENVIRONMENT="/venv"
-ENV UV_VERSION=0.11.21
+ENV UV_VERSION=0.13.6
 RUN apt-get update && \
     apt-get --assume-yes --verbose-versions --no-install-recommends install \
         git \

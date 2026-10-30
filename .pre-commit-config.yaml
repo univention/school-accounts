@@ -90,7 +90,7 @@ repos:
       args: [--fix]
     - id: ruff-format
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.11.21 # Check for the latest release on GitHub
+  rev: 0.13.6 # Check for the latest release on GitHub
   hooks:
     # Ensure uv lock is up-to-date
     - id: uv-lock

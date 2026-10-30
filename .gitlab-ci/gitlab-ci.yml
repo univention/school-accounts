@@ -114,7 +114,7 @@ include:
           changes: *docs_build_changes
 
 variables:
-  UV_VERSION: "0.11.21"
+  UV_VERSION: "0.13.6"
   DEV_IMAGE_NAME: ci-image
   DEV_IMAGE_TAG: $CI_REGISTRY_IMAGE/$DEV_IMAGE_NAME:$CI_COMMIT_REF_SLUG
   PRE_COMMIT_HOME: .cache/pre-commit-home
