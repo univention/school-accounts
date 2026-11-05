@@ -8,12 +8,13 @@ and display formatting out of the templates without reintroducing a
 representation port/adapter.
 """
 
+from __future__ import annotations
+
 import unicodedata
 from collections import Counter
-from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Protocol, TypeVar
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 from loguru import logger
 
@@ -23,14 +24,12 @@ from .constants import (
     PASSWORD_RESET_NAMED_LIMIT,
 )
 from .lang import N_, _
-from .models import (
-    AttributeAccess,
-    Permission,
-    School,
-    SchoolClass,
-    User,
-    WorkGroup,
-)
+from .models import AttributeAccess, Permission
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
+
+    from .models import School, SchoolClass, User, WorkGroup
 
 
 class _HasId(Protocol):
