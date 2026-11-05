@@ -295,7 +295,9 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   without checking the comment).
 - Error/empty/loading states: `fragments/toast.html` (`#toast-region`, one `<u-toast-item>` per
   message) and `pages/message.html` are the established shells — reuse them rather than inventing new
-  ones. There's no dedicated loading-indicator convention yet beyond what the design-system's custom
+  ones. A request that fails before it reaches the app (a proxy's 414 or 502, a dropped connection)
+  gets its toast from the `toast()` macro's own `htmx:responseError`/`htmx:sendError` listener.
+  There's no dedicated loading-indicator convention yet beyond what the design-system's custom
   elements provide.
 
 ## Forms, Validation, and Mutations
@@ -324,8 +326,8 @@ already keeps a cross-site POST from carrying it.
   `skipUnchangedSearch`, `announceSearchResult`, `syncResultVisibility`,
   `narrowSelectionToFailures`), the focus restore
   after a swap, the back-navigation guard and the Alpine component; `fragments/password_reset_dialog.html`
-  opens its own dialog. Don't add a new JS file or bundling/build step without discussing it first
-  (none exists today).
+  opens its own dialog; `macros/layout.html`'s `toast()` holds the failed-request listener. Don't
+  add a new JS file or bundling/build step without discussing it first (none exists today).
 - htmx, Alpine, and the design-system bundle are **vendored** under
   `ucsschool_accounts/static/vendor/` (not installed via pip/npm). See § Generated and Sensitive
   Files before touching them.

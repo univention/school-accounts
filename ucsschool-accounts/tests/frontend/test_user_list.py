@@ -178,6 +178,36 @@ def test_a_search_that_matches_nobody_says_so_and_clearing_it_lists_again(
 
 
 @pytest.mark.frontend
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        (414, "The search is too long. Please shorten it."),
+        (502, "An unexpected error occurred. Please try again later."),
+        ("no connection", "An unexpected error occurred. Please try again later."),
+    ],
+)
+def test_a_search_that_fails_in_front_of_the_app_says_so(
+    signed_in: Page,
+    list_school: Callable[..., None],
+    school: str,
+    listed_user: str,
+    failure: int | str,
+    message: str,
+) -> None:
+    """The proxy answers a search past its request line with a 414, which htmx swaps nothing for."""
+    list_school(school)
+    signed_in.route(
+        re.compile(r"/users\?(.*&)?q="),
+        lambda route: route.fulfill(status=failure) if isinstance(failure, int) else route.abort(),
+    )
+
+    search_box(signed_in).fill(f"nobody-{uuid.uuid4().hex[:8]}")
+
+    expect(signed_in.locator("#toast-region")).to_contain_text(message)
+    expect(signed_in.locator("#user-rows")).to_contain_text(listed_user)
+
+
+@pytest.mark.frontend
 def test_a_search_tells_a_screen_reader_what_it_found(
     signed_in: Page, list_school: Callable[..., None], school: str, listed_user: str
 ) -> None:

@@ -25,4 +25,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 {% macro toast() %}
 <u-toast id="toast-region" aria-live="polite"></u-toast>
+{# The app answers its own failures with a toast. These fail in front of it - the proxy's 414
+   for a search past its request line, a 502 while the app restarts, a dropped connection -
+   and htmx swaps nothing for them, so without this the page just stops. #}
+<template id="request-failed-toast">
+  {%- with message=_("An unexpected error occurred. Please try again later."), variant="error" %}{% include "fragments/toast.html" %}{% endwith -%}
+</template>
+<template id="search-too-long-toast">
+  {%- with message=_("The search is too long. Please shorten it."), variant="error" %}{% include "fragments/toast.html" %}{% endwith -%}
+</template>
+<script>
+  // A history navigation swaps this script back in with the page: install once.
+  if (!window.requestErrorToastInstalled) {
+    window.requestErrorToastInstalled = true
+    const showToast = (id) =>
+      document.getElementById("toast-region").append(document.getElementById(id).content.cloneNode(true))
+    document.addEventListener("htmx:responseError", (event) =>
+      showToast(event.detail.xhr.status === 414 ? "search-too-long-toast" : "request-failed-toast"),
+    )
+    document.addEventListener("htmx:sendError", () => showToast("request-failed-toast"))
+  }
+</script>
 {% endmacro %}

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ucsschool-accounts\n"
 "Report-Msgid-Bugs-To: ucsschool-maintainers@univention.de\n"
-"POT-Creation-Date: 2026-11-04 12:56+0000\n"
+"POT-Creation-Date: 2026-11-05 07:49+0000\n"
 "PO-Revision-Date: 2024-03-28 16:54+0100\n"
 "Last-Translator: UCS@school Maintainers <ucsschool-maintainers@univention."
 "de>\n"
@@ -215,6 +215,9 @@ msgstr ""
 
 msgid "The password could not be reset for these accounts:"
 msgstr "Für diese Konten konnte das Passwort nicht zurückgesetzt werden:"
+
+msgid "The search is too long. Please shorten it."
+msgstr "Die Suche ist zu lang. Bitte kürzen Sie sie."
 
 msgid ""
 "The user directory (Kelvin API) is currently unavailable. Please try again "

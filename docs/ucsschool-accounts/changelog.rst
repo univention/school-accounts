@@ -25,6 +25,8 @@ v1.1.0 (unreleased)
 * You can search the user list by first name, last name, or username.
   The search ignores upper and lower case and accents.
   A search removes the users that it hides from the selection for the password reset.
+* The page shows an error message when a request does not reach the app,
+  for example when a search text is too long or the connection to the server drops.
 
 .. _release-1-0-0:
 
