@@ -922,6 +922,53 @@ def _listed_filter(body: str) -> str:
     return body[body.index('id="listed-filter"') :].split("</div>", 1)[0]
 
 
+@pytest.mark.parametrize("group", [[], [""], ["bogus"]])
+def test_a_role_without_a_group_lists_all_groups(test_client: TestClient, group: list[str]):
+    """A role says who to list; with no group picked yet, it lists them school-wide."""
+    response = _users_response(test_client, school="school1", group=group, role="teacher")
+    body = response.text
+    assert 'value="all" selected' in body
+    assert _rows(body).count('<u-tr role="row">') == 3
+    assert (
+        response.headers["HX-Push-Url"]
+        == f"{FRONTEND_PREFIX}/users?school=school1&group=all&role=teacher"
+    )
+
+
+def test_a_role_change_fragment_lists_all_groups(test_client: TestClient):
+    """The chips swap only the results, so the sidebar learns the group from #listed-filter."""
+    body = _users_response(
+        test_client,
+        {"HX-Request": "true", "HX-Target": "results-region"},
+        school="school1",
+        role="teacher",
+    ).text
+    assert body.lstrip().startswith('<u-vstack id="results-region"')
+    assert '<input type="hidden" name="group" value="all">' in _listed_filter(body)
+    assert _rows(body).count('<u-tr role="row">') == 3
+
+
+def test_a_role_keeps_a_picked_group(test_client: TestClient):
+    response = _users_response(test_client, school="school1", group="school_class:1a", role="teacher")
+    assert response.headers["HX-Push-Url"] == (
+        f"{FRONTEND_PREFIX}/users?school=school1&group=school_class%3A1a&role=teacher"
+    )
+
+
+def test_an_unknown_role_without_a_group_lists_nobody(test_client: TestClient):
+    response = _users_response(test_client, school="school1", role="headmaster")
+    assert "Select a class or work group to list its users." in response.text
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1"
+
+
+@pytest.mark.parametrize(("role", "selected"), [("teacher", True), ("headmaster", False), ("", False)])
+def test_a_school_change_with_a_role_starts_on_all_groups(
+    test_client: TestClient, role: str, selected: bool
+):
+    body = _fragment(test_client, "/users/filters", school="school1", role=role)
+    assert ('value="all" selected' in body) is selected
+
+
 def test_a_search_narrows_the_listed_role(test_client: TestClient):
     """The search sends the role of the listed table, not the chips' current selection,
     which may belong to a role change that has not landed."""
@@ -1424,7 +1471,11 @@ def test_changing_a_filter_starts_a_fresh_selection(test_client: TestClient):
     )
     filter_form, selection_form = body.split('id="selection-form"', 1)
     # The role filter sits in the selection form, but a GET sends no enclosing form.
-    assert re.findall(r'hx-include="([^"]*)"', filter_form) == ["#role-filter, #user-search"]
+    # The school cascade takes the role alone, to preselect all groups with one.
+    assert re.findall(r'hx-include="([^"]*)"', filter_form) == [
+        "#role-filter, #user-search",
+        "#role-filter",
+    ]
     assert re.findall(r'hx-include="([^"]*)"', selection_form) == [
         "#listed-filter",
         "#filter-form > form, #user-search",

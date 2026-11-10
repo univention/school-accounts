@@ -16,6 +16,8 @@ v1.1.0 (unreleased)
 
 * You can filter the list of users by role, one role at a time.
   The role filter applies to the roles that users hold at the selected school.
+  When you select a role before a class or work group,
+  the list selects all classes and work groups.
   The browser address contains the selected role,
   so a bookmark or a shared link opens the same list.
 * Error messages from Univention Directory Manager (UDM),

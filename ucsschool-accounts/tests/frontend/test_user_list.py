@@ -497,7 +497,11 @@ def _choose_role(page: Page, role: str) -> None:
 
 
 def _role_cells(page: Page) -> list[str]:
-    return page.locator("#results-region u-tbody u-tr u-td:nth-child(5)").all_inner_texts()
+    """The listed rows' role cells, waiting for at least one, so a check over every
+    cell cannot pass on an empty table."""
+    cells = page.locator("#results-region u-tbody u-tr u-td:nth-child(5)")
+    expect(cells.first).to_be_visible()
+    return cells.all_inner_texts()
 
 
 @pytest.mark.frontend
@@ -557,6 +561,23 @@ def test_a_group_change_keeps_the_role(
     expect(signed_in.locator("#role-filter u-filter-chip[selected]")).to_have_attribute(
         "value", "teacher"
     )
+
+
+@pytest.mark.frontend
+def test_a_role_without_a_group_selects_all_in_the_sidebar(
+    signed_in: Page, select_school: Callable[..., None], school: str
+) -> None:
+    """The role chips swap only the results, so the sidebar is told of the selection."""
+    select_school(school)
+
+    _choose_role(signed_in, "teacher")
+
+    expect(signed_in).to_have_url(re.compile(r"[?&]group=all(&|$)"))
+    expect(signed_in.locator("#group-list")).to_have_js_property("value", "all")
+    expect(signed_in.locator('#group-list u-list-select-item[value="all"]')).to_have_attribute(
+        "aria-selected", "true"
+    )
+    assert all("Teacher" in cell for cell in _role_cells(signed_in))
 
 
 @pytest.mark.frontend

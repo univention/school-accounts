@@ -261,7 +261,14 @@ routes.py  →  business_logic.py  →  presentation.py  →  Jinja2 template
   The text search is the exception: both include the box,
   but the box includes only `#listed-filter`, the filter of the table it narrows,
   so a group or role change that is still loading, or failed, does not reach it.
-  The sidebar disinherits `hx-include`, or its school search and cascade requests would carry the role.
+  The sidebar disinherits `hx-include`, or its school search would carry the role.
+  The school cascade includes `#role-filter` on its own.
+- **A role with no group selected lists all groups.** `GET /users` turns an empty group into
+  `group=all` when a role is set, and pushes that URL. With a role selected, `/users/filters`
+  renders a new school's control with "All" preselected. The chips swap only `#results-region`,
+  so an `htmx:afterSwap` listener in `pages/user_list.html` copies `all` from `#listed-filter`
+  into an empty `#group-list`. Setting the value fires no `u-change`. Clearing the role
+  keeps `group=all`.
 - A keyboard-operated control inside a swapped region needs a stable `id`:
   that is how `pages/user_list.html` puts the focus back on it after the swap.
 - The global error/redirect handling (`main.py:_html_error`, `not_authenticated_exception_handler`)

@@ -324,7 +324,13 @@ async def users_list(
     # more to render, and the bulk reset it feeds refuses more than
     # PASSWORD_RESET_MAX_TARGETS anyway, so nobody should wait for one they did
     # not ask for.
-    group_sections, data, selection = await _resolve_listing(listing, _GroupSelection.from_value(group))
+    selection = _GroupSelection.from_value(group)
+    if role and not selection.lists_users:
+        # A role is a choice too: it says who to list but not where, so it reads
+        # as every group of the school rather than as nothing selected.
+        logger.debug("Selected every group of the school for a role filter.", school=school, role=role)
+        selection = _GroupSelection(all_groups=True)
+    group_sections, data, selection = await _resolve_listing(listing, selection)
     group_label = await listing.group_label(selection)
     response = await render(
         request,
@@ -632,6 +638,7 @@ async def users_filters(
     work_groups_adapter: WorkGroupsAdapterDep,
     permissions_adapter: PermissionsAdapterDep,
     users_adapter: UsersAdapterDep,
+    role: str | None = None,
 ) -> HTMLResponse:
     """Return the combined class/work-group filter for the selected school (cascade).
 
@@ -646,8 +653,9 @@ async def users_filters(
         auth,
         selected_school=school,
         # A fresh school starts with nothing selected, so nothing is listed until
-        # the user says what they want to see.
-        selected_group="",
+        # the user says what they want to see - unless a role already says it,
+        # which `users_list` reads as every group, as it does here.
+        selected_group=presentation.ALL_GROUPS if presentation.role_filter_value(role) else "",
         query="",
         group_sections=await _group_sections(
             school_classes_adapter,

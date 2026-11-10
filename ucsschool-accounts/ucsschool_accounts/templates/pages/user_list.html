@@ -60,7 +60,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
                     {# Swapping this wrapper replaces the whole control, which is what
                     drops the previous school's group selection - u-list-select keeps
-                    its value across an item swap. #}
+                    its value across an item swap. The role comes along because with
+                    one chosen the new school starts on all groups, as its listing does. #}
                     <u-vstack
                     id="dependent-filters"
                     grow
@@ -69,6 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     hx-target="this"
                     hx-swap="innerHTML"
                     hx-vals="js:{school: event.detail.value}"
+                    hx-include="#role-filter"
                     >
                     {% include "fragments/user_filters.html" %}
                     </u-vstack>
@@ -281,6 +283,20 @@ SPDX-License-Identifier: AGPL-3.0-only
     // An absent parameter is nothing selected, for the group as for the school: the
     // all-groups option is pushed as group=all, so picking it is always a change.
     return event.detail.value !== (new URLSearchParams(location.search).get(name) ?? "")
+  }
+
+  // A role picked while no group is lists all groups (routes.py), but its request
+  // swaps only the results, so the sidebar is told here. Setting the value fires no
+  // u-change. Only an empty sidebar: one holding a group has a change of its own
+  // still loading. Installed once, as a history restore runs this script again.
+  if (!window.groupSyncInstalled) {
+    window.groupSyncInstalled = true
+    const allGroups = {{ all_groups_value | tojson }}
+    document.addEventListener("htmx:afterSwap", () => {
+      const groups = document.getElementById("group-list")
+      const listed = document.querySelector('#listed-filter > [name="group"]')?.value
+      if (groups && !groups.value && listed === allGroups) groups.value = allGroups
+    })
   }
 
   // htmx refocuses the swapped-in element with the focused one's id, but the design
