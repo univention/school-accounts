@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from port_loader import EnvSettingsProvider
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from .adapter_registry import ADAPTER_REGISTRY, configure_registry, initialize_adapters
@@ -214,6 +215,29 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
         errors=exc.errors(),
     )
     return _html_error(request, _("Invalid request.", lang=lang), 422)
+
+
+# Starlette's class, not FastAPI's subclass: the router raises this one for a path no
+# route matches (404) or a method the matching route does not answer (405). FastAPI's
+# default handler would answer both with JSON, which the portal frame shows raw.
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    lang = get_lang(request)
+    logger.info(
+        "Rejected a request no route answers.",
+        actor_id=_actor_id(request),
+        method=request.method,
+        path=request.url.path,
+        status_code=exc.status_code,
+    )
+    if exc.status_code == 404:
+        message = _("The requested page does not exist.", lang=lang)
+    else:
+        message = _("Invalid request.", lang=lang)
+    response = _html_error(request, message, exc.status_code)
+    # A 405 names the methods the route does answer in its Allow header.
+    response.headers.update(exc.headers or {})
+    return response
 
 
 @app.exception_handler(KelvinAPIUnavailableError)

@@ -233,6 +233,48 @@ def test_an_unhandled_error_still_carries_the_request_id(
     assert "An unexpected error occurred" in response.text
 
 
+def _get(test_client: TestClient, path: str, headers: dict[str, str] | None = None) -> httpx.Response:
+    # TestClient is typed against the absent httpx2, so its calls come back Unknown.
+    return cast(
+        httpx.Response,
+        test_client.get(path, headers=headers),  # pyright: ignore[reportUnknownMemberType]
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [f"{FRONTEND_PREFIX}/users/example", "/elsewhere", f"{FRONTEND_PREFIX}/static/missing.js"],
+    ids=["in-the-router", "outside-the-prefix", "static-file"],
+)
+def test_an_unknown_path_is_answered_with_a_message_page(test_client: TestClient, path: str):
+    """Not FastAPI's JSON, which the portal frame would show raw."""
+    response = _get(test_client, path)
+    assert response.status_code == 404
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert "The requested page does not exist." in response.text
+    assert response.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+
+
+def test_a_method_the_route_does_not_answer_is_answered_with_a_message_page(
+    test_client: TestClient,
+):
+    response = _get(test_client, f"{FRONTEND_PREFIX}/users/export")
+    assert response.status_code == 405
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert response.headers["Allow"] == "POST"
+    assert "Invalid request." in response.text
+
+
+@pytest.mark.parametrize(
+    "path", [f"{FRONTEND_PREFIX}/users/example", f"{FRONTEND_PREFIX}/users/export"], ids=["404", "405"]
+)
+def test_an_htmx_request_no_route_answers_gets_a_toast(test_client: TestClient, path: str):
+    response = _get(test_client, path, headers={"HX-Request": "true"})
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#toast-region"
+    assert "<u-toast-item" in response.text
+
+
 def test_users_list_renders_filter_form(test_client: TestClient):
     response = test_client.get(f"{FRONTEND_PREFIX}/users")
     assert response.status_code == 200

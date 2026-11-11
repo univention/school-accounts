@@ -43,6 +43,8 @@ v1.1.0 (unreleased)
 * When your session expires while you work with the list,
   the app returns you to the same list after you sign in again,
   with its school, class or work group, and search.
+* An address that the app doesn't know, or doesn't open directly,
+  now shows an error message page instead of raw technical output.
 
 .. _release-1-0-0:
 

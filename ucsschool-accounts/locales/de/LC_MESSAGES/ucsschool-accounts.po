@@ -225,6 +225,9 @@ msgstr ""
 msgid "The password could not be reset for these accounts:"
 msgstr "Für diese Konten konnte das Passwort nicht zurückgesetzt werden:"
 
+msgid "The requested page does not exist."
+msgstr "Die angeforderte Seite existiert nicht."
+
 msgid "The search is too long. Please shorten it."
 msgstr "Die Suche ist zu lang. Bitte kürzen Sie sie."
 
