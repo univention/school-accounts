@@ -94,6 +94,7 @@ include:
     inputs:
       docs_dir: "docs/ucsschool-accounts"
       doc_target_name: "ucsschool-accounts"
+      doc_target_path: "ucsschool-accounts/latest/en/"
       job_rules:
         - changes: &docs_build_changes
             - "docs/ucsschool-accounts/**/*"
