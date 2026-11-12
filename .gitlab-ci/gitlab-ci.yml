@@ -90,29 +90,6 @@ include:
     inputs:
       job_name: "build-sonar"
       stage: build
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.27.1
-    inputs:
-      docs_dir: "docs/ucsschool-accounts"
-      doc_target_name: "ucsschool-accounts"
-      doc_target_path: "ucsschool-accounts/latest/en/"
-      job_rules:
-        - changes: &docs_build_changes
-            - "docs/ucsschool-accounts/**/*"
-            - ".gitlab-ci/gitlab-ci.yml"
-      merge_rules:
-        - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-          changes: *docs_build_changes
-        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-          changes: *docs_build_changes
-          when: manual
-        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
-          changes: *docs_build_changes
-      production_rules:
-        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-          changes:
-            - "docs/ucsschool-accounts/**/*"
-        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
-          changes: *docs_build_changes
 
 variables:
   UV_VERSION: "0.13.6"
@@ -163,6 +140,24 @@ build_changelog_html:
   artifacts:
     paths:
       - changelog.html
+
+docs:
+  stage: build
+  needs: []
+  rules:
+    - changes:
+        - "docs/ucsschool-accounts/**/*"
+      variables:
+        DOCS_CONTENT_CHANGED: "yes"
+
+    - changes:
+        - ".gitlab-ci/gitlab-ci.yml"
+        - ".gitlab-ci/docs.yml"
+      variables:
+        DOCS_CONTENT_CHANGED: "no"
+  trigger:
+    include:
+      - local: /.gitlab-ci/docs.yml
 
 compile-policies:
   stage: test
@@ -304,7 +299,7 @@ accounts-frontend-test:
     - curl -sf --retry 90 --retry-delay 2 --retry-all-errors -o /dev/null "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration"
     - dev/scripts/provision_keycloak.sh
     - mkdir -p .cache
-    - 'uv run --project ucsschool-accounts/ --env-file dev/.env.example uvicorn --port 8000 ucsschool_accounts.main:app > .cache/frontend-test-accounts.log 2>&1 &'
+    - "uv run --project ucsschool-accounts/ --env-file dev/.env.example uvicorn --port 8000 ucsschool_accounts.main:app > .cache/frontend-test-accounts.log 2>&1 &"
     - curl -sf --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "$FRONTEND_BASE_URL/univention/ucsschool/ucsschool-accounts/ui/"
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -373,19 +368,3 @@ integration-tests:
       - "*_kelvin_http.log"
     reports:
       junit: "*junit.xml"
-
-pages:
-  stage: production
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/busybox:latest
-  variables:
-    GIT_STRATEGY: none
-  needs:
-    - job: docs:html
-    - job: docs:pdf
-  script:
-    - "true"
-  pages:
-    publish: "out/ucsschool-accounts"
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes: *docs_build_changes

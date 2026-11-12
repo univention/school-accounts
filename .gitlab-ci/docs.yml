@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+
+stages:
+  - build
+  - merge
+  - production
+
+include:
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.27.1
+    inputs:
+      docs_dir: "docs/ucsschool-accounts"
+      doc_target_name: "ucsschool-accounts"
+      doc_target_path: "ucsschool-accounts/latest/en/"
+
+      job_rules:
+        - when: on_success
+
+      merge_rules:
+        - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+          when: manual
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+
+      production_rules:
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DOCS_CONTENT_CHANGED == "yes"
+        - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+
+pages:
+  stage: production
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/busybox:latest
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: docs:html
+    - job: docs:pdf
+  script:
+    - "true"
+  pages:
+    publish: "out/ucsschool-accounts"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
