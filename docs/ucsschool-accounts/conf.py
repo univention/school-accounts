@@ -15,16 +15,24 @@
 #
 import os
 import sys
-
 from datetime import date
 
 # -- Project information -----------------------------------------------------
 
 
-project = "School Accounts"
-copyright = "{}, Univention GmbH".format(date.today().year)
+project = "School Accounts Manual"
+
+year_range = date.today().year
+start_year = 2026
+if year_range > start_year:
+    year_range = f"{start_year}-{year_range}"
+copyright = f"{year_range}, Univention GmbH"
+
 author = "Univention GmbH"
 language = "en"
+
+version = "latest"
+release = version
 
 html_title = project
 
@@ -98,7 +106,7 @@ html_theme_options = {
     "show_source_license": True,
     "typesense_search": True,
     "typesense_document": doc_basename,
-    "typesense_document_version": "latest",
+    "typesense_document_version": version,
     "univention_matomo_tracking": True,
     "univention_docs_deployment": True,
 }
@@ -150,3 +158,4 @@ univention_feedback = True
 # See https://git.knut.univention.de/univention/documentation/univention_sphinx_extension
 univention_doc_basename = doc_basename
 univention_pdf_show_source_license = True
+univention_use_doc_base = True
