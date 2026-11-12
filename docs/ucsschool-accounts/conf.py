@@ -66,10 +66,6 @@ intersphinx_mapping = {
         "https://docs.software-univention.de/ucsschool-manual/latest/de",
         None,
     ),
-    "uv-ucs-manual": (
-        "https://docs.software-univention.de/manual/latest/en/",
-        None,
-    ),
     "uv-nubus-manual": (
         "https://docs.software-univention.de/nubus-manual/1.x/en/",
         None,
