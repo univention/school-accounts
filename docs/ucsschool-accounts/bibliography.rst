@@ -1,0 +1,10 @@
+.. SPDX-FileCopyrightText: 2023-2026 Univention GmbH
+.. SPDX-License-Identifier: AGPL-3.0-only
+
+.. only:: not latexpdf
+
+   ************
+   Bibliography
+   ************
+
+.. bibliography::

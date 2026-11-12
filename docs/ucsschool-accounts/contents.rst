@@ -21,3 +21,4 @@ School Accounts
 .. toctree::
 
    changelog
+   bibliography
