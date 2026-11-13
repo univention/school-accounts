@@ -21,8 +21,8 @@ To list the users of a school class or a work group,
 follow these steps:
 
 #. Open the |UASSA| tile in the
-   :external+uv-ucs-manual:ref:`Univention Portal <central-portal>`.
-   If Keycloak asks for your credentials, sign in.
+   *Univention Portal*.
+   If the portal asks for your credentials, sign in.
 
 #. In the :guilabel:`School` list, select the school.
    The list contains only the schools that you can filter by.
@@ -31,28 +31,32 @@ follow these steps:
    To find it in a long list, enter part of its name.
    To list every user of the school, select :guilabel:`All classes and work groups`.
 
-#. Optional: To list only the users with one role,
-   select the role in the :guilabel:`Roles` row above the table,
+#. Optional: to list only the users with one role,
+   select the role in the :guilabel:`Roles` row preceding the table,
    for example :guilabel:`Student`.
-   Selecting another role replaces it.
-   To list every role again, select the role once more or select :guilabel:`All`.
-   A user counts only with the roles they hold at the selected school.
+   Selecting another role replaces the selected role.
+   To list users with any role again,
+   select the role once more or select :guilabel:`All`.
+   The role filter considers only the roles that a user holds at the selected school.
 
-The list view shows the users of your selection
+The list view shows the users matching your selection
 with the columns *Last name*, *First name*, *Username*, *Roles*, and *Activated*.
-It shows only the users whose data you may read.
+It shows only the users whose data you have permission to read.
 
-To narrow the list, enter one or more words in the search field above it.
+To narrow the list, enter one or more words in the search field.
 The list then shows only the users for whom every word appears
 in the first name, last name, or username.
-The words can match different names,
-for example ``anna müller`` finds the user with the first name ``Anna`` and the last name ``Müller``.
-The search ignores upper and lower case and accents, for example ``muller`` finds ``Müller``.
+
+The words can match different names:
+for example, ``anna müller`` finds the user with the first name ``Anna``
+and the last name ``Müller``.
+The search ignores capitalization and accents:
+for example, ``muller`` finds ``Müller``.
 It only searches the names that the list shows you,
 and it stays active when you select another school, class, work group, or role.
 
 The browser address contains the selected school, group, role, and search.
-You can bookmark it or share it,
+You can bookmark or share it,
 and it opens the same list for every user who has the same permissions.
 
 .. _usage-export-users:
@@ -90,16 +94,18 @@ the file leaves that field empty.
 Reset passwords
 ===============
 
-You can set one new password for one or more users at once.
+You can reset a password for one or more users at once.
 To reset passwords, follow these steps:
 
 #. List the users as described in :ref:`usage-list-users`.
 
 #. Select the users whose passwords you want to reset.
+
    To select every user on the page, select the checkbox in the table header.
-   A search removes the users that it hides from the selection,
+   A search removes users from the selection when it hides them from the list,
    and clearing the search doesn't select them again,
-   so the reset only affects users that the list shows.
+   so the reset affects only users who appear in the list.
+
    Search first, then select the users.
    When you select a user whose password you can't reset,
    a red exclamation mark appears next to the checkbox of that user.
@@ -108,26 +114,40 @@ To reset passwords, follow these steps:
    and the tooltip of the button names them.
 
 #. Click :guilabel:`Reset password`.
+
    If the selection contains users whose password you can't reset,
    a dialog lists them first.
    Click :guilabel:`Deselect these users` to clear their checkboxes and continue with the others.
-   A dialog lists the accounts that the reset affects.
-   It warns you when the selection contains users with different roles,
-   or when it affects many accounts at once.
 
-#. In the :guilabel:`New password` box, enter the new password.
+   A dialog shows the number of accounts that the reset affects.
+   For smaller selections, it also lists the individual accounts.
+   The dialog warns you when the selection contains users with different roles
+   or when the reset affects many accounts at once.
 
-#. Optional: To make the users choose their own password when they sign in next,
+#. In the :guilabel:`New password` box, enter the password.
+
+   The app sets the same password for every selected account.
+   Communicate the password securely to the affected users.
+
+#. Optional: to make the users choose their own password when they sign in next,
    select :guilabel:`User has to change the password at the next login`.
-   The dialog offers this option only when the Kelvin REST API
-   exposes the Univention Directory Manager (UDM) property ``pwdChangeNextLogin`` of users.
+   The dialog offers this option only when the *Kelvin REST API*
+   exposes the ``pwdChangeNextLogin`` property of Univention Directory Manager (UDM) users.
 
 #. Select the checkbox that states how many passwords the reset affects,
    and click :guilabel:`Set password`.
 
 The app then shows how many passwords it has reset
-and lists every account whose password it couldn't reset, with the reason.
+and lists the accounts whose resets failed or which the app couldn't confirm, with the reason.
+If the app couldn't confirm a reset,
+the password may have changed.
+Check the account before you reset its password again.
+For how to check the account and for other failures,
+see :ref:`troubleshooting-password-reset-failure`.
+
 A single reset covers at most 200 users.
+If you need to reset more passwords than the limit allows,
+select and reset the users in batches.
 
 .. _usage-sign-out:
 
@@ -136,4 +156,4 @@ Sign out
 
 To end your session, click :guilabel:`logout` in the page header.
 The app also ends your session in Keycloak,
-so the next visit asks for your credentials again.
+so you need to sign in again when you next visit the app.
