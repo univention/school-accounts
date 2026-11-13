@@ -101,6 +101,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 </u-page>
 
 <style>
+  /* The design system's dark theme paints a neutral button mid grey with near-black text,
+     a dull, low-contrast block beside the violet primary one. This takes the theme's own
+     secondary pair instead, for the export button and the dialogs' cancel buttons. The
+     tokens are inherited into u-button's shadow root, so setting them here is enough;
+     the light theme keeps its own. Drop this once the design system fixes its tokens. */
+  :root[data-theme="univention-dark"] {
+    --color-neutral: var(--color-gray-600);
+    --color-neutral-content: var(--color-white);
+  }
+
+  /* On the dark card, gray-600 barely sets the export button apart (1.4:1), and it reads
+     like the disabled reset button beside it. A light button with dark text stands out
+     from the card (7.2:1) and keeps its label readable (8.8:1). */
+  :root[data-theme="univention-dark"] #export-csv {
+    --color-neutral: var(--color-gray-200);
+    --color-neutral-content: var(--color-gray-800);
+  }
+
   #results-region.htmx-request u-table > :not([slot="header"]) {
     display: none;
   }
