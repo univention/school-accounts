@@ -45,6 +45,9 @@ v1.1.0 (unreleased)
   with its school, class or work group, and search.
 * An address that the app doesn't know, or doesn't open directly,
   now shows an error message page instead of raw technical output.
+* When you can only work with one school,
+  the app selects that school for you
+  and shows its classes and work groups right away.
 
 .. _release-1-0-0:
 

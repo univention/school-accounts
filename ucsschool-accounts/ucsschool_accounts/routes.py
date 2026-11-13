@@ -279,6 +279,12 @@ async def users_list(
     schools = await business_logic.get_schools(
         schools_adapter, permissions_adapter, users_adapter, actor, lang
     )
+    if school is None and len(schools.schools) == 1:
+        # With one school there is nothing to choose, and an empty page that waits
+        # for the obvious click is only a detour. Nothing is listed yet: that still
+        # takes a group, or a role, as it does after the click.
+        school = schools.schools[0].id
+        logger.debug("Selected the only school the actor can filter by.", school=school)
     school_options = presentation.build_school_options(schools, selected=school or "")
     selected_school = next((sch for sch in schools.schools if sch.id == school), None)
 

@@ -421,6 +421,23 @@ def test_school_list_drops_the_filter_at_five_schools(test_client: TestClient, m
     assert "filterable" not in _list_select_tag(body, "school-list")
 
 
+def test_the_only_school_is_selected_without_a_click(test_client: TestClient, mocker: MockerFixture):
+    _schools_visible_to_actor(mocker, 1)
+    response = _users_response(test_client, {"HX-Request": "true"})
+    body = response.text
+    assert 'value="school1"' in _list_select_tag(body, "school-list")
+    assert 'id="group-list"' in body
+    assert "Select a class or work group to list its users." in body
+    assert response.headers["HX-Push-Url"] == f"{FRONTEND_PREFIX}/users?school=school1"
+
+
+def test_no_school_is_selected_while_there_is_a_choice(test_client: TestClient, mocker: MockerFixture):
+    _schools_visible_to_actor(mocker, 2)
+    body = _users_page(test_client, "en")
+    assert "value=" not in _list_select_tag(body, "school-list")
+    assert "Select a school and a group to list users." in body
+
+
 def test_group_list_is_filterable_beyond_five_options(test_client: TestClient):
     # school1 contributes 2 classes + 2 work groups + the reset item; school2 one more of each.
     few = _fragment(test_client, "/users/filters", school="school1")
