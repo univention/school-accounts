@@ -90,7 +90,7 @@ include:
     inputs:
       job_name: "build-sonar"
       stage: build
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.16.2
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sphinx-docs@2.27.1
     inputs:
       docs_dir: "docs/ucsschool-accounts"
       doc_target_name: "ucsschool-accounts"
