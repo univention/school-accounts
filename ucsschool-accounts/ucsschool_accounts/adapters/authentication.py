@@ -453,7 +453,8 @@ class CookieSessionAuthenticationAdapter(
         if record is None or not self.verify_csrf(submitted, record):
             logger.warning(
                 "Rejected an unsafe request: the CSRF token is missing or does not match. "
-                "Usually a page opened before the app restarted - reload it and retry.",
+                "Usually a page opened before the actor's latest sign-in - open the list again "
+                "and retry.",
                 actor_id=record.actor_id if record else None,
                 path=request.url.path,
                 token_submitted=bool(submitted),
