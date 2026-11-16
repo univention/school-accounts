@@ -14,7 +14,7 @@ School Accounts
    installation
    configuration
    usage
-   roles-permissions-and-conditions
+   roles-and-permissions
    troubleshooting
    known-issues
 
