@@ -121,7 +121,7 @@ numfig = True
 
 rst_epilog = r"""
 .. |UAS| replace:: UCS\@school
-.. |UASSA| replace:: School Accounts
+.. |UASSA| replace:: *School Accounts*
 """
 
 suppress_warnings = ["git.too_shallow"]
