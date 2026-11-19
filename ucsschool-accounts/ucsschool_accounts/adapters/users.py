@@ -278,7 +278,7 @@ class FileUsersPersistenceAdapter(
         alias = "file"
         cached = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: list[User] = []
         # "wb" truncates, so concurrent whole-file read-modify-writes raced.
         # Serialising is enough for a single-process dev/test stand-in.
@@ -294,7 +294,7 @@ class FileUsersPersistenceAdapter(
         async with aiofiles.open(self.settings.source, "rb") as fd:
             self._data = _STORED_USERS.validate_json(await fd.read())
 
-    async def configure(self, settings: FileUsersPersistenceAdapterSettings):
+    async def configure(self, settings: FileUsersPersistenceAdapterSettings) -> None:
         self.settings = settings
         await self._reload_data()
 

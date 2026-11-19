@@ -208,11 +208,11 @@ class KelvinPersistenceBaseAdapter(AsyncConfiguredAdapterMixin[KelvinPersistence
     ) -> Type[KelvinPersistenceAdapterSettings]:  # pragma: no cover
         return KelvinPersistenceAdapterSettings
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._settings = None
 
     @override
-    async def configure(self, settings: KelvinPersistenceAdapterSettings):
+    async def configure(self, settings: KelvinPersistenceAdapterSettings) -> None:
         self._settings = settings
 
     @staticmethod

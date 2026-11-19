@@ -70,7 +70,7 @@ class FileSchoolClassesPersistenceAdapter(
         alias: str = "file"
         cached: bool = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict[str, list[str]] = {}
 
     @classmethod
@@ -81,7 +81,7 @@ class FileSchoolClassesPersistenceAdapter(
         return FileSchoolClassesPersistenceAdapterSettings
 
     @override
-    async def configure(self, settings: FileSchoolClassesPersistenceAdapterSettings):
+    async def configure(self, settings: FileSchoolClassesPersistenceAdapterSettings) -> None:
         async with aiofiles.open(settings.source) as fd:
             self._data = json.loads(await fd.read())
 

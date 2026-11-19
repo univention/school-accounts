@@ -104,7 +104,7 @@ class CerbosPermissionsAdapter(
         alias: str = "cerbos"
         cached: bool = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._settings = None
         self._client = None
 
@@ -232,7 +232,7 @@ class CerbosPermissionsAdapter(
         return CerbosPermissionsAdapterSettings
 
     @override
-    async def configure(self, settings: CerbosPermissionsAdapterSettings):
+    async def configure(self, settings: CerbosPermissionsAdapterSettings) -> None:
         self._settings = settings
 
     @override
@@ -309,7 +309,7 @@ class FilePermissionsAdapter(
         alias: str = "file"
         cached: bool = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict[str, dict[str, list[str]]] = {}
 
     @override
@@ -318,7 +318,7 @@ class FilePermissionsAdapter(
         return FilePermissionsAdapterSettings
 
     @override
-    async def configure(self, settings: FilePermissionsAdapterSettings):
+    async def configure(self, settings: FilePermissionsAdapterSettings) -> None:
         async with aiofiles.open(settings.source) as fd:
             self._data = json.loads(await fd.read())
         logger.warning(

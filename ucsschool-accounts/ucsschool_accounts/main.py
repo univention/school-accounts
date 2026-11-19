@@ -43,12 +43,14 @@ from .routes import render_static, router
 from .session_middleware import SessionCookieMiddleware
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from fastapi import Request
     from starlette.middleware.base import RequestResponseEndpoint
 
 
 @asynccontextmanager
-async def lifespan(_fastapi_app: FastAPI):
+async def lifespan(_fastapi_app: FastAPI) -> AsyncGenerator[None]:
     try:
         await configure_logger(EnvSettingsProvider())
         configure_registry(ADAPTER_REGISTRY)
@@ -82,7 +84,7 @@ app.add_middleware(SessionCookieMiddleware)
 
 
 @app.middleware("http")
-async def add_correlation_id(request: Request, call_next: RequestResponseEndpoint):
+async def add_correlation_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """Add correlation id to request object and contextualize logger, and let the portal frame the UI
 
     The contextualize method uses Python `contextvars` so the are unique to each thread/task.
@@ -152,7 +154,7 @@ def _html_error(request: Request, message: str, status_code: int) -> Response:
 
 
 @app.exception_handler(PermissionsError)
-async def permissions_exception_handler(request: Request, exc: PermissionsError):
+async def permissions_exception_handler(request: Request, exc: PermissionsError) -> Response:
     lang = get_lang(request)
     return _html_error(request, _(exc.message, lang=lang), 403)
 
@@ -162,12 +164,12 @@ async def permissions_exception_handler(request: Request, exc: PermissionsError)
 # No `_()` here, unlike its neighbours: this message embeds the offending user id,
 # so it is translated and interpolated at the raise site.
 @app.exception_handler(NoSchoolUserError)
-async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError):
+async def no_school_user_exception_handler(request: Request, exc: NoSchoolUserError) -> Response:
     return _html_error(request, exc.message, 403)
 
 
 @app.exception_handler(ObjectNotFoundError)
-async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError):
+async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundError) -> Response:
     lang = get_lang(request)
     logger.info(
         "Request referenced an object that does not exist.",
@@ -194,7 +196,7 @@ def _return_to(request: Request) -> str:
 
 
 @app.exception_handler(NotAuthenticatedError)
-async def not_authenticated_exception_handler(request: Request, _exc: NotAuthenticatedError):
+async def not_authenticated_exception_handler(request: Request, _exc: NotAuthenticatedError) -> Response:
     # Send the browser into the interactive login, preserving where it was going.
     logger.debug("Redirecting an unauthenticated request to the login.", path=request.url.path)
     login_url = f"{FRONTEND_PREFIX}{AUTH_LOGIN_PATH}?next={quote(_return_to(request))}"
@@ -205,7 +207,9 @@ async def not_authenticated_exception_handler(request: Request, _exc: NotAuthent
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+async def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> Response:
     # Fallback for request validation failures (e.g. a missing query parameter).
     lang = get_lang(request)
     logger.info(
@@ -221,7 +225,7 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 # route matches (404) or a method the matching route does not answer (405). FastAPI's
 # default handler would answer both with JSON, which the portal frame shows raw.
 @app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> Response:
     lang = get_lang(request)
     logger.info(
         "Rejected a request no route answers.",
@@ -241,7 +245,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 
 @app.exception_handler(KelvinAPIUnavailableError)
-async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavailableError):
+async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavailableError) -> Response:
     logger.opt(exception=exc).error(
         "The user directory did not answer; the request could not be completed. Check that "
         "the Kelvin REST API is running and reachable from this host, and its log for this error.",
@@ -260,7 +264,7 @@ async def kelvin_api_unavailable_handler(request: Request, exc: KelvinAPIUnavail
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, _exc: Exception):
+async def unhandled_exception_handler(request: Request, _exc: Exception) -> Response:
     # Starlette re-raises after this, and uvicorn logs the traceback with the request id.
     lang = get_lang(request)
     response = _html_error(

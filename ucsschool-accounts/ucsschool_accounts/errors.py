@@ -6,13 +6,13 @@ from ucsschool_accounts.lang import _
 
 
 class BaseError(Exception):
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
 
 
 class ObjectNotFoundError(BaseError):
-    def __init__(self, identifier: str):
+    def __init__(self, identifier: str) -> None:
         super().__init__(_("Object not found"))
         self.identifier = identifier
 
@@ -21,7 +21,7 @@ class PermissionsError(BaseError): ...
 
 
 class NoSchoolUserError(PermissionsError):
-    def __init__(self, message: str, identifier: str):
+    def __init__(self, message: str, identifier: str) -> None:
         super().__init__(message)
         self.identifier = identifier
 
@@ -30,7 +30,7 @@ class NotAuthenticatedError(BaseError): ...
 
 
 class KelvinAPIUnavailableError(BaseError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("The user directory is unavailable.")
 
 
@@ -41,7 +41,7 @@ class PasswordChangeOnNextLoginUnsupportedError(BaseError):
     without the flag the actor asked for would silently do half the job.
     """
 
-    def __init__(self, identifier: str):
+    def __init__(self, identifier: str) -> None:
         super().__init__("Password change at the next login is not available.")
         self.identifier: str = identifier
 
@@ -58,6 +58,6 @@ class PasswordResetRejectedError(BaseError):
     checked) and must never contain the password.
     """
 
-    def __init__(self, identifier: str, message: str):
+    def __init__(self, identifier: str, message: str) -> None:
         super().__init__(message)
         self.identifier: str = identifier

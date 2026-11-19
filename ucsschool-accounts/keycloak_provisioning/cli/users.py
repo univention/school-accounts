@@ -14,7 +14,7 @@ app = typer.Typer()
 
 
 @app.callback()
-def users_callback():
+def users_callback() -> None:
     """
     Commands to provision users.
     """
@@ -26,7 +26,7 @@ def add(
     username: Annotated[str, Argument(help="Username for the new user.")],
     password: Annotated[str, Argument(help="Password for the new user.")],
     ignore_exists: Annotated[bool, Option(help="Ignore existing users and exit successfully.")] = False,
-):
+) -> None:
     """
     Command to add a new user to a realm.
 

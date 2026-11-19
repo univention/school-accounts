@@ -16,7 +16,7 @@ app = typer.Typer()
 
 
 @app.callback()
-def realms_callback():
+def realms_callback() -> None:
     """
     Commands to provision realms.
     """
@@ -30,7 +30,7 @@ def add(
         Optional[FileText], Option(help="Additional data with which to set up the realm")
     ] = None,
     ignore_exists: Annotated[bool, Option(help="Ignore existing realms and exit successfully.")] = False,
-):
+) -> None:
     """
     Command to add a new realm.
     """

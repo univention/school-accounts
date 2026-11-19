@@ -33,7 +33,7 @@ def main_callback(
     secure: Annotated[
         bool, Option(help="Ignore SSL verification if False. Do not disable this option in production!")
     ] = True,
-):
+) -> None:
     """
     keycloak-provisioning allows you to provision your keycloak with new clients, users and realms.
     """
@@ -49,5 +49,5 @@ def main_callback(
     )
 
 
-def run_script():
+def run_script() -> None:
     app()

@@ -443,6 +443,8 @@ optional:
 
 - **black** (line length 105, target py311) and **ruff** (`E, F, I, B`, `B008`/`B904` ignored,
   `--fix`) — both configured in `ucsschool-accounts/pyproject.toml`.
+  ruff's `ANN0`/`ANN2`/`ANN4` rules require annotated parameters and return types,
+  and forbid `Any` in them, everywhere outside `tests/`.
 - **ty** (config: `ty.toml` at the repository root) against a committed baseline
   (`ty-baseline.json`) suppressing pre-existing findings,
   so only *new* diagnostics fail the `ty` pre-commit hook and the CI job.

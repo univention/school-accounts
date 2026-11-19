@@ -105,8 +105,13 @@ indent-width = 4
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B"]
+# ANN1 is left out: ruff dropped its rules, which only asked to annotate self and cls.
+select = ["E", "F", "I", "B", "ANN0", "ANN2", "ANN4"]
 ignore = ["B008", "B904"]
+
+[tool.ruff.lint.per-file-ignores]
+# Annotating every test with "-> None" adds noise, not safety; ty still checks the tests.
+"tests/**" = ["ANN"]
 
 [tool.coverage.report]
 show_missing = true

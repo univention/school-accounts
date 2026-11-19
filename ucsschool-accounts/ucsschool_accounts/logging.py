@@ -121,7 +121,7 @@ class InterceptHandler(logging.Handler):  # pragma: no cover
     See https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
     """
 
-    def emit(self, record: logging.LogRecord):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             level = logger.level(record.levelname).name
         except ValueError:
@@ -181,7 +181,7 @@ def _install_sink(  # pragma: no cover
     )
 
 
-async def configure_logger(settings_port: AsyncAdapterSettingsProvider):  # pragma: no cover
+async def configure_logger(settings_port: AsyncAdapterSettingsProvider) -> None:  # pragma: no cover
     for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         logging.getLogger(logger_name).handlers = [InterceptHandler()]
     logger.enable(port_loader.__name__)

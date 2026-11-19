@@ -63,7 +63,7 @@ class FileWorkGroupsPersistenceAdapter(
         alias = "file"
         cached = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict[str, list[str]] = {}
 
     @classmethod
@@ -72,7 +72,7 @@ class FileWorkGroupsPersistenceAdapter(
     ) -> type[FileWorkGroupsPersistenceAdapterSettings]:  # pragma: no cover
         return FileWorkGroupsPersistenceAdapterSettings
 
-    async def configure(self, settings: FileWorkGroupsPersistenceAdapterSettings):
+    async def configure(self, settings: FileWorkGroupsPersistenceAdapterSettings) -> None:
         async with aiofiles.open(settings.source) as fd:
             self._data = json.loads(await fd.read())
 

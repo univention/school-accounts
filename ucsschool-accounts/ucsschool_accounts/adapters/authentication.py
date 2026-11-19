@@ -18,7 +18,7 @@ import sys
 from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, cast
+from typing import TYPE_CHECKING, Any, Callable, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -40,6 +40,9 @@ from ucsschool_accounts.lang import _
 from ucsschool_accounts.models import SessionRecord
 from ucsschool_accounts.ports import FastAPIAuthenticationPort
 from ucsschool_accounts.session_cookie import SessionCookieCodec
+
+if TYPE_CHECKING:
+    from typing import Never
 
 _OIDC_CLIENT_NAME = "keycloak"
 _NEXT_SESSION_KEY = "post_login_next"
@@ -131,7 +134,7 @@ class CookieSessionAuthenticationAdapter(
         return self._settings
 
     @override
-    async def configure(self, settings: CookieSessionAuthenticationAdapterSettings):
+    async def configure(self, settings: CookieSessionAuthenticationAdapterSettings) -> None:
         self._settings = settings
         self._codec = None
         oauth = OAuth()
@@ -515,7 +518,7 @@ class NeverAuthenticatedAdapter(FastAPIAuthenticationPort):
 
     @override
     async def get_authentication_dependency(self) -> Callable[..., Coroutine[Any, Any, str]]:
-        def _dep():
+        def _dep() -> Never:
             raise NotAuthenticatedError(_("Never authenticated."))
 
         return _dep

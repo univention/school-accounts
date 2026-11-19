@@ -48,7 +48,7 @@ class _SingleFlight(Generic[_Key, _Value]):
 
     _fetch: Callable[[_Key], Awaitable[_Value]]
 
-    def __init__(self, fetch: Callable[[_Key], Awaitable[_Value]]):
+    def __init__(self, fetch: Callable[[_Key], Awaitable[_Value]]) -> None:
         self._fetch = fetch
         self._tasks: dict[_Key, asyncio.Task[_Value]] = {}
 
@@ -66,7 +66,7 @@ class _SingleFlight(Generic[_Key, _Value]):
 
 
 class RequestCachedSchoolsAdapter(SchoolsPersistencePort):
-    def __init__(self, adapter: SchoolsPersistencePort):
+    def __init__(self, adapter: SchoolsPersistencePort) -> None:
         self._cache: _SingleFlight[str | None, list[School]] = _SingleFlight(adapter.get_schools)
 
     @override
@@ -83,7 +83,7 @@ class _GroupCache(Generic[_Group]):
         self,
         fetch_all: Callable[[str], Awaitable[list[_Group]]],
         fetch_named: Callable[[str, list[str]], Awaitable[list[_Group]]],
-    ):
+    ) -> None:
         self._fetch_named = fetch_named
         self._complete: _SingleFlight[str, list[_Group]] = _SingleFlight(fetch_all)
         self._by_name: dict[tuple[str, str], _Group] = {}
@@ -110,7 +110,7 @@ class _GroupCache(Generic[_Group]):
 
 
 class RequestCachedSchoolClassesAdapter(SchoolClassesPersistencePort):
-    def __init__(self, adapter: SchoolClassesPersistencePort):
+    def __init__(self, adapter: SchoolClassesPersistencePort) -> None:
         self._cache: _GroupCache[SchoolClass] = _GroupCache(
             adapter.get_school_classes, adapter.get_school_classes_by_name
         )
@@ -125,7 +125,7 @@ class RequestCachedSchoolClassesAdapter(SchoolClassesPersistencePort):
 
 
 class RequestCachedWorkGroupsAdapter(WorkGroupsPersistencePort):
-    def __init__(self, adapter: WorkGroupsPersistencePort):
+    def __init__(self, adapter: WorkGroupsPersistencePort) -> None:
         self._cache: _GroupCache[WorkGroup] = _GroupCache(
             adapter.get_work_groups, adapter.get_work_groups_by_name
         )

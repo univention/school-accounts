@@ -18,17 +18,19 @@ from keycloak import (
 from w3lib.url import canonicalize_url
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from .models import LoginCredentials
 
 
 class KeycloakClientError(Exception):
-    def __init__(self, error_message: str = ""):
+    def __init__(self, error_message: str = "") -> None:
         Exception.__init__(self, error_message)
         self.error_message = error_message
 
 
 @contextmanager
-def convert_keycloak_error():
+def convert_keycloak_error() -> Generator[None]:
     try:
         yield
     except KeycloakError as exc:
@@ -44,14 +46,14 @@ def convert_keycloak_error():
 
 
 class KeycloakClient:
-    def __init__(self, login_credentials: LoginCredentials):
+    def __init__(self, login_credentials: LoginCredentials) -> None:
         try:
             self.keycloak_admin = KeycloakAdmin(connection=self.connect(login_credentials))
         except KeycloakError as exc:
             raise KeycloakClientError(exc.error_message)
 
     @staticmethod
-    def connect(login_credentials: LoginCredentials):
+    def connect(login_credentials: LoginCredentials) -> KeycloakOpenIDConnection:
         warnings.simplefilter("ignore")
         with warnings.catch_warnings():
             return KeycloakOpenIDConnection(
@@ -78,7 +80,7 @@ class KeycloakClient:
         realm_name: str,
         ignore_exists: bool = False,
         realm_data: Optional[dict[str, Any]] = None,
-    ):
+    ) -> None:
         realm_data = realm_data or {}
         # Never `create_realm(skip_exists=True)`: it matches the 409 body against a
         # hardcoded list holding only "Realm test already exists", else TypeError.
@@ -89,7 +91,7 @@ class KeycloakClient:
                 payload={"realm": realm_name, "enabled": True, **realm_data}
             )
 
-    def create_user(self, username: str, password: str, ignore_exists: bool = False):
+    def create_user(self, username: str, password: str, ignore_exists: bool = False) -> None:
         with convert_keycloak_error():
             self.keycloak_admin.create_user(
                 payload={
@@ -100,14 +102,14 @@ class KeycloakClient:
                 exist_ok=ignore_exists,
             )
 
-    def create_client(self, client_data: dict[str, Any], ignore_exists: bool = False):
+    def create_client(self, client_data: dict[str, Any], ignore_exists: bool = False) -> None:
         with convert_keycloak_error():
             self.keycloak_admin.create_client(payload=client_data, skip_exists=ignore_exists)
 
-    def __sorted_union_urls(self, urls: list[str], urls_append: list[str]):
+    def __sorted_union_urls(self, urls: list[str], urls_append: list[str]) -> list[str]:
         return sorted(set(urls).union(canonicalize_url(u) for u in urls_append))
 
-    def __sorted_difference_urls(self, urls: list[str], urls_remove: list[str]):
+    def __sorted_difference_urls(self, urls: list[str], urls_remove: list[str]) -> list[str]:
         return sorted(set(urls).difference(canonicalize_url(u) for u in urls_remove))
 
     def modify_client(
@@ -116,7 +118,7 @@ class KeycloakClient:
         append_redirect_urls: Optional[list[str]] = None,
         remove_redirect_urls: Optional[list[str]] = None,
         client_secret: str | None = None,
-    ):
+    ) -> None:
         with convert_keycloak_error():
             internal_id = self.keycloak_admin.get_client_id(client_id)
             oidc_client = self.keycloak_admin.get_client(internal_id)

@@ -19,7 +19,7 @@ app = typer.Typer()
 
 
 @app.callback()
-def clients_callback():
+def clients_callback() -> None:
     """
     Commands to provision clients.
     """
@@ -32,7 +32,7 @@ def add(
     ignore_exists: Annotated[bool, Option(help="Ignore existing client and exit successfully.")] = False,
     create_secret: Annotated[bool, Option(help="Create client secret.")] = False,
     home_url: Annotated[Optional[str], Option(help="Override for the client home URL")] = None,
-):
+) -> None:
     """
     Command to add a new client to a realm.
     """
@@ -73,7 +73,7 @@ def modify(
             readable=True,
         ),
     ] = None,
-):
+) -> None:
     """
     Command to modify a client
     """
@@ -98,7 +98,7 @@ def modify(
 def get_secret(
     ctx: Context,
     client_id: Annotated[str, Argument()],
-):
+) -> None:
     """
     Command to get a client secret. Prints nothing if the client has none.
     """
