@@ -420,7 +420,7 @@ docker compose so no local Python/Node install is required.
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
 | Type check against the baseline (ty, matches CI) | `uvx prek run ty --all-files` |
-| Refresh the ty baseline after fixing or accepting diagnostics | `uvx ty@0.0.107 check --update-baseline` (from the repo root) |
+| Refresh the ty baseline after fixing or accepting diagnostics | `uv run --project ucsschool-accounts ty check --update-baseline` (from the repo root) |
 | Start the dev server | `dev/dev_run.sh task dev-server` |
 | Start a local Cerbos server (manual policy/adapter testing) | `dev/dev_run.sh task cerbos-server` |
 | Lint/test the Cerbos policies (`cerbos compile`) | `dev/dev_run.sh task cerbos-compile` |
@@ -449,10 +449,11 @@ optional:
   (`ty-baseline.json`) suppressing pre-existing findings,
   so only *new* diagnostics fail the `ty` pre-commit hook and the CI job.
   CI also fails when the baseline lists a diagnostic that no longer occurs:
-  refresh it with `uvx ty@0.0.107 check --update-baseline` and commit it.
-  Run ty from the repository root, where the baseline's paths start.
-  The hook and `ty_version` in `.gitlab-ci/gitlab-ci.yml` pin the same version;
-  bump them together and refresh the baseline, since new ty releases add rules.
+  refresh it with `uv run --project ucsschool-accounts ty check --update-baseline` and commit it.
+  Run ty from the repository root, where the baseline's paths start, and through `uv run`,
+  which hands ty the project's environment.
+  ty is a dev dependency, so the hook and CI read its version from `uv.lock`;
+  README.md (§ Type checking with ty) describes a ty bump.
   ty checks correctness only, not type-hint coverage.
 - **bandit** on everything except `tests/` and `appcenter-management/scripts/test_*`.
 - **reuse** — every source file needs an SPDX header or a matching `.license` sidecar file (see the

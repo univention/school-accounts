@@ -29,16 +29,12 @@ repos:
       pass_filenames: false
 - repo: local
   hooks:
-    # Keep the ty version in step with ty_version in .gitlab-ci/gitlab-ci.yml.
-    # The dev container keeps its environment in UV_PROJECT_ENVIRONMENT, not in ty.toml's .venv.
     - id: ty
       name: ty (relative to baseline)
       language: system
-      entry: |
-        sh -c 'uv sync --project ucsschool-accounts --python 3.11 --quiet && \
-          uvx ty@0.0.107 check --python "${UV_PROJECT_ENVIRONMENT:-ucsschool-accounts/.venv}"' --
+      entry: uv run --project ucsschool-accounts --python 3.11 ty check
       pass_filenames: false
-      files: ^(ucsschool-accounts/.*\.py|ty\.toml|ty-baseline\.json)$
+      files: ^(ucsschool-accounts/(.*\.py|uv\.lock)|ty\.toml|ty-baseline\.json)$
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:

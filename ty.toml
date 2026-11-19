@@ -4,7 +4,6 @@
 baseline = "ty-baseline.json"
 
 [environment]
-python = "ucsschool-accounts/.venv"
 python-version = "3.11"
 root = ["ucsschool-accounts"]
 
