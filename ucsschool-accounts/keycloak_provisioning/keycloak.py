@@ -1,11 +1,13 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
 
+from __future__ import annotations
+
 import json
 import warnings
 from contextlib import contextmanager
 from json import JSONDecodeError
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from keycloak import (
     KeycloakAdmin,
@@ -15,7 +17,8 @@ from keycloak import (
 )
 from w3lib.url import canonicalize_url
 
-from .models import LoginCredentials
+if TYPE_CHECKING:
+    from .models import LoginCredentials
 
 
 class KeycloakClientError(Exception):

@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from typing import Optional, Type

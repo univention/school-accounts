@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2024-2026 Univention GmbH
 # SPDX-License-Identifier: AGPL-3.0-only
-from collections.abc import Iterable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import lazy_object_proxy
 from port_loader import (
@@ -19,6 +21,9 @@ from .ports import (
     UsersPersistencePort,
     WorkGroupsPersistencePort,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 ADAPTER_REGISTRY: AsyncAdapterRegistry = lazy_object_proxy.Proxy(AsyncAdapterRegistry)
 PORT_CLASSES = (
