@@ -24,14 +24,14 @@
     "ucsschool-accounts/tests/adapters/test_users.py": [
       {
         "rule": "invalid-argument-type",
-        "startColumn": 39,
-        "endColumn": 56,
+        "startColumn": 71,
+        "endColumn": 88,
         "lineCount": 1
       },
       {
         "rule": "invalid-argument-type",
-        "startColumn": 16,
-        "endColumn": 41,
+        "startColumn": 71,
+        "endColumn": 96,
         "lineCount": 1
       }
     ],

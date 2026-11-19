@@ -30,7 +30,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 if sys.version_info >= (3, 12):  # pragma: no cover
-    from typing import override  # pyright: ignore[reportUnreachable]
+    from typing import override
 else:
     from typing_extensions import override
 
@@ -322,7 +322,7 @@ class CookieSessionAuthenticationAdapter(
         try:
             token = cast(
                 dict[str, object],
-                await self._get_client().fetch_access_token(  # pyright: ignore[reportUnknownMemberType]
+                await self._get_client().fetch_access_token(
                     grant_type="refresh_token", refresh_token=record.refresh_token
                 ),
             )
@@ -361,9 +361,7 @@ class CookieSessionAuthenticationAdapter(
             # no nonce claim to compare one against.
             claims = cast(
                 dict[str, object],
-                await self._get_client().parse_id_token(  # pyright: ignore[reportUnknownMemberType]
-                    token, nonce=None
-                ),
+                await self._get_client().parse_id_token(token, nonce=None),
             )
         except Exception as exc:
             # Broad on purpose: the signature and claim errors come from authlib's

@@ -68,7 +68,7 @@ def _static_url(path: str) -> str:
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 # `env.globals` is typed against Jinja's default globals (range, dict, cycler, ...),
-# so pyright rejects new keys unless we widen the type here.
+# so a type checker rejects new keys unless we widen the type here.
 env_globals = cast("dict[str, object]", templates.env.globals)
 # Build static asset URLs relative to the UI prefix (StaticFiles is mounted at
 # ``{FRONTEND_PREFIX}/static`` in main.py).

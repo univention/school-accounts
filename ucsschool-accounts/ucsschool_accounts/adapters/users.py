@@ -29,7 +29,7 @@ from ..ports import UsersPersistencePort
 from .base import KelvinPersistenceBaseAdapter, name_chunks
 
 if sys.version_info >= (3, 12):  # pragma: no cover
-    from typing import override  # pyright: ignore[reportUnreachable]
+    from typing import override
 else:
     from typing_extensions import override
 

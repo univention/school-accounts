@@ -18,7 +18,7 @@ from ucsschool_accounts.ports import FastAPIAuthenticationPort
 from ucsschool_accounts.session_middleware import SessionCookieMiddleware
 
 if sys.version_info >= (3, 12):
-    from typing import override  # pyright: ignore[reportUnreachable]
+    from typing import override
 else:
     from typing_extensions import override
 

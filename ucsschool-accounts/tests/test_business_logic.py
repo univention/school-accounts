@@ -21,7 +21,7 @@ import pytest
 import pytest_asyncio
 
 if sys.version_info >= (3, 12):  # pragma: no cover
-    from typing import override  # pyright: ignore[reportUnreachable]
+    from typing import override
 else:
     from typing_extensions import override
 

@@ -43,8 +43,7 @@ class AdapterSelection(BaseSettings):
 
 
 def configure_registry(adapter_registry: AsyncAdapterRegistry):
-    # Fields are populated from env vars by pydantic-settings; pyright doesn't know that.
-    adapter_selection = AdapterSelection()  # pyright: ignore[reportCallIssue]
+    adapter_selection = AdapterSelection()
     adapter_registry.register_adapter(AsyncAdapterSettingsProvider, adapter_cls=EnvSettingsProvider)
     for port_cls, adapter_cls in [
         (UsersPersistencePort, adapter_selection.users_persistence),

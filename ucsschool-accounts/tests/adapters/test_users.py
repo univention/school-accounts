@@ -740,9 +740,7 @@ class TestKelvinUsersPersistenceAdapter:
         # `resp_json["detail"]` off the wire - untyped at the source, so a shape like
         # this is a real possibility the stub doesn't capture.
         kelvin_user = mocker.MagicMock()
-        kelvin_user.save = mocker.AsyncMock(
-            side_effect=InvalidRequest(reason=raw_reason)  # pyright: ignore[reportArgumentType]
-        )
+        kelvin_user.save = mocker.AsyncMock(side_effect=InvalidRequest(reason=raw_reason))
 
         class MockUserResource:
             async def get(self, *_args: Any, **_kwargs: Any):
@@ -769,11 +767,7 @@ class TestKelvinUsersPersistenceAdapter:
                 raise RuntimeError("cannot stringify")
 
         kelvin_user = mocker.MagicMock()
-        kelvin_user.save = mocker.AsyncMock(
-            side_effect=InvalidRequest(
-                reason=_Unstringifiable()  # pyright: ignore[reportArgumentType]
-            )
-        )
+        kelvin_user.save = mocker.AsyncMock(side_effect=InvalidRequest(reason=_Unstringifiable()))
 
         class MockUserResource:
             async def get(self, *_args: Any, **_kwargs: Any):

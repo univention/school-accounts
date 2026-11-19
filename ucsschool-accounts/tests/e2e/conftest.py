@@ -72,7 +72,7 @@ def access_token() -> Callable[[str, str], str]:
         # authlib ships no types; fetch_token() returns an OAuth2Token, a plain dict subclass.
         token = cast(
             dict[str, Any],
-            client.fetch_token(  # pyright: ignore[reportUnknownMemberType]
+            client.fetch_token(
                 "https://ucs-sso-ng.ucsschool.test/realms/ucs/protocol/openid-connect/token",
                 username=username,
                 password=password,
@@ -88,7 +88,7 @@ def kelvin_credentials(kelvin_url: str) -> KelvinCredentials:
     return {"username": "Administrator", "password": "univention", "host": kelvin_url}
 
 
-@pytest_asyncio.fixture  # pyright: ignore[reportUntypedFunctionDecorator]
+@pytest_asyncio.fixture
 async def kelvin_user_deletion(
     kelvin_credentials: KelvinCredentials,
 ) -> AsyncIterator[Callable[[str], None]]:
@@ -146,7 +146,7 @@ def kelvin_user_factory(
     return _kelvin_user_factory
 
 
-@pytest_asyncio.fixture  # pyright: ignore[reportUntypedFunctionDecorator]
+@pytest_asyncio.fixture
 async def kelvin_school_class_deletion(
     kelvin_credentials: KelvinCredentials,
 ) -> AsyncIterator[Callable[[str, str], None]]:
@@ -215,7 +215,7 @@ def _kelvin_secret(name: str) -> str:
     return value
 
 
-@pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+@pytest_asyncio.fixture
 async def cerbos_adapter(cerbos_url: str) -> CerbosPermissionsAdapter:
     adapter = CerbosPermissionsAdapter()
     await adapter.configure(CerbosPermissionsAdapterSettings(cerbos_target=cerbos_url, tls_verify=False))
@@ -255,7 +255,7 @@ def kelvin_scope() -> Iterator[_SessionHolder]:
         yield holder
 
 
-@pytest_asyncio.fixture(autouse=True)  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+@pytest_asyncio.fixture(autouse=True)
 async def close_kelvin_session(kelvin_scope: _SessionHolder) -> AsyncIterator[None]:
     """These adapters reach a real Kelvin, so the session has to be closed again."""
     yield
@@ -263,7 +263,7 @@ async def close_kelvin_session(kelvin_scope: _SessionHolder) -> AsyncIterator[No
         await kelvin_scope.session.close()
 
 
-@pytest_asyncio.fixture  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+@pytest_asyncio.fixture
 async def kelvin_ports(
     kelvin_adapter_settings: KelvinPersistenceAdapterSettings,
 ) -> KelvinPorts:

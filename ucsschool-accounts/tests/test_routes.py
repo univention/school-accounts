@@ -47,7 +47,7 @@ from ucsschool_accounts.presentation import OptionGroup
 from ucsschool_accounts.routes import _abandon, auth_port, render_static
 
 if sys.version_info >= (3, 12):
-    from typing import override  # pyright: ignore[reportUnreachable]
+    from typing import override
 else:
     from typing_extensions import override
 
@@ -164,9 +164,7 @@ def _post_reset(
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     return cast(
         httpx.Response,
-        test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users/password-reset", data=data
-        ),
+        test_client.post(f"{FRONTEND_PREFIX}/users/password-reset", data=data),
     )
 
 
@@ -177,9 +175,7 @@ def _post_selection(
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     return cast(
         httpx.Response,
-        test_client.post(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}{path}", data={"user_id": user_id, **extra}
-        ),
+        test_client.post(f"{FRONTEND_PREFIX}{path}", data={"user_id": user_id, **extra}),
     )
 
 
@@ -383,7 +379,7 @@ def test_users_filters_returns_combined_control_for_school(test_client: TestClie
 def _fragment(test_client: TestClient, path: str, **params: str) -> str:
     response = cast(
         httpx.Response,
-        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+        test_client.get(
             f"{FRONTEND_PREFIX}{path}",
             params=params,
         ),
@@ -475,7 +471,7 @@ def test_users_school_options_unfiltered(test_client: TestClient):
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     response = cast(
         httpx.Response,
-        test_client.get(f"{FRONTEND_PREFIX}/users/schools"),  # pyright: ignore[reportUnknownMemberType]
+        test_client.get(f"{FRONTEND_PREFIX}/users/schools"),
     )
     assert response.status_code == 200
     assert "School 1" in response.text
@@ -528,9 +524,7 @@ def _get_users(
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     return cast(
         httpx.Response,
-        test_client.get(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users", params=params, headers=headers
-        ),
+        test_client.get(f"{FRONTEND_PREFIX}/users", params=params, headers=headers),
     )
 
 
@@ -721,9 +715,7 @@ def test_kelvin_is_given_the_request_id_the_app_logs_under(
     test_client: TestClient, mocker: MockerFixture
 ):
     scope = mocker.spy(routes, "kelvin_session_scope")
-    test_client.get(  # pyright: ignore[reportUnknownMemberType]
-        f"{FRONTEND_PREFIX}/users", headers={CORRELATION_ID_HEADER_NAME: "the-request"}
-    )
+    test_client.get(f"{FRONTEND_PREFIX}/users", headers={CORRELATION_ID_HEADER_NAME: "the-request"})
     assert scope.call_args.kwargs["request_id"] == "the-request"
 
 
@@ -736,9 +728,7 @@ def _users_response(
     # TestClient is typed against the absent httpx2, so its calls come back Unknown.
     response = cast(
         httpx.Response,
-        test_client.get(  # pyright: ignore[reportUnknownMemberType]
-            f"{FRONTEND_PREFIX}/users", params=params, headers=headers
-        ),
+        test_client.get(f"{FRONTEND_PREFIX}/users", params=params, headers=headers),
     )
     assert response.status_code == 200
     return response
@@ -1595,7 +1585,7 @@ def test_the_results_heading_keeps_the_group_on_a_filter_change(test_client: Tes
     label off one would drop the group the click just picked."""
     response = cast(
         httpx.Response,
-        test_client.get(  # pyright: ignore[reportUnknownMemberType]
+        test_client.get(
             f"{FRONTEND_PREFIX}/users",
             params={"school": "school1", "group": "school_class:1a"},
             headers={"HX-Request": "true", "HX-Target": "results-region"},

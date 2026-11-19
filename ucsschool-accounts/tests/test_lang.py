@@ -14,7 +14,7 @@ from ucsschool_accounts.lang import N_, _, get_lang, lang_from_accept_header
     [("en", "Classes"), ("de", "Klassen"), (None, "Classes"), ("fr", "Classes")],
 )
 def test_translation_smoke_test(lang: str | None, expected_translation: str):
-    translated = _("Classes", lang=lang)  # pyright: ignore[reportArgumentType]
+    translated = _("Classes", lang=lang)
     assert translated == expected_translation
 
 

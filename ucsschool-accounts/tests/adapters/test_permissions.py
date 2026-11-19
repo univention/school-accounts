@@ -9,14 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 import grpc
 import pytest
-
-# reportMissingTypeStubs (pyright) on the 4 imports below: cerbos ships these as implicit
-# namespace packages (no __init__.py), so pyright can't confirm they're covered by cerbos/py.typed
-# even though each has its own .pyi stub alongside the .py file.
-from cerbos.effect.v1 import effect_pb2  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.engine.v1 import engine_pb2  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.request.v1 import request_pb2  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.response.v1 import response_pb2  # pyright: ignore[reportMissingTypeStubs]
+from cerbos.effect.v1 import effect_pb2
+from cerbos.engine.v1 import engine_pb2
+from cerbos.request.v1 import request_pb2
+from cerbos.response.v1 import response_pb2
 from cerbos.sdk.model import CerbosTypeError
 from google.protobuf import struct_pb2
 from port_loader import EnvSettingsProvider

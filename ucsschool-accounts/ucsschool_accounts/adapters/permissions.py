@@ -11,14 +11,10 @@ from typing import TYPE_CHECKING, TypeAlias, TypeVar, cast
 
 import aiofiles
 import grpc
-
-# reportMissingTypeStubs (pyright) on the 4 imports below: cerbos ships these as implicit
-# namespace packages (no __init__.py), so pyright can't confirm they're covered by cerbos/py.typed
-# even though each has its own .pyi stub alongside the .py file.
-from cerbos.engine.v1 import engine_pb2  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.request.v1 import request_pb2  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.sdk.grpc.client import AsyncCerbosClient  # pyright: ignore[reportMissingTypeStubs]
-from cerbos.sdk.grpc.utils import (  # pyright: ignore[reportMissingTypeStubs]
+from cerbos.engine.v1 import engine_pb2
+from cerbos.request.v1 import request_pb2
+from cerbos.sdk.grpc.client import AsyncCerbosClient
+from cerbos.sdk.grpc.utils import (
     is_allowed as cerbos_is_allowed,
 )
 from cerbos.sdk.model import CerbosTypeError

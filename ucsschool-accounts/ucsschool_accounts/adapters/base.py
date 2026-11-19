@@ -102,7 +102,7 @@ class SharedTokenSession(_KelvinSession):
             # service account's password, which no fresh token fixes.
             return await super().request(async_request_method, url, return_json, **kwargs)
         # Outside the `try`: a 401 while minting is the login's.
-        headers = await self.json_headers  # pyright: ignore[reportGeneralTypeIssues]
+        headers = await self.json_headers
         try:
             return await super().request(
                 async_request_method, url, return_json, headers=headers, **kwargs
@@ -115,7 +115,7 @@ class SharedTokenSession(_KelvinSession):
         # drops that one too, which costs one extra login.
         forget_shared_token()
         self._token = None
-        headers = await self.json_headers  # pyright: ignore[reportGeneralTypeIssues]
+        headers = await self.json_headers
         return await super().request(async_request_method, url, return_json, headers=headers, **kwargs)
 
 

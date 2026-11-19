@@ -55,7 +55,7 @@ USERS = (
 
 
 def _session(credentials: Mapping[str, str]) -> Session:
-    return Session(**credentials, verify=False)  # pyright: ignore[reportArgumentType]
+    return Session(**credentials, verify=False)
 
 
 async def _ensure_school(session: Session) -> None:
