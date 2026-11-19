@@ -14,7 +14,7 @@ dev/local
 **/.container_venv/
 **/.compose_venv/
 .gitlab-ci-local/
-basedpyright-code-quality.json
+ty-code-quality.json
 
 # App Center files
 appcenter-management/preinst

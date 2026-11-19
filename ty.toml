@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Univention GmbH
+# SPDX-License-Identifier: AGPL-3.0-only
+
+baseline = "ty-baseline.json"
+
+[environment]
+python = "ucsschool-accounts/.venv"
+python-version = "3.11"
+root = ["ucsschool-accounts"]
+
+[src]
+include = ["ucsschool-accounts"]

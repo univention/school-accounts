@@ -62,30 +62,30 @@ include:
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/pre-commit@2.16.2
     inputs:
       commit_msg_hooks: "conventional-pre-commit issue-reference"
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-hint-coverage-basedpyright@2.16.2
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/python-type-check-ty@2.29.0
     inputs:
       job_prefix: "accounts_"
       pipeline_stage: build
-      python_paths: --project ucsschool-accounts/pyrightconfig.json ucsschool-accounts
-      python_version: "3.11"
-      basedpyright_version: "1.39.8"
-      baseline_file: ucsschool-accounts/basedpyright-baseline.json
+      ty_version: "0.0.107"
       before_script:
         - uv sync --project ucsschool-accounts --python 3.11
       job_rules:
         - if: $CI_MERGE_REQUEST_ID
           changes:
             - ucsschool-accounts/**/*
+            - ty.toml
+            - ty-baseline.json
         - if: $CI_COMMIT_REF_PROTECTED == "true"
         - if: $CI_COMMIT_TAG
-  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/baseline-buddy@2.22.0
+  - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/baseline-buddy@2.29.0
     inputs:
       pipeline_stage: build
-      head_baseline_file: ucsschool-accounts/basedpyright-baseline.json
+      linter: ty
+      head_baseline_file: ty-baseline.json
       job_rules:
         - if: $CI_MERGE_REQUEST_ID
           changes:
-            - ucsschool-accounts/basedpyright-baseline.json
+            - ty-baseline.json
   - component: $CI_SERVER_FQDN/univention/dev/tooling/ci-components/sonarqube@2.16.2
     inputs:
       job_name: "build-sonar"

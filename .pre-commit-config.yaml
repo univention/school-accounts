@@ -8,7 +8,6 @@ repos:
   rev: v4.5.0
   hooks:
     - id: check-added-large-files
-      exclude: '^ucsschool-accounts/basedpyright-baseline\.json$'
     - id: check-json
     - id: check-xml
     - id: check-yaml
@@ -19,7 +18,8 @@ repos:
       exclude: '^ucsschool-accounts/ucsschool_accounts/static/vendor/'
     - id: pretty-format-json
       args: [--autofix]
-      exclude: '^ucsschool-accounts/basedpyright-baseline\.json$|^ucsschool-accounts/ucsschool_accounts/static/vendor/'
+      # ty writes its baseline in its own key order, which this hook would sort.
+      exclude: '^ty-baseline\.json$|^ucsschool-accounts/ucsschool_accounts/static/vendor/'
 - repo: local
   hooks:
     - id: accounts-translation-check
@@ -29,46 +29,16 @@ repos:
       pass_filenames: false
 - repo: local
   hooks:
-    # Native hooks run by default: this repo's local dev workflow (dev/dev_run.sh pre-commit run -a)
-    # already wraps pre-commit itself inside the dev container, which has uv/git but no docker.sock,
-    # so a docker_image-based default hook would fail there. The container hooks below are kept as
-    # manual-stage fallbacks for contributors running bare pre-commit without a local uv/Python setup.
-    - id: basedpyright-accounts-native-baseline
-      name: basedpyright (accounts, relative to baseline, native)
+    # Keep the ty version in step with ty_version in .gitlab-ci/gitlab-ci.yml.
+    # The dev container keeps its environment in UV_PROJECT_ENVIRONMENT, not in ty.toml's .venv.
+    - id: ty
+      name: ty (relative to baseline)
       language: system
       entry: |
-        sh -c 'cd ucsschool-accounts && uv sync --python 3.11 && \
-          uv pip install basedpyright==1.39.8 && \
-          .venv/bin/basedpyright \
-            --project pyrightconfig.json \
-            --baselinefile basedpyright-baseline.json \
-            --baselinemode=auto' --
+        sh -c 'uv sync --project ucsschool-accounts --python 3.11 --quiet && \
+          uvx ty@0.0.107 check --python "${UV_PROJECT_ENVIRONMENT:-ucsschool-accounts/.venv}"' --
       pass_filenames: false
-      types: [python]
-      files: ^ucsschool-accounts/
-    - id: basedpyright-accounts-container-baseline
-      name: basedpyright (accounts, relative to baseline, docker)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts baseline
-      stages: [manual]
-      pass_filenames: false
-      types: [python]
-      files: ^ucsschool-accounts/
-    - id: basedpyright-accounts-container-no-baseline
-      name: basedpyright (accounts, lint file, no baseline)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts no-baseline
-      stages: [manual]
-      pass_filenames: true
-      types: [python]
-      files: ^ucsschool-accounts/
-    - id: basedpyright-accounts-container-write-baseline
-      name: basedpyright (accounts, write baseline)
-      language: system
-      entry: docker/pre_commit/run-basedpyright.sh ucsschool-accounts write-baseline
-      stages: [manual]
-      pass_filenames: false
-      files: ^ucsschool-accounts/
+      files: ^(ucsschool-accounts/.*\.py|ty\.toml|ty-baseline\.json)$
 - repo: https://github.com/jackdewinter/pymarkdown
   rev: v0.9.15
   hooks:
@@ -122,9 +92,8 @@ repos:
       #  - a dedicated block further down (doc images, spelling wordlists, vendored code)
       # some are also uncommentable formats (json/csv/svg/png) where reuse-annotate
       # would otherwise create stray *.license sidecar files instead of skipping
-      exclude: "^basedpyright-baseline[.]json$\
-                |^pyrightconfig[.]json$\
-                |^renovate[.]json$\
+      exclude: "^renovate[.]json$\
+                |^ty-baseline[.]json$\
                 |^appcenter-management/files/.*[.]json$\
                 |^dev/data/.*[.]json$\
                 |^dev/tests/.*[.]json$\

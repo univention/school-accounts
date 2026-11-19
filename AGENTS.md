@@ -419,7 +419,8 @@ docker compose so no local Python/Node install is required.
 | Watch a frontend test in a real browser | `dev/dev_run.sh task pytest-frontend-headed` |
 | Run all pre-commit hooks (lint/format/type-check/license/translation) | `dev/dev_run.sh pre-commit run -a` |
 | Run pre-commit only on staged files | `dev/dev_run.sh pre-commit run` |
-| Precise type check (basedpyright, matches CI) | `uvx prek run --hook-stage manual basedpyright-accounts-container-baseline --all-files` |
+| Type check against the baseline (ty, matches CI) | `uvx prek run ty --all-files` |
+| Refresh the ty baseline after fixing or accepting diagnostics | `uvx ty@0.0.107 check --update-baseline` (from the repo root) |
 | Start the dev server | `dev/dev_run.sh task dev-server` |
 | Start a local Cerbos server (manual policy/adapter testing) | `dev/dev_run.sh task cerbos-server` |
 | Lint/test the Cerbos policies (`cerbos compile`) | `dev/dev_run.sh task cerbos-compile` |
@@ -442,13 +443,15 @@ optional:
 
 - **black** (line length 105, target py311) and **ruff** (`E, F, I, B`, `B008`/`B904` ignored,
   `--fix`) — both configured in `ucsschool-accounts/pyproject.toml`.
-- **basedpyright** on the package (config: `ucsschool-accounts/pyrightconfig.json`) with a committed
-  baseline (`basedpyright-baseline.json`) suppressing pre-existing findings — only *new*
-  diagnostics fail the pre-commit hook/CI job. The default `basedpyright-*-native-baseline` hooks run
-  against the host's `uv`-managed venv; for a precise type check that matches CI exactly, run the
-  containerized hook instead: `uvx prek run --hook-stage manual basedpyright-accounts-container-baseline
-  --all-files`. These container hooks are `stages: [manual]`, so `pre-commit run -a`
-  alone skips them — invoke them explicitly when you want a trustworthy type-check result.
+- **ty** (config: `ty.toml` at the repository root) against a committed baseline
+  (`ty-baseline.json`) suppressing pre-existing findings,
+  so only *new* diagnostics fail the `ty` pre-commit hook and the CI job.
+  CI also fails when the baseline lists a diagnostic that no longer occurs:
+  refresh it with `uvx ty@0.0.107 check --update-baseline` and commit it.
+  Run ty from the repository root, where the baseline's paths start.
+  The hook and `ty_version` in `.gitlab-ci/gitlab-ci.yml` pin the same version;
+  bump them together and refresh the baseline, since new ty releases add rules.
+  ty checks correctness only, not type-hint coverage.
 - **bandit** on everything except `tests/` and `appcenter-management/scripts/test_*`.
 - **reuse** — every source file needs an SPDX header or a matching `.license` sidecar file (see the
   many `*.license` files already in the tree for the pattern).
@@ -622,7 +625,7 @@ Before considering a change complete:
       for new htmx wiring.
 - [ ] `dev/dev_run.sh task pytest` passes locally (full run — the CI coverage gate is 100% on
       non-omitted files, so a partial run can hide a coverage failure).
-- [ ] `dev/dev_run.sh pre-commit run -a` passes (black, ruff, basedpyright, bandit, reuse, pymarkdown,
+- [ ] `dev/dev_run.sh pre-commit run -a` passes (black, ruff, ty, bandit, reuse, pymarkdown,
       translation check, uv-lock check, OPA checks if `appcenter-management/files/conditions/`
       changed).
 - [ ] Any new user-facing string is translated (`task translate` reports no fuzzy/untranslated

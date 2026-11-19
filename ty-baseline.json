@@ -1,0 +1,239 @@
+{
+  "version": 0,
+  "files": {
+    "ucsschool-accounts/keycloak_provisioning/keycloak.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 38,
+        "endColumn": 55,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 57,
+        "endColumn": 68,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 60,
+        "endColumn": 71,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/adapters/test_users.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 39,
+        "endColumn": 56,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 16,
+        "endColumn": 41,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/conftest.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 68,
+        "endColumn": 83,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/frontend/conftest.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 12,
+        "endColumn": 83,
+        "lineCount": 2
+      },
+      {
+        "rule": "parameter-already-assigned",
+        "startColumn": 12,
+        "endColumn": 25,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 24,
+        "endColumn": 75,
+        "lineCount": 1
+      },
+      {
+        "rule": "too-many-positional-arguments",
+        "startColumn": 20,
+        "endColumn": 88,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/frontend/seed.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 19,
+        "endColumn": 32,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 19,
+        "endColumn": 32,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/frontend/test_user_list.py": [
+      {
+        "rule": "too-many-positional-arguments",
+        "startColumn": 20,
+        "endColumn": 92,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/keycloak_provisioning/cli/test_clients_cli.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 18,
+        "endColumn": 52,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 8,
+        "endColumn": 46,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 8,
+        "endColumn": 46,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 8,
+        "endColumn": 85,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/test_lang.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 30,
+        "endColumn": 39,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/test_multiworker_session.py": [
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 28,
+        "endColumn": 67,
+        "lineCount": 1
+      },
+      {
+        "rule": "invalid-argument-type",
+        "startColumn": 20,
+        "endColumn": 83,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/test_routes.py": [
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 84,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 64,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 56,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 61,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 61,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 79,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 79,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/tests/test_session_middleware.py": [
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 94,
+        "lineCount": 1
+      }
+    ],
+    "ucsschool-accounts/ucsschool_accounts/adapters/authentication.py": [
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 84,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 64,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 56,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 61,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 94,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 61,
+        "lineCount": 1
+      },
+      {
+        "rule": "lost-keyword-for-regular-parameter",
+        "startColumn": 14,
+        "endColumn": 79,
+        "lineCount": 1
+      }
+    ]
+  }
+}

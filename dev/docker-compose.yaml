@@ -13,9 +13,7 @@ services:
       # (and in the dev container), and uv bakes absolute interpreter paths into the venv's
       # console-script shebangs. Sharing one `.venv` across both therefore breaks whichever side
       # did not build it last -- e.g. `uv run uvicorn` failing with "Failed to spawn: `uvicorn`".
-      # Give the compose stack its own environment directory. Same reasoning as
-      # docker/pre_commit/run-basedpyright.sh, but a distinct directory so a basedpyright run
-      # cannot re-sync the environment of a running dev server.
+      # Give the compose stack its own environment directory.
       UV_PROJECT_ENVIRONMENT: /src/ucsschool-accounts/.compose_venv
     command: ["dev/scripts/install_deps.sh"]
     profiles:
