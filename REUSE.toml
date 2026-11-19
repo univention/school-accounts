@@ -21,7 +21,6 @@ path = [
     "docs/ucsschool-accounts/spelling_wordlist",
     "renovate.json",
     "ty-baseline.json",
-    "ucsschool-accounts/pyrightconfig.json",
     "ucsschool-accounts/tests/data/**.json",
     "ucsschool-accounts/uv.lock"
 ]
