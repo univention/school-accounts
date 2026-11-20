@@ -28,9 +28,20 @@ def test_the_page_renders_through_the_design_system(signed_in: Page) -> None:
 
 
 @pytest.mark.frontend
-def test_the_user_list_starts_empty_until_a_school_is_picked(signed_in: Page) -> None:
+def test_the_user_list_starts_empty_until_a_school_is_picked(signed_in: Page, seeded: bool) -> None:
+    if seeded:
+        pytest.skip("the seeded login user has one school, which the list selects by itself")
     expect(signed_in.locator("#results-region")).to_contain_text(
         "Select a school and a group to list users."
+    )
+
+
+@pytest.mark.frontend
+@pytest.mark.usefixtures("seeded_only")
+def test_the_only_school_is_selected_without_a_click(signed_in: Page, school_id: str) -> None:
+    expect(signed_in.locator("#school-list")).to_have_attribute("value", school_id)
+    expect(signed_in.locator("#results-region")).to_contain_text(
+        "Select a class or work group to list its users."
     )
 
 

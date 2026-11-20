@@ -215,7 +215,10 @@ def test_unticking_every_user_the_popup_names_leaves_nothing_to_reset(
 
     expect(popup).to_be_hidden()
     expect(signed_in.locator("#password-reset-dialog")).to_have_count(0)
-    expect(signed_in.locator("#password-reset")).to_be_disabled()
+    # By role, not by id: the id names the u-button host, and Playwright reads a disabled
+    # attribute only on a native control such as the button inside it.
+    reset = signed_in.locator("#selection-form").get_by_role("button", name="Reset password")
+    expect(reset).to_be_disabled()
 
 
 @pytest.mark.frontend
