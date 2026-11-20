@@ -31,8 +31,8 @@ Show = Install,Settings
 [ucsschool-accounts/logging/structured]
 Type = Bool
 InitialValue = false
-Description = If set to True, each log record is written as a single JSON object. If set to False, the records follow the Univention log format.
-Description[de] = Wird der Wert auf `True` gesetzt, wird jeder Logeintrag als einzelnes JSON-Objekt geschrieben. Bei `False` folgen die Einträge dem Univention-Logformat.
+Description = If set to True, each log record is written as a single JSON object. If set to False, the records follow the Nubus log format.
+Description[de] = Wird der Wert auf `True` gesetzt, wird jeder Logeintrag als einzelnes JSON-Objekt geschrieben. Bei `False` folgen die Einträge dem Nubus-Logformat.
 Group = Logging
 Scope = outside
 Show = Install,Settings

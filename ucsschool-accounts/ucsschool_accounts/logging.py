@@ -166,7 +166,7 @@ async def _boolean_setting(settings_port: AsyncAdapterSettingsProvider, name: st
 def _install_sink(  # pragma: no cover
     level: LogLevel, structured: bool, backtrace: bool = False, diagnose: bool = False
 ) -> None:
-    """Write log records to stderr, in the Univention log format or as one JSON object each."""
+    """Write log records to stderr, in the Nubus log format or as one JSON object each."""
     logger.remove()
     logger.configure(patcher=_patch_json_record if structured else _patch_text_record)
     logger.add(
