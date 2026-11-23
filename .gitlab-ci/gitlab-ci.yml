@@ -9,7 +9,7 @@ include:
       app_id: "ucsschool-accounts"
       mail_sender: "ucsschool-maintainers@univention.de"
       author_alias: "The ByteBenders"
-      changelog_link: "https://docs.software-univention.de/ucsschool-accounts/changelog.html"
+      changelog_link: "https://docs.software-univention.de/ucsschool-accounts/latest/en/changelog.html"
       mail_recipient: "app-announcement@univention.de"
       chat_destination: "#product-announcements"
       release_text_file: ".gitlab-ci/release_text.txt"
