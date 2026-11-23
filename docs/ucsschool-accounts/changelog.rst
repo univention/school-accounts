@@ -11,7 +11,7 @@ This section lists the changes to the School Accounts app.
 
 .. _release-1-1-0:
 
-v1.1.0 (unreleased)
+v1.1.0 (2026-11-23)
 ===================
 
 * You can filter the list of users by role, one role at a time.
