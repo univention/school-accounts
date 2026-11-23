@@ -147,14 +147,8 @@ docs:
   rules:
     - changes:
         - "docs/ucsschool-accounts/**/*"
-      variables:
-        DOCS_CONTENT_CHANGED: "yes"
-
-    - changes:
         - ".gitlab-ci/gitlab-ci.yml"
         - ".gitlab-ci/docs.yml"
-      variables:
-        DOCS_CONTENT_CHANGED: "no"
   trigger:
     include:
       - local: /.gitlab-ci/docs.yml
