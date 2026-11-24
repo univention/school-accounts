@@ -149,6 +149,10 @@ docs:
         - "docs/ucsschool-accounts/**/*"
         - ".gitlab-ci/gitlab-ci.yml"
         - ".gitlab-ci/docs.yml"
+    # Lets a main pipeline without docs changes still publish the manual.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
   trigger:
     include:
       - local: /.gitlab-ci/docs.yml
