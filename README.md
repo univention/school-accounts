@@ -140,7 +140,7 @@ Refresh the baseline from the repository root, where its paths start:
 uv run --project ucsschool-accounts ty check --update-baseline
 ```
 
-ty is a dev dependency in `ucsschool-accounts/uv.lock`,
+ty is pinned in `ucsschool-accounts/uv.lock`, in the `typecheck` dependency group,
 so the hook and CI run the same version.
 Renovate opens a merge request for each ty release.
 New versions often add rules, so on that merge request:

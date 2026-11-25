@@ -15,12 +15,12 @@ RUN apt-get update && \
 RUN pip install --only-binary :all: uv=="$UV_VERSION"
 COPY ucsschool-accounts/pyproject.toml ucsschool-accounts/uv.lock ./
 # Install all dependencies (prod + dev) and backend
-# Currently necessary, as the integration and production tests need this
-RUN uv sync --frozen --no-build --no-install-project
+# Currently necessary, as the integration and production tests need this: univention/dev/education/school-accounts#257
+RUN uv sync --frozen --no-build --no-install-project --no-group typecheck
 COPY ucsschool-accounts/ ./
 # Builds only this project; every dependency was installed above without building.
 ARG UCSSCHOOL_ACCOUNTS_BUILD_VERSION=""
-RUN uv sync --frozen --no-editable
+RUN uv sync --frozen --no-editable --no-group typecheck
 
 FROM gitregistry.knut.univention.de/univention/dev/projects/ucs-base-image/ucs-base-python-527:0.24.5@sha256:b2211f931bb03d2c86550b6671b1c43dc5dde8ad075cafc2220f8f55851d54d8 AS runtime
 

@@ -452,7 +452,7 @@ optional:
   refresh it with `uv run --project ucsschool-accounts ty check --update-baseline` and commit it.
   Run ty from the repository root, where the baseline's paths start, and through `uv run`,
   which hands ty the project's environment.
-  ty is a dev dependency, so the hook and CI read its version from `uv.lock`;
+  ty is pinned in `uv.lock`, so the hook and CI read its version from there;
   README.md (§ Type checking with ty) describes a ty bump.
   ty checks correctness only, not type-hint coverage.
 - **bandit** on everything except `tests/` and `appcenter-management/scripts/test_*`.
@@ -574,6 +574,10 @@ no access token is stored) rather than restating what the code does.
 - `ucsschool-accounts/uv.lock` is managed by `uv` and checked by a pre-commit `uv-lock` hook — don't edit by hand. To add a dependency, run
   `uv add <package>` inside the relevant package directory, which updates that package's
   `pyproject.toml` and lockfile together, instead of editing either file manually.
+  The `Dockerfile` installs every dependency group, `dev` included
+  (univention/dev/education/school-accounts#257),
+  so a tool nothing in the image runs gets its own group and a `--no-group` there,
+  as ty's `typecheck` group does.
 
 ## Documentation and Changelog Requirements
 
